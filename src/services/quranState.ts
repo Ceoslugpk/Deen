@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { clearCacheNamespace, getCachedJson, listCachedKeys, setCachedJson } from './contentCache';
 
 export type QuranPreferences = {
   translationEdition: string;
@@ -19,7 +20,7 @@ export type HifzStatus = 'not-started' | 'revising' | 'memorized';
 const K = {
   prefs: '@deen/quran/preferences/v1', bookmarks: '@deen/quran/bookmarks/v1', notes: '@deen/quran/notes/v1',
   position: '@deen/quran/position/v1', recent: '@deen/quran/recent/v1', searches: '@deen/quran/searches/v1',
-  hifz: '@deen/quran/hifz/v1', plan: '@deen/quran/plan/v1', cache: '@deen/quran/cache/v1', cacheIndex: '@deen/quran/cache-index/v1',
+  hifz: '@deen/quran/hifz/v1', plan: '@deen/quran/plan/v1',
 };
 const DEFAULTS: QuranPreferences = { translationEdition: 'en.sahih', translationName: 'Sahih International', translationLanguage: 'English', scriptEdition: 'quran-uthmani', scriptName: 'Uthmani', fontSize: 30, lineHeight: 1.9, showTranslation: true, readingMode: 'cards' };
 async function read<T>(key:string,fallback:T):Promise<T>{try{const v=await AsyncStorage.getItem(key);return v?JSON.parse(v):fallback}catch{return fallback}}
@@ -43,7 +44,33 @@ export async function loadHifz(){return read<Record<number,HifzStatus>>(K.hifz,{
 export async function saveHifz(value:Record<number,HifzStatus>){return write(K.hifz,value)}
 export async function loadPlan(){return read<{days:number;startedAt:number;completed:number[]}|null>(K.plan,null)}
 export async function savePlan(value:{days:number;startedAt:number;completed:number[]}|null){return write(K.plan,value)}
-export async function loadSurahCache(key:string){return read<unknown|null>(`${K.cache}:${key}`,null)}
-export async function saveSurahCache(key:string,value:unknown){await write(`${K.cache}:${key}`,value);const index=await read<string[]>(K.cacheIndex,[]);if(!index.includes(key))await write(K.cacheIndex,[...index,key])}
-export async function loadSurahCacheIndex(){return read<string[]>(K.cacheIndex,[])}
-export async function clearSurahCache(){const index=await loadSurahCacheIndex();await Promise.all(index.map(key=>AsyncStorage.removeItem(`${K.cache}:${key}`)));await write(K.cacheIndex,[])}
+const LEGACY_CACHE = '@deen/quran/cache/v1';
+const LEGACY_INDEX = '@deen/quran/cache-index/v1';
+let legacyMigration: Promise<void> | null = null;
+async function migrateLegacySurahCache(){
+  if (legacyMigration) return legacyMigration;
+  legacyMigration = (async()=>{
+    const keys = await read<string[]>(LEGACY_INDEX,[]);
+    const remaining:string[]=[];
+    for(const key of keys){
+      const storageKey=`${LEGACY_CACHE}:${key}`;
+      try{
+        const value=await AsyncStorage.getItem(storageKey);
+        if(value) await setCachedJson('quran',key,JSON.parse(value));
+        await AsyncStorage.removeItem(storageKey);
+      }catch{remaining.push(key)}
+    }
+    if(remaining.length) await write(LEGACY_INDEX,remaining);
+    else await AsyncStorage.removeItem(LEGACY_INDEX);
+  })();
+  return legacyMigration;
+}
+export async function loadSurahCache(key:string){await migrateLegacySurahCache();return getCachedJson<unknown>('quran',key)}
+export async function saveSurahCache(key:string,value:unknown){await migrateLegacySurahCache();return setCachedJson('quran',key,value)}
+export async function loadSurahCacheIndex(){await migrateLegacySurahCache();return listCachedKeys('quran')}
+export async function clearSurahCache(){
+  const legacyKeys=await read<string[]>(LEGACY_INDEX,[]);
+  await Promise.all(legacyKeys.map(key=>AsyncStorage.removeItem(`${LEGACY_CACHE}:${key}`)));
+  await AsyncStorage.removeItem(LEGACY_INDEX);
+  await clearCacheNamespace('quran');
+}
