@@ -18,17 +18,23 @@ async function json(url: string) {
 }
 
 const cleanTime = (value: string) => value?.split(' ')[0] ?? '';
-const displayTime = (value: string) => {
+const displayTime = (value: string, format: '12' | '24' = '12') => {
   const [h, m] = cleanTime(value).split(':').map(Number);
   if (!Number.isFinite(h)) return '';
+  if (format === '24') return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
   return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
 };
 
-export async function getPrayerSnapshot(latitude = 25.2048, longitude = 55.2708): Promise<PrayerSnapshot> {
+export type PrayerRequestOptions = { method?: number; school?: 'shafi' | 'hanafi'; timeFormat?: '12' | '24' };
+
+export async function getPrayerSnapshot(latitude = 25.2048, longitude = 55.2708, options: PrayerRequestOptions = {}): Promise<PrayerSnapshot> {
   // AlAdhan resolves the timezone from coordinates and returns local clock times.
-  const data = await json(`https://api.aladhan.com/v1/timings?latitude=${latitude}&longitude=${longitude}&method=8`);
+  const method = options.method ?? 8;
+  const school = options.school === 'hanafi' ? 1 : 0;
+  const timeFormat = options.timeFormat ?? '12';
+  const data = await json(`https://api.aladhan.com/v1/timings?latitude=${latitude}&longitude=${longitude}&method=${method}&school=${school}`);
   const names = ['Fajr', 'Sunrise', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
-  const prayers = names.map(name => ({ name, raw: cleanTime(data.timings[name]), time: displayTime(data.timings[name]) }));
+  const prayers = names.map(name => ({ name, raw: cleanTime(data.timings[name]), time: displayTime(data.timings[name], timeFormat) }));
   const h = data.date.hijri;
   return {
     prayers,
