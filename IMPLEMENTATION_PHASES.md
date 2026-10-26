@@ -104,7 +104,21 @@ The complete application passes privacy, offline, localization, accessibility, r
   - [x] Referenced Wudu, Salah, Janazah, Eid, Istikhara, Taraweeh, Shahada, Ramadan, fasting, Laylatul Qadr, and Zakat al-Fitr guides
   - [x] RTL/LTR and responsive validation for the new Phase 1 destinations
   - [x] Cross-phase Quran-progress and global-player responsibilities explicitly retained in Phases 2 and 3
-- [ ] Phase 2 — Not started
+- [ ] Phase 2 — In progress
+  - [x] Live 114-Surah directory with debounced multilingual metadata search and verse-reference opening
+  - [x] Full-text Arabic/translation search with local history management
+  - [x] Live translation edition and language selection with attribution
+  - [x] Juz 1–30 directory and live Juz reading
+  - [x] Cache-first Surah reader with honest offline status
+  - [x] Ayah cards and continuous reading modes
+  - [x] Uthmani/Imla’i script choices, Arabic size, and line-spacing controls
+  - [x] Local bookmarks, private notes, reading position, recents, and continuation
+  - [x] Ayah copy, share, audio, note, position, Tafsir, and comparison actions
+  - [x] Live Jalalayn Tafsir and edition comparison
+  - [x] 30/60/90/120-day local reading plans
+  - [x] 114-Surah local Hifz status tracker and filters
+  - [x] Managed cache-first full-Quran preparation with progress, pause/resume, skip, and cleanup
+  - [ ] Remaining Quran topics, vocabulary, Tajweed parsing/legend, advanced Mushaf pagination, multi-column 2/3-language comparison, and managed full-Quran preloading
 - [ ] Phase 3 — Not started
 - [ ] Phase 4 — Not started
 - [ ] Phase 5 — Not started

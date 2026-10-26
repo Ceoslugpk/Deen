@@ -2,10 +2,12 @@ export type Prayer = { name: string; time: string; raw: string };
 export type PrayerSnapshot = { prayers: Prayer[]; hijri: string; hijriYear: number; hijriMonth: number; readable: string; timezone: string; method: string };
 export type CalendarDay = { gregorian: string; weekday: string; hijriDay: number; hijriMonth: string; hijriYear: number; prayers: Prayer[] };
 export type Chapter = { id: number; name_simple: string; name_arabic: string; verses_count: number; revelation_place?: string; translated_name?: { name: string } };
-export type Verse = { id: number; verse_key: string; text_uthmani: string; translation?: string; audio?: string; page?: number; juz?: number };
+export type Verse = { id: number; verse_key: string; text_uthmani: string; translation?: string; audio?: string; page?: number; juz?: number; surah_name?: string };
 export type DailyHadith = { collection: string; number: string; text: string; arabic?: string };
 export type DivineName = { number: number; name: string; transliteration: string; meaning: string };
 export type DailyAyah = { reference: string; arabic: string; translation: string };
+export type QuranEdition = { identifier: string; language: string; englishName: string; name: string; type: string; direction?: string };
+export type QuranSearchResult = { verseKey: string; surahId: number; surahName: string; ayah: number; text: string; edition: string };
 
 const ISLAMIC = 'https://api.islamic.app/v1';
 const QURAN = 'https://api.alquran.cloud/v1';
@@ -86,10 +88,12 @@ export async function getChapters(): Promise<Chapter[]> {
   }));
 }
 
-export async function getVerses(chapterId: number): Promise<Verse[]> {
+export async function getVerses(chapterId: number, options: { script?: string; translation?: string } = {}): Promise<Verse[]> {
+  const script = options.script || 'quran-uthmani';
+  const translation = options.translation || 'en.sahih';
   const [arabic, english, audio] = await Promise.all([
-    json(`${QURAN}/surah/${chapterId}/quran-uthmani`),
-    json(`${QURAN}/surah/${chapterId}/en.sahih`),
+    json(`${QURAN}/surah/${chapterId}/${script}`),
+    json(`${QURAN}/surah/${chapterId}/${translation}`),
     json(`${QURAN}/surah/${chapterId}/ar.alafasy`),
   ]);
   return arabic.ayahs.map((a: any, index: number) => ({
@@ -112,6 +116,30 @@ export async function getAyahOfDay(): Promise<DailyAyah> {
     json(`${QURAN}/ayah/${ayahNumber}/en.sahih`),
   ]);
   return { reference: `${arabic.surah.englishName} ${arabic.surah.number}:${arabic.numberInSurah}`, arabic: arabic.text, translation: english.text };
+}
+
+export async function getJuzVerses(juz: number, options: { script?: string; translation?: string } = {}): Promise<Verse[]> {
+  const script = options.script || 'quran-uthmani';
+  const translation = options.translation || 'en.sahih';
+  const [arabic, english, audio] = await Promise.all([
+    json(`${QURAN}/juz/${juz}/${script}`), json(`${QURAN}/juz/${juz}/${translation}`), json(`${QURAN}/juz/${juz}/ar.alafasy`),
+  ]);
+  return arabic.ayahs.map((a:any,index:number)=>({id:a.number,verse_key:`${a.surah.number}:${a.numberInSurah}`,text_uthmani:a.text,translation:english.ayahs[index]?.text,audio:audio.ayahs[index]?.audio,page:a.page,juz:a.juz,surah_name:a.surah.englishName} as Verse & {surah_name:string}));
+}
+
+export async function getQuranEditions(type = 'translation'): Promise<QuranEdition[]> {
+  const data = await json(`${QURAN}/edition?format=text&type=${type}`);
+  return data.map((e:any)=>({identifier:e.identifier,language:e.language,englishName:e.englishName,name:e.name,type:e.type,direction:e.direction}));
+}
+
+export async function searchQuran(query: string, edition = 'en.sahih'): Promise<QuranSearchResult[]> {
+  const data = await json(`${QURAN}/search/${encodeURIComponent(query)}/all/${edition}`);
+  return (data.matches || []).map((m:any)=>({verseKey:`${m.surah.number}:${m.numberInSurah}`,surahId:m.surah.number,surahName:m.surah.englishName,ayah:m.numberInSurah,text:m.text,edition:m.edition?.englishName||edition}));
+}
+
+export async function getAyahEditions(verseKey: string, editions: string[]): Promise<{edition:string;name:string;language:string;text:string}[]> {
+  const data = await json(`${QURAN}/ayah/${verseKey}/editions/${editions.join(',')}`);
+  return data.map((row:any)=>({edition:row.edition.identifier,name:row.edition.englishName,language:row.edition.language,text:row.text}));
 }
 
 export async function getDailyHadith(): Promise<DailyHadith> {
