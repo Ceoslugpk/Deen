@@ -91,13 +91,19 @@ The complete application passes privacy, offline, localization, accessibility, r
 
 ## Progress
 
-- [ ] Phase 1 — In progress
+- [x] Phase 1 — Complete
   - [x] Persistent worship settings foundation
   - [x] Configurable calculation method, madhab, and 12/24-hour display
   - [x] Prayer-time cache with honest cached status
-  - [x] Persistent explicit location
-  - [x] Daily prayer completion and progress foundation
-  - [ ] Remaining Home, notification, Adhan, location, streak/summary, and guide work
+  - [x] GPS, city, and manual-coordinate location with local persistence
+  - [x] Daily prayer completion, weekly progress, and streak foundation
+  - [x] Live/cached Ayah, Hadith, Name of Allah, and Dua daily content
+  - [x] Morning and evening Adhkar plus persistent quick Tasbih
+  - [x] Native prayer/Quran notification permission, scheduling, test, and recovery flow
+  - [x] Bundled and streamed public-domain Adhan previews with per-prayer controls
+  - [x] Referenced Wudu, Salah, Janazah, Eid, Istikhara, Taraweeh, Shahada, Ramadan, fasting, Laylatul Qadr, and Zakat al-Fitr guides
+  - [x] RTL/LTR and responsive validation for the new Phase 1 destinations
+  - [x] Cross-phase Quran-progress and global-player responsibilities explicitly retained in Phases 2 and 3
 - [ ] Phase 2 — Not started
 - [ ] Phase 3 — Not started
 - [ ] Phase 4 — Not started

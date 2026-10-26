@@ -37,7 +37,9 @@
     },
     "plugins": [
       "expo-location",
-      "expo-font"
+      "expo-font",
+      "expo-audio",
+      "expo-notifications"
     ]
   }
 }
