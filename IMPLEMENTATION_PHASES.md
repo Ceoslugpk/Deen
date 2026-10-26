@@ -104,7 +104,7 @@ The complete application passes privacy, offline, localization, accessibility, r
   - [x] Referenced Wudu, Salah, Janazah, Eid, Istikhara, Taraweeh, Shahada, Ramadan, fasting, Laylatul Qadr, and Zakat al-Fitr guides
   - [x] RTL/LTR and responsive validation for the new Phase 1 destinations
   - [x] Cross-phase Quran-progress and global-player responsibilities explicitly retained in Phases 2 and 3
-- [ ] Phase 2 — In progress
+- [x] Phase 2 — Complete
   - [x] Live 114-Surah directory with debounced multilingual metadata search and verse-reference opening
   - [x] Full-text Arabic/translation search with local history management
   - [x] Live translation edition and language selection with attribution
@@ -118,7 +118,16 @@ The complete application passes privacy, offline, localization, accessibility, r
   - [x] 30/60/90/120-day local reading plans
   - [x] 114-Surah local Hifz status tracker and filters
   - [x] Managed cache-first full-Quran preparation with progress, pause/resume, skip, and cleanup
-  - [ ] Remaining Quran topics, vocabulary, Tajweed parsing/legend, advanced Mushaf pagination, multi-column 2/3-language comparison, and managed full-Quran preloading
+  - [x] Curated Quran topics with live verified Arabic/translation passages and ayah navigation
+  - [x] Quranic Arabic vocabulary flashcards with private review and known-word progress
+  - [x] Live Tajweed edition parsing, colour legend, explanations, practice, and normal-text fallback
+  - [x] Uthmani, Imla’i, source-attributed IndoPak/Nastaliq, and Tajweed script choices plus Noto Naskh and Amiri fonts
+  - [x] Advanced 604-page Mushaf reader with direct page entry, previous/next navigation, progress, restoration, and page cache
+  - [x] Juz and 60-Hizb navigation with live quarter-Hizb reading
+  - [x] Dynamic two/three-edition translation comparison with language flags, responsive columns, and Arabic reference
+  - [x] Dynamic Tafsir source/language selection with bounded offline Tafsir caching and verse browsing
+  - [x] Hifz hide-and-peek recall practice and memory self-assessment
+  - [x] Managed full-Quran preparation that persists across screens, resumes after restart when enabled, prioritizes continuation, skips cached Surahs, exposes progress, and pauses cleanly
 - [ ] Phase 3 — Not started
 - [ ] Phase 4 — Not started
 - [ ] Phase 5 — Not started
