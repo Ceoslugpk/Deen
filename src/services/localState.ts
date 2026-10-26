@@ -8,6 +8,13 @@ export type WorshipSettings = {
   calculationMethodName: string;
   madhab: Madhab;
   timeFormat: TimeFormat;
+  remindersEnabled: boolean;
+  reminderOffset: number;
+  prayerReminders: Record<string, boolean>;
+  quranReminderEnabled: boolean;
+  quranReminderTime: string;
+  adhanReciter: string;
+  adhanEnabled: Record<string, boolean>;
 };
 export type StoredLocation = { latitude: number; longitude: number; label: string };
 
@@ -16,6 +23,13 @@ export const DEFAULT_WORSHIP_SETTINGS: WorshipSettings = {
   calculationMethodName: 'Gulf Region',
   madhab: 'shafi',
   timeFormat: '12',
+  remindersEnabled: false,
+  reminderOffset: 10,
+  prayerReminders: { Fajr: true, Dhuhr: true, Asr: true, Maghrib: true, Isha: true },
+  quranReminderEnabled: false,
+  quranReminderTime: '20:00',
+  adhanReciter: 'Makkah',
+  adhanEnabled: { Fajr: true, Dhuhr: true, Asr: true, Maghrib: true, Isha: true },
 };
 
 const KEYS = {
@@ -23,6 +37,8 @@ const KEYS = {
   location: '@deen/location/v1',
   prayerCache: '@deen/prayer-cache/v1',
   prayerCompletion: '@deen/prayer-completion/v1',
+  dailyContent: '@deen/daily-content/v1',
+  tasbihQuick: '@deen/tasbih-quick/v1',
 };
 
 async function readJson<T>(key: string): Promise<T | null> {
@@ -40,7 +56,12 @@ async function writeJson(key: string, value: unknown) {
 
 export async function loadWorshipSettings(): Promise<WorshipSettings> {
   const saved = await readJson<Partial<WorshipSettings>>(KEYS.settings);
-  return { ...DEFAULT_WORSHIP_SETTINGS, ...saved };
+  return {
+    ...DEFAULT_WORSHIP_SETTINGS,
+    ...saved,
+    prayerReminders: { ...DEFAULT_WORSHIP_SETTINGS.prayerReminders, ...(saved?.prayerReminders || {}) },
+    adhanEnabled: { ...DEFAULT_WORSHIP_SETTINGS.adhanEnabled, ...(saved?.adhanEnabled || {}) },
+  };
 }
 
 export async function saveWorshipSettings(settings: WorshipSettings) {
@@ -90,4 +111,25 @@ export async function savePrayerCompletion(dateKey: string, completed: string[])
   all[dateKey] = completed;
   const keys = Object.keys(all).sort().slice(-60);
   await writeJson(KEYS.prayerCompletion, Object.fromEntries(keys.map(key => [key, all[key]])));
+}
+
+export async function loadPrayerHistory(): Promise<Record<string, string[]>> {
+  return await readJson<Record<string, string[]>>(KEYS.prayerCompletion) || {};
+}
+
+export async function loadDailyContent<T>(dateKey: string): Promise<T | null> {
+  const cached = await readJson<{ dateKey: string; value: T }>(KEYS.dailyContent);
+  return cached?.dateKey === dateKey ? cached.value : null;
+}
+
+export async function saveDailyContent<T>(dateKey: string, value: T) {
+  return writeJson(KEYS.dailyContent, { dateKey, value });
+}
+
+export async function loadQuickTasbih(): Promise<number> {
+  return (await readJson<number>(KEYS.tasbihQuick)) || 0;
+}
+
+export async function saveQuickTasbih(value: number) {
+  return writeJson(KEYS.tasbihQuick, value);
 }

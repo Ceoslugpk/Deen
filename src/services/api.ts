@@ -5,6 +5,7 @@ export type Chapter = { id: number; name_simple: string; name_arabic: string; ve
 export type Verse = { id: number; verse_key: string; text_uthmani: string; translation?: string; audio?: string; page?: number; juz?: number };
 export type DailyHadith = { collection: string; number: string; text: string; arabic?: string };
 export type DivineName = { number: number; name: string; transliteration: string; meaning: string };
+export type DailyAyah = { reference: string; arabic: string; translation: string };
 
 const ISLAMIC = 'https://api.islamic.app/v1';
 const QURAN = 'https://api.alquran.cloud/v1';
@@ -100,6 +101,17 @@ export async function getVerses(chapterId: number): Promise<Verse[]> {
     page: a.page,
     juz: a.juz,
   }));
+}
+
+export async function getAyahOfDay(): Promise<DailyAyah> {
+  const start = new Date(new Date().getFullYear(), 0, 0);
+  const day = Math.floor((Date.now() - start.getTime()) / 86400000);
+  const ayahNumber = (day % 6236) + 1;
+  const [arabic, english] = await Promise.all([
+    json(`${QURAN}/ayah/${ayahNumber}/quran-uthmani`),
+    json(`${QURAN}/ayah/${ayahNumber}/en.sahih`),
+  ]);
+  return { reference: `${arabic.surah.englishName} ${arabic.surah.number}:${arabic.numberInSurah}`, arabic: arabic.text, translation: english.text };
 }
 
 export async function getDailyHadith(): Promise<DailyHadith> {
