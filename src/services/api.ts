@@ -1,5 +1,6 @@
 export type Prayer = { name: string; time: string; raw: string };
-export type PrayerSnapshot = { prayers: Prayer[]; hijri: string; readable: string; timezone: string; method: string };
+export type PrayerSnapshot = { prayers: Prayer[]; hijri: string; hijriYear: number; hijriMonth: number; readable: string; timezone: string; method: string };
+export type CalendarDay = { gregorian: string; weekday: string; hijriDay: number; hijriMonth: string; hijriYear: number; prayers: Prayer[] };
 export type Chapter = { id: number; name_simple: string; name_arabic: string; verses_count: number; revelation_place?: string; translated_name?: { name: string } };
 export type Verse = { id: number; verse_key: string; text_uthmani: string; translation?: string; audio?: string; page?: number; juz?: number };
 export type DailyHadith = { collection: string; number: string; text: string; arabic?: string };
@@ -32,6 +33,8 @@ export async function getPrayerSnapshot(latitude = 25.2048, longitude = 55.2708)
   return {
     prayers,
     hijri: `${h.day} ${h.month.en} ${h.year} AH`,
+    hijriYear: Number(h.year),
+    hijriMonth: Number(h.month.number),
     readable: data.date.readable,
     timezone: data.meta.timezone,
     method: data.meta.method?.name || 'Gulf Region',
@@ -40,6 +43,28 @@ export async function getPrayerSnapshot(latitude = 25.2048, longitude = 55.2708)
 
 export async function getPrayerTimes(latitude = 25.2048, longitude = 55.2708): Promise<Prayer[]> {
   return (await getPrayerSnapshot(latitude, longitude)).prayers;
+}
+
+function calendarDay(row: any): CalendarDay {
+  const names = ['Fajr', 'Sunrise', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
+  return {
+    gregorian: row.date.gregorian.date,
+    weekday: row.date.gregorian.weekday.en,
+    hijriDay: Number(row.date.hijri.day),
+    hijriMonth: row.date.hijri.month.en,
+    hijriYear: Number(row.date.hijri.year),
+    prayers: names.map(name => ({ name, raw: cleanTime(row.timings[name]), time: displayTime(row.timings[name]) })),
+  };
+}
+
+export async function getGregorianCalendar(latitude: number, longitude: number, month: number, year: number): Promise<CalendarDay[]> {
+  const data = await json(`https://api.aladhan.com/v1/calendar/${year}/${month}?latitude=${latitude}&longitude=${longitude}&method=8`);
+  return data.map(calendarDay);
+}
+
+export async function getRamadanCalendar(latitude: number, longitude: number, hijriYear: number): Promise<CalendarDay[]> {
+  const data = await json(`https://api.aladhan.com/v1/hijriCalendar/${hijriYear}/9?latitude=${latitude}&longitude=${longitude}&method=8`);
+  return data.map(calendarDay);
 }
 
 export async function getChapters(): Promise<Chapter[]> {
