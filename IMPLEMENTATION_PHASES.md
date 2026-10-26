@@ -145,7 +145,8 @@ The complete application passes privacy, offline, localization, accessibility, r
   - [x] Names: 99 Names with meanings in nine languages, name of the day, search and an offline catalogue, plus the twenty-five prophets with live verse references
   - [x] Vocabulary flashcards, worship guides and the Shahada presentation (from Phase 2, re-verified in Phase 3)
   - [ ] Weekly reading, Salah, Hifz and streak summaries
-  - [ ] Quran download manager with validation and cleanup
-  - [ ] Quran download manager with validation and cleanup
+  - [x] Quran download manager: keep a Surah's audio and text, free-space preflight, progress, pause/resume/retry/remove, validated finalisation and targeted cleanup
+  - [x] Cross-platform download sources: MP3Quran files read directly, verse-by-verse reciters read through the app's own `/api/audio` range relay on web and straight from the CDN on native
+  - [x] Offline playback of a kept Surah, proven in the browser with the network switched off
 - [ ] Phase 4 — Not started
 - [ ] Phase 5 — Not started

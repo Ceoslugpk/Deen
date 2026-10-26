@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AudioPlayer, createAudioPlayer, setAudioModeAsync } from 'expo-audio';
 import { AudioEdition, getAudioEditions, getSurahAudio, getSurahReciters, SurahAudioAyah, SurahReciter } from './api';
 import { getCachedJson, setCachedJson } from './contentCache';
+import { localAudioUri } from './downloadService';
 
 /**
  * Phase 3 — Quran audio foundation.
@@ -249,7 +250,25 @@ export async function buildSurahFileQueue(
   }];
 }
 
-export function buildQueueForChapter(chapterId: number, chapterName: string, settings: AudioSettings) {
+/** A Surah kept on the device always wins: one verified local file beats a stream. */
+export async function buildQueueForChapter(chapterId: number, chapterName: string, settings: AudioSettings): Promise<AudioTrack[]> {
+  const edition = settings.reciterMode === 'surah' ? `mp3quran-${settings.surahReciterId ?? ''}` : settings.reciter;
+  const local = await localAudioUri(chapterId, edition).catch(() => null);
+  if (local) {
+    return [{
+      id: `local:${chapterId}:${edition}`,
+      title: `${chapterName} · full recitation`,
+      subtitle: 'Saved on this device',
+      chapterId,
+      chapterName,
+      ayahNumber: 1,
+      globalNumber: 0,
+      kind: 'arabic',
+      edition,
+      performer: `${settings.reciterMode === 'surah' ? settings.surahReciterName || settings.reciterName : settings.reciterName} · saved on this device`,
+      uri: local,
+    }];
+  }
   return settings.reciterMode === 'surah'
     ? buildSurahFileQueue(chapterId, chapterName, settings)
     : buildSurahQueue(chapterId, chapterName, settings);
