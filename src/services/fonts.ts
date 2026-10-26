@@ -16,12 +16,12 @@ import * as Font from 'expo-font';
 
 export type QuranFontId = 'hafs' | 'scheherazade' | 'amiri-quran' | 'naskh' | 'kufi';
 
-export const QURAN_FONTS: { id: QuranFontId; label: string; detail: string; family: string }[] = [
-  { id: 'hafs', label: 'Madinah Mushaf', detail: 'The printed Mushaf hand, with full Quranic marks', family: 'KFGQPCUthmanicHafs' },
-  { id: 'scheherazade', label: 'Scheherazade New', detail: 'An open Naskh with generous, clear diacritics', family: 'ScheherazadeNew-Regular' },
-  { id: 'amiri-quran', label: 'Amiri Quran', detail: 'A classical book hand cut for Quranic text', family: 'AmiriQuran-Regular' },
-  { id: 'naskh', label: 'Noto Naskh', detail: 'A plain, familiar Naskh', family: 'NotoNaskhArabic_400Regular' },
-  { id: 'kufi', label: 'Noto Kufi', detail: 'A geometric Kufi for a plainer page', family: 'NotoKufiArabic-Regular' },
+export const QURAN_FONTS: { id: QuranFontId; label: string; short: string; detail: string; family: string }[] = [
+  { id: 'hafs', label: 'Madinah Mushaf', short: 'Mushaf', detail: 'The printed Mushaf hand, with full Quranic marks', family: 'KFGQPCUthmanicHafs' },
+  { id: 'scheherazade', label: 'Scheherazade New', short: 'Scheherazade', detail: 'An open Naskh with generous, clear diacritics', family: 'ScheherazadeNew-Regular' },
+  { id: 'amiri-quran', label: 'Amiri Quran', short: 'Amiri', detail: 'A classical book hand cut for Quranic text', family: 'AmiriQuran-Regular' },
+  { id: 'naskh', label: 'Noto Naskh', short: 'Naskh', detail: 'A plain, familiar Naskh', family: 'NotoNaskhArabic_400Regular' },
+  { id: 'kufi', label: 'Noto Kufi', short: 'Kufi', detail: 'A geometric Kufi for a plainer page', family: 'NotoKufiArabic-Regular' },
 ];
 
 export const ARABIC_UI = 'IBMPlexSansArabic_400Regular';
