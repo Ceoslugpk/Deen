@@ -148,5 +148,9 @@ The complete application passes privacy, offline, localization, accessibility, r
   - [x] Quran download manager: keep a Surah's audio and text, free-space preflight, progress, pause/resume/retry/remove, validated finalisation and targeted cleanup
   - [x] Cross-platform download sources: MP3Quran files read directly, verse-by-verse reciters read through the app's own `/api/audio` range relay on web and straight from the CDN on native
   - [x] Offline playback of a kept Surah, proven in the browser with the network switched off
-- [ ] Phase 4 — Not started
+- [ ] Phase 4 — In progress
+  - [x] Fasting record: mark Ramadan, voluntary and make-up days, record a missed day with its reason, Qada ledger that settles itself, streak and 21-day history, all private and on-device
+  - [ ] Umrah and Hajj journeys, checklists, references and holy-site channels
+  - [ ] Women's worship area with PIN lock, cycle, purity and Nifas records and Qada fasts
+  - [ ] Multi-asset, multi-currency Zakat with Nisab and local history
 - [ ] Phase 5 — Not started
