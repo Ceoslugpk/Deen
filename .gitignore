@@ -1,0 +1,11 @@
+node_modules/
+.expo/
+web-build/
+web-preview/
+dist/
+.env
+.env.*
+*.log
+audit-*.png
+responsive-*.png
+current-ui.png
