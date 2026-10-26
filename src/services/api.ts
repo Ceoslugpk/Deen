@@ -8,6 +8,9 @@ export type DivineName = { number: number; name: string; transliteration: string
 export type DailyAyah = { reference: string; arabic: string; translation: string };
 export type QuranEdition = { identifier: string; language: string; englishName: string; name: string; type: string; direction?: string };
 export type QuranSearchResult = { verseKey: string; surahId: number; surahName: string; ayah: number; text: string; edition: string };
+export type AudioEdition = { identifier: string; language: string; englishName: string; name: string; type: string; direction?: string };
+export type SurahAudioAyah = { numberInSurah: number; globalNumber: number; audio: string; text: string };
+export type SurahReciter = { id: number; name: string; letter: string; server: string; moshaf: string; rewaya: string; surahTotal: number };
 
 const ISLAMIC = 'https://api.islamic.app/v1';
 const QURAN = 'https://api.alquran.cloud/v1';
@@ -199,6 +202,55 @@ export async function getDuas(category = 'morning'): Promise<any[]> {
     translation: plain(d.en?.body || d.translation || ''),
     category: d.category?.en || data.label,
   }));
+}
+
+export async function getAudioEditions(): Promise<AudioEdition[]> {
+  const data = await json(`${QURAN}/edition/format/audio`);
+  return data.map((edition: any) => ({
+    identifier: edition.identifier,
+    language: edition.language,
+    englishName: edition.englishName,
+    name: edition.name,
+    type: edition.type,
+    direction: edition.direction,
+  }));
+}
+
+export async function getSurahAudio(chapterId: number, edition: string): Promise<SurahAudioAyah[]> {
+  const data = await json(`${QURAN}/surah/${chapterId}/${edition}`);
+  return (data.ayahs || []).map((ayah: any) => ({
+    numberInSurah: ayah.numberInSurah,
+    globalNumber: ayah.number,
+    audio: ayah.audio || '',
+    text: ayah.text || '',
+  }));
+}
+
+const REWAYA_NAMES: Record<string, string> = {
+  '1': "Hafs 'an Asim", '2': "Warsh 'an Nafi'", '3': "Qalun 'an Nafi'", '4': "Al-Duri 'an Abi Amr",
+  '5': "Shu'bah 'an Asim", '6': "Khalaf 'an Hamzah", '7': "Al-Susi 'an Abi Amr",
+};
+
+export async function getSurahReciters(language = 'eng'): Promise<SurahReciter[]> {
+  const response = await fetch(`https://www.mp3quran.net/api/v3/reciters?language=${language}`, { headers: { Accept: 'application/json' } });
+  if (!response.ok) throw new Error(`Request failed (${response.status})`);
+  const body = await response.json();
+  const rows: any[] = body.reciters || [];
+  const reciters: SurahReciter[] = [];
+  rows.forEach((row) => {
+    const moshaf = (row.moshaf || []).find((entry: any) => Number(entry.surah_total) >= 114) || (row.moshaf || [])[0];
+    if (!moshaf?.server) return;
+    reciters.push({
+      id: Number(row.id),
+      name: String(row.name || '').trim(),
+      letter: String(row.letter || '#'),
+      server: String(moshaf.server).endsWith('/') ? moshaf.server : `${moshaf.server}/`,
+      moshaf: String(moshaf.name || ''),
+      rewaya: REWAYA_NAMES[String(moshaf.rewaya_id)] || moshaf.name || '',
+      surahTotal: Number(moshaf.surah_total || 0),
+    });
+  });
+  return reciters.filter((reciter) => reciter.name);
 }
 
 export async function getNearbyMosques(latitude: number, longitude: number): Promise<any[]> {
