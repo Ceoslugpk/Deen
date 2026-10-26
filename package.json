@@ -2,6 +2,9 @@
   "name": "deen-companion",
   "version": "1.0.0",
   "main": "index.ts",
+  "engines": {
+    "node": ">=22.13.0"
+  },
   "dependencies": {
     "@expo-google-fonts/amiri": "^0.4.1",
     "@expo-google-fonts/dm-sans": "^0.4.2",
