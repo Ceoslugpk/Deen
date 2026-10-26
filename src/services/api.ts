@@ -2,7 +2,7 @@ export type Prayer = { name: string; time: string; raw: string };
 export type PrayerSnapshot = { prayers: Prayer[]; hijri: string; hijriYear: number; hijriMonth: number; readable: string; timezone: string; method: string };
 export type CalendarDay = { gregorian: string; weekday: string; hijriDay: number; hijriMonth: string; hijriYear: number; prayers: Prayer[] };
 export type Chapter = { id: number; name_simple: string; name_arabic: string; verses_count: number; revelation_place?: string; translated_name?: { name: string } };
-export type Verse = { id: number; verse_key: string; text_uthmani: string; translation?: string; audio?: string; page?: number; juz?: number; surah_name?: string };
+export type Verse = { id: number; verse_key: string; text_uthmani: string; translation?: string; audio?: string; page?: number; juz?: number; hizbQuarter?: number; surah_name?: string };
 export type DailyHadith = { collection: string; number: string; text: string; arabic?: string };
 export type DivineName = { number: number; name: string; transliteration: string; meaning: string };
 export type DailyAyah = { reference: string; arabic: string; translation: string };
@@ -91,20 +91,31 @@ export async function getChapters(): Promise<Chapter[]> {
 export async function getVerses(chapterId: number, options: { script?: string; translation?: string } = {}): Promise<Verse[]> {
   const script = options.script || 'quran-uthmani';
   const translation = options.translation || 'en.sahih';
+  const arabicRequest = script === 'quran-indopak'
+    ? fetch(`https://quran-json.risanb.com/text/hafs-nastaliq/chapters/${chapterId}.json`).then(async response=>{if(!response.ok)throw new Error(`IndoPak text request failed (${response.status})`);return response.json()})
+    : json(`${QURAN}/surah/${chapterId}/${script}`);
   const [arabic, english, audio] = await Promise.all([
-    json(`${QURAN}/surah/${chapterId}/${script}`),
+    arabicRequest,
     json(`${QURAN}/surah/${chapterId}/${translation}`),
     json(`${QURAN}/surah/${chapterId}/ar.alafasy`),
   ]);
-  return arabic.ayahs.map((a: any, index: number) => ({
-    id: a.number,
-    verse_key: `${chapterId}:${a.numberInSurah}`,
+  const ayahs = script === 'quran-indopak' ? arabic.verses : arabic.ayahs;
+  return ayahs.map((a: any, index: number) => ({
+    id: script === 'quran-indopak' ? index + 1 : a.number,
+    verse_key: `${chapterId}:${script === 'quran-indopak' ? index + 1 : a.numberInSurah}`,
     text_uthmani: a.text,
     translation: english.ayahs[index]?.text,
     audio: audio.ayahs[index]?.audio,
-    page: a.page,
-    juz: a.juz,
+    page: english.ayahs[index]?.page,
+    juz: english.ayahs[index]?.juz,
   }));
+}
+
+export async function getPageVerses(page: number, options: { script?: string; translation?: string } = {}): Promise<Verse[]> {
+  const script = options.script === 'quran-indopak' ? 'quran-uthmani' : options.script || 'quran-uthmani';
+  const translation = options.translation || 'en.sahih';
+  const [arabic, translated] = await Promise.all([json(`${QURAN}/page/${page}/${script}`),json(`${QURAN}/page/${page}/${translation}`)]);
+  return arabic.ayahs.map((a:any,index:number)=>({id:a.number,verse_key:`${a.surah.number}:${a.numberInSurah}`,text_uthmani:a.text,translation:translated.ayahs[index]?.text,page:a.page,juz:a.juz,surah_name:a.surah.englishName}));
 }
 
 export async function getAyahOfDay(): Promise<DailyAyah> {
@@ -125,6 +136,14 @@ export async function getJuzVerses(juz: number, options: { script?: string; tran
     json(`${QURAN}/juz/${juz}/${script}`), json(`${QURAN}/juz/${juz}/${translation}`), json(`${QURAN}/juz/${juz}/ar.alafasy`),
   ]);
   return arabic.ayahs.map((a:any,index:number)=>({id:a.number,verse_key:`${a.surah.number}:${a.numberInSurah}`,text_uthmani:a.text,translation:english.ayahs[index]?.text,audio:audio.ayahs[index]?.audio,page:a.page,juz:a.juz,surah_name:a.surah.englishName} as Verse & {surah_name:string}));
+}
+
+export async function getHizbVerses(hizb: number, options: { script?: string; translation?: string } = {}): Promise<Verse[]> {
+  const script = options.script === 'quran-indopak' ? 'quran-uthmani' : options.script || 'quran-uthmani';
+  const translation = options.translation || 'en.sahih';
+  const quarters=Array.from({length:4},(_,i)=>(hizb-1)*4+i+1);
+  const groups=await Promise.all(quarters.map(async quarter=>{const[arabic,translated]=await Promise.all([json(`${QURAN}/hizbQuarter/${quarter}/${script}`),json(`${QURAN}/hizbQuarter/${quarter}/${translation}`)]);return arabic.ayahs.map((a:any,index:number)=>({id:a.number,verse_key:`${a.surah.number}:${a.numberInSurah}`,text_uthmani:a.text,translation:translated.ayahs[index]?.text,page:a.page,juz:a.juz,hizbQuarter:a.hizbQuarter,surah_name:a.surah.englishName}))}));
+  const unique=new Map<string,Verse>();groups.flat().forEach((verse:any)=>unique.set(verse.verse_key,verse));return [...unique.values()];
 }
 
 export async function getQuranEditions(type = 'translation'): Promise<QuranEdition[]> {

@@ -7,10 +7,11 @@ export type QuranPreferences = {
   translationLanguage: string;
   scriptEdition: string;
   scriptName: string;
+  arabicFont: 'naskh' | 'amiri';
   fontSize: number;
   lineHeight: number;
   showTranslation: boolean;
-  readingMode: 'cards' | 'continuous';
+  readingMode: 'cards' | 'continuous' | 'mushaf';
 };
 export type QuranBookmark = { verseKey: string; surahId: number; surahName: string; arabic: string; translation?: string; savedAt: number };
 export type QuranNote = QuranBookmark & { note: string; updatedAt: number };
@@ -20,9 +21,9 @@ export type HifzStatus = 'not-started' | 'revising' | 'memorized';
 const K = {
   prefs: '@deen/quran/preferences/v1', bookmarks: '@deen/quran/bookmarks/v1', notes: '@deen/quran/notes/v1',
   position: '@deen/quran/position/v1', recent: '@deen/quran/recent/v1', searches: '@deen/quran/searches/v1',
-  hifz: '@deen/quran/hifz/v1', plan: '@deen/quran/plan/v1',
+  hifz: '@deen/quran/hifz/v1', plan: '@deen/quran/plan/v1', vocabulary: '@deen/quran/vocabulary/v1',
 };
-const DEFAULTS: QuranPreferences = { translationEdition: 'en.sahih', translationName: 'Sahih International', translationLanguage: 'English', scriptEdition: 'quran-uthmani', scriptName: 'Uthmani', fontSize: 30, lineHeight: 1.9, showTranslation: true, readingMode: 'cards' };
+const DEFAULTS: QuranPreferences = { translationEdition: 'en.sahih', translationName: 'Sahih International', translationLanguage: 'English', scriptEdition: 'quran-uthmani', scriptName: 'Uthmani', arabicFont: 'naskh', fontSize: 30, lineHeight: 1.9, showTranslation: true, readingMode: 'cards' };
 async function read<T>(key:string,fallback:T):Promise<T>{try{const v=await AsyncStorage.getItem(key);return v?JSON.parse(v):fallback}catch{return fallback}}
 const write=(key:string,value:unknown)=>AsyncStorage.setItem(key,JSON.stringify(value));
 
@@ -44,6 +45,8 @@ export async function loadHifz(){return read<Record<number,HifzStatus>>(K.hifz,{
 export async function saveHifz(value:Record<number,HifzStatus>){return write(K.hifz,value)}
 export async function loadPlan(){return read<{days:number;startedAt:number;completed:number[]}|null>(K.plan,null)}
 export async function savePlan(value:{days:number;startedAt:number;completed:number[]}|null){return write(K.plan,value)}
+export async function loadVocabularyProgress(){return read<{reviewed:string[];known:string[]}>(K.vocabulary,{reviewed:[],known:[]})}
+export async function saveVocabularyProgress(value:{reviewed:string[];known:string[]}){return write(K.vocabulary,value)}
 const LEGACY_CACHE = '@deen/quran/cache/v1';
 const LEGACY_INDEX = '@deen/quran/cache-index/v1';
 let legacyMigration: Promise<void> | null = null;
