@@ -42,3 +42,27 @@ Verified live on 26 October 2026. Every endpoint below was called from this work
 ## Icons
 
 Thirty-one icons were missing and were silently rendering as the generic fallback glyph (pause, stop, close, trash, add, remove, list, repeat, save, copy, share, eye, create, checkmark circle, volume, speedometer, musical notes, heart, person, star and others). All were drawn as real SVGs in the shared restrained palette, so the fallback glyph is no longer visible anywhere.
+
+## Hadith source research (added with the Hadith module)
+
+The community hadith-api corpus (`cdn.jsdelivr.net/gh/fawazahmed0/hadith-api@1`) is the only keyless source that pairs Arabic and English editions for the major collections. Measured on 26 October 2026:
+
+| Collection | English minified | Hadith | Books | Graded |
+| --- | --- | --- | --- | --- |
+| Sahih al-Bukhari | 4.7 MB | 7,589 | 98 | no |
+| Sahih Muslim | 3.8 MB | 7,563 | 57 | no |
+| Sunan Abu Dawud | 3.5 MB | 5,274 | 44 | yes (Al-Albani) |
+| Sunan an-Nasa'i | 3.2 MB | 5,765 | 52 | yes |
+| Sunan Ibn Majah | 2.5 MB | 4,343 | 38 | yes |
+| Jami' at-Tirmidhi | 2.5 MB | 3,998 | 50 | yes |
+| Muwatta Malik | 1.4 MB | 1,858 | 62 | yes |
+| Forty Hadith of an-Nawawi | 33 KB | 42 | 2 | no |
+| Forty Hadith Qudsi | 38 KB | 40 | 2 | no |
+| Forty Hadith of Shah Waliullah | 5 KB | 40 | 2 | no |
+
+The Arabic editions are roughly twice the size of the English ones, which drove two decisions:
+
+1. **English first, Arabic hydrated in the background.** Waiting for both languages before rendering would mean a 14 MB download before the first hadith appears. The list is interactive in about two seconds and the Arabic text fills in as it arrives.
+2. **The cache limit for the hadith namespace was raised** (26 MB on web, 60 MB native) so a merged Arabic-English collection can survive a reload; least-recently-used collections still evict each other.
+
+Verified in the browser: with `cdn.jsdelivr.net` blocked, a previously opened collection reloads complete with Arabic text, which is the offline fallback the specification asks for.

@@ -139,7 +139,7 @@ The complete application passes privacy, offline, localization, accessibility, r
   - [x] Local persistence of reciter choice, translation choice, recents, playlists and last session
   - [x] Lock-screen metadata and background audio session on native; honest no-op on web
   - [x] Thirty-one missing interface icons drawn as real SVGs, replacing every generic fallback glyph
-  - [ ] Hadith collections, books, search, grading, saves and progress
+  - [x] Hadith: ten collections, books, browsing, pagination, search, filtering, detail with Arabic and English, grading, save/share/copy, saved list, recently read, read markers and a progress scorecard, with offline fallback
   - [ ] Dua and Adhkar categories with transliteration, copying and sharing
   - [ ] Tasbih presets, targets, daily totals and history
   - [ ] Names, Prophets, vocabulary and weekly summaries
