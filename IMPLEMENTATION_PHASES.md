@@ -140,9 +140,12 @@ The complete application passes privacy, offline, localization, accessibility, r
   - [x] Lock-screen metadata and background audio session on native; honest no-op on web
   - [x] Thirty-one missing interface icons drawn as real SVGs, replacing every generic fallback glyph
   - [x] Hadith: ten collections, books, browsing, pagination, search, filtering, detail with Arabic and English, grading, save/share/copy, saved list, recently read, read markers and a progress scorecard, with offline fallback
-  - [ ] Dua and Adhkar categories with transliteration, copying and sharing
-  - [ ] Tasbih presets, targets, daily totals and history
-  - [ ] Names, Prophets, vocabulary and weekly summaries
+  - [x] Dua and Adhkar: 132 occasions plus fourteen daily moments, Arabic with transliteration, meaning and source, copy, share and a local offline copy of every occasion opened
+  - [x] Tasbih: eight preset phrases, 33/99/100/500/1000 goals, haptics, reset, saved rounds, daily totals and a home quick counter sharing the same private store
+  - [x] Names: 99 Names with meanings in nine languages, name of the day, search and an offline catalogue, plus the twenty-five prophets with live verse references
+  - [x] Vocabulary flashcards, worship guides and the Shahada presentation (from Phase 2, re-verified in Phase 3)
+  - [ ] Weekly reading, Salah, Hifz and streak summaries
+  - [ ] Quran download manager with validation and cleanup
   - [ ] Quran download manager with validation and cleanup
 - [ ] Phase 4 — Not started
 - [ ] Phase 5 — Not started

@@ -4,7 +4,7 @@ export type CalendarDay = { gregorian: string; weekday: string; hijriDay: number
 export type Chapter = { id: number; name_simple: string; name_arabic: string; verses_count: number; revelation_place?: string; translated_name?: { name: string } };
 export type Verse = { id: number; verse_key: string; text_uthmani: string; translation?: string; audio?: string; page?: number; juz?: number; hizbQuarter?: number; surah_name?: string };
 export type DailyHadith = { collection: string; number: string; text: string; arabic?: string };
-export type DivineName = { number: number; name: string; transliteration: string; meaning: string };
+export type DivineName = { number: number; name: string; transliteration: string; meaning: string; meanings: Record<string, string> };
 export type DailyAyah = { reference: string; arabic: string; translation: string };
 export type QuranEdition = { identifier: string; language: string; englishName: string; name: string; type: string; direction?: string };
 export type QuranSearchResult = { verseKey: string; surahId: number; surahName: string; ayah: number; text: string; edition: string };
@@ -169,14 +169,42 @@ export async function getDailyHadith(): Promise<DailyHadith> {
   return { collection: data.collection, number: data.hadithNumber, text: data.en?.text || '', arabic: data.ar?.text };
 }
 
+export const NAME_LANGUAGES = [
+  { code: 'en', label: 'English' },
+  { code: 'fr', label: 'Français' },
+  { code: 'de', label: 'Deutsch' },
+  { code: 'es', label: 'Español' },
+  { code: 'tr', label: 'Türkçe' },
+  { code: 'ru', label: 'Русский' },
+  { code: 'ur', label: 'اردو' },
+  { code: 'id', label: 'Bahasa Indonesia' },
+  { code: 'bn', label: 'বাংলা' },
+];
+
+/** Islamic.app publishes each Name's meaning in nine languages; the app shows whatever the source has. */
+function nameMeanings(row: any) {
+  const meanings: Record<string, string> = {};
+  if (row.en?.meaning) meanings.en = row.en.meaning;
+  if (row.es?.meaning) meanings.es = row.es.meaning;
+  Object.keys(row.i18n || {}).forEach((code) => {
+    const value = row.i18n[code]?.meaning;
+    if (value) meanings[code] = value;
+  });
+  return meanings;
+}
+
 export async function getNameOfDay(): Promise<DivineName> {
   const data = await json(`${ISLAMIC}/asma-al-husna/today`);
-  return { number: data.number, name: data.name, transliteration: data.transliteration, meaning: data.en.meaning };
+  const meanings = nameMeanings(data);
+  return { number: data.number, name: data.name, transliteration: data.transliteration, meaning: meanings.en || data.en?.meaning || '', meanings };
 }
 
 export async function getNames(): Promise<DivineName[]> {
   const data = await json(`${ISLAMIC}/asma-al-husna`);
-  return data.map((n: any) => ({ number: n.number, name: n.name, transliteration: n.transliteration, meaning: n.en.meaning }));
+  return data.map((n: any) => {
+    const meanings = nameMeanings(n);
+    return { number: n.number, name: n.name, transliteration: n.transliteration, meaning: meanings.en || '', meanings };
+  });
 }
 
 export async function getQibla(latitude: number, longitude: number): Promise<number | null> {
@@ -193,14 +221,66 @@ const plain = (value = '') => value
   .replace(/\s+/g, ' ')
   .trim();
 
+export type DuaCategory = { key: string; number: string; en: string; ar: string; count: number };
+
+export type Dua = {
+  id: string;
+  number: string;
+  categoryKey: string;
+  category: string;
+  arabic: string;
+  transliteration: string;
+  translation: string;
+  reference: string;
+};
+
+/** The Islamic.app dhikr payload keeps transliteration, translation and reference inside
+ *  one HTML string; splitting them out is what lets the app show each one on its own line. */
+function spanText(body = '', className: string) {
+  const match = body.match(new RegExp(`<span class="${className}"[^>]*>([\\s\\S]*?)</span>`, 'i'));
+  return match ? plain(match[1]) : '';
+}
+
+export async function getDuaCategories(): Promise<{ shortcuts: string[]; categories: DuaCategory[] }> {
+  const data = await json(`${ISLAMIC}/dhikr`);
+  const shortcuts: string[] = data.shortcuts || [];
+  const categories: DuaCategory[] = (data.categories || []).map((category: any) => ({
+    key: String(category.number),
+    number: String(category.number),
+    en: category.en,
+    ar: category.ar,
+    count: Number(category.count) || 0,
+  }));
+  return { shortcuts, categories };
+}
+
+export async function getDuasByCategory(key: string): Promise<Dua[]> {
+  const data = await json(`${ISLAMIC}/dhikr/${key}`);
+  const rows = data.duas || data.items || [];
+  return rows.map((row: any) => {
+    const body = row.en?.body || '';
+    return {
+      id: `${key}:${row.number}`,
+      number: String(row.number ?? ''),
+      categoryKey: key,
+      category: row.category?.en || data.label || '',
+      arabic: plain(row.ar?.text || row.ar?.body || ''),
+      transliteration: spanText(body, 'transliteration'),
+      translation: spanText(body, 'translation') || plain(row.en?.text || ''),
+      reference: spanText(body, 'hisn_english_reference') || spanText(body, 'hisn_arabic_reference'),
+    };
+  }).filter((dua: Dua) => dua.arabic || dua.translation);
+}
+
 export async function getDuas(category = 'morning'): Promise<any[]> {
-  const data = await json(`${ISLAMIC}/dhikr/${category}`);
-  const rows = data.items || data.duas || data.dhikr || [];
-  return rows.map((d: any) => ({
-    number: d.number,
-    arabic: plain(d.ar?.body || d.arabic || ''),
-    translation: plain(d.en?.body || d.translation || ''),
-    category: d.category?.en || data.label,
+  const rows = await getDuasByCategory(category);
+  return rows.map((dua) => ({
+    number: dua.number,
+    arabic: dua.arabic,
+    transliteration: dua.transliteration,
+    translation: dua.translation,
+    reference: dua.reference,
+    category: dua.category,
   }));
 }
 
