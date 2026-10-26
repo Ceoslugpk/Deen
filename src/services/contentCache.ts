@@ -9,9 +9,9 @@ const INDEX_KEY = '@deen/content-cache/index/v1';
 const WEB_DB = 'deen-content-cache-v1';
 const WEB_STORE = 'payloads';
 const LIMITS: Record<CacheNamespace, number> = Platform.OS === 'web'
-  ? { quran: 32e6, tafsir: 8e6, hadith: 5e6, daily: 2e6, 'audio-meta': 1e6 }
-  : { quran: 120e6, tafsir: 35e6, hadith: 20e6, daily: 5e6, 'audio-meta': 3e6 };
-const TOTAL_LIMIT = Platform.OS === 'web' ? 48e6 : 180e6;
+  ? { quran: 32e6, tafsir: 8e6, hadith: 26e6, daily: 2e6, 'audio-meta': 1e6 }
+  : { quran: 120e6, tafsir: 35e6, hadith: 60e6, daily: 5e6, 'audio-meta': 3e6 };
+const TOTAL_LIMIT = Platform.OS === 'web' ? 72e6 : 240e6;
 
 let queue = Promise.resolve();
 const serial = <T>(operation: () => Promise<T>): Promise<T> => {

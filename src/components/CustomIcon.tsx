@@ -50,6 +50,9 @@ export default function CustomIcon({ name, size = 22, color, accent }: { name: s
     case'shield-checkmark':art=<><Path {...common} d="M12 2.5 20 6v5.5c0 5-3.1 8.2-8 10-4.9-1.8-8-5-8-10V6z"/><Polyline {...common} points="8.3,12 10.8,14.5 16,9.3"/></>;break;
     case'search':art=<><Circle {...common} cx="10.7" cy="10.7" r="6.7"/><Line {...common} x1="15.5" y1="15.5" x2="21" y2="21"/></>;break;
     case'play':art=<Path d="m8 5 11 7-11 7z" fill={stroke}/>;break;
+    case'play-skip-back':art=<><Path d="m17 5v14L8 12z" fill={stroke}/><Line {...common} x1="5.4" y1="4.6" x2="5.4" y2="19.4"/></>;break;
+    case'play-skip-forward':art=<><Path d="m7 5v14l9-7z" fill={stroke}/><Line {...common} x1="18.6" y1="4.6" x2="18.6" y2="19.4"/></>;break;
+    case'shuffle':art=<><Path {...common} d="M4 6.5h2.6c1 0 1.9.5 2.5 1.3l5.8 8.4c.6.8 1.5 1.3 2.5 1.3H20"/><Path {...common} d="M4 17.5h2.6c1 0 1.9-.5 2.5-1.3"/><Path {...common} d="M20 6.5h-2.6c-1 0-1.9.5-2.5 1.3"/><Path {...common} d="M12 4.6c1.6 0 2.8 4.3 2.8 6.6"/><Path {...common} d="M17.4 11.2l2.1 2.1-2.1 2.1"/><Path {...common} d="M17.4 8.2l2.1 2.1-2.1 2.1"/></>;break;
     case'play-circle':art=<><Circle {...common} cx="12" cy="12" r="9"/><Path d="m10 8 6 4-6 4z" fill={detail}/></>;break;
     case'headset':art=<><Path {...common} d="M4 14v-2a8 8 0 0 1 16 0v2"/><Rect {...common} x="3" y="13" width="4" height="7" rx="2"/><Rect {...common} x="17" y="13" width="4" height="7" rx="2"/><Path {...common} d="M17 20c0 1-1 2-3 2"/></>;break;
     case'layers':art=<><Path {...common} d="m12 3 9 5-9 5-9-5z"/><Path {...common} d="m3 12 9 5 9-5M3 16l9 5 9-5"/></>;break;

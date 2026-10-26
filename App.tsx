@@ -38,6 +38,7 @@ import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 import * as Clipboard from 'expo-clipboard';
 import { getCacheUsage, getCachedJson, setCachedJson } from './src/services/contentCache';
 import { AudioSession, AudioSettings, AudioTrackKind, buildQueueForChapter, buildSurahQueue, loadSurahReciters, clearQueue, clearRecentPlays, deletePlaylist, formatClock, getAudioSettings, loadAudioEditions, loadAudioSession, loadAudioSettings, loadPlaylists, loadRecentPlays, nextTrack, playQueue, Playlist, previousTrack, RecentPlay, removeFromQueue, saveAudioSettings, savePlaylist, seekTo, selectQueueItem, setPlaybackRate, setRepeatMode, stopPlayback, togglePlayback, useAudio } from './src/services/audioService';
+import { getHadithPage, getHadith, getLoadedCollections, getNeighbours, whenArabicReady, hadithReference, HADITH_COLLECTIONS, Hadith, HadithCollectionData, isHadithSaved, loadHadithCollection, loadHadithState, markHadithRead, removeHadithBookmark, searchLoadedCollections, toggleHadithSaved, useHadithState } from './src/services/hadithService';
 import { clearPreparedQuran, getPreloadState, pauseQuranPreload, refreshPreload, resumeSavedQuranPreload, startQuranPreload, subscribePreload } from './src/services/quranPreload';
 
 const C = {
@@ -359,7 +360,201 @@ function GuideDetail({route,navigation}:any){const guide:WorshipGuide=route.para
 function HijriCalendarScreen({navigation}:any){const{location}=useAppLocation();const[days,setDays]=useState<CalendarDay[]>([]);const[error,setError]=useState('');const now=new Date();const load=async()=>{if(!location)return;setError('');setDays([]);try{setDays(await getGregorianCalendar(location.latitude,location.longitude,now.getMonth()+1,now.getFullYear()))}catch(e:any){setError(e.message)}};useEffect(()=>{load()},[location?.latitude,location?.longitude]);const first=days[0]?.gregorian.split('-').map(Number);const offset=first?new Date(first[2],first[1]-1,first[0]).getDay():0;return <Page><ToolBar title="Hijri calendar" navigation={navigation}/><ScrollView contentContainerStyle={s.dataPage}>{!location?<LocationPrompt compact/>:<><View style={s.calendarIntro}><LiveBadge source="ALADHAN"/><Text style={s.calendarMonth}>{now.toLocaleDateString('en',{month:'long',year:'numeric'})}</Text><Text style={s.calendarHijri}>{days.length?`${days[0].hijriMonth} – ${days[days.length-1].hijriMonth} ${days[0].hijriYear} AH`:''}</Text></View>{error?<ErrorState message={error} retry={load}/>:!days.length?<Spinner/>:<><View style={s.weekHead}>{['S','M','T','W','T','F','S'].map((d,i)=><Text key={i} style={s.weekLabel}>{d}</Text>)}</View><View style={s.calendarGrid}>{Array.from({length:offset}).map((_,i)=><View key={`e${i}`} style={s.calendarCell}/>) }{days.map((d,i)=><View key={d.gregorian} style={[s.calendarCell,d.gregorian.startsWith(String(now.getDate()).padStart(2,'0'))&&s.calendarToday]}><Text style={s.gregorianDay}>{i+1}</Text><Text style={s.hijriDay}>{d.hijriDay}</Text></View>)}</View><View style={s.calendarLegend}><View style={s.legendDot}/><Text style={s.sourceBody}>Large number: Gregorian · Small number: Hijri</Text></View></>}</>}</ScrollView></Page>}
 function RamadanScreen({navigation}:any){const{location}=useAppLocation();const[days,setDays]=useState<CalendarDay[]>([]);const[year,setYear]=useState<number|null>(null);const[error,setError]=useState('');const load=async()=>{if(!location)return;setError('');setDays([]);try{const snap=await getPrayerSnapshot(location.latitude,location.longitude);const target=snap.hijriMonth>9?snap.hijriYear+1:snap.hijriYear;setYear(target);setDays(await getRamadanCalendar(location.latitude,location.longitude,target));}catch(e:any){setError(e.message)}};useEffect(()=>{load()},[location?.latitude,location?.longitude]);return <Page><ToolBar title="Ramadan" navigation={navigation}/><ScrollView contentContainerStyle={s.dataPage}>{!location?<LocationPrompt compact/>:<><LinearGradient colors={['#2A2849','#5146A4']} style={s.ramadanHero}><LiveBadge source="ALADHAN"/><Text style={s.ramadanArabic}>رَمَضَان</Text><Text style={s.ramadanTitle}>Ramadan {year||''} AH</Text><Text style={s.ramadanSub}>A live 30-day Suhoor and Iftar timetable for {location.label}.</Text></LinearGradient>{error?<ErrorState message={error} retry={load}/>:!days.length?<Spinner/>:<><Section title="Fasting timetable" action={`${days.length} days`}/><View style={s.ramadanList}>{days.map(d=>{const fajr=d.prayers.find(p=>p.name==='Fajr');const maghrib=d.prayers.find(p=>p.name==='Maghrib');return <View key={d.gregorian} style={s.ramadanRow}><View style={s.ramadanDay}><Text style={s.ramadanDayNo}>{d.hijriDay}</Text><Text style={s.ramadanDayLabel}>RAM</Text></View><View style={{flex:1}}><Text style={s.ramadanDate}>{d.weekday} · {d.gregorian}</Text><Text style={s.meta}>{location.label}</Text></View><View style={s.fastTime}><Text style={s.fastLabel}>SUHOOR</Text><Text style={s.fastValue}>{fajr?.time}</Text></View><View style={s.fastTime}><Text style={s.fastLabel}>IFTAR</Text><Text style={s.fastValue}>{maghrib?.time}</Text></View></View>})}</View></>}</>}</ScrollView></Page>}
 function ZakatScreen({navigation}:any){const[value,setValue]=useState('');const total=Number(value.replace(/,/g,''))||0;return <Page><ToolBar title="Zakat calculator" navigation={navigation}/><View style={s.dataPage}><Text style={s.dataTitle}>Calculate with clarity</Text><Text style={s.intro}>Enter your eligible wealth after deductible liabilities. Confirm the nisab threshold with a qualified local scholar.</Text><Text style={s.inputLabel}>ZAKATABLE WEALTH</Text><TextInput keyboardType="numeric" value={value} onChangeText={setValue} placeholder="0.00" style={s.moneyInput}/><LinearGradient colors={['#2A2849','#5146A4']} style={s.zakatResult}><Text style={s.nextCardLabel}>ESTIMATED ZAKAT · 2.5%</Text><Text style={s.zakatNo}>{(total*.025).toLocaleString(undefined,{maximumFractionDigits:2})}</Text></LinearGradient></View></Page>}
-function ExploreStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="ExploreHome" component={ExploreHome}/><Stack.Screen name="Qibla" component={QiblaScreen}/><Stack.Screen name="Tasbih" component={TasbihScreen}/><Stack.Screen name="Adhkar" component={AdhkarScreen}/>{['Duas','99 Names','Hadith','Mosques'].map(x=><Stack.Screen key={x} name={x} component={DataTool}/>) }<Stack.Screen name="Zakat" component={ZakatScreen}/></Stack.Navigator>}
+function HadithProgressBars(){
+  const state=useHadithState();
+  const rows=HADITH_COLLECTIONS.map(collection=>{
+    const total=state.totals[collection.slug]||0;
+    const read=(state.read[collection.slug]||[]).length;
+    return {collection,total,read,percent:total?Math.min(100,Math.round(read/total*100)):0};
+  }).filter(row=>row.total>0);
+  if(!rows.length)return null;
+  const readTotal=rows.reduce((sum,row)=>sum+row.read,0);
+  const hadithTotal=rows.reduce((sum,row)=>sum+row.total,0);
+  return <View style={s.dataCard}>
+    <Text style={s.dataMeta}>READING PROGRESS</Text>
+    <Text style={s.dataTitle}>{readTotal} of {hadithTotal.toLocaleString()} opened</Text>
+    <View style={{marginTop:12,gap:10}}>{rows.map(row=><View key={row.collection.slug}>
+      <View style={s.hadithProgressHead}><Text style={s.hadithProgressName}>{row.collection.name}</Text><Text style={s.meta}>{row.read} / {row.total.toLocaleString()}</Text></View>
+      <View style={s.hadithTrack}><View style={[s.hadithFill,{width:`${row.percent}%`}]}/></View>
+    </View>)}</View>
+  </View>;
+}
+
+function HadithScreen({navigation}:any){
+  const state=useHadithState();
+  const [query,setQuery]=useState('');
+  const loaded=getLoadedCollections();
+  const results=query.trim().length>=3?searchLoadedCollections(query,60):[];
+  const open=(slug:string,number?:number)=>navigation.navigate(number?'Hadith Detail':'Hadith Collection',number?{slug,number}:{slug});
+  return <Page><ScrollView contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
+    <ToolGraphic tool="Hadith" size={72}/>
+    <Text style={s.dataTitle}>Hadith</Text>
+    <LiveBadge source="HADITH-API CORPUS"/>
+    <Text style={s.intro}>Ten verified collections with matched Arabic and English texts. Grading is shown where the source publishes it—Sahih al-Bukhari and Sahih Muslim carry no separate grade because the collection itself is the grading.</Text>
+
+    <View style={s.search}>{ico('search',18,C.muted)}<TextInput accessibilityLabel="Search hadith in opened collections" value={query} onChangeText={setQuery} style={s.searchInput} placeholder="Search opened collections" placeholderTextColor="#929B96"/>{query.length>0&&<Pressable accessibilityLabel="Clear hadith search" onPress={()=>setQuery('')}>{ico('close',16,C.muted)}</Pressable>}</View>
+
+    {query.trim().length>=3?(results.length?<>
+      <Text style={s.meta}>{results.length} match{results.length===1?'':'es'} in {loaded.length} opened collection{loaded.length===1?'':'s'}</Text>
+      {results.map(hadith=>{const collection=HADITH_COLLECTIONS.find(item=>item.slug===hadith.slug);return <Pressable key={hadith.id} onPress={()=>open(hadith.slug,hadith.number)} style={s.dataCard}>
+        <Text style={s.dataMeta}>{collection?.name} · Hadith {hadith.number}</Text>
+        <Text style={s.dataBody} numberOfLines={3}>{hadith.english||hadith.arabic}</Text>
+      </Pressable>})}
+    </>:<View style={s.empty}><Text style={s.dataBody}>{loaded.length?'No match in the collections you have opened yet.':'Open a collection once to search inside it.'}</Text></View>):<>
+      {state.recent.length>0&&<>
+        <Section title="Continue reading"/>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap:10,paddingRight:20}}>
+          {state.recent.slice(0,8).map(item=>{const collection=HADITH_COLLECTIONS.find(entry=>entry.slug===item.slug);return <Pressable key={`${item.slug}-${item.number}`} onPress={()=>open(item.slug,item.number)} style={s.recentChipWide}>
+            <Text style={s.dataMeta}>{collection?.name}</Text>
+            <Text style={s.recentChipTitle}>Hadith {item.number}</Text>
+          </Pressable>})}
+        </ScrollView>
+      </>}
+      {state.saved.length>0&&<>
+        <Section title="Saved hadith" action="See all" onPress={()=>navigation.navigate('Hadith Saved')}/>
+        {state.saved.slice(0,3).map(item=><Pressable key={item.id} onPress={()=>open(item.slug,item.number)} style={s.dataCard}>
+          <Text style={s.dataMeta}>{item.collection} · Hadith {item.number}</Text>
+          <Text style={s.dataBody} numberOfLines={2}>{item.preview}</Text>
+        </Pressable>)}
+      </>}
+      <HadithProgressBars/>
+      <Section title="Collections"/>
+      {HADITH_COLLECTIONS.map(collection=>{
+        const total=state.totals[collection.slug]||0;
+        const read=(state.read[collection.slug]||[]).length;
+        const percent=total?Math.min(100,Math.round(read/total*100)):0;
+        return <Pressable key={collection.slug} accessibilityLabel={`Open ${collection.name}`} onPress={()=>open(collection.slug)} style={s.hadithCollectionCard}>
+          <View style={s.hadithCollectionTop}>
+            <View style={{flex:1}}>
+              <Text style={s.dataName}>{collection.name}</Text>
+              <Text style={s.dataArabic}>{collection.arabicName}</Text>
+              <Text style={s.meta}>{collection.author} · {collection.kind}{collection.graded?' · graded':''}{total?` · ${total.toLocaleString()} hadith`:''}</Text>
+            </View>
+            {ico('chevron-forward',18,C.muted)}
+          </View>
+          {percent>0&&<View style={s.hadithTrack}><View style={[s.hadithFill,{width:`${percent}%`}]}/></View>}
+        </Pressable>;
+      })}
+      <View style={s.apiPanel}><Text style={s.apiTitle}>Where the text comes from</Text><Text style={s.apiText}>Arabic and English editions of each collection are fetched together, so every hadith you read carries both. Nothing is bundled and nothing is paraphrased.</Text></View>
+    </>}
+  </ScrollView></Page>}
+
+function HadithCollectionScreen({route,navigation}:any){
+  const slug=route.params?.slug||'bukhari';
+  const collection=HADITH_COLLECTIONS.find(item=>item.slug===slug);
+  const [data,setData]=useState<HadithCollectionData|null>(null);
+  const [error,setError]=useState('');
+  const [book,setBook]=useState<number|null>(null);
+  const [query,setQuery]=useState('');
+  const [limit,setLimit]=useState(20);
+  const load=()=>{setError('');return loadHadithCollection(slug).then(next=>{setData(next);void whenArabicReady(slug).then(ready=>ready&&setData(ready))}).catch((e:any)=>setError(e.message||'Please check your connection.'))};
+  useEffect(()=>{void load()},[slug]);
+  useEffect(()=>{setLimit(20)},[book,query]);
+  const page=data?getHadithPage(data,{book,query,offset:0,limit}):{rows:[],total:0,offset:0,hasMore:false};
+  const read=new Set(useHadithState().read[slug]||[]);
+  return <Page><ToolBar title={collection?.name||'Hadith'} navigation={navigation}/>
+    {!data&&!error&&<Spinner/>}
+    {!!error&&<ErrorState message={error} retry={load}/>}
+    {!!data&&<>
+      <View style={s.search}>{ico('search',18,C.muted)}<TextInput accessibilityLabel="Search this collection" value={query} onChangeText={setQuery} style={s.searchInput} placeholder="Search Arabic, English or number" placeholderTextColor="#929B96"/>{query.length>0&&<Pressable accessibilityLabel="Clear search" onPress={()=>setQuery('')}>{ico('close',16,C.muted)}</Pressable>}</View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.choiceRow}>
+        <ChoicePill label="All books" selected={book===null} onPress={()=>setBook(null)}/>
+        {data.books.map(entry=><ChoicePill key={entry.number} label={`${entry.number}. ${entry.name}`} selected={book===entry.number} onPress={()=>setBook(entry.number)}/>)}
+      </ScrollView>
+      <Text style={s.meta}>{page.total.toLocaleString()} hadith{book!==null?' in this book':''} · showing {page.rows.length}{data.arabicReady?'':' · Arabic text loading'}</Text>
+      <ScrollView contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
+        {page.rows.map(hadith=><Pressable key={hadith.id} accessibilityLabel={`Hadith ${hadith.number}`} onPress={()=>navigation.navigate('Hadith Detail',{slug,number:hadith.number})} style={s.dataCard}>
+          <View style={s.hadithRowTop}>
+            <View style={s.hadithNumber}><Text style={s.hadithNumberText}>{hadith.number}</Text></View>
+            <View style={{flex:1}}>
+              <Text style={s.dataMeta}>{hadith.book?`Book ${hadith.book} · ${hadith.bookName}`:hadith.bookName}{hadith.grades.length?` · ${hadith.grades[0].grade}`:''}{read.has(hadith.number)?' · read':''}</Text>
+              {!!hadith.arabic&&<Text style={s.dataArabic} numberOfLines={2}>{hadith.arabic}</Text>}
+              <Text style={s.dataBody} numberOfLines={3}>{hadith.english}</Text>
+            </View>
+            {ico('chevron-forward',16,C.muted)}
+          </View>
+        </Pressable>)}
+        {!page.rows.length&&<View style={s.empty}><Text style={s.dataBody}>No hadith matches this filter.</Text></View>}
+        {page.hasMore&&<Pressable accessibilityLabel="Load more hadith" onPress={()=>setLimit(value=>value+20)} style={s.secondary}><Text style={s.secondaryText}>Load more</Text></Pressable>}
+        <View style={s.apiPanel}><Text style={s.apiTitle}>{data.name}</Text><Text style={s.apiText}>{data.books.length} books · {data.hadiths.length.toLocaleString()} hadith · English and Arabic editions fetched together.</Text></View>
+      </ScrollView>
+    </>}
+  </Page>}
+
+function HadithDetailScreen({route,navigation}:any){
+  const slug=route.params?.slug||'bukhari';
+  const number=Number(route.params?.number||1);
+  const collection=HADITH_COLLECTIONS.find(item=>item.slug===slug);
+  const [data,setData]=useState<HadithCollectionData|null>(null);
+  const [hadith,setHadith]=useState<Hadith|null>(null);
+  const [error,setError]=useState('');
+  const [copied,setCopied]=useState(false);
+  const state=useHadithState();
+  const saved=isHadithSaved(slug,number);
+  const load=async()=>{
+    setError('');
+    try{
+      const loaded=await loadHadithCollection(slug);
+      setData(loaded);
+      const apply=(source:HadithCollectionData)=>{const found=getHadith(source,number);if(found)setHadith(found)};
+      apply(loaded);
+      if(!loaded.arabicReady){const ready=await whenArabicReady(slug);if(ready){setData(ready);apply(ready)}}
+      else setError('This hadith is not in the loaded edition.');
+    }catch(e:any){setError(e.message||'Please check your connection.')}
+  };
+  useEffect(()=>{void load()},[slug,number]);
+  useEffect(()=>{if(data)void markHadithRead(slug,number,data.hadiths.length)},[data,slug,number]);
+  const neighbours=data?getNeighbours(data,number):{previous:undefined,next:undefined};
+  const share=async()=>{
+    if(!hadith)return;
+    const text=`${hadithReference(collection,hadith)}\n\n${hadith.arabic}\n\n${hadith.english}`;
+    try{await Share.share({message:text})}catch{/* sharing is unavailable on some platforms */}
+  };
+  const copy=async()=>{
+    if(!hadith)return;
+    try{await Clipboard.setStringAsync(`${hadith.arabic}\n\n${hadith.english}`);setCopied(true);setTimeout(()=>setCopied(false),1800)}catch{/* clipboard unavailable */}
+  };
+  return <Page><ToolBar title={collection?.name||'Hadith'} navigation={navigation}/>
+    {!hadith&&!error&&<Spinner/>}
+    {!!error&&<ErrorState message={error} retry={load}/>}
+    {!!hadith&&<ScrollView contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
+      <View style={s.hadithDetailHead}>
+        <View style={s.hadithNumberLarge}><Text style={s.hadithNumberText}>{hadith.number}</Text></View>
+        <View style={{flex:1}}>
+          <Text style={s.dataName}>{collection?.name}</Text>
+          <Text style={s.meta}>{hadith.book?`Book ${hadith.book} · ${hadith.bookName}`:'General'}</Text>
+        </View>
+      </View>
+      {hadith.grades.length>0&&<View style={s.hadithGrades}>{hadith.grades.map((grade,index)=><View key={`${grade.name}-${index}`} style={s.hadithGrade}><Text style={s.hadithGradeText}>{grade.grade}</Text><Text style={s.hadithGradeSource}>{grade.name}</Text></View>)}</View>}
+      {!!hadith.arabic&&<Text style={[s.dataArabic,{fontSize:23,lineHeight:44}]}>{hadith.arabic}</Text>}
+      <Text style={[s.dataBody,{fontSize:15,lineHeight:26,marginTop:16}]}>{hadith.english}</Text>
+      <View style={s.actionRow}>
+        <Pressable accessibilityLabel={saved?'Remove hadith from saved':'Save this hadith'} onPress={()=>{if(collection)void toggleHadithSaved(collection,hadith)}} style={s.secondary}><Text style={s.secondaryText}>{saved?'Saved':'Save'}</Text></Pressable>
+        <Pressable accessibilityLabel="Copy hadith text" onPress={copy} style={s.secondary}><Text style={s.secondaryText}>{copied?'Copied':'Copy'}</Text></Pressable>
+        <Pressable accessibilityLabel="Share hadith" onPress={share} style={s.secondary}><Text style={s.secondaryText}>Share</Text></Pressable>
+      </View>
+      <View style={s.hadithNav}>
+        {neighbours.previous?<Pressable accessibilityLabel="Previous hadith" onPress={()=>navigation.replace('Hadith Detail',{slug,number:neighbours.previous?.number})} style={s.hadithNavBtn}><Text style={s.hadithNavText}>← {neighbours.previous.number}</Text></Pressable>:<View style={s.hadithNavBtn}/>}
+        {neighbours.next?<Pressable accessibilityLabel="Next hadith" onPress={()=>navigation.replace('Hadith Detail',{slug,number:neighbours.next?.number})} style={[s.hadithNavBtn,{alignItems:'flex-end'}]}><Text style={s.hadithNavText}>{neighbours.next.number} →</Text></Pressable>:<View style={s.hadithNavBtn}/>}
+      </View>
+      <View style={s.apiPanel}><Text style={s.apiTitle}>Source</Text><Text style={s.apiText}>{hadithReference(collection,hadith)} · English and Arabic editions of the {collection?.name} corpus.</Text></View>
+    </ScrollView>}
+  </Page>}
+
+function HadithSavedScreen({navigation}:any){
+  const state=useHadithState();
+  return <Page><ToolBar title="Saved hadith" navigation={navigation}/>
+    {!state.saved.length&&<View style={s.empty}><ToolGraphic tool="Hadith" size={54}/><Text style={s.dataTitle}>Nothing saved yet</Text><Text style={s.dataBody}>Save a hadith from any collection and it will appear here on this device only.</Text></View>}
+    {state.saved.map(item=><View key={item.id} style={s.dataCard}>
+      <Pressable onPress={()=>navigation.navigate('Hadith Detail',{slug:item.slug,number:item.number})}>
+        <Text style={s.dataMeta}>{item.collection} · Hadith {item.number}</Text>
+        <Text style={s.dataBody} numberOfLines={4}>{item.preview}</Text>
+      </Pressable>
+      <Pressable accessibilityLabel="Remove saved hadith" onPress={()=>void removeHadithBookmark(item.id)} style={{marginTop:10,alignSelf:'flex-start'}}><Text style={s.dangerText}>Remove</Text></Pressable>
+    </View>)}
+  </Page>}
+
+function ExploreStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="ExploreHome" component={ExploreHome}/><Stack.Screen name="Qibla" component={QiblaScreen}/><Stack.Screen name="Tasbih" component={TasbihScreen}/><Stack.Screen name="Adhkar" component={AdhkarScreen}/>{['Duas','99 Names','Mosques'].map(x=><Stack.Screen key={x} name={x} component={DataTool}/>) }<Stack.Screen name="Hadith" component={HadithScreen}/><Stack.Screen name="Hadith Collection" component={HadithCollectionScreen}/><Stack.Screen name="Hadith Detail" component={HadithDetailScreen}/><Stack.Screen name="Hadith Saved" component={HadithSavedScreen}/><Stack.Screen name="Zakat" component={ZakatScreen}/></Stack.Navigator>}
 function PrayerStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="PrayerHome" component={PrayerScreen}/><Stack.Screen name="Qibla" component={QiblaScreen}/><Stack.Screen name="Location Setup" component={LocationSetupScreen}/><Stack.Screen name="Weekly Summary" component={WeeklySummaryScreen}/><Stack.Screen name="Notifications" component={NotificationScreen}/><Stack.Screen name="Adhan" component={AdhanScreen}/><Stack.Screen name="Worship Guides" component={GuideDirectory}/><Stack.Screen name="Guide Detail" component={GuideDetail}/><Stack.Screen name="Hijri Calendar" component={HijriCalendarScreen}/><Stack.Screen name="Ramadan" component={RamadanScreen}/><Stack.Screen name="Mosques" component={DataTool}/></Stack.Navigator>}
 const PRAYER_METHODS=[{id:8,name:'Gulf Region'},{id:4,name:'Umm al-Qura'},{id:3,name:'Muslim World League'},{id:5,name:'Egyptian Authority'},{id:1,name:'Karachi'},{id:2,name:'North America'}];
 function ChoicePill({label,selected,onPress}:{label:string;selected:boolean;onPress:()=>void}){return <Pressable accessibilityRole="radio" accessibilityState={{selected}} onPress={onPress} style={[s.choicePill,selected&&s.choicePillActive]}><Text style={[s.choiceText,selected&&s.choiceTextActive]}>{label}</Text></Pressable>}
@@ -661,9 +856,9 @@ function AudioPlayerScreen({ navigation }: any) {
     </View>
     <SeekBar position={audio.position} duration={audio.duration} onSeek={(value) => { void seekTo(value); }} />
     <View style={s.audioControls}>
-      <Pressable accessibilityLabel="Previous verse" onPress={() => { void previousTrack(); }} style={s.audioControlBtn}>{ico('play', 20, C.green)}</Pressable>
+      <Pressable accessibilityLabel="Previous verse" onPress={() => { void previousTrack(); }} style={s.audioControlBtn}>{ico('play-skip-back', 20, C.green)}</Pressable>
       <Pressable accessibilityLabel={audio.playing ? 'Pause' : 'Play'} onPress={() => { void togglePlayback(); }} style={s.audioControlMain}>{audio.playing ? ico('pause', 26, C.white) : ico('play', 26, C.white)}</Pressable>
-      <Pressable accessibilityLabel="Next verse" onPress={() => { void nextTrack(); }} style={s.audioControlBtn}>{ico('play', 20, C.green)}</Pressable>
+      <Pressable accessibilityLabel="Next verse" onPress={() => { void nextTrack(); }} style={s.audioControlBtn}>{ico('play-skip-forward', 20, C.green)}</Pressable>
       <Pressable accessibilityLabel={`Repeat mode: ${audio.repeat}`} onPress={() => setRepeatMode(audio.repeat === 'none' ? 'all' : audio.repeat === 'all' ? 'one' : 'none')} style={s.audioControlBtn}>{ico('repeat', 19, audio.repeat === 'none' ? C.muted : C.green)}<Text style={s.rateText}>{audio.repeat === 'one' ? '1' : audio.repeat === 'all' ? '∞' : '—'}</Text></Pressable>
     </View>
     <View style={s.row}>
@@ -692,7 +887,7 @@ function AudioPlayerScreen({ navigation }: any) {
 }
 
 function Tabs(){const{width}=useWindowDimensions();const{rtl}=useLanguage();const web=Platform.OS==='web';const barWidth=Math.min(Math.max(width-24,280),640);const responsiveBar:any=web?{left:'50%' as any,right:undefined,width:barWidth,transform:[{translateX:-barWidth/2}],direction:rtl?'rtl':'ltr'}:{};const labels:any={Today:'اليوم',Prayer:'الصلاة',Quran:'القرآن',Library:'المكتبة',Settings:'الإعدادات'};return <Tab.Navigator screenOptions={({route})=>({headerShown:false,tabBarHideOnKeyboard:true,tabBarActiveTintColor:C.green,tabBarInactiveTintColor:'#8B909D',tabBarLabel:rtl?labels[route.name]:route.name,tabBarStyle:[s.tabbar,responsiveBar],tabBarItemStyle:{minWidth:0},tabBarLabelStyle:[s.tabLabel,width<360&&{fontSize:9}],tabBarIcon:({color,focused})=>ico(({Today:focused?'home':'home-outline',Prayer:focused?'time':'time-outline',Quran:focused?'book':'book-outline',Library:focused?'grid':'grid-outline',Settings:focused?'settings':'settings-outline'}as any)[route.name],width<360?19:21,color)})}><Tab.Screen name="Today" component={HomeScreen}/><Tab.Screen name="Prayer" component={PrayerStack}/><Tab.Screen name="Quran" component={QuranStack}/><Tab.Screen name="Library" component={ExploreStack}/><Tab.Screen name="Settings" component={SettingsScreen}/></Tab.Navigator>}
-export default function App(){const[fontsLoaded]=useFonts({DMSans_400Regular,DMSans_600SemiBold,DMSans_700Bold,Newsreader_600SemiBold,NotoNaskhArabic_400Regular,NotoNaskhArabic_600SemiBold,Amiri_400Regular});useEffect(()=>{if(fontsLoaded){resumeSavedQuranPreload();void loadAudioSettings()}},[fontsLoaded]);if(!fontsLoaded)return <SafeAreaView style={s.safe}><Spinner/></SafeAreaView>;return <LanguageProvider><QuranPreferencesProvider><WorshipSettingsProvider><LocationProvider><NavigationContainer ref={navigationRef}><ExpoStatusBar style="dark"/><Tabs/><MiniPlayer/></NavigationContainer></LocationProvider></WorshipSettingsProvider></QuranPreferencesProvider></LanguageProvider>}
+export default function App(){const[fontsLoaded]=useFonts({DMSans_400Regular,DMSans_600SemiBold,DMSans_700Bold,Newsreader_600SemiBold,NotoNaskhArabic_400Regular,NotoNaskhArabic_600SemiBold,Amiri_400Regular});useEffect(()=>{if(fontsLoaded){resumeSavedQuranPreload();void loadAudioSettings();void loadHadithState()}},[fontsLoaded]);if(!fontsLoaded)return <SafeAreaView style={s.safe}><Spinner/></SafeAreaView>;return <LanguageProvider><QuranPreferencesProvider><WorshipSettingsProvider><LocationProvider><NavigationContainer ref={navigationRef}><ExpoStatusBar style="dark"/><Tabs/><MiniPlayer/></NavigationContainer></LocationProvider></WorshipSettingsProvider></QuranPreferencesProvider></LanguageProvider>}
 
 const s=StyleSheet.create({
  safe:{flex:1,backgroundColor:C.bg,overflow:'hidden',paddingTop:Platform.OS==='android'?StatusBar.currentHeight:0},page:{flex:1,backgroundColor:C.bg},pageWide:{width:'100%',maxWidth:1180,alignSelf:'center'},scroll:{width:'100%',maxWidth:980,alignSelf:'center',paddingHorizontal:18,paddingTop:20,paddingBottom:112},row:{flexDirection:'row',alignItems:'center'},press:{opacity:.72,transform:[{scale:.98}]},loading:{padding:42,alignItems:'center',gap:10},loadingText:{color:C.muted,fontSize:12},error:{backgroundColor:'#F5EFEE',padding:22,borderRadius:22,alignItems:'center',marginVertical:12},errorIcon:{width:48,height:48,borderRadius:16,backgroundColor:'#EDE5E4',alignItems:'center',justifyContent:'center'},errorTitle:{color:C.ink,fontSize:16,fontFamily:'DMSans_600SemiBold',marginTop:10},errorText:{color:C.muted,textAlign:'center',fontSize:12,lineHeight:18,marginTop:4},retry:{backgroundColor:C.ink,paddingHorizontal:15,paddingVertical:9,borderRadius:12,marginTop:12},retryText:{color:C.white,fontSize:11,fontFamily:'DMSans_600SemiBold'},
@@ -754,5 +949,25 @@ const s=StyleSheet.create({
  audioEntryInner:{flexDirection:'row',alignItems:'center',gap:12,backgroundColor:C.card,borderRadius:22,padding:15,borderWidth:1,borderColor:C.line,...soft},
  surahNo:{width:40,height:40,borderRadius:14,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},
  surahNoText:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:12},
+  hadithProgressHead:{flexDirection:'row',alignItems:'center',justifyContent:'space-between'},
+  hadithProgressName:{color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:12},
+  hadithTrack:{height:6,borderRadius:3,backgroundColor:C.line,marginTop:6,overflow:'hidden'},
+  hadithFill:{height:'100%',borderRadius:3,backgroundColor:C.green},
+  hadithCollectionCard:{backgroundColor:C.card,borderRadius:20,padding:15,marginBottom:10,borderWidth:1,borderColor:C.line,...soft},
+  hadithCollectionTop:{flexDirection:'row',alignItems:'center',gap:10},
+  hadithRowTop:{flexDirection:'row',alignItems:'flex-start',gap:11},
+  hadithNumber:{width:34,height:34,borderRadius:12,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},
+  hadithNumberText:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:12},
+  hadithNumberLarge:{width:46,height:46,borderRadius:16,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},
+  hadithDetailHead:{flexDirection:'row',alignItems:'center',gap:12},
+  hadithGrades:{flexDirection:'row',flexWrap:'wrap',gap:8,marginTop:14},
+  hadithGrade:{backgroundColor:C.mint,borderRadius:12,paddingHorizontal:11,paddingVertical:7,borderWidth:1,borderColor:'#DDD6FF'},
+  hadithGradeText:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10},
+  hadithGradeSource:{color:C.muted,fontSize:9,marginTop:2},
+  hadithNav:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginTop:18,gap:10},
+  hadithNavBtn:{flex:1,minHeight:44,justifyContent:'center'},
+  hadithNavText:{color:C.green,fontFamily:'DMSans_600SemiBold',fontSize:12},
+  recentChipWide:{minWidth:150,backgroundColor:C.white,borderRadius:16,padding:12,borderWidth:1,borderColor:C.line,...soft},
+  recentChipTitle:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:12,marginTop:4},
 
 });
