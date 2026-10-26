@@ -7,7 +7,7 @@ export type QuranPreferences = {
   translationLanguage: string;
   scriptEdition: string;
   scriptName: string;
-  arabicFont: 'naskh' | 'amiri';
+  arabicFont: 'hafs' | 'scheherazade' | 'amiri-quran' | 'naskh' | 'kufi';
   fontSize: number;
   lineHeight: number;
   showTranslation: boolean;
@@ -23,7 +23,7 @@ const K = {
   position: '@deen/quran/position/v1', recent: '@deen/quran/recent/v1', searches: '@deen/quran/searches/v1',
   hifz: '@deen/quran/hifz/v1', plan: '@deen/quran/plan/v1', vocabulary: '@deen/quran/vocabulary/v1',
 };
-const DEFAULTS: QuranPreferences = { translationEdition: 'en.sahih', translationName: 'Sahih International', translationLanguage: 'English', scriptEdition: 'quran-uthmani', scriptName: 'Uthmani', arabicFont: 'naskh', fontSize: 30, lineHeight: 1.9, showTranslation: true, readingMode: 'cards' };
+const DEFAULTS: QuranPreferences = { translationEdition: 'en.sahih', translationName: 'Sahih International', translationLanguage: 'English', scriptEdition: 'quran-uthmani', scriptName: 'Uthmani', arabicFont: 'hafs', fontSize: 30, lineHeight: 1.9, showTranslation: true, readingMode: 'cards' };
 async function read<T>(key:string,fallback:T):Promise<T>{try{const v=await AsyncStorage.getItem(key);return v?JSON.parse(v):fallback}catch{return fallback}}
 const write=(key:string,value:unknown)=>AsyncStorage.setItem(key,JSON.stringify(value));
 
