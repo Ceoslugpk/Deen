@@ -144,7 +144,7 @@ The complete application passes privacy, offline, localization, accessibility, r
   - [x] Tasbih: eight preset phrases, 33/99/100/500/1000 goals, haptics, reset, saved rounds, daily totals and a home quick counter sharing the same private store
   - [x] Names: 99 Names with meanings in nine languages, name of the day, search and an offline catalogue, plus the twenty-five prophets with live verse references
   - [x] Vocabulary flashcards, worship guides and the Shahada presentation (from Phase 2, re-verified in Phase 3)
-  - [ ] Weekly reading, Salah, Hifz and streak summaries
+  - [x] Weekly summaries for Salah, Quran reading, Hifz and dhikr with streaks, sourced from a private 30-day on-device activity log
   - [x] Quran download manager: keep a Surah's audio and text, free-space preflight, progress, pause/resume/retry/remove, validated finalisation and targeted cleanup
   - [x] Cross-platform download sources: MP3Quran files read directly, verse-by-verse reciters read through the app's own `/api/audio` range relay on web and straight from the CDN on native
   - [x] Offline playback of a kept Surah, proven in the browser with the network switched off
