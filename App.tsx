@@ -2,9 +2,9 @@ import React, { createContext, useContext, useEffect, useMemo, useRef, useState 
 import {
   ActivityIndicator, Alert, Animated, Image, ImageBackground, Linking, Platform, Pressable,
   I18nManager, RefreshControl, SafeAreaView, ScrollView, Share, StatusBar, StyleSheet, Switch, Text, TextInput,
-  useWindowDimensions, View,
+  PanResponder, useWindowDimensions, View,
 } from 'react-native';
-import { NavigationContainer, useNavigation } from '@react-navigation/native';
+import { createNavigationContainerRef, NavigationContainer, useNavigation } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import CustomIcon, { iconTheme } from './src/components/CustomIcon';
@@ -21,9 +21,9 @@ import { NotoNaskhArabic_400Regular } from '@expo-google-fonts/noto-naskh-arabic
 import { NotoNaskhArabic_600SemiBold } from '@expo-google-fonts/noto-naskh-arabic/600SemiBold';
 import { Amiri_400Regular } from '@expo-google-fonts/amiri/400Regular';
 import {
-  Chapter, DailyAyah, DailyHadith, DivineName, getAyahEditions, getAyahOfDay, getChapters, getDailyHadith, getDuas, getQuranEditions,
+  AudioEdition, Chapter, DailyAyah, DailyHadith, DivineName, getAyahEditions, getAyahOfDay, getChapters, getDailyHadith, getDuas, getQuranEditions,
   getGregorianCalendar, getNameOfDay, getNames, getNearbyMosques, getPrayerSnapshot, getQibla, getRamadanCalendar,
-  getHizbVerses, getJuzVerses, getPageVerses, getVerses, searchQuran, CalendarDay, Prayer, PrayerSnapshot, QuranEdition, QuranSearchResult, Verse,
+  getHizbVerses, getJuzVerses, getPageVerses, getVerses, searchQuran, CalendarDay, Prayer, PrayerSnapshot, QuranEdition, QuranSearchResult, SurahReciter, Verse,
 } from './src/services/api';
 import {
   DEFAULT_WORSHIP_SETTINGS, loadDailyContent, loadPrayerCache, loadPrayerCompletion, loadPrayerHistory, loadQuickTasbih, loadStoredLocation, loadWorshipSettings,
@@ -37,6 +37,7 @@ import { addSearchHistory, clearSearchHistory, clearSurahCache, deleteNote, Hifz
 import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 import * as Clipboard from 'expo-clipboard';
 import { getCacheUsage, getCachedJson, setCachedJson } from './src/services/contentCache';
+import { AudioSession, AudioSettings, AudioTrackKind, buildQueueForChapter, buildSurahQueue, loadSurahReciters, clearQueue, clearRecentPlays, deletePlaylist, formatClock, getAudioSettings, loadAudioEditions, loadAudioSession, loadAudioSettings, loadPlaylists, loadRecentPlays, nextTrack, playQueue, Playlist, previousTrack, RecentPlay, removeFromQueue, saveAudioSettings, savePlaylist, seekTo, selectQueueItem, setPlaybackRate, setRepeatMode, stopPlayback, togglePlayback, useAudio } from './src/services/audioService';
 import { clearPreparedQuran, getPreloadState, pauseQuranPreload, refreshPreload, resumeSavedQuranPreload, startQuranPreload, subscribePreload } from './src/services/quranPreload';
 
 const C = {
@@ -124,6 +125,7 @@ const TOOL_IMAGES:Record<string,any>={
   'Quran Arabic':require('./assets/tool-icons/quran-arabic.png'),
   'English meaning':require('./assets/tool-icons/quran-english.png'),
   Recitations:require('./assets/tool-icons/recitations.png'),
+  'Quran Audio':require('./assets/tool-icons/recitations.png'),
   'Quran Search':require('./assets/tool-icons/quran-search.png'),
   Translations:require('./assets/tool-icons/translations.png'),
   '30 Juz':require('./assets/tool-icons/juz.png'),
@@ -154,7 +156,9 @@ function MotionPress({ children, onPress, style }: { children: React.ReactNode; 
 
 function Page({ children }: { children: React.ReactNode }) {
   const { width } = useWindowDimensions(); const {rtl}=useLanguage();
-  return <SafeAreaView style={s.safe}><View style={[s.page,width > 700 && s.pageWide,{direction:rtl?'rtl':'ltr'} as any]}>{children}</View></SafeAreaView>;
+  const audio=useAudio();
+  const playerInset = audio.track ? (Platform.OS==='ios'?96:82) : 0;
+  return <SafeAreaView style={s.safe}><View style={[s.page,width > 700 && s.pageWide,{direction:rtl?'rtl':'ltr',paddingBottom:playerInset} as any]}>{children}</View></SafeAreaView>;
 }
 function Spinner() { return <View style={s.loading}><ActivityIndicator color={C.green} /><Text style={s.loadingText}>Loading live data…</Text></View>; }
 function ErrorState({ message, retry }: { message: string; retry?: () => void }) { return <View style={s.error}><View style={s.errorIcon}>{ico('cloud-offline-outline', 24, C.coral)}</View><Text style={s.errorTitle}>Couldn’t load live data</Text><Text style={s.errorText}>{message}</Text>{retry && <Pressable onPress={retry} style={s.retry}><Text style={s.retryText}>Try again</Text></Pressable>}</View>; }
@@ -252,15 +256,18 @@ function PrayerScreen({navigation}:any) {
 
 function QuranHome({navigation}:any){
  const{width}=useWindowDimensions();const wide=width>=760;const[chapters,setChapters]=useState<Chapter[]>([]);const[query,setQuery]=useState('');const[debounced,setDebounced]=useState('');const[error,setError]=useState('');const[position,setPosition]=useState<any>(null);const[bookmarkCount,setBookmarkCount]=useState(0);const[noteCount,setNoteCount]=useState(0);const[recent,setRecent]=useState<number[]>([]);const[plan,setPlanState]=useState<any>(null);const[hifz,setHifzState]=useState<Record<number,HifzStatus>>({});const[preload,setPreload]=useState(getPreloadState());const{preferences}=useQuranPreferences();
- const load=()=>getChapters().then(setChapters).catch(e=>setError(e.message));const hydrate=()=>Promise.all([loadReadingPosition().then(setPosition),loadBookmarks().then(x=>setBookmarkCount(x.length)),loadNotes().then(x=>setNoteCount(x.length)),loadRecentSurahs().then(setRecent),loadPlan().then(setPlanState),loadHifz().then(setHifzState)]);useEffect(()=>{load();hydrate();resumeSavedQuranPreload();const unsubscribePreload=subscribePreload(setPreload);const unsubscribeFocus=navigation.addListener('focus',hydrate);return()=>{unsubscribePreload();unsubscribeFocus()}},[navigation]);useEffect(()=>{const id=setTimeout(()=>setDebounced(query.trim()),250);return()=>clearTimeout(id)},[query]);
+ const load=()=>getChapters().then(setChapters).catch(e=>setError(e.message));const hydrate=()=>Promise.all([loadReadingPosition().then(setPosition),loadBookmarks().then(x=>setBookmarkCount(x.length)),loadNotes().then(x=>setNoteCount(x.length)),loadRecentSurahs().then(setRecent),loadPlan().then(setPlanState),loadHifz().then(setHifzState),loadAudioSettings().then(value=>setAudioReciter(value.reciterName))]);useEffect(()=>{load();hydrate();resumeSavedQuranPreload();const unsubscribePreload=subscribePreload(setPreload);const unsubscribeFocus=navigation.addListener('focus',hydrate);return()=>{unsubscribePreload();unsubscribeFocus()}},[navigation]);useEffect(()=>{const id=setTimeout(()=>setDebounced(query.trim()),250);return()=>clearTimeout(id)},[query]);
  const shown=chapters.filter(c=>`${c.id} ${c.name_simple} ${c.name_arabic} ${c.translated_name?.name}`.toLowerCase().includes(debounced.toLowerCase()));const open=(chapter:Chapter,mode='both',focusVerse?:string)=>navigation.navigate('Reader',{chapter,mode,focusVerse});const featured={id:55,name_simple:'Ar-Rahman',name_arabic:'الرحمن',translated_name:{name:'The Most Merciful'},verses_count:78};const submit=()=>{const ref=query.match(/^(\d{1,3}):(\d{1,3})$/);if(ref){const chapter=chapters.find(c=>c.id===Number(ref[1]));if(chapter)return open(chapter,'both',query)}navigation.navigate('Quran Search',{initialQuery:query})};
- const memorized=Object.values(hifz).filter(value=>value==='memorized').length;const readActions=[{label:'Quran Search',title:'Search',caption:'Word or verse',screen:'Quran Search'},{label:'30 Juz',title:'Juz',caption:'30 sections',screen:'Juz Directory'},{label:'60 Hizb',title:'Hizb',caption:'60 divisions',screen:'Hizb Directory'}];const studyTools=[{label:'Quran Topics',title:'Quran topics',caption:'Explore faith, life and spirituality',screen:'Quran Topics'},{label:'Translation Compare',title:'Tafsir & compare',caption:'Study sources and 2–3 translations',screen:'Tafsir Compare'},{label:'Tajweed',title:'Tajweed study',caption:'Colour rules with normal-text fallback',screen:'Tajweed Study'},{label:'Quran Vocabulary',title:'Vocabulary',caption:'Review frequent Quranic words',screen:'Quran Vocabulary'}];const personalTools=[{label:'Bookmarks',value:String(bookmarkCount),caption:'saved verses',screen:'Bookmarks'},{label:'Notes',value:String(noteCount),caption:'private notes',screen:'Notes'},{label:'Reading Plans',value:plan?`${plan.days}d`:'—',caption:plan?'active plan':'choose a plan',screen:'Reading Plans'},{label:'Hifz',value:String(memorized),caption:'Surahs memorized',screen:'Hifz'},{label:'Offline Quran',value:`${preload.cached}/114`,caption:preload.running?'preparing now':'available offline',screen:'Quran Preload'}];const contentWidth=Math.min(Math.max(width-36,280),980);const studyCardWidth=wide?Math.min(302,(contentWidth-24)/3):Math.min(310,Math.max(258,width-68));
+ const[audioReciter,setAudioReciter]=useState('Choose a reciter');const memorized=Object.values(hifz).filter(value=>value==='memorized').length;const readActions=[{label:'Quran Search',title:'Search',caption:'Word or verse',screen:'Quran Search'},{label:'30 Juz',title:'Juz',caption:'30 sections',screen:'Juz Directory'},{label:'60 Hizb',title:'Hizb',caption:'60 divisions',screen:'Hizb Directory'}];const studyTools=[{label:'Quran Topics',title:'Quran topics',caption:'Explore faith, life and spirituality',screen:'Quran Topics'},{label:'Translation Compare',title:'Tafsir & compare',caption:'Study sources and 2–3 translations',screen:'Tafsir Compare'},{label:'Tajweed',title:'Tajweed study',caption:'Colour rules with normal-text fallback',screen:'Tajweed Study'},{label:'Quran Vocabulary',title:'Vocabulary',caption:'Review frequent Quranic words',screen:'Quran Vocabulary'}];const personalTools=[{label:'Bookmarks',value:String(bookmarkCount),caption:'saved verses',screen:'Bookmarks'},{label:'Notes',value:String(noteCount),caption:'private notes',screen:'Notes'},{label:'Reading Plans',value:plan?`${plan.days}d`:'—',caption:plan?'active plan':'choose a plan',screen:'Reading Plans'},{label:'Hifz',value:String(memorized),caption:'Surahs memorized',screen:'Hifz'},{label:'Offline Quran',value:`${preload.cached}/114`,caption:preload.running?'preparing now':'available offline',screen:'Quran Preload'}];const contentWidth=Math.min(Math.max(width-36,280),980);const studyCardWidth=wide?Math.min(302,(contentWidth-24)/3):Math.min(310,Math.max(258,width-68));
  return <Page><ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}><TopBar overline="AL-QURAN CLOUD · LIVE" title="The Noble Quran" right={<ToolGraphic tool="Quran" size={48}/>}/>
  <View style={s.search}>{ico('search-outline',19,C.muted)}<TextInput accessibilityLabel="Search the Quran" value={query} onChangeText={setQuery} onSubmitEditing={submit} returnKeyType="search" style={s.searchInput} placeholder="Search Surah, meaning, or 2:255" placeholderTextColor="#929B96"/>{query.length>0&&<Pressable accessibilityLabel="Clear Quran search" onPress={()=>setQuery('')}>{ico('close-circle',18,C.muted)}</Pressable>}</View>
  {position&&<Pressable onPress={()=>{const chapter=chapters.find(c=>c.id===position.surahId);if(chapter)open(chapter,'both',position.verseKey)}} style={s.continueBar}><ToolGraphic tool="Quran Arabic" size={48}/><View style={{flex:1}}><Text style={s.dailyKicker}>CONTINUE READING</Text><Text style={s.settingName}>{position.surahName} · {position.verseKey}</Text><Text style={s.meta}>Page {position.page||'—'} · saved locally</Text></View>{ico('arrow-forward',18,C.green)}</Pressable>}
- <View style={[s.quranHero,wide&&s.quranHeroWide]}><Image source={require('./assets/quran-scene.png')} resizeMode="cover" style={s.heroBg}/><LinearGradient colors={['rgba(41,37,80,.96)','rgba(89,65,139,.52)','transparent']} start={{x:0,y:.5}} end={{x:1,y:.5}} style={StyleSheet.absoluteFill}/><LiveBadge source="AL QURAN CLOUD"/><Text style={s.quranArabic}>الرَّحْمَٰن</Text><Text style={s.quranHeroTitle}>Read. Listen. Reflect.</Text><Text style={s.quranHeroMeta}>{preferences.scriptName} · {preferences.translationName}</Text><Pressable style={s.whiteButton} onPress={()=>open(featured)}><Text style={s.whiteButtonText}>Start reading</Text>{ico('play',13,C.green)}</Pressable></View>
+ <View style={[s.quranHero,wide&&s.quranHeroWide]}><Image source={require('./assets/quran-scene.png')} resizeMode="cover" style={s.heroBg}/><LinearGradient colors={['rgba(41,37,80,.96)','rgba(89,65,139,.52)','transparent']} start={{x:0,y:.5}} end={{x:1,y:.5}} style={StyleSheet.absoluteFill}/><LiveBadge source="AL QURAN CLOUD"/><Text style={s.quranArabic}>الرَّحْمَٰن</Text><Text style={s.quranHeroTitle}>Read. Listen. Reflect.</Text><Text style={s.quranHeroMeta}>{preferences.scriptName} · {preferences.translationName}</Text><View style={s.heroActions}><Pressable style={s.whiteButton} onPress={()=>open(featured)}><Text style={s.whiteButtonText}>Start reading</Text>{ico('play',13,C.green)}</Pressable><Pressable style={s.ghostHeroButton} onPress={()=>navigation.navigate('Quran Audio')}><Text style={s.ghostHeroText}>Listen</Text>{ico('headset-outline',13,C.white)}</Pressable></View></View>
  <Section title="Read and navigate"/>
  <View style={s.quranActionGrid}><MotionPress onPress={()=>navigation.navigate('Mushaf Page',{page:position?.page||1,focusVerse:position?.verseKey})} style={[s.quranPrimaryWrap,wide&&s.quranPrimaryWrapWide]}><LinearGradient colors={['#292744','#474188']} style={s.quranPrimaryAction}><View style={{flex:1}}><Text style={s.readKicker}>{position?'RESUME YOUR MUSHAF':'MUSHAF READER'}</Text><Text style={s.quranPrimaryTitle}>{position?`Page ${position.page||1}`:'Open the Mushaf'}</Text><Text style={s.quranPrimaryBody}>{position?`${position.surahName} · ${position.verseKey}`:'A calm, page-first reading experience'}</Text></View><ToolGraphic tool="Mushaf Pages" size={76}/></LinearGradient></MotionPress>{readActions.map(item=><MotionPress key={item.label} onPress={()=>navigation.navigate(item.screen)} style={[s.quranNavWrap,wide&&s.quranNavWrapWide]}><View style={s.quranNavCard}><ToolGraphic tool={item.label} size={52}/><Text style={s.quranNavTitle}>{item.title}</Text><Text numberOfLines={1} style={s.quranNavCaption}>{item.caption}</Text></View></MotionPress>)}</View>
+ <Section title="Listen and recite"/>
+ <MotionPress onPress={()=>navigation.navigate('Quran Audio')} style={{width:'100%'}}><View style={s.audioEntryInner}><ToolGraphic tool="Recitations" size={62}/><View style={{flex:1}}><Text style={s.quranStudyTitle}>Quran audio</Text><Text style={s.quranStudyCaption}>{audioReciter} · verse-by-verse recitation, translation audio and playlists</Text></View>{ico('chevron-forward',18,C.green)}</View></MotionPress>
+
  <Section title="Study and understand"/>
  <SlidingCards label="Quran study tools" items={studyTools} cardWidth={studyCardWidth} renderItem={(item:any)=><MotionPress onPress={()=>navigation.navigate(item.screen)} style={{width:'100%'}}><View style={s.quranStudyCard}><View style={s.quranStudyTop}><ToolGraphic tool={item.label} size={67}/><View style={s.studyNumber}>{ico('arrow-forward',16,C.green)}</View></View><Text style={s.quranStudyTitle}>{item.title}</Text><Text style={s.quranStudyCaption}>{item.caption}</Text></View></MotionPress>}/>
  <Section title="Reading preferences"/>
@@ -274,7 +281,7 @@ function ReaderScreen({route,navigation}:any){
  const chapter:Chapter=route.params.chapter;const initial=route.params?.mode||'both';const focusVerse=route.params?.focusVerse;const{preferences,update}=useQuranPreferences();const[showArabic,setShowArabic]=useState(initial!=='english');const[showEnglish,setShowEnglish]=useState(initial!=='arabic'&&preferences.showTranslation);const[verses,setVerses]=useState<Verse[]>([]);const[bookmarks,setBookmarks]=useState<QuranBookmark[]>([]);const[error,setError]=useState('');const[cached,setCached]=useState(false);const scrollRef=useRef<any>(null);const didRestore=useRef(false);const{rtl}=useLanguage();const focusAyah=Number(focusVerse?.split(':')[1]||1);const cacheKey=`${chapter.id}:${preferences.scriptEdition}:${preferences.translationEdition}`;
  const load=async()=>{setError('');const local=await loadSurahCache(cacheKey) as Verse[]|null;if(local){setVerses(local);setCached(true)}try{const fresh=await getVerses(chapter.id,{script:preferences.scriptEdition,translation:preferences.translationEdition});setVerses(fresh);setCached(false);await saveSurahCache(cacheKey,fresh)}catch(e:any){if(!local)setError(e.message)}};useEffect(()=>{didRestore.current=false;load();loadBookmarks().then(setBookmarks)},[chapter.id,preferences.scriptEdition,preferences.translationEdition]);useEffect(()=>{if(preferences.readingMode==='mushaf'&&verses.length){const selected=verses.find(v=>v.verse_key===focusVerse)||verses[0];navigation.replace('Mushaf Page',{page:selected.page||1,focusVerse})}},[preferences.readingMode,verses.length]);const toggle=(kind:'ar'|'en')=>{if(kind==='ar'){if(showArabic&&!showEnglish)return;setShowArabic(!showArabic)}else{if(showEnglish&&!showArabic)return;setShowEnglish(!showEnglish)}};
  const bookmark=async(v:Verse)=>setBookmarks(await toggleBookmark({verseKey:v.verse_key,surahId:chapter.id,surahName:chapter.name_simple,arabic:v.text_uthmani,translation:v.translation,savedAt:Date.now()}));const mark=async(v:Verse)=>{await saveReadingPosition({surahId:chapter.id,surahName:chapter.name_simple,verseKey:v.verse_key,ayah:Number(v.verse_key.split(':')[1]),page:v.page,updatedAt:Date.now()});Alert.alert('Reading position saved',`${chapter.name_simple} ${v.verse_key}`)};const share=(v:Verse)=>Share.share({message:`${v.text_uthmani}\n\n${v.translation||''}\n\nQuran ${v.verse_key} · ${preferences.translationName}`});
- return <Page><View style={s.readerBar}><IconButton name={rtl?'arrow-forward':'arrow-back'} onPress={()=>navigation.goBack()}/><View style={{alignItems:'center'}}><Text style={s.readerName}>{chapter.name_simple}</Text><Text style={s.meta}>{cached?'Available offline · ':''}{chapter.verses_count} verses</Text></View><Pressable onPress={()=>navigation.navigate('Reader Settings')} style={s.iconBtn}>{ico('options-outline',20,C.ink)}</Pressable></View><View style={s.readerProgress}><View style={[s.preloadFill,{width:`${Math.min(100,focusAyah/Math.max(1,chapter.verses_count)*100)}%`} as any]}/></View><ScrollView ref={scrollRef} contentContainerStyle={s.readerScroll} showsVerticalScrollIndicator={false}><LinearGradient colors={['#2A2849','#5146A4']} style={s.surahHead}><LiveBadge source={cached?'DEVICE CACHE':'AL QURAN CLOUD'}/><Text style={s.surahHeadAr}>{chapter.name_arabic}</Text><Text style={s.surahHeadEn}>{chapter.translated_name?.name}</Text><Text style={s.bismillah}>بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</Text></LinearGradient><View style={s.readerModes}><Pressable accessibilityRole="checkbox" accessibilityState={{checked:showArabic}} onPress={()=>toggle('ar')} style={[s.readerMode,showArabic&&s.readerModeActive]}><ToolGraphic tool="Arabic Quran" size={42}/><Text style={s.readerModeText}>Arabic</Text></Pressable><Pressable accessibilityRole="checkbox" accessibilityState={{checked:showEnglish}} onPress={()=>toggle('en')} style={[s.readerMode,showEnglish&&s.readerModeActive]}><ToolGraphic tool="English meaning" size={42}/><Text style={s.readerModeText}>Translation</Text></Pressable></View>{error?<ErrorState message={error} retry={load}/>:!verses.length?<Spinner/>:verses.map(v=>{const saved=bookmarks.some(x=>x.verseKey===v.verse_key);return <View key={v.id} onLayout={event=>{if(focusVerse===v.verse_key&&!didRestore.current){didRestore.current=true;const y=event.nativeEvent.layout.y;setTimeout(()=>scrollRef.current?.scrollTo({y:Math.max(0,y-88),animated:false}),40)}}} style={[s.ayah,preferences.readingMode==='continuous'&&s.ayahContinuous,focusVerse===v.verse_key&&s.ayahSelected]}><View style={s.ayahTop}><Text style={s.ayahNo}>{v.verse_key}</Text><View style={s.ayahActions}><Pressable accessibilityLabel={`Play verse ${v.verse_key}`} onPress={()=>v.audio&&Linking.openURL(v.audio)}>{ico('play-circle',24,C.green)}</Pressable><Pressable accessibilityLabel={`${saved?'Remove bookmark from':'Bookmark'} verse ${v.verse_key}`} onPress={()=>bookmark(v)}>{ico(saved?'bookmark':'bookmark-outline',20,C.green)}</Pressable><Pressable accessibilityLabel={`More actions for verse ${v.verse_key}`} onPress={()=>navigation.navigate('Ayah Actions',{verse:v,chapter})}>{ico('ellipsis-horizontal-circle-outline',21,C.green)}</Pressable></View></View>{showArabic&&(preferences.scriptEdition==='quran-tajweed'?<TajweedText text={v.text_uthmani} style={[s.ayahAr,{fontSize:preferences.fontSize,lineHeight:preferences.fontSize*preferences.lineHeight,fontFamily:preferences.arabicFont==='amiri'?'Amiri_400Regular':'NotoNaskhArabic_400Regular',includeFontPadding:false}]}/>:<Text style={[s.ayahAr,{fontSize:preferences.fontSize,lineHeight:preferences.fontSize*preferences.lineHeight,fontFamily:preferences.arabicFont==='amiri'?'Amiri_400Regular':'NotoNaskhArabic_400Regular',includeFontPadding:false}]}>{v.text_uthmani}</Text>)}{showEnglish&&<Text style={[s.ayahTranslation,!showArabic&&{borderTopWidth:0,marginTop:8,paddingTop:0}]}>{v.translation}</Text>}<View style={s.ayahFooter}><Text style={s.ayahMeta}>Juz {v.juz} · Page {v.page} · {preferences.translationName}</Text><Pressable onPress={()=>mark(v)}><Text style={s.sectionAction}>Mark position</Text></Pressable></View></View>})}</ScrollView></Page>
+ return <Page><View style={s.readerBar}><IconButton name={rtl?'arrow-forward':'arrow-back'} onPress={()=>navigation.goBack()}/><View style={{alignItems:'center'}}><Text style={s.readerName}>{chapter.name_simple}</Text><Text style={s.meta}>{cached?'Available offline · ':''}{chapter.verses_count} verses</Text></View><View style={s.readerHeaderActions}><Pressable accessibilityLabel="Play this Surah" onPress={()=>{void playSurahFromReader(chapter)}} style={s.iconBtn}>{ico('play-circle',20,C.ink)}</Pressable><Pressable accessibilityLabel="Reader settings" onPress={()=>navigation.navigate('Reader Settings')} style={s.iconBtn}>{ico('options-outline',20,C.ink)}</Pressable></View></View><View style={s.readerProgress}><View style={[s.preloadFill,{width:`${Math.min(100,focusAyah/Math.max(1,chapter.verses_count)*100)}%`} as any]}/></View><ScrollView ref={scrollRef} contentContainerStyle={s.readerScroll} showsVerticalScrollIndicator={false}><LinearGradient colors={['#2A2849','#5146A4']} style={s.surahHead}><LiveBadge source={cached?'DEVICE CACHE':'AL QURAN CLOUD'}/><Text style={s.surahHeadAr}>{chapter.name_arabic}</Text><Text style={s.surahHeadEn}>{chapter.translated_name?.name}</Text><Text style={s.bismillah}>بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</Text></LinearGradient><View style={s.readerModes}><Pressable accessibilityRole="checkbox" accessibilityState={{checked:showArabic}} onPress={()=>toggle('ar')} style={[s.readerMode,showArabic&&s.readerModeActive]}><ToolGraphic tool="Arabic Quran" size={42}/><Text style={s.readerModeText}>Arabic</Text></Pressable><Pressable accessibilityRole="checkbox" accessibilityState={{checked:showEnglish}} onPress={()=>toggle('en')} style={[s.readerMode,showEnglish&&s.readerModeActive]}><ToolGraphic tool="English meaning" size={42}/><Text style={s.readerModeText}>Translation</Text></Pressable></View>{error?<ErrorState message={error} retry={load}/>:!verses.length?<Spinner/>:verses.map(v=>{const saved=bookmarks.some(x=>x.verseKey===v.verse_key);return <View key={v.id} onLayout={event=>{if(focusVerse===v.verse_key&&!didRestore.current){didRestore.current=true;const y=event.nativeEvent.layout.y;setTimeout(()=>scrollRef.current?.scrollTo({y:Math.max(0,y-88),animated:false}),40)}}} style={[s.ayah,preferences.readingMode==='continuous'&&s.ayahContinuous,focusVerse===v.verse_key&&s.ayahSelected]}><View style={s.ayahTop}><Text style={s.ayahNo}>{v.verse_key}</Text><View style={s.ayahActions}><Pressable accessibilityLabel={`Play verse ${v.verse_key}`} onPress={()=>{void playFromReader(chapter,v)}}>{ico('play-circle',24,C.green)}</Pressable><Pressable accessibilityLabel={`${saved?'Remove bookmark from':'Bookmark'} verse ${v.verse_key}`} onPress={()=>bookmark(v)}>{ico(saved?'bookmark':'bookmark-outline',20,C.green)}</Pressable><Pressable accessibilityLabel={`More actions for verse ${v.verse_key}`} onPress={()=>navigation.navigate('Ayah Actions',{verse:v,chapter})}>{ico('ellipsis-horizontal-circle-outline',21,C.green)}</Pressable></View></View>{showArabic&&(preferences.scriptEdition==='quran-tajweed'?<TajweedText text={v.text_uthmani} style={[s.ayahAr,{fontSize:preferences.fontSize,lineHeight:preferences.fontSize*preferences.lineHeight,fontFamily:preferences.arabicFont==='amiri'?'Amiri_400Regular':'NotoNaskhArabic_400Regular',includeFontPadding:false}]}/>:<Text style={[s.ayahAr,{fontSize:preferences.fontSize,lineHeight:preferences.fontSize*preferences.lineHeight,fontFamily:preferences.arabicFont==='amiri'?'Amiri_400Regular':'NotoNaskhArabic_400Regular',includeFontPadding:false}]}>{v.text_uthmani}</Text>)}{showEnglish&&<Text style={[s.ayahTranslation,!showArabic&&{borderTopWidth:0,marginTop:8,paddingTop:0}]}>{v.translation}</Text>}<View style={s.ayahFooter}><Text style={s.ayahMeta}>Juz {v.juz} · Page {v.page} · {preferences.translationName}</Text><Pressable onPress={()=>mark(v)}><Text style={s.sectionAction}>Mark position</Text></Pressable></View></View>})}</ScrollView></Page>
 }
 function TranslationScreen({navigation}:any){const{preferences,update}=useQuranPreferences();const[editions,setEditions]=useState<QuranEdition[]>([]);const[query,setQuery]=useState('');const[language,setLanguage]=useState('en');const[error,setError]=useState('');useEffect(()=>{getQuranEditions().then(setEditions).catch(e=>setError(e.message))},[]);const languages=[['en','English'],['ur','Urdu'],['fr','French'],['tr','Turkish'],['id','Indonesian'],['ru','Russian'],['zh','Chinese']];const shown=editions.filter(e=>e.language===language&&`${e.englishName} ${e.name}`.toLowerCase().includes(query.toLowerCase()));return <Page><ToolBar title="Translation" navigation={navigation}/><ScrollView contentContainerStyle={s.dataPage}><ToolGraphic tool="Translations" size={76}/><Text style={s.dataTitle}>Choose a translation</Text><Text style={s.intro}>Translations explain meaning and do not replace the Arabic Quran. Edition attribution remains visible in the reader.</Text><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap:7}}>{languages.map(([code,name])=><ChoicePill key={code} label={name} selected={language===code} onPress={()=>setLanguage(code)}/>)}</ScrollView><View style={[s.search,{marginTop:13}]}>{ico('search-outline',18,C.muted)}<TextInput value={query} onChangeText={setQuery} placeholder="Search translator or edition" style={s.searchInput}/></View>{error?<ErrorState message={error}/>:!editions.length?<Spinner/>:<View style={s.settings}>{shown.map(e=><Pressable key={e.identifier} onPress={async()=>{await update({translationEdition:e.identifier,translationName:e.englishName,translationLanguage:languages.find(x=>x[0]===e.language)?.[1]||e.language});navigation.goBack()}} style={s.translationRow}><View style={s.languageBadge}><Text style={s.languageFlag}>{editionFlag(e.language)}</Text><Text style={s.languageBadgeText}>{e.language.toUpperCase()}</Text></View><View style={{flex:1}}><Text style={s.settingName}>{e.englishName}</Text><Text style={s.meta}>{e.name} · {e.identifier}</Text></View>{ico(preferences.translationEdition===e.identifier?'checkmark-circle':'ellipse-outline',20,preferences.translationEdition===e.identifier?C.green:C.muted)}</Pressable>)}</View>}</ScrollView></Page>}
 
@@ -311,14 +318,15 @@ function HifzScreen({navigation}:any){const[chapters,setChapters]=useState<Chapt
 
 function HifzPracticeScreen({navigation}:any){const{preferences}=useQuranPreferences();const[status,setStatus]=useState<Record<number,HifzStatus>>({});const[verses,setVerses]=useState<Verse[]>([]);const[index,setIndex]=useState(0);const[revealed,setRevealed]=useState(false);const[error,setError]=useState('');const[surah,setSurah]=useState(112);const load=async()=>{setError('');try{const saved=await loadHifz();setStatus(saved);const candidates=Object.keys(saved).map(Number).filter(id=>saved[id]!=='not-started');const id=candidates.length?candidates[Math.floor(Math.random()*candidates.length)]:112;setSurah(id);setVerses(await getVerses(id,{script:preferences.scriptEdition,translation:preferences.translationEdition}));setIndex(0);setRevealed(false)}catch(e:any){setError(e.message)}};useEffect(()=>{load()},[]);const next=()=>{setRevealed(false);setIndex(value=>value+1<verses.length?value+1:0)};const mark=async(value:HifzStatus)=>{const updated={...status,[surah]:value};setStatus(updated);await saveHifz(updated);next()};const verse=verses[index];return <Page><ToolBar title="Hifz recall practice" navigation={navigation}/><ScrollView contentContainerStyle={s.dataPage}><ToolGraphic tool="Hifz" size={72}/><Text style={s.dataTitle}>Recall before you reveal</Text><Text style={s.intro}>Read the meaning and reference, recite from memory, then reveal the verified Arabic text.</Text>{error?<ErrorState message={error} retry={load}/>:!verse?<Spinner/>:<><View style={s.recallCard}><Text style={s.dataMeta}>QURAN {verse.verse_key} · VERSE {index+1} OF {verses.length}</Text><Text style={s.recallPrompt}>{verse.translation}</Text>{revealed?(preferences.scriptEdition==='quran-tajweed'?<TajweedText text={verse.text_uthmani} style={s.recallArabic}/>:<Text style={s.recallArabic}>{verse.text_uthmani}</Text>):<Pressable accessibilityLabel="Reveal Arabic verse" onPress={()=>setRevealed(true)} style={s.revealArea}>{ico('eye-outline',27,C.green)}<Text style={s.sectionAction}>Reveal Arabic</Text></Pressable>}</View>{revealed&&<View style={s.actionRow}><Pressable onPress={()=>mark('revising')} style={s.secondary}><Text style={s.secondaryText}>Review again</Text></Pressable><Pressable onPress={()=>mark('memorized')} style={s.primary}><Text style={s.primaryText}>Remembered</Text></Pressable><Pressable onPress={next} style={s.secondary}><Text style={s.secondaryText}>Skip</Text></Pressable></View>}</>}</ScrollView></Page>}
 
-function QuranStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="QuranHome" component={QuranHome}/><Stack.Screen name="Reader" component={ReaderScreen}/><Stack.Screen name="Translations" component={TranslationScreen}/><Stack.Screen name="Quran Search" component={QuranSearchScreen}/><Stack.Screen name="Bookmarks" component={BookmarkScreen}/><Stack.Screen name="Notes" component={NotesScreen}/><Stack.Screen name="Note Editor" component={NoteEditor}/><Stack.Screen name="Reader Settings" component={ReaderSettingsScreen}/><Stack.Screen name="Ayah Actions" component={AyahActionsScreen}/><Stack.Screen name="Tafsir Compare" component={TafsirCompareScreen}/><Stack.Screen name="Mushaf Page" component={MushafPageScreen}/><Stack.Screen name="Quran Topics" component={QuranTopicsScreen}/><Stack.Screen name="Topic Detail" component={TopicDetailScreen}/><Stack.Screen name="Quran Vocabulary" component={VocabularyScreen}/><Stack.Screen name="Tajweed Study" component={TajweedStudyScreen}/><Stack.Screen name="Juz Directory" component={JuzDirectoryScreen}/><Stack.Screen name="Juz Reader" component={JuzReaderScreen}/><Stack.Screen name="Hizb Directory" component={HizbDirectoryScreen}/><Stack.Screen name="Hizb Reader" component={HizbReaderScreen}/><Stack.Screen name="Reading Plans" component={ReadingPlansScreen}/><Stack.Screen name="Quran Preload" component={QuranPreloadScreen}/><Stack.Screen name="Hifz" component={HifzScreen}/><Stack.Screen name="Hifz Practice" component={HifzPracticeScreen}/></Stack.Navigator>}
+function QuranStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="QuranHome" component={QuranHome}/><Stack.Screen name="Reader" component={ReaderScreen}/><Stack.Screen name="Translations" component={TranslationScreen}/><Stack.Screen name="Quran Search" component={QuranSearchScreen}/><Stack.Screen name="Bookmarks" component={BookmarkScreen}/><Stack.Screen name="Notes" component={NotesScreen}/><Stack.Screen name="Note Editor" component={NoteEditor}/><Stack.Screen name="Reader Settings" component={ReaderSettingsScreen}/><Stack.Screen name="Ayah Actions" component={AyahActionsScreen}/><Stack.Screen name="Tafsir Compare" component={TafsirCompareScreen}/><Stack.Screen name="Mushaf Page" component={MushafPageScreen}/><Stack.Screen name="Quran Topics" component={QuranTopicsScreen}/><Stack.Screen name="Topic Detail" component={TopicDetailScreen}/><Stack.Screen name="Quran Vocabulary" component={VocabularyScreen}/><Stack.Screen name="Tajweed Study" component={TajweedStudyScreen}/><Stack.Screen name="Juz Directory" component={JuzDirectoryScreen}/><Stack.Screen name="Juz Reader" component={JuzReaderScreen}/><Stack.Screen name="Hizb Directory" component={HizbDirectoryScreen}/><Stack.Screen name="Hizb Reader" component={HizbReaderScreen}/><Stack.Screen name="Reading Plans" component={ReadingPlansScreen}/><Stack.Screen name="Quran Preload" component={QuranPreloadScreen}/><Stack.Screen name="Hifz" component={HifzScreen}/><Stack.Screen name="Hifz Practice" component={HifzPracticeScreen}/><Stack.Screen name="Quran Audio" component={AudioCenterScreen}/><Stack.Screen name="Audio Player" component={AudioPlayerScreen}/></Stack.Navigator>}
 
 const libraryGroups=[
   {label:'REMEMBER',title:'Daily remembrance',items:[['hand-left-outline','Duas','Hisn al-Muslim by occasion'],['radio-outline','Tasbih','A quiet, tactile dhikr counter'],['sparkles-outline','99 Names','Learn and reflect on the Beautiful Names']]},
+  {label:'LISTEN',title:'Recitation and audio',items:[['radio-outline','Quran Audio','Reciters, translation audio and playlists']]},
   {label:'LEARN',title:'Knowledge with sources',items:[['chatbubble-ellipses-outline','Hadith','Daily teaching with collection reference']]},
   {label:'PLAN & NEARBY',title:'Practical tools',items:[['calculator-outline','Zakat','Estimate eligible wealth with clarity'],['business-outline','Mosques','Search the live public directory']]},
 ];
-function ExploreHome({navigation}:any){const {width}=useWindowDimensions();const wide=width>=850;let index=0;return <Page><ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}><TopBar overline="PRIVATE · SOURCED · FREE" title="Library" right={<MotionGlyph name="sparkles-outline" size={20}/>}/><Text style={s.intro}>Remembrance, trusted learning and practical tools—organized by purpose rather than hidden in a feature grid.</Text>{libraryGroups.map(group=><View key={group.label}><Text style={s.libraryKicker}>{group.label}</Text><Text style={s.libraryHeading}>{group.title}</Text><View style={s.exploreGrid}>{group.items.map(([iconName,title,desc]:any)=>{const delay=index++*40;return <MotionPress key={title} onPress={()=>navigation.navigate(title)} style={[s.exploreCard,wide&&s.exploreCardWide]}><View style={s.exploreCardInner}><ToolGraphic tool={title} size={64}/><Text style={s.exploreTitle}>{title}</Text><Text style={s.exploreBody}>{desc}</Text><View style={s.exploreArrow}>{ico('arrow-forward',15,C.green)}</View></View></MotionPress>})}</View></View>)}<View style={s.apiPanel}><LiveBadge source="VERIFIED SOURCES"/><Text style={s.apiTitle}>Every text should show where it came from.</Text><Text style={s.apiText}>islamic.app · Al Quran Cloud · AlAdhan</Text></View></ScrollView></Page>}
+function ExploreHome({navigation}:any){const {width}=useWindowDimensions();const wide=width>=850;let index=0;return <Page><ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}><TopBar overline="PRIVATE · SOURCED · FREE" title="Library" right={<MotionGlyph name="sparkles-outline" size={20}/>}/><Text style={s.intro}>Remembrance, trusted learning and practical tools—organized by purpose rather than hidden in a feature grid.</Text>{libraryGroups.map(group=><View key={group.label}><Text style={s.libraryKicker}>{group.label}</Text><Text style={s.libraryHeading}>{group.title}</Text><View style={s.exploreGrid}>{group.items.map(([iconName,title,desc]:any)=>{const delay=index++*40;return <MotionPress key={title} onPress={()=>{const cross:any=({'Quran Audio':()=>navigation.navigate('Quran',{screen:'Quran Audio'})} as any)[title];if(cross)cross();else navigation.navigate(title)}} style={[s.exploreCard,wide&&s.exploreCardWide]}><View style={s.exploreCardInner}><ToolGraphic tool={title} size={64}/><Text style={s.exploreTitle}>{title}</Text><Text style={s.exploreBody}>{desc}</Text><View style={s.exploreArrow}>{ico('arrow-forward',15,C.green)}</View></View></MotionPress>})}</View></View>)}<View style={s.apiPanel}><LiveBadge source="VERIFIED SOURCES"/><Text style={s.apiTitle}>Every text should show where it came from.</Text><Text style={s.apiText}>islamic.app · Al Quran Cloud · AlAdhan</Text></View></ScrollView></Page>}
 function ToolBar({title,navigation}:any){const{rtl}=useLanguage();return <View style={s.readerBar}><IconButton name={rtl?'arrow-forward':'arrow-back'} onPress={()=>navigation.goBack()}/><Text style={s.readerName}>{title}</Text><View style={{width:44}}/></View>}
 function QiblaScreen({navigation}:any){const{location}=useAppLocation();const[direction,setDirection]=useState<number|null>(null);const[error,setError]=useState('');const load=async()=>{if(!location)return;setDirection(null);setError('');try{setDirection(await getQibla(location.latitude,location.longitude))}catch(e:any){setError(e.message)}};useEffect(()=>{load()},[location?.latitude,location?.longitude]);return <Page><ToolBar title="Qibla direction" navigation={navigation}/>{!location?<View style={s.dataPage}><LocationPrompt compact/></View>:<View style={s.toolPage}><LiveBadge source="ISLAMIC.APP"/><Text style={s.toolEyebrow}>{location.label}</Text>{error?<ErrorState message={error} retry={load}/>:direction===null?<Spinner/>:<><View style={s.compass}><Text style={s.north}>N</Text><View style={[s.compassArrow,{transform:[{rotate:`${direction}deg`}]}]}>{ico('navigate',74,C.green)}</View><View style={s.kaaba}><View style={s.kaabaGold}/></View></View><Text style={s.direction}>{direction.toFixed(1)}°</Text><Text style={s.directionText}>clockwise from true north</Text><Pressable onPress={load} style={s.primary}><Text style={s.primaryText}>Refresh direction</Text></Pressable></>}</View>}</Page>}
 function TasbihScreen({navigation}:any){const[count,setCount]=useState(0);const tap=()=>{setCount(x=>x+1);if(Platform.OS!=='web')Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)};return <Page><ToolBar title="Tasbih" navigation={navigation}/><View style={s.toolPage}><Text style={s.toolEyebrow}>CURRENT DHIKR</Text><Text style={s.tasbihAr}>سُبْحَانَ ٱللَّٰهِ</Text><Text style={s.directionText}>Glory be to Allah</Text><Pressable onPress={tap} style={({pressed})=>[s.counter,pressed&&s.counterPress]}><Text style={s.counterNo}>{count}</Text><Text style={s.counterGoal}>GOAL · 33</Text></Pressable><View style={s.row}><Pressable onPress={()=>setCount(0)} style={s.secondary}>{ico('refresh-outline',19,C.green)}<Text style={s.secondaryText}>Reset</Text></Pressable><Pressable onPress={()=>setCount(33)} style={s.secondary}>{ico('flag-outline',19,C.green)}<Text style={s.secondaryText}>Complete</Text></Pressable></View></View></Page>}
@@ -358,8 +366,333 @@ function ChoicePill({label,selected,onPress}:{label:string;selected:boolean;onPr
 function SettingsScreen(){const{language,rtl,setLanguage}=useLanguage();const{settings,update}=useWorshipSettings();return <Page><ScrollView contentContainerStyle={s.scroll}><TopBar overline={rtl?'خصوصية بلا حساب':'PRIVATE BY DESIGN'} title={rtl?'الإعدادات':'Settings'} right={<MotionGlyph name="shield-checkmark-outline" size={20}/>}/><LinearGradient colors={['#2A2849','#5146A4']} style={s.privacyHero}><MotionGlyph name="shield-checkmark-outline" size={25} inverse/><View style={{flex:1}}><Text style={s.profileName}>{rtl?'لا حساب. لا تتبع.':'No account. No tracking.'}</Text><Text style={s.profileSub}>{rtl?'تبقى عبادتك خاصة وتظل تفضيلاتك على هذا الجهاز.':'Your worship stays private and your preferences remain on this device.'}</Text></View></LinearGradient><View style={s.privacyPoints}><View style={s.privacyPoint}>{ico('person-remove-outline',19,C.green)}<Text style={s.privacyPointText}>{rtl?'دون تسجيل':'No sign-up'}</Text></View><View style={s.privacyPoint}>{ico('cloud-offline-outline',19,C.green)}<Text style={s.privacyPointText}>{rtl?'دون ملف سحابي':'No cloud profile'}</Text></View><View style={s.privacyPoint}>{ico('analytics-outline',19,C.green)}<Text style={s.privacyPointText}>{rtl?'دون تتبع إعلاني':'No ad tracking'}</Text></View></View>
 <Section title={rtl?'حساب أوقات الصلاة':'Prayer calculation'}/><View style={s.preferencePanel}><View style={s.preferenceHead}><ToolGraphic tool="Qibla" size={54}/><View style={{flex:1}}><Text style={s.settingName}>{rtl?'طريقة الحساب':'Calculation method'}</Text><Text style={s.meta}>{rtl?'تُحفظ على هذا الجهاز وتُطبق على جميع مواقيت الصلاة.':'Saved on this device and applied throughout the app.'}</Text></View></View><View style={s.choiceGrid}>{PRAYER_METHODS.map(method=><ChoicePill key={method.id} label={method.name} selected={settings.calculationMethod===method.id} onPress={()=>update({calculationMethod:method.id,calculationMethodName:method.name})}/>)}</View><Text style={s.preferenceLabel}>{rtl?'المذهب لحساب العصر':'ASR MADHAB'}</Text><View style={s.choiceRow}><ChoicePill label="Shafi" selected={settings.madhab==='shafi'} onPress={()=>update({madhab:'shafi'})}/><ChoicePill label="Hanafi" selected={settings.madhab==='hanafi'} onPress={()=>update({madhab:'hanafi'})}/></View><Text style={s.preferenceLabel}>{rtl?'تنسيق الوقت':'TIME FORMAT'}</Text><View style={s.choiceRow}><ChoicePill label="12 hour" selected={settings.timeFormat==='12'} onPress={()=>update({timeFormat:'12'})}/><ChoicePill label="24 hour" selected={settings.timeFormat==='24'} onPress={()=>update({timeFormat:'24'})}/></View></View>
 <Section title={rtl?'التفضيلات':'Preferences'}/><View style={s.settings}><View style={s.setting}><MotionGlyph name="language-outline" size={19}/><View style={{flex:1}}><Text style={s.settingName}>{rtl?'English interface':'Arabic interface'}</Text><Text style={s.meta}>{rtl?'Left-to-right layout':'واجهة عربية من اليمين إلى اليسار'}</Text></View><View style={{direction:'ltr'} as any}><Switch value={language==='ar'} onValueChange={v=>setLanguage(v?'ar':'en')} trackColor={{true:C.green}}/></View></View><View style={s.setting}><ToolGraphic tool="Arabic Quran" size={44}/><View style={{flex:1}}><Text style={s.settingName}>{rtl?'قراءة القرآن':'Quran reading'}</Text><Text style={s.meta}>{rtl?'النص العثماني · صحيح إنترناشيونال':'Uthmani Arabic · Sahih International English'}</Text></View></View></View><View style={s.sourceCard}>{ico('server-outline',21,C.green)}<View><Text style={s.sourceTitle}>{rtl?'مصادر بيانات مباشرة بلا مفاتيح':'Live, keyless data sources'}</Text><Text style={s.sourceBody}>islamic.app · Al Quran Cloud · AlAdhan</Text></View></View></ScrollView></Page>}
+const navigationRef = createNavigationContainerRef<any>();
+const AUDIO_LANGUAGES: Record<string, string> = {
+  en: 'English', ur: 'Urdu', zh: 'Chinese', fr: 'French', ru: 'Russian',
+  kk: 'Kazakh', tr: 'Turkish', fa: 'Persian', uz: 'Uzbek', my: 'Burmese',
+};
+const AUDIO_RATES = [0.75, 1, 1.25, 1.5];
+
+function SeekBar({ position, duration, onSeek }: { position: number; duration: number; onSeek: (value: number) => void }) {
+  const width = useRef(0);
+  const [drag, setDrag] = useState<number | null>(null);
+  const clamp = (value: number) => Math.min(1, Math.max(0, value));
+  const ratio = duration > 0 ? clamp(position / duration) : 0;
+  const value = drag ?? ratio;
+  const responder = useRef(PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onMoveShouldSetPanResponder: () => true,
+    onPanResponderGrant: (event) => setDrag(clamp(event.nativeEvent.locationX / (width.current || 1))),
+    onPanResponderMove: (event) => setDrag(clamp(event.nativeEvent.locationX / (width.current || 1))),
+    onPanResponderRelease: (event) => { const next = clamp(event.nativeEvent.locationX / (width.current || 1)); setDrag(null); onSeek(next * duration); },
+  })).current;
+  return <View accessibilityRole="adjustable" accessibilityLabel="Seek within the recitation" onLayout={(event) => { width.current = event.nativeEvent.layout.width; }} {...responder.panHandlers} style={s.seekTrack}>
+    <View style={[s.seekFill, { width: `${value * 100}%` }]} />
+    <View style={[s.seekKnob, { left: `${value * 100}%` }]} />
+  </View>;
+}
+
+function MiniPlayer() {
+  const audio = useAudio();
+  const { rtl } = useLanguage();
+  if (!audio.track) return null;
+  const bottom = Platform.OS === 'ios' ? 100 : 85;
+  const open = () => { if (navigationRef.isReady()) (navigationRef as any).navigate('Quran', { screen: 'Audio Player' }); };
+  return <View style={[s.miniPlayer, { bottom, flexDirection: rtl ? 'row-reverse' : 'row' }]}>
+    <Pressable accessibilityRole="button" accessibilityLabel="Open the audio player" onPress={open} style={s.miniBody}>
+      <View style={s.miniArt}>{audio.buffering ? <ActivityIndicator color={C.green} /> : <ToolGraphic tool="Recitations" size={34} />}</View>
+      <View style={{ flex: 1 }}>
+        <Text numberOfLines={1} style={s.miniTitle}>{audio.track.title}</Text>
+        <Text numberOfLines={1} style={s.miniMeta}>{audio.track.performer}{audio.buffering ? ' · buffering' : audio.playing ? ' · playing' : ''}</Text>
+      </View>
+    </Pressable>
+    <Pressable accessibilityRole="button" accessibilityLabel={audio.playing ? 'Pause recitation' : 'Play recitation'} onPress={() => { void togglePlayback(); }} style={s.miniBtn}>{ico(audio.playing ? 'pause' : 'play', 19, C.white)}</Pressable>
+    <Pressable accessibilityRole="button" accessibilityLabel="Close the player" onPress={() => { void clearQueue(); }} style={s.miniGhost}>{ico('close', 17, C.muted)}</Pressable>
+  </View>;
+}
+
+async function playFromReader(chapter: Chapter, verse: Verse) {
+  try {
+    const settings = getAudioSettings();
+    const ayah = Number(String(verse.verse_key).split(':')[1] || 1);
+    const queue = await buildQueueForChapter(chapter.id, chapter.name_simple, settings);
+    const index = queue.findIndex((track) => track.kind === 'arabic' && track.ayahNumber === ayah);
+    await playQueue(queue, index < 0 ? 0 : index);
+  } catch (e: any) { Alert.alert('Audio unavailable', e.message); }
+}
+
+async function playSurahFromReader(chapter: Chapter) {
+  try {
+    const queue = await buildQueueForChapter(chapter.id, chapter.name_simple, getAudioSettings());
+    await playQueue(queue, 0);
+  } catch (e: any) { Alert.alert('Audio unavailable', e.message); }
+}
+
+function AudioCenterScreen({ navigation }: any) {
+  const [settings, setSettings] = useState<AudioSettings>(getAudioSettings());
+  const [editions, setEditions] = useState<{ arabic: AudioEdition[]; translation: AudioEdition[] }>({ arabic: [], translation: [] });
+  const [chapters, setChapters] = useState<Chapter[]>([]);
+  const [recent, setRecent] = useState<RecentPlay[]>([]);
+  const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const [session, setSession] = useState<AudioSession | null>(null);
+  const [surahReciters, setSurahReciters] = useState<SurahReciter[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [tab, setTab] = useState<'reciters' | 'translation' | 'surah' | 'saved'>('reciters');
+  const [query, setQuery] = useState('');
+  const [busy, setBusy] = useState('');
+  const [playlistName, setPlaylistName] = useState('');
+  const audio = useAudio();
+
+  const refreshLibrary = () => Promise.all([loadRecentPlays().then(setRecent), loadPlaylists().then(setPlaylists), loadAudioSession().then(setSession)]);
+  const load = () => {
+    setLoading(true); setError('');
+    Promise.all([loadAudioEditions(), getChapters(), loadSurahReciters()])
+      .then(([list, chapterList, reciterList]) => { setEditions(list); setChapters(chapterList); setSurahReciters(reciterList); })
+      .catch((e: any) => setError(e.message))
+      .finally(() => setLoading(false));
+  };
+  useEffect(() => { load(); void refreshLibrary(); }, []);
+  useEffect(() => { const unsubscribe = navigation.addListener('focus', () => { void refreshLibrary(); }); return unsubscribe; }, [navigation]);
+
+  const update = async (patch: Partial<AudioSettings>) => setSettings(await saveAudioSettings(patch));
+
+  const startChapter = async (chapter: Chapter, ayah = 1) => {
+    setBusy(`chapter-${chapter.id}`);
+    try {
+      const queue = await buildQueueForChapter(chapter.id, chapter.name_simple, settings);
+      const index = queue.findIndex((track) => track.kind === 'arabic' && track.ayahNumber === ayah);
+      await playQueue(queue, index < 0 ? 0 : index);
+      await refreshLibrary();
+    } catch (e: any) { Alert.alert('Audio unavailable', e.message); } finally { setBusy(''); }
+  };
+
+  const sample = async (edition: AudioEdition, kind: AudioTrackKind) => {
+    setBusy(`sample-${edition.identifier}`);
+    try {
+      const next: AudioSettings = kind === 'translation'
+        ? { ...settings, translationAudioEnabled: true, translationEdition: edition.identifier, translationName: edition.englishName, sequential: false }
+        : { ...settings, reciter: edition.identifier, reciterName: edition.englishName, translationAudioEnabled: false };
+      const queue = await buildSurahQueue(1, 'Al-Fatihah', next);
+      const index = kind === 'translation' ? queue.findIndex((track) => track.kind === 'translation') : 0;
+      await playQueue(queue, index < 0 ? 0 : index);
+    } catch (e: any) { Alert.alert('Sample unavailable', e.message); } finally { setBusy(''); }
+  };
+
+  const resumeSession = async () => {
+    if (!session) return;
+    setBusy('resume');
+    try {
+      const queue = await buildQueueForChapter(session.chapterId, session.chapterName, {
+        ...settings,
+        reciterMode: session.reciterMode || 'verse',
+        surahReciterId: session.surahReciterId ?? settings.surahReciterId,
+        reciter: session.edition,
+        translationEdition: session.translationEdition,
+        sequential: session.sequential,
+        translationAudioEnabled: session.sequential,
+      });
+      await playQueue(queue, session.index);
+      if (session.position > 1) await seekTo(session.position);
+      await refreshLibrary();
+    } catch (e: any) { Alert.alert('Could not resume', e.message); } finally { setBusy(''); }
+  };
+
+  const saveCurrentQueue = async () => {
+    if (!audio.queue.length) return;
+    setPlaylists(await savePlaylist(playlistName, audio.queue));
+    setPlaylistName('');
+  };
+
+  const needle = query.trim().toLowerCase();
+  const reciters = editions.arabic.filter((edition) => `${edition.englishName} ${edition.identifier}`.toLowerCase().includes(needle));
+  const translations = editions.translation.filter((edition) => `${edition.englishName} ${AUDIO_LANGUAGES[edition.language] || edition.language}`.toLowerCase().includes(needle));
+  const shownChapters = chapters.filter((chapter) => `${chapter.id} ${chapter.name_simple} ${chapter.translated_name?.name || ''}`.toLowerCase().includes(needle));
+  const selectedReciter = editions.arabic.find((edition) => edition.identifier === settings.reciter);
+
+  return <Page><ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
+    <ToolBar title="Quran audio" navigation={navigation} />
+    <LiveBadge source="AL QURAN CLOUD · ISLAMIC NETWORK" />
+    <Text style={s.dataTitle}>Listen by verse, Surah or playlist</Text>
+    <Text style={s.intro}>Recitation streams live from attributed public sources. Playback, recents and playlists stay on this device.</Text>
+
+    {!!session && <Pressable onPress={() => { void resumeSession(); }} style={s.continueBar}>
+      <ToolGraphic tool="Recitations" size={46} />
+      <View style={{ flex: 1 }}><Text style={s.dailyKicker}>CONTINUE LISTENING</Text><Text style={s.settingName}>{session.chapterName}</Text><Text style={s.meta}>{busy === 'resume' ? 'Preparing…' : `Verse queue · saved ${new Date(session.savedAt).toLocaleDateString()}`}</Text></View>
+      {ico('play-circle', 22, C.green)}
+    </Pressable>}
+
+    {!!audio.track && <Pressable onPress={() => navigation.navigate('Audio Player')} style={s.audioHero}>
+      <View style={s.audioHeroRow}>
+        <ToolGraphic tool="Recitations" size={54} />
+        <View style={{ flex: 1 }}><Text style={s.audioHeroKicker}>NOW PLAYING</Text><Text numberOfLines={1} style={s.audioHeroTitle}>{audio.track.title}</Text><Text numberOfLines={1} style={s.audioHeroMeta}>{audio.track.performer}</Text></View>
+        {ico('chevron-forward', 20, C.white)}
+      </View>
+    </Pressable>}
+
+    <View style={s.choiceRow}>
+      <ChoicePill label="Reciters" selected={tab === 'reciters'} onPress={() => { setTab('reciters'); setQuery(''); }} />
+      <ChoicePill label="Translation" selected={tab === 'translation'} onPress={() => { setTab('translation'); setQuery(''); }} />
+      <ChoicePill label="Surahs" selected={tab === 'surah'} onPress={() => { setTab('surah'); setQuery(''); }} />
+      <ChoicePill label="Saved" selected={tab === 'saved'} onPress={() => { setTab('saved'); setQuery(''); }} />
+    </View>
+
+    {loading ? <Spinner /> : !!error ? <ErrorState message={error} retry={load} /> : <>
+      {tab === 'reciters' && <>
+        <Section title="Recitation source" />
+        <View style={s.choiceRow}>
+          <ChoicePill label="Verse by verse" selected={settings.reciterMode === 'verse'} onPress={() => { void update({ reciterMode: 'verse' }); }} />
+          <ChoicePill label="Full Surah" selected={settings.reciterMode === 'surah'} onPress={() => { void update({ reciterMode: 'surah' }); }} />
+        </View>
+        <Text style={s.meta}>{settings.reciterMode === 'verse' ? 'Verse-by-verse files from Al Quran Cloud — one track per ayah, with translation audio and reader controls.' : 'Complete Surah recordings from MP3Quran — one continuous track per Surah.'}</Text>
+        <Section title={settings.reciterMode === 'verse' ? 'Arabic reciters' : 'Full-Surah reciters'} />
+        <View style={s.search}>{ico('search', 18, C.muted)}<TextInput accessibilityLabel="Search reciters" value={query} onChangeText={setQuery} style={s.searchInput} placeholder="Search a reciter" placeholderTextColor="#929B96" />{query.length > 0 && <Pressable accessibilityLabel="Clear reciter search" onPress={() => setQuery('')}>{ico('close-circle', 18, C.muted)}</Pressable>}</View>
+        <View style={s.settings}>{(settings.reciterMode === 'verse' ? reciters.map((edition) => <View key={edition.identifier} style={s.audioRow}>
+          <Pressable accessibilityRole="radio" accessibilityState={{ selected: settings.reciter === edition.identifier }} onPress={() => { void update({ reciter: edition.identifier, reciterName: edition.englishName }); }} style={s.audioRowMain}>
+            <ToolGraphic tool="Recitations" size={42} />
+            <View style={{ flex: 1 }}><Text style={s.settingName}>{edition.englishName}</Text><Text style={s.meta}>Verse by verse · {edition.identifier}</Text></View>
+            {ico(settings.reciter === edition.identifier ? 'checkmark-circle' : 'ellipse', 20, settings.reciter === edition.identifier ? C.green : C.muted)}
+          </Pressable>
+          <Pressable accessibilityLabel={`Play a sample from ${edition.englishName}`} onPress={() => { void sample(edition, 'arabic'); }} style={s.audioRowAction}>{busy === `sample-${edition.identifier}` ? <ActivityIndicator color={C.green} /> : ico('play-circle', 22, C.green)}</Pressable>
+        </View>) : surahReciters.filter((reciter) => reciter.name.toLowerCase().includes(needle)).map((reciter) => <View key={reciter.id} style={s.audioRow}>
+          <Pressable accessibilityRole="radio" accessibilityState={{ selected: settings.surahReciterId === reciter.id }} onPress={() => { void update({ surahReciterId: reciter.id, surahReciterName: reciter.name }); }} style={s.audioRowMain}>
+            <ToolGraphic tool="Recitations" size={42} />
+            <View style={{ flex: 1 }}><Text style={s.settingName}>{reciter.name}</Text><Text style={s.meta}>{reciter.rewaya}{reciter.surahTotal ? ` · ${reciter.surahTotal} Surahs` : ''}</Text></View>
+            {ico(settings.surahReciterId === reciter.id ? 'checkmark-circle' : 'ellipse', 20, settings.surahReciterId === reciter.id ? C.green : C.muted)}
+          </Pressable>
+          <Pressable accessibilityLabel={`Play a sample from ${reciter.name}`} onPress={() => { void startChapter({ id: 1, name_simple: 'Al-Fatihah', name_arabic: 'الفاتحة', verses_count: 7 } as Chapter, 1); }} style={s.audioRowAction}>{busy === 'chapter-1' ? <ActivityIndicator color={C.green} /> : ico('play-circle', 22, C.green)}</Pressable>
+        </View>))}</View>
+      </>}
+
+      {tab === 'translation' && <>
+        <Section title="Translation audio" />
+        <View style={s.settings}>
+          <View style={s.setting}>
+            <MotionGlyph name="language-outline" size={19} />
+            <View style={{ flex: 1 }}><Text style={s.settingName}>Translation audio</Text><Text style={s.meta}>Play the meaning after each verse</Text></View>
+            <View style={{ direction: 'ltr' } as any}><Switch value={settings.translationAudioEnabled} onValueChange={(value) => { void update({ translationAudioEnabled: value }); }} trackColor={{ true: C.green }} /></View>
+          </View>
+          {settings.translationAudioEnabled && <View style={s.setting}>
+            <MotionGlyph name="layers-outline" size={19} />
+            <View style={{ flex: 1 }}><Text style={s.settingName}>Arabic then translation</Text><Text style={s.meta}>Keep both sections in one queue</Text></View>
+            <View style={{ direction: 'ltr' } as any}><Switch value={settings.sequential} onValueChange={(value) => { void update({ sequential: value }); }} trackColor={{ true: C.green }} /></View>
+          </View>}
+        </View>
+        <Text style={s.preferenceLabel}>AVAILABLE LANGUAGES</Text>
+        <View style={s.settings}>{translations.map((edition) => <View key={edition.identifier} style={s.audioRow}>
+          <Pressable accessibilityRole="radio" accessibilityState={{ selected: settings.translationEdition === edition.identifier }} onPress={() => { void update({ translationEdition: edition.identifier, translationName: edition.englishName }); }} style={s.audioRowMain}>
+            <ToolGraphic tool="Translations" size={42} />
+            <View style={{ flex: 1 }}><Text style={s.settingName}>{AUDIO_LANGUAGES[edition.language] || edition.language.toUpperCase()}</Text><Text style={s.meta}>{edition.englishName}</Text></View>
+            {ico(settings.translationEdition === edition.identifier ? 'checkmark-circle' : 'ellipse', 20, settings.translationEdition === edition.identifier ? C.green : C.muted)}
+          </Pressable>
+          <Pressable accessibilityLabel={`Play a ${AUDIO_LANGUAGES[edition.language] || edition.language} sample`} onPress={() => { void sample(edition, 'translation'); }} style={s.audioRowAction}>{busy === `sample-${edition.identifier}` ? <ActivityIndicator color={C.green} /> : ico('play-circle', 22, C.green)}</Pressable>
+        </View>)}</View>
+        <View style={s.sourceCard}>{ico('information-circle', 21, C.green)}<View style={{ flex: 1 }}><Text style={s.sourceTitle}>Languages come from the source</Text><Text style={s.sourceBody}>Only languages published by Al Quran Cloud are listed. Others are not shown rather than faked.</Text></View></View>
+      </>}
+
+      {tab === 'surah' && <>
+        <Section title="Play a Surah" />
+        <View style={s.search}>{ico('search', 18, C.muted)}<TextInput accessibilityLabel="Search Surahs" value={query} onChangeText={setQuery} style={s.searchInput} placeholder="Search 114 Surahs" placeholderTextColor="#929B96" />{query.length > 0 && <Pressable accessibilityLabel="Clear Surah search" onPress={() => setQuery('')}>{ico('close-circle', 18, C.muted)}</Pressable>}</View>
+        <View style={s.settings}>{shownChapters.map((chapter) => <View key={chapter.id} style={s.audioRow}>
+          <Pressable onPress={() => { void startChapter(chapter, 1); }} style={s.audioRowMain}>
+            <View style={s.surahNo}><Text style={s.surahNoText}>{chapter.id}</Text></View>
+            <View style={{ flex: 1 }}><Text style={s.settingName}>{chapter.name_simple}</Text><Text style={s.meta}>{chapter.verses_count} verses · {chapter.translated_name?.name}</Text></View>
+          </Pressable>
+          <Pressable accessibilityLabel={`Play ${chapter.name_simple}`} onPress={() => { void startChapter(chapter, 1); }} style={s.audioRowAction}>{busy === `chapter-${chapter.id}` ? <ActivityIndicator color={C.green} /> : ico('play-circle', 22, C.green)}</Pressable>
+        </View>)}</View>
+      </>}
+
+      {tab === 'saved' && <>
+        <Section title="Recently played" action={recent.length ? 'Clear' : undefined} onPress={recent.length ? () => { void clearRecentPlays().then(() => setRecent([])); } : undefined} />
+        {!recent.length ? <Text style={s.meta}>Nothing played yet.</Text> : recent.map((item, index) => <Pressable key={`${item.chapterId}-${item.edition}-${index}`} onPress={() => { const chapter = chapters.find((c) => c.id === item.chapterId); if (chapter) void startChapter(chapter, item.ayahNumber); }} style={s.queueRow}>
+          <ToolGraphic tool="Recitations" size={38} />
+          <View style={{ flex: 1 }}><Text style={s.settingName}>{item.chapterName} · verse {item.ayahNumber}</Text><Text style={s.meta}>{item.performer}</Text></View>
+          {ico('play-circle', 20, C.green)}
+        </Pressable>)}
+        <Section title="Playlists" />
+        {!playlists.length ? <Text style={s.meta}>Save the current queue to build a playlist.</Text> : playlists.map((playlist) => <View key={playlist.id} style={s.queueRow}>
+          <Pressable onPress={() => { void playQueue(playlist.tracks, 0); }} style={s.audioRowMain}>
+            <ToolGraphic tool="Audio" size={38} />
+            <View style={{ flex: 1 }}><Text style={s.settingName}>{playlist.name}</Text><Text style={s.meta}>{playlist.tracks.length} tracks · saved locally</Text></View>
+          </Pressable>
+          <Pressable accessibilityLabel={`Delete ${playlist.name}`} onPress={() => { void deletePlaylist(playlist.id).then(setPlaylists); }} style={s.audioRowAction}>{ico('trash', 19, C.coral)}</Pressable>
+        </View>)}
+        {!!audio.queue.length && <View style={s.formCard}>
+          <Text style={s.preferenceLabel}>SAVE CURRENT QUEUE</Text>
+          <View style={s.fieldRow}>
+            <TextInput accessibilityLabel="Playlist name" value={playlistName} onChangeText={setPlaylistName} placeholder={audio.track ? audio.track.chapterName : 'Playlist name'} placeholderTextColor="#929B96" style={[s.textField, { flex: 1, marginTop: 0 }]} />
+            <Pressable onPress={() => { void saveCurrentQueue(); }} style={s.primarySmall}><Text style={s.primaryText}>Save</Text></Pressable>
+          </View>
+        </View>}
+      </>}
+    </>}
+
+    <View style={s.sourceCard}>{ico('server', 21, C.green)}<View style={{ flex: 1 }}><Text style={s.sourceTitle}>Sources</Text><Text style={s.sourceBody}>Verse-by-verse: Al Quran Cloud editions served by the Islamic Network CDN. Full-Surah: MP3Quran public reciter directory.</Text></View></View>
+    {settings.reciterMode === 'verse' ? (!!selectedReciter && <Text style={s.meta}>Selected reciter: {selectedReciter.englishName}</Text>) : <Text style={s.meta}>Selected full-Surah reciter: {settings.surahReciterName || 'Choose from the list above'} · {surahReciters.length} available</Text>}
+  </ScrollView></Page>;
+}
+
+function AudioPlayerScreen({ navigation }: any) {
+  const audio = useAudio();
+  const { rtl } = useLanguage();
+  const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const [name, setName] = useState('');
+  useEffect(() => { void loadPlaylists().then(setPlaylists); }, []);
+  const track = audio.track;
+  if (!track) return <Page><ToolBar title="Audio player" navigation={navigation} /><View style={s.dataPage}>
+    <ToolGraphic tool="Recitations" size={78} />
+    <Text style={s.dataTitle}>Nothing is playing</Text>
+    <Text style={s.intro}>Choose a reciter and a Surah from the audio center to start listening.</Text>
+    <Pressable onPress={() => navigation.goBack()} style={s.primary}><Text style={s.primaryText}>Open audio center</Text></Pressable>
+  </View></Page>;
+  const upcoming = audio.queue.slice(audio.index + 1, audio.index + 6);
+  return <Page><ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
+    <ToolBar title="Now playing" navigation={navigation} />
+    <View style={s.playerArt}>
+      <ToolGraphic tool="Recitations" size={92} />
+      <Text style={s.playerTitle}>{track.title}</Text>
+      <Text style={s.playerPerformer}>{track.performer}</Text>
+      <View style={s.trackBadge}><Text style={s.trackBadgeText}>{track.kind === 'translation' ? 'TRANSLATION' : 'ARABIC RECITATION'}</Text></View>
+    </View>
+    {!!track.text && <Text style={s.playerArabic}>{track.text}</Text>}
+    <View style={s.audioTimes}>
+      <Text style={s.meta}>{formatClock(audio.position)}</Text>
+      <Text style={s.meta}>{audio.buffering ? 'Buffering…' : formatClock(audio.duration)}</Text>
+    </View>
+    <SeekBar position={audio.position} duration={audio.duration} onSeek={(value) => { void seekTo(value); }} />
+    <View style={s.audioControls}>
+      <Pressable accessibilityLabel="Previous verse" onPress={() => { void previousTrack(); }} style={s.audioControlBtn}>{ico('play', 20, C.green)}</Pressable>
+      <Pressable accessibilityLabel={audio.playing ? 'Pause' : 'Play'} onPress={() => { void togglePlayback(); }} style={s.audioControlMain}>{audio.playing ? ico('pause', 26, C.white) : ico('play', 26, C.white)}</Pressable>
+      <Pressable accessibilityLabel="Next verse" onPress={() => { void nextTrack(); }} style={s.audioControlBtn}>{ico('play', 20, C.green)}</Pressable>
+      <Pressable accessibilityLabel={`Repeat mode: ${audio.repeat}`} onPress={() => setRepeatMode(audio.repeat === 'none' ? 'all' : audio.repeat === 'all' ? 'one' : 'none')} style={s.audioControlBtn}>{ico('repeat', 19, audio.repeat === 'none' ? C.muted : C.green)}<Text style={s.rateText}>{audio.repeat === 'one' ? '1' : audio.repeat === 'all' ? '∞' : '—'}</Text></Pressable>
+    </View>
+    <View style={s.row}>
+      <Pressable accessibilityLabel="Stop playback" onPress={() => { void stopPlayback(); }} style={s.secondary}>{ico('stop', 17, C.green)}<Text style={s.secondaryText}>Stop</Text></Pressable>
+      <Pressable accessibilityLabel="Clear the queue" onPress={() => { void clearQueue(); }} style={s.secondary}>{ico('trash', 17, C.green)}<Text style={s.secondaryText}>Clear queue</Text></Pressable>
+    </View>
+    <Text style={s.preferenceLabel}>SPEED</Text>
+    <View style={s.choiceRow}>{AUDIO_RATES.map((rate) => <ChoicePill key={rate} label={`${rate}×`} selected={audio.rate === rate} onPress={() => { void setPlaybackRate(rate); }} />)}</View>
+    <Section title={`Queue · ${audio.queue.length} tracks`} />
+    {audio.queue.map((item, index) => <Pressable key={`${item.id}-${index}`} onPress={() => { void selectQueueItem(index); }} style={[s.queueRow, index === audio.index && s.queueRowActive]}>
+      <Text style={s.queueIndex}>{index + 1}</Text>
+      <View style={{ flex: 1 }}><Text numberOfLines={1} style={s.settingName}>{item.title}</Text><Text style={s.meta}>{item.performer}</Text></View>
+      <Pressable accessibilityLabel={`Remove ${item.title} from the queue`} onPress={() => removeFromQueue(index)} style={s.audioRowAction}>{ico('close', 16, C.muted)}</Pressable>
+    </Pressable>)}
+    <View style={s.formCard}>
+      <Text style={s.preferenceLabel}>SAVE QUEUE AS PLAYLIST</Text>
+      <View style={s.fieldRow}>
+        <TextInput accessibilityLabel="Playlist name" value={name} onChangeText={setName} placeholder={track.chapterName} placeholderTextColor="#929B96" style={[s.textField, { flex: 1, marginTop: 0 }]} />
+        <Pressable onPress={() => { void savePlaylist(name, audio.queue).then((next) => { setPlaylists(next); setName(''); }); }} style={s.primarySmall}><Text style={s.primaryText}>Save</Text></Pressable>
+      </View>
+      {!!playlists.length && <Text style={s.meta}>{playlists.length} playlist{playlists.length > 1 ? 's' : ''} stored on this device.</Text>}
+    </View>
+    <View style={s.sourceCard}>{ico('server', 21, C.green)}<View style={{ flex: 1 }}><Text style={s.sourceTitle}>Streamed with attribution</Text><Text style={s.sourceBody}>{track.performer} · Al Quran Cloud audio editions served by the Islamic Network CDN.</Text></View></View>
+    <View style={{ height: 40 }} />
+  </ScrollView></Page>;
+}
+
 function Tabs(){const{width}=useWindowDimensions();const{rtl}=useLanguage();const web=Platform.OS==='web';const barWidth=Math.min(Math.max(width-24,280),640);const responsiveBar:any=web?{left:'50%' as any,right:undefined,width:barWidth,transform:[{translateX:-barWidth/2}],direction:rtl?'rtl':'ltr'}:{};const labels:any={Today:'اليوم',Prayer:'الصلاة',Quran:'القرآن',Library:'المكتبة',Settings:'الإعدادات'};return <Tab.Navigator screenOptions={({route})=>({headerShown:false,tabBarHideOnKeyboard:true,tabBarActiveTintColor:C.green,tabBarInactiveTintColor:'#8B909D',tabBarLabel:rtl?labels[route.name]:route.name,tabBarStyle:[s.tabbar,responsiveBar],tabBarItemStyle:{minWidth:0},tabBarLabelStyle:[s.tabLabel,width<360&&{fontSize:9}],tabBarIcon:({color,focused})=>ico(({Today:focused?'home':'home-outline',Prayer:focused?'time':'time-outline',Quran:focused?'book':'book-outline',Library:focused?'grid':'grid-outline',Settings:focused?'settings':'settings-outline'}as any)[route.name],width<360?19:21,color)})}><Tab.Screen name="Today" component={HomeScreen}/><Tab.Screen name="Prayer" component={PrayerStack}/><Tab.Screen name="Quran" component={QuranStack}/><Tab.Screen name="Library" component={ExploreStack}/><Tab.Screen name="Settings" component={SettingsScreen}/></Tab.Navigator>}
-export default function App(){const[fontsLoaded]=useFonts({DMSans_400Regular,DMSans_600SemiBold,DMSans_700Bold,Newsreader_600SemiBold,NotoNaskhArabic_400Regular,NotoNaskhArabic_600SemiBold,Amiri_400Regular});useEffect(()=>{if(fontsLoaded)resumeSavedQuranPreload()},[fontsLoaded]);if(!fontsLoaded)return <SafeAreaView style={s.safe}><Spinner/></SafeAreaView>;return <LanguageProvider><QuranPreferencesProvider><WorshipSettingsProvider><LocationProvider><NavigationContainer><ExpoStatusBar style="dark"/><Tabs/></NavigationContainer></LocationProvider></WorshipSettingsProvider></QuranPreferencesProvider></LanguageProvider>}
+export default function App(){const[fontsLoaded]=useFonts({DMSans_400Regular,DMSans_600SemiBold,DMSans_700Bold,Newsreader_600SemiBold,NotoNaskhArabic_400Regular,NotoNaskhArabic_600SemiBold,Amiri_400Regular});useEffect(()=>{if(fontsLoaded){resumeSavedQuranPreload();void loadAudioSettings()}},[fontsLoaded]);if(!fontsLoaded)return <SafeAreaView style={s.safe}><Spinner/></SafeAreaView>;return <LanguageProvider><QuranPreferencesProvider><WorshipSettingsProvider><LocationProvider><NavigationContainer ref={navigationRef}><ExpoStatusBar style="dark"/><Tabs/><MiniPlayer/></NavigationContainer></LocationProvider></WorshipSettingsProvider></QuranPreferencesProvider></LanguageProvider>}
 
 const s=StyleSheet.create({
  safe:{flex:1,backgroundColor:C.bg,overflow:'hidden',paddingTop:Platform.OS==='android'?StatusBar.currentHeight:0},page:{flex:1,backgroundColor:C.bg},pageWide:{width:'100%',maxWidth:1180,alignSelf:'center'},scroll:{width:'100%',maxWidth:980,alignSelf:'center',paddingHorizontal:18,paddingTop:20,paddingBottom:112},row:{flexDirection:'row',alignItems:'center'},press:{opacity:.72,transform:[{scale:.98}]},loading:{padding:42,alignItems:'center',gap:10},loadingText:{color:C.muted,fontSize:12},error:{backgroundColor:'#F5EFEE',padding:22,borderRadius:22,alignItems:'center',marginVertical:12},errorIcon:{width:48,height:48,borderRadius:16,backgroundColor:'#EDE5E4',alignItems:'center',justifyContent:'center'},errorTitle:{color:C.ink,fontSize:16,fontFamily:'DMSans_600SemiBold',marginTop:10},errorText:{color:C.muted,textAlign:'center',fontSize:12,lineHeight:18,marginTop:4},retry:{backgroundColor:C.ink,paddingHorizontal:15,paddingVertical:9,borderRadius:12,marginTop:12},retryText:{color:C.white,fontSize:11,fontFamily:'DMSans_600SemiBold'},
@@ -381,5 +714,45 @@ const s=StyleSheet.create({
  libraryKicker:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10,letterSpacing:1.7,marginTop:23},libraryHeading:{color:C.ink,fontFamily:'Newsreader_600SemiBold',fontSize:23,marginTop:4,marginBottom:12},
  calendarIntro:{backgroundColor:C.deep,borderRadius:25,padding:20},calendarMonth:{color:C.white,fontFamily:'Newsreader_600SemiBold',fontSize:29,marginTop:17},calendarHijri:{color:'#D9D3F3',fontFamily:'DMSans_400Regular',fontSize:12,marginTop:3},weekHead:{flexDirection:'row',marginTop:17},weekLabel:{width:'14.285%',textAlign:'center',color:C.muted,fontFamily:'DMSans_700Bold',fontSize:11},calendarGrid:{flexDirection:'row',flexWrap:'wrap',marginTop:7,backgroundColor:C.white,borderRadius:22,padding:7,borderWidth:1,borderColor:C.line},calendarCell:{width:'14.285%',aspectRatio:1,alignItems:'center',justifyContent:'center',borderRadius:13},calendarToday:{backgroundColor:C.mint,borderWidth:1,borderColor:'#D7CFFF'},gregorianDay:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:15},hijriDay:{color:C.green,fontFamily:'DMSans_600SemiBold',fontSize:9,marginTop:2},calendarLegend:{flexDirection:'row',alignItems:'center',gap:7,marginTop:12},legendDot:{width:8,height:8,borderRadius:4,backgroundColor:C.green},
  ramadanHero:{borderRadius:27,padding:21,...shadow},ramadanArabic:{color:'#FFE3A4',fontFamily:'NotoNaskhArabic_600SemiBold',fontSize:36,marginTop:16},ramadanTitle:{color:C.white,fontFamily:'Newsreader_600SemiBold',fontSize:27},ramadanSub:{color:'#E3DEF7',fontFamily:'DMSans_400Regular',fontSize:12,lineHeight:18,marginTop:6,maxWidth:390},ramadanList:{backgroundColor:C.white,borderRadius:23,overflow:'hidden',borderWidth:1,borderColor:C.line},ramadanRow:{minHeight:78,flexDirection:'row',alignItems:'center',gap:10,paddingHorizontal:12,borderBottomWidth:1,borderColor:C.line},ramadanDay:{width:43,height:48,borderRadius:14,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},ramadanDayNo:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:17},ramadanDayLabel:{color:C.muted,fontFamily:'DMSans_700Bold',fontSize:7},ramadanDate:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:11},fastTime:{alignItems:'flex-end',minWidth:58},fastLabel:{color:C.muted,fontFamily:'DMSans_700Bold',fontSize:7,letterSpacing:.7},fastValue:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:10,marginTop:3},
- tabbar:{position:'absolute',left:12,right:12,bottom:10,height:Platform.OS==='ios'?82:67,paddingTop:8,paddingBottom:Platform.OS==='ios'?19:8,backgroundColor:C.card,borderTopWidth:1,borderWidth:1,borderColor:C.line,borderRadius:24,...shadow},tabLabel:{fontSize:10,fontFamily:'DMSans_600SemiBold',marginTop:2}
+ tabbar:{position:'absolute',left:12,right:12,bottom:10,height:Platform.OS==='ios'?82:67,paddingTop:8,paddingBottom:Platform.OS==='ios'?19:8,backgroundColor:C.card,borderTopWidth:1,borderWidth:1,borderColor:C.line,borderRadius:24,...shadow},tabLabel:{fontSize:10,fontFamily:'DMSans_600SemiBold',marginTop:2},
+ seekTrack:{height:26,justifyContent:'center',marginTop:6},
+ seekFill:{position:'absolute',left:0,height:5,borderRadius:3,backgroundColor:C.green},
+ seekKnob:{position:'absolute',top:7,width:13,height:13,borderRadius:7,backgroundColor:C.white,borderWidth:2,borderColor:C.green,marginLeft:-6},
+ miniPlayer:{position:'absolute',left:12,right:12,backgroundColor:C.card,borderRadius:20,paddingHorizontal:12,paddingVertical:9,alignItems:'center',borderWidth:1,borderColor:C.line,...shadow},
+ miniBody:{flex:1,flexDirection:'row',alignItems:'center',gap:10},
+ miniArt:{width:40,height:40,borderRadius:14,backgroundColor:C.mint,alignItems:'center',justifyContent:'center',overflow:'hidden'},
+ miniTitle:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:12},
+ miniMeta:{color:C.muted,fontSize:10,marginTop:2},
+ miniBtn:{width:44,height:44,borderRadius:22,backgroundColor:C.green,alignItems:'center',justifyContent:'center',marginLeft:8},
+ miniGhost:{width:34,height:34,borderRadius:17,alignItems:'center',justifyContent:'center',marginLeft:2},
+ audioRow:{flexDirection:'row',alignItems:'center',borderBottomWidth:1,borderColor:C.line},
+ audioRowMain:{flex:1,flexDirection:'row',alignItems:'center',gap:11,paddingVertical:11},
+ audioRowAction:{width:46,height:46,alignItems:'center',justifyContent:'center'},
+ audioHero:{backgroundColor:C.deep,borderRadius:22,padding:15,marginTop:16,...soft},
+ audioHeroRow:{flexDirection:'row',alignItems:'center',gap:12},
+ audioHeroKicker:{color:'#FFE2A1',fontFamily:'DMSans_700Bold',fontSize:8,letterSpacing:1.2},
+ audioHeroTitle:{color:C.white,fontFamily:'DMSans_700Bold',fontSize:13,marginTop:3},
+ audioHeroMeta:{color:'#C7C2E4',fontSize:10,marginTop:2},
+ playerArt:{backgroundColor:C.deep,borderRadius:26,padding:22,alignItems:'center',...shadow},
+ playerTitle:{color:C.white,fontFamily:'Newsreader_600SemiBold',fontSize:23,marginTop:12,textAlign:'center'},
+ playerPerformer:{color:'#C7C2E4',fontSize:11,marginTop:4},
+ trackBadge:{marginTop:12,backgroundColor:'rgba(255,255,255,.14)',borderRadius:12,paddingHorizontal:11,paddingVertical:6},
+ trackBadgeText:{color:'#FFE2A1',fontFamily:'DMSans_700Bold',fontSize:8,letterSpacing:1.1},
+ playerArabic:{color:C.ink,fontFamily:'NotoNaskhArabic_600SemiBold',fontSize:26,lineHeight:46,textAlign:'right',marginTop:18,direction:'rtl'} as any,
+ audioTimes:{flexDirection:'row',justifyContent:'space-between',marginTop:16},
+ audioControls:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:14,marginTop:14},
+ audioControlBtn:{width:52,height:52,borderRadius:26,backgroundColor:C.white,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,...soft},
+ audioControlMain:{width:72,height:72,borderRadius:36,backgroundColor:C.green,alignItems:'center',justifyContent:'center',...shadow},
+ rateText:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:9,marginTop:-2},
+ queueRow:{flexDirection:'row',alignItems:'center',gap:11,paddingVertical:11,borderBottomWidth:1,borderColor:C.line},
+ queueRowActive:{backgroundColor:C.mint,borderRadius:14,paddingHorizontal:8},
+ queueIndex:{width:24,color:C.muted,fontFamily:'DMSans_700Bold',fontSize:11,textAlign:'center'},
+ heroActions:{flexDirection:'row',alignItems:'center',gap:9,marginTop:14},
+ ghostHeroButton:{flexDirection:'row',alignItems:'center',gap:6,borderWidth:1,borderColor:'rgba(255,255,255,.42)',paddingHorizontal:13,paddingVertical:10,borderRadius:14},
+ ghostHeroText:{color:C.white,fontSize:10,fontFamily:'DMSans_700Bold'},
+ readerHeaderActions:{flexDirection:'row',alignItems:'center',gap:8},
+ audioEntryInner:{flexDirection:'row',alignItems:'center',gap:12,backgroundColor:C.card,borderRadius:22,padding:15,borderWidth:1,borderColor:C.line,...soft},
+ surahNo:{width:40,height:40,borderRadius:14,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},
+ surahNoText:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:12},
+
 });

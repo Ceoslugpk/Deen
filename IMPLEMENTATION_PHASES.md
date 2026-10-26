@@ -128,6 +128,21 @@ The complete application passes privacy, offline, localization, accessibility, r
   - [x] Dynamic Tafsir source/language selection with bounded offline Tafsir caching and verse browsing
   - [x] Hifz hide-and-peek recall practice and memory self-assessment
   - [x] Managed full-Quran preparation that persists across screens, resumes after restart when enabled, prioritizes continuation, skips cached Surahs, exposes progress, and pauses cleanly
-- [ ] Phase 3 — Not started
+- [ ] Phase 3 — In progress
+  - [x] Live reciter catalogue with search, filtering, sample playback and 28 verse-by-verse Arabic reciters
+  - [x] 243-reciter full-Surah directory (MP3Quran) with riwayah and Surah coverage, selected per mode
+  - [x] Translation audio in the ten languages the source publishes, with sequential Arabic-then-translation queue mode
+  - [x] Ayah, full-Surah, queue, next/previous, repeat none/one/all, speed and stop playback
+  - [x] Global mini player above the tab bar, page inset so no content is obscured, and full player with drag-to-seek, elapsed/duration and Arabic text
+  - [x] User playlists, recently played history, queue insertion, removal, direct selection and session resume
+  - [x] Reader integration: play this Surah and play a specific verse from the reader
+  - [x] Local persistence of reciter choice, translation choice, recents, playlists and last session
+  - [x] Lock-screen metadata and background audio session on native; honest no-op on web
+  - [x] Thirty-one missing interface icons drawn as real SVGs, replacing every generic fallback glyph
+  - [ ] Hadith collections, books, search, grading, saves and progress
+  - [ ] Dua and Adhkar categories with transliteration, copying and sharing
+  - [ ] Tasbih presets, targets, daily totals and history
+  - [ ] Names, Prophets, vocabulary and weekly summaries
+  - [ ] Quran download manager with validation and cleanup
 - [ ] Phase 4 — Not started
 - [ ] Phase 5 — Not started
