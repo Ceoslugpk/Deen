@@ -32,3 +32,7 @@ For production, review API terms, introduce persistent caching, add a dedicated 
 ## Visual system
 
 The interface uses a custom SVG icon system in `src/components/CustomIcon.tsx`, animated press states, and a multi-accent indigo, cyan, coral, saffron, and teal palette. The app has no account creation, profile, or tracking flow.
+
+## Product architecture
+
+The app now follows a five-part worship-first information architecture: Today, Prayer, Quran, Library, and Settings. Prayer contains live Qibla, Hijri calendar, Ramadan timetable, and mosque tools. The first run requires an explicit prayer location choice; there is no silent location fallback and no account system. Premium typography is bundled locally with DM Sans, Newsreader, and Noto Naskh Arabic.
