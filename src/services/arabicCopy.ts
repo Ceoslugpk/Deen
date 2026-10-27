@@ -946,7 +946,7 @@ const AR: Record<string, string> = {
   // The Tools screen, now that the prayer cluster has its own tab.
   'Calculate and find': 'الحساب والبحث',
   'Journeys and records': 'الرحلات والسجلات',
-  'Privacy lock': 'قفل الخصوصية',
+  'Show all': 'إظهار الكل',
   'What you work out, look up, or keep a record of — apart from the flow of the day.': 'ما تحسبه وتبحث عنه وتحفظ سِجله — بمعزلٍ عن مجرى يومك.',
   'Remembrance, trusted learning and step-by-step guidance—organized by purpose rather than hidden in a feature grid.': 'ذكرٌ، وتعلّمٌ موثوق، وإرشادٌ خطوة بخطوة — مرتّبة بالغاية، لا مخفية في شبكة من المزايا.',
 };
