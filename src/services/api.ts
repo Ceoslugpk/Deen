@@ -265,7 +265,7 @@ export async function getDuaCategories(): Promise<{ shortcuts: string[]; categor
     key: String(category.number),
     number: String(category.number),
     en: category.en,
-    ar: category.ar,
+    ar: String(category.ar || '').normalize('NFC'),
     count: Number(category.count) || 0,
   }));
   return { shortcuts, categories };

@@ -898,6 +898,11 @@ const AR: Record<string, string> = {
   'QURAN': 'القرآن',
   'JUZ': 'جزء',
   'Search faith, family, patience…': 'ابحث: إيمان، أسرة، صبر…',
+  'Root': 'الجذر',
+  'How a download is verified': 'كيف يُتحقَّق من التنزيل',
+  'Files are written to a temporary partial file first, checked against the size the server reported, and only then moved into place. A failed download is deleted rather than left half-written.': 'تُكتب الملفات أولًا في ملف مؤقت جزئي، ثم تُقارن بالحجم الذي أعلنه الخادم، وبعد ذلك فقط تُنقل إلى مكانها. والتنزيل الفاشل يُحذف ولا يُترك نصف مكتوب.',
+  'Ten verified collections with matched Arabic and English texts. Grading is shown where the source publishes it—Sahih al-Bukhari and Sahih Muslim carry no separate grade because the collection itself is the grading.': 'عشر مجموعات موثّقة بنصوص عربية وإنجليزية متقابلة. وتظهر درجة الحديث حيث ينشرها المصدر — وصحيح البخاري وصحيح مسلم لا درجة منفصلة لهما لأن المجموعة نفسها هي الدرجة.',
+
 };
 
 const PRAYERS: Record<string, string> = {

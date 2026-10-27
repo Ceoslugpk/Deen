@@ -36,7 +36,7 @@ const GROUPS = {
   quran: {
     tab: 'Quran',
     steps: [
-      ['Search', 'ابحث عن سورة|ابحث في النص'],
+      ['Search', 'بحث'],
       ['Bookmarks', 'المفضلة'],
       ['Notes', 'ملاحظات'],
       ['Topics', 'موضوعات'],
@@ -52,6 +52,8 @@ const GROUPS = {
   // the rest of the tools, and the screens behind them
   tools: {
     tab: 'Tools',
+    // the women's card only appears once the private area has been opened
+    seed: [['deen-womens-v1', JSON.stringify({ optedIn: true, cycles: [], nifas: [], purity: {}, qada: [] })]],
     steps: [
       ['Zakat', 'الزكاة'],
       ['Weekly Summary', 'ملخص الأسبوع'],
@@ -100,6 +102,15 @@ const GROUPS = {
   await page.waitForTimeout(2200);
   await page.evaluate(() => { const n = document.querySelector('[role="switch"][aria-label="Arabic interface"]'); if (n) n.click(); });
   await page.waitForTimeout(2600);
+  if (group.seed) {
+    await page.evaluate((entries) => { entries.forEach((entry) => localStorage.setItem(entry[0], entry[1])); }, group.seed);
+    await page.reload({ waitUntil: 'networkidle', timeout: 90000 });
+    await page.waitForTimeout(3500);
+    // the language is chosen for the session, so it has to be set again
+    await page.evaluate(HELPERS);
+    await page.evaluate(() => { const n = document.querySelector('[role="switch"][aria-label="Arabic interface"]'); if (n) n.click(); });
+    await page.waitForTimeout(2600);
+  }
   await page.evaluate(HELPERS);
 
   const tap = async (pattern) => {
