@@ -13,6 +13,24 @@ import { createNavigationContainerRef, NavigationContainer, useFocusEffect, useN
 const KFGQPCUthmanicHafs = require('./assets/fonts/KFGQPCUthmanicHafs.ttf');
 const IBMPlexSansArabic_400Regular = require('./assets/fonts/IBMPlexSansArabic-Regular.ttf');
 const IBMPlexSansArabic_600SemiBold = require('./assets/fonts/IBMPlexSansArabic-SemiBold.ttf');
+
+/**
+ * The interface faces live in the repository rather than in @expo-google-fonts.
+ *
+ * The web export copies every file under `assets/` into the bundle, but it did
+ * not copy the ones Metro resolved out of node_modules — the build asked for
+ * seven .ttf files under /assets/node_modules/@expo-google-fonts/ that were
+ * never written, and expo-font never resolved, so the app sat on its loading
+ * screen. Requiring them from here keeps every face the app needs inside the
+ * one directory the export is known to copy.
+ */
+const DMSans_400Regular = require('./assets/fonts/DMSans-Regular.ttf');
+const DMSans_600SemiBold = require('./assets/fonts/DMSans-SemiBold.ttf');
+const DMSans_700Bold = require('./assets/fonts/DMSans-Bold.ttf');
+const Newsreader_600SemiBold = require('./assets/fonts/Newsreader-SemiBold.ttf');
+const NotoNaskhArabic_400Regular = require('./assets/fonts/NotoNaskhArabic-Regular.ttf');
+const NotoNaskhArabic_600SemiBold = require('./assets/fonts/NotoNaskhArabic-SemiBold.ttf');
+const Amiri_400Regular = require('./assets/fonts/Amiri-Regular.ttf');
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import CustomIcon, { iconTheme } from './src/components/CustomIcon';
@@ -21,14 +39,7 @@ import Svg, { Defs, Ellipse, RadialGradient, Stop } from 'react-native-svg';
 import * as Location from 'expo-location';
 import * as Haptics from 'expo-haptics';
 import { StatusBar as ExpoStatusBar } from 'expo-status-bar';
-import { useFonts } from '@expo-google-fonts/dm-sans/useFonts';
-import { DMSans_400Regular } from '@expo-google-fonts/dm-sans/400Regular';
-import { DMSans_600SemiBold } from '@expo-google-fonts/dm-sans/600SemiBold';
-import { DMSans_700Bold } from '@expo-google-fonts/dm-sans/700Bold';
-import { Newsreader_600SemiBold } from '@expo-google-fonts/newsreader/600SemiBold';
-import { NotoNaskhArabic_400Regular } from '@expo-google-fonts/noto-naskh-arabic/400Regular';
-import { NotoNaskhArabic_600SemiBold } from '@expo-google-fonts/noto-naskh-arabic/600SemiBold';
-import { Amiri_400Regular } from '@expo-google-fonts/amiri/400Regular';
+import { useFonts } from 'expo-font';
 import {
   AudioEdition, Chapter, DailyAyah, DailyHadith, DivineName, getAyahEditions, getAyahOfDay, getChapters, getDailyHadith, getDuas, getQuranEditions,
   getGregorianCalendar, getNameOfDay, getNames, getNearbyMosques, getPrayerSnapshot, getQibla, getRamadanCalendar,
