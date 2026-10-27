@@ -49,6 +49,35 @@ const GROUPS = {
       ['Downloads', 'التنزيلات'],
     ],
   },
+  // the rest of the tools, and the screens behind them
+  tools: {
+    tab: 'Tools',
+    steps: [
+      ['Zakat', 'الزكاة'],
+      ['Weekly Summary', 'ملخص الأسبوع'],
+      ['Umrah and Hajj', 'العمرة والحج'],
+      ['Tasbih', 'السبحة'],
+      ['Mosques', 'المساجد'],
+      ['Worship guides', 'أدلة العبادة'],
+      ['Women’s worship', 'عبادة النساء'],
+    ],
+  },
+  // one of each kind of content screen, opened all the way down
+  deep: {
+    tab: 'Tools',
+    open: ['أدلة العبادة', 'دليل الوضوء'],
+    steps: [['A worship guide', null]],
+  },
+  reading: {
+    tab: 'Quran',
+    open: ['ٱلْفَاتِحَةِ'],
+    steps: [['The reader', null]],
+  },
+  names: {
+    tab: 'Library',
+    open: ['الأسماء الحسنى'],
+    steps: [['A Name of Allah', null]],
+  },
 };
 
 (async () => {
@@ -73,10 +102,33 @@ const GROUPS = {
   await page.waitForTimeout(2600);
   await page.evaluate(HELPERS);
 
+  const tap = async (pattern) => {
+    let box = null;
+    for (let i = 0; i < 5 && !box; i += 1) { box = await page.evaluate((q) => window.__box(q), pattern); if (!box) await page.waitForTimeout(600); }
+    if (!box) return false;
+    await page.mouse.click(box.x, box.y);
+    await page.waitForTimeout(2600);
+    await page.evaluate(HELPERS);
+    return true;
+  };
+
   for (const [name, pattern] of group.steps) {
     await page.evaluate((i) => window.__tab(i), TABS[group.tab]);
     await page.waitForTimeout(2200);
     await page.evaluate(HELPERS);
+    for (const openPattern of group.open || []) { if (!(await tap(openPattern))) { console.log(name.padEnd(12), 'unreachable (opener)'); } }
+    if (pattern === null) {
+      const textsNow = await page.evaluate(() => window.__texts());
+      const issuesNow = await page.evaluate(() => window.__issues());
+      const latinNow = textsNow.filter((t) => LATIN.test(t));
+      const pctNow = textsNow.length ? Math.round((100 * (textsNow.length - latinNow.length)) / textsNow.length) : 0;
+      require('fs').writeFileSync('/tmp/ar-' + process.argv[2] + '-' + name + '.json', JSON.stringify(textsNow, null, 1));
+      console.log('  ' + name.padEnd(18), textsNow.length + ' texts', pctNow + '% arabic',
+        issuesNow.overflow ? ' OVERFLOW' : '', issuesNow.clipped.length ? ' CLIPPED ' + JSON.stringify(issuesNow.clipped.slice(0, 3)) : '');
+      await page.evaluate(() => window.__back());
+      await page.waitForTimeout(1800);
+      continue;
+    }
     let box = null;
     for (let i = 0; i < 5 && !box; i += 1) { box = await page.evaluate((p) => window.__box(p), pattern); if (!box) await page.waitForTimeout(600); }
     if (!box) { console.log(name.padEnd(12), 'unreachable'); continue; }
