@@ -50,4 +50,6 @@ The interface uses a custom SVG icon system in `src/components/CustomIcon.tsx`, 
 
 ## Product architecture
 
-The app now follows a five-part worship-first information architecture: Today, Prayer, Quran, Library, and Settings. Prayer contains live Qibla, Hijri calendar, Ramadan timetable, and mosque tools. The first run requires an explicit prayer location choice; there is no silent location fallback and no account system. Premium typography is bundled locally with DM Sans, Newsreader, and Noto Naskh Arabic.
+The app follows a five-tab worship-first information architecture: Home, Prayer, Quran, Library, and Tools. Prayer holds the times themselves together with Qibla, the call and its reminders, the location they are calculated from, the Hijri calendar, Ramadan, the fasts, and the weekly summary. Library holds what you read, recite and remember — adhkar, duas, the Names, hadith, and the step-by-step worship guides. Tools holds what you calculate, look up, travel for, or record — zakat, mosques, the pilgrimage journeys, the women's records, and the privacy lock. Nothing in one tab is repeated in another.
+
+Settings is no longer a tab: it opens from the control at the right of the shared header, which also carries notifications and the theme toggle. The first run requires an explicit prayer location choice; there is no silent location fallback and no account system. Premium typography is bundled locally with DM Sans, Newsreader, and Noto Naskh Arabic.
