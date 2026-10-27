@@ -150,7 +150,7 @@ The complete application passes privacy, offline, localization, accessibility, r
   - [x] Offline playback of a kept Surah, proven in the browser with the network switched off
 - [ ] Phase 4 — In progress
   - [x] Fasting record: mark Ramadan, voluntary and make-up days, record a missed day with its reason, Qada ledger that settles itself, streak and 21-day history, all private and on-device
-  - [ ] Umrah and Hajj journeys, checklists, references and holy-site channels
+  - [x] Umrah and Hajj journeys, checklists, references and holy-site channels: Umrah and Hajj rite-by-rite journeys with counters (circuits, lengths, pebbles), private notes and live-fetched Quran references, a journeys hub with progress and completed history, plus official Makkah and Madinah live channel links that open outside the app
   - [ ] Women's worship area with PIN lock, cycle, purity and Nifas records and Qada fasts
   - [ ] Multi-asset, multi-currency Zakat with Nisab and local history
 - [ ] Phase 5 — Not started
