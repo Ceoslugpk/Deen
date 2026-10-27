@@ -893,6 +893,11 @@ const AR: Record<string, string> = {
   'No saved calculations yet. Save one and it stays here on this device.': 'لا حسبة محفوظة بعد. احفظي واحدة وستبقى هنا على هذا الجهاز.',
   'BEFORE YOU PAY': 'قبل أن تؤدي',
   'What counts as zakatable, how business stock is valued and which debts may be deducted differ between schools and situations. This figure is a careful estimate to take to a scholar, and your Zakat year matters as much as the total.': 'ما يُعدّ مالًا زكويًا، وكيف تُقوَّم بضائع التجارة، وأيّ الديون تُطرح، يختلف باختلاف المذاهب والأحوال. وهذا الرقم تقدير محرَّر تأخذه إلى عالم، وحولان الحول أهميته كأهمية المبلغ.',
+  'Normal text': 'النص العادي',
+  'Colour legend': 'دليل الألوان',
+  'QURAN': 'القرآن',
+  'JUZ': 'جزء',
+  'Search faith, family, patience…': 'ابحث: إيمان، أسرة، صبر…',
 };
 
 const PRAYERS: Record<string, string> = {

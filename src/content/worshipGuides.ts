@@ -98,7 +98,7 @@ export function localizeGuide(guide: WorshipGuide, rtl?: boolean): WorshipGuide 
     title: ar.title,
     subtitle: ar.subtitle,
     introduction: ar.introduction,
-    steps: ar.steps.length === guide.steps.length ? ar.steps : guide.steps,
+    steps: ar.steps.length ? ar.steps : guide.steps,
     note: ar.note !== undefined ? ar.note : guide.note,
     references: guide.references.map((ref) => ({ ...ref, label: arabicReference(ref.label) })),
   };

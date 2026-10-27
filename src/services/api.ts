@@ -186,6 +186,7 @@ export async function getDailyHadith(): Promise<DailyHadith> {
 }
 
 export const NAME_LANGUAGES = [
+  { code: 'ar', label: 'Arabic' },
   { code: 'en', label: 'English' },
   { code: 'fr', label: 'Français' },
   { code: 'de', label: 'Deutsch' },
