@@ -9,6 +9,22 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
  * (the screen) because a service should not touch device feedback on its own.
  */
 
+/** The meaning of each phrase in Arabic, for the Arabic interface. */
+const MEANING_AR: Record<string, string> = {
+  'Glory be to Allah': 'تنزيه الله عن كل نقص',
+  'All praise is for Allah': 'الحمد لله على كل حال',
+  'Allah is the Greatest': 'الله أكبر من كل شيء',
+  'There is no god but Allah': 'لا معبود بحق إلا الله',
+  'I seek forgiveness from Allah': 'أطلب مغفرة الله',
+  'O Allah, send blessings upon Muhammad': 'اللهم صلِّ وسلِّم على نبينا محمد',
+  'There is no power except with Allah': 'لا حول ولا قوة إلا بالله',
+  'Allah is sufficient for us': 'حسبنا الله ونعم الوكيل',
+};
+
+export function dhikrMeaning(phrase: DhikrPhrase, rtl?: boolean) {
+  return rtl ? (MEANING_AR[phrase.meaning] || phrase.meaning) : phrase.meaning;
+}
+
 export type DhikrPhrase = { id: string; arabic: string; transliteration: string; meaning: string };
 
 export const DHIKR_PHRASES: DhikrPhrase[] = [

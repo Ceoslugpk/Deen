@@ -62,7 +62,7 @@ import { prayerName, tx } from './src/services/arabicCopy';
 import { downloadSurahAudio, loadDownloads, downloadSurahText, estimateFreeBytes, formatBytes, pauseDownload, removeDownload, resolveAudioSource, resumeDownload, retryDownload, totalDownloadBytes, useDownloads } from './src/services/downloadService';
 import { NAME_LANGUAGES } from './src/services/api';
 import { PROPHETS } from './src/content/prophets';
-import { currentPhrase, DHIKR_PHRASES, loadTasbihState, removeTasbihSession, resetTasbihCount, saveTasbihSession, setTasbihGoal, setTasbihPhrase, TASBIH_GOALS, tapTasbih, todayTotal, useTasbih } from './src/services/tasbihService';
+import { currentPhrase, dhikrMeaning, DHIKR_PHRASES, loadTasbihState, removeTasbihSession, resetTasbihCount, saveTasbihSession, setTasbihGoal, setTasbihPhrase, TASBIH_GOALS, tapTasbih, todayTotal, useTasbih } from './src/services/tasbihService';
 import { Dua, DuaCategory } from './src/services/api';
 import { clearPreparedQuran, getPreloadState, pauseQuranPreload, refreshPreload, resumeSavedQuranPreload, startQuranPreload, subscribePreload } from './src/services/quranPreload';
 
@@ -528,16 +528,16 @@ function TasbihScreen({ navigation }: any) {const{rtl}=useLanguage();const T=(te
       <Text style={s.intro}>{T('Count privately on this device. Nothing is sent anywhere and no account is needed.')}</Text>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.choiceRow}>
-        {DHIKR_PHRASES.map((item) => <ChoicePill key={item.id} label={item.transliteration} selected={item.id === state.phraseId} onPress={() => { void setTasbihPhrase(item.id); }} />)}
+        {DHIKR_PHRASES.map((item) => <ChoicePill key={item.id} label={rtl ? item.arabic : item.transliteration} selected={item.id === state.phraseId} onPress={() => { void setTasbihPhrase(item.id); }} />)}
       </ScrollView>
 
       <View style={s.tasbihCard}>
         <Text style={s.tasbihAr}>{phrase.arabic}</Text>
-        <Text style={s.directionText}>{phrase.meaning}</Text>
+        <Text style={s.directionText}>{dhikrMeaning(phrase, rtl)}</Text>
         <Pressable accessibilityLabel="Count one dhikr" onPress={tap} style={[s.counter, width < 360 && { width: width - 80, height: width - 80 }]}>
           <Animated.View style={{ transform: [{ scale: press }], alignItems: 'center' }}>
             <Text style={s.counterNo}>{state.count}</Text>
-            <Text style={s.counterGoal}>{celebrated ? 'COMPLETE' : `GOAL · ${state.goal}`}</Text>
+            <Text style={s.counterGoal}>{celebrated ? T('COMPLETE') : (rtl ? `الهدف · ${state.goal}` : `GOAL · ${state.goal}`)}</Text>
           </Animated.View>
         </Pressable>
         <View style={s.hadithTrack}><View style={[s.hadithFill, { width: `${progress}%` }]} /></View>
@@ -555,7 +555,7 @@ function TasbihScreen({ navigation }: any) {const{rtl}=useLanguage();const T=(te
       <Section title={T('Today')} />
       <View style={s.dataCard}>
         <View style={s.hadithProgressHead}><Text style={s.hadithProgressName}>{T('Counted today')}</Text><Text style={s.hadithProgressName}>{total}</Text></View>
-        <Text style={s.meta}>Rounds completed on this phrase: {state.rounds}</Text>
+        <Text style={s.meta}>{rtl ? `الجولات المكتملة لهذا الذكر: ${state.rounds}` : `Rounds completed on this phrase: ${state.rounds}`}</Text>
       </View>
 
       <Section title={T('History')} />
