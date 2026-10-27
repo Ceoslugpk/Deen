@@ -105,10 +105,12 @@ def flood(path: Path, tol: float = 58.0) -> None:
     im.save(path)
 
 
-if __name__ == '__main__' and len(sys.argv) > 1 and sys.argv[1] == '--flood':
-    for arg in sys.argv[2:]:
+if __name__ == '__main__' and len(sys.argv) > 1:
+    # python3 qa-tools/dark_icon.py <paths…>          key out the ground and size to 160
+    # python3 qa-tools/dark_icon.py --flood <paths…>  also remove a painted card
+    mode = sys.argv[1]
+    args = sys.argv[2:] if mode == '--flood' else sys.argv[1:]
+    for arg in args:
         p = Path(arg)
-        flood(p)
-        px = list(Image.open(p).convert('RGBA').getdata())
-        clear = sum(1 for q2 in px if q2[3] < 10) / len(px)
-        print('%-28s transparent %.0f%%' % (p.name, clear * 100))
+        lift(p) if mode != '--flood' else flood(p)
+        report(p)
