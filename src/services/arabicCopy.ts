@@ -935,6 +935,12 @@ const AR: Record<string, string> = {
   'Downloads the Arabic script and translation you have selected, one Surah at a time. Preparation continues while you use other screens and prioritizes your current reading Surah.': 'يُنزَّل النص العربي والترجمة التي اخترتها، سورة سورة. ويستمر التحضير أثناء استخدامك للشاشات الأخرى، ويُقدّم السورة التي تقرأها الآن.',
   'Cycle and purity records, the days after childbirth, and the fasts owed because of them — kept only on this device. Nothing is uploaded and no account is involved.': 'سجل الدورة والطهارة، وأيام ما بعد الولادة، والصيام الذي يجب قضاؤه بسببها — لا يحفظها إلا هذا الجهاز. لا يُرفع شيء، ولا حساب في الأمر.',
   'Your own cycle lengths and averages, a prediction worked out from your history rather than an assumption, purity and ghusl guidance, the post-natal days, and a running scorecard of make-up fasts.': 'طول دورتك ومعدلاتك أنت، وتوقّع يُستخرج من سجلّك لا من افتراض، ودليل الطهارة والغسل، وأيام النفاس، وبيان متجدّد لأيام القضاء.',
+
+  // The shared header. The name is rendered as a wordmark beside the mark, so
+  // it takes a real name in Arabic rather than a transliteration.
+  'Deen Companion': 'رفيق الدين',
+  'Show the light theme': 'التبديل إلى المظهر الفاتح',
+  'Show the dark theme': 'التبديل إلى المظهر الداكن',
 };
 
 const PRAYERS: Record<string, string> = {
