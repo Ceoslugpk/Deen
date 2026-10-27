@@ -496,7 +496,7 @@ const libraryGroups=[
   {label:'LEARN',title:'Knowledge with sources',items:[['chatbubble-ellipses-outline','Hadith','Daily teaching with collection reference'],['sparkles-outline','Prophet Names','The twenty-five prophets named in the Qur\'an']]},
   {label:'PLAN & NEARBY',title:'Practical tools',items:[['calculator-outline','Zakat','Estimate eligible wealth with clarity'],['business-outline','Mosques','Search the live public directory']]},
 ];
-function ExploreHome({navigation}:any){const {width}=useWindowDimensions();const wide=width>=850;let index=0;return <Page><ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}><TopBar overline="REMEMBRANCE AND LEARNING" title="Library" right={<MotionGlyph name="sparkles-outline" size={20}/>}/><Text style={s.intro}>Remembrance, trusted learning and practical tools—organized by purpose rather than hidden in a feature grid.</Text>{libraryGroups.map(group=><View key={group.label}><Text style={s.libraryKicker}>{group.label}</Text><Text style={s.libraryHeading}>{group.title}</Text><View style={s.exploreGrid}>{group.items.map(([iconName,title,desc]:any)=>{const delay=index++*40;return <MotionPress key={title} onPress={()=>{const cross:any=({'Quran Audio':()=>navigation.navigate('Quran',{screen:'Quran Audio'})} as any)[title];if(cross)cross();else navigation.navigate(title)}} style={[s.exploreCard,wide&&s.exploreCardWide]}><View style={s.exploreCardInner}><ToolGraphic tool={title} size={64}/><Text style={s.exploreTitle}>{title}</Text><Text style={s.exploreBody}>{desc}</Text><View style={s.exploreArrow}>{ico('arrow-forward',15,C.green)}</View></View></MotionPress>})}</View></View>)}</ScrollView></Page>}
+function ExploreHome({navigation}:any){const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);const {width}=useWindowDimensions();const wide=width>=850;let index=0;return <Page><ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}><TopBar overline={T('REMEMBRANCE AND LEARNING')} title={T('Library')} right={<MotionGlyph name="sparkles-outline" size={20}/>}/><Text style={s.intro}>{T('Remembrance, trusted learning and practical tools—organized by purpose rather than hidden in a feature grid.')}</Text>{libraryGroups.map(group=><View key={group.label}><Text style={s.libraryKicker}>{T(group.label)}</Text><Text style={s.libraryHeading}>{T(group.title)}</Text><View style={s.exploreGrid}>{group.items.map(([iconName,title,desc]:any)=>{const delay=index++*40;return <MotionPress key={title} onPress={()=>{const cross:any=({'Quran Audio':()=>navigation.navigate('Quran',{screen:'Quran Audio'})} as any)[title];if(cross)cross();else navigation.navigate(title)}} style={[s.exploreCard,wide&&s.exploreCardWide]}><View style={s.exploreCardInner}><ToolGraphic tool={title} size={64}/><Text style={s.exploreTitle}>{T(title)}</Text><Text style={s.exploreBody}>{T(desc)}</Text><View style={s.exploreArrow}>{ico('arrow-forward',15,C.green)}</View></View></MotionPress>})}</View></View>)}</ScrollView></Page>}
 function ToolBar({title,navigation}:any){const{rtl}=useLanguage();return <View style={s.readerBar}><IconButton name={rtl?'arrow-forward':'arrow-back'} onPress={()=>navigation.goBack()}/><Text style={s.readerName}>{title}</Text><View style={{width:44}}/></View>}
 function QiblaScreen({navigation}:any){const{location}=useAppLocation();const[direction,setDirection]=useState<number|null>(null);const[error,setError]=useState('');const load=async()=>{if(!location)return;setDirection(null);setError('');try{setDirection(await getQibla(location.latitude,location.longitude))}catch(e:any){setError(e.message)}};useEffect(()=>{load()},[location?.latitude,location?.longitude]);return <Page><ToolBar title="Qibla direction" navigation={navigation}/>{!location?<View style={s.dataPage}><LocationPrompt compact/></View>:<View style={s.toolPage}><Text style={s.toolEyebrow}>{location.label}</Text>{error?<ErrorState message={error} retry={load}/>:direction===null?<Spinner/>:<><View style={s.compass}><Text style={s.north}>N</Text><View style={[s.compassArrow,{transform:[{rotate:`${direction}deg`}]}]}>{ico('navigate',74,C.green)}</View><View style={s.kaaba}><View style={s.kaabaGold}/></View></View><Text style={s.direction}>{direction.toFixed(1)}°</Text><Text style={s.directionText}>clockwise from true north</Text><Pressable onPress={load} style={s.primary}><Text style={s.primaryText}>Refresh direction</Text></Pressable></>}</View>}</Page>}
 function TasbihScreen({ navigation }: any) {
@@ -586,7 +586,7 @@ const DUA_SHORTCUT_LABELS: Record<string, string> = {
   hajj: 'Hajj and Umrah',
 };
 
-function DuaCard({ dua }: { dua: Dua }) {
+function DuaCard({ dua }: { dua: Dua }) {const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);
   const [openSource, setOpenSource] = useState(false);
   const [copied, setCopied] = useState(false);
   const text = [dua.arabic, dua.transliteration, dua.translation].filter(Boolean).join('\n\n');
@@ -599,10 +599,10 @@ function DuaCard({ dua }: { dua: Dua }) {
   return <View style={s.dataCard}>
     <Text style={s.dataArabic}>{dua.arabic}</Text>
     {!!dua.transliteration && <>
-      <Text style={s.duaKicker}>TRANSLITERATION</Text>
+      <Text style={s.duaKicker}>{T('TRANSLITERATION')}</Text>
       <Text style={s.duaTransliteration}>{dua.transliteration}</Text>
     </>}
-    <Text style={s.duaKicker}>MEANING</Text>
+    <Text style={s.duaKicker}>{T('MEANING')}</Text>
     <Text style={s.dataBody}>{dua.translation}</Text>
     {!!dua.reference && <Pressable accessibilityLabel="Show the source of this dua" onPress={() => setOpenSource(!openSource)} style={s.sectionLink}>
       <Text style={s.duaRefToggle}>{openSource ? 'Hide source' : 'Source'}</Text>
@@ -610,7 +610,7 @@ function DuaCard({ dua }: { dua: Dua }) {
     </Pressable>}
     <View style={s.actionRow}>
       <Pressable accessibilityLabel="Copy this dua" onPress={copy} style={s.secondary}>{ico('copy-outline', 16, C.green)}<Text style={s.secondaryText}>{copied ? 'Copied' : 'Copy'}</Text></Pressable>
-      <Pressable accessibilityLabel="Share this dua" onPress={share} style={s.secondary}>{ico('share-outline', 16, C.green)}<Text style={s.secondaryText}>Share</Text></Pressable>
+      <Pressable accessibilityLabel="Share this dua" onPress={share} style={s.secondary}>{ico('share-outline', 16, C.green)}<Text style={s.secondaryText}>{T('Share')}</Text></Pressable>
     </View>
   </View>;
 }
@@ -709,7 +709,7 @@ function DownloadsScreen({ route, navigation }: any) {
       <View style={s.apiPanel}><Text style={s.apiTitle}>How a download is verified</Text><Text style={s.apiText}>Files are written to a temporary partial file first, checked against the size the server reported, and only then moved into place. A failed download is deleted rather than left half-written.</Text></View>
     </ScrollView></Page>}
 
-function NamesScreen({ navigation }: any) {
+function NamesScreen({ navigation }: any) {const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);
   const { preferences } = useQuranPreferences();
   const [names, setNames] = useState<DivineName[]>([]);
   const [day, setDay] = useState<DivineName | null>(null);
@@ -734,43 +734,43 @@ function NamesScreen({ navigation }: any) {
   const shown = names.filter((name) => soften(`${name.number} ${name.transliteration} ${name.meaning} ${Object.values(name.meanings || {}).join(' ')} ${name.name}`).includes(needle));
   const meaning = (name: DivineName) => name.meanings?.[language] || name.meanings?.en || name.meaning;
   const pickLanguage = async (code: string) => { setLanguage(code); await saveNameLanguage(code); };
-  return <Page><ToolBar title="The Beautiful Names" navigation={navigation}/><ScrollView contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
+  return <Page><ToolBar title={T('The Beautiful Names')} navigation={navigation}/><ScrollView contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
     <ToolGraphic tool="99 Names" size={72} />
-    <Text style={s.dataTitle}>The Beautiful Names</Text>
+    <Text style={s.dataTitle}>{T('The Beautiful Names')}</Text>
     
-    <Text style={s.intro}>Ninety-nine Names with their Arabic, transliteration and meaning. Choose the language the meaning is shown in.</Text>
+    <Text style={s.intro}>{T('Ninety-nine Names with their Arabic, transliteration and meaning. Choose the language the meaning is shown in.')}</Text>
 
     {!!day && <View style={s.nameOfDayCard}>
-      <Text style={s.duaKicker}>NAME OF THE DAY</Text>
+      <Text style={s.duaKicker}>{T('NAME OF THE DAY')}</Text>
       <Text style={s.namesArabicLarge}>{day.name}</Text>
       <Text style={s.namesTransliteration}>{day.transliteration}</Text>
-      <Text style={s.dataBody}>{meaning(day)}</Text>
+      {!rtl && <Text style={s.dataBody}>{meaning(day)}</Text>}
     </View>}
 
-    <Section title="Meaning language" />
+    <Section title={T('Meaning language')} />
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.choiceRow}>
-      {NAME_LANGUAGES.map((entry) => <ChoicePill key={entry.code} label={entry.label} selected={entry.code === language} onPress={() => { void pickLanguage(entry.code); }} />)}
+      {NAME_LANGUAGES.map((entry) => <ChoicePill key={entry.code} label={T(entry.label)} selected={entry.code === language} onPress={() => { void pickLanguage(entry.code); }} />)}
     </ScrollView>
 
-    <View style={s.search}>{ico('search', 18, C.muted)}<TextInput accessibilityLabel="Search the Names" value={query} onChangeText={setQuery} style={s.searchInput} placeholder="Search a Name" placeholderTextColor="#929B96" />{query.length > 0 && <Pressable accessibilityLabel="Clear name search" onPress={() => setQuery('')}>{ico('close', 16, C.muted)}</Pressable>}</View>
+    <View style={s.search}>{ico('search', 18, C.muted)}<TextInput accessibilityLabel="Search the Names" value={query} onChangeText={setQuery} style={s.searchInput} placeholder={T('Search a Name')} placeholderTextColor="#929B96" />{query.length > 0 && <Pressable accessibilityLabel="Clear name search" onPress={() => setQuery('')}>{ico('close', 16, C.muted)}</Pressable>}</View>
 
     {!!error && <ErrorState message={error} retry={load} />}
     {!error && !names.length && <Spinner />}
-    {offline && <View style={s.offlineNote}><Text style={s.offlineNoteText}>Read from this device — the network is not reachable right now.</Text></View>}
-    <Text style={s.meta}>{shown.length} of {names.length || 99} Names</Text>
+    {offline && <View style={s.offlineNote}><Text style={s.offlineNoteText}>{T('Read from this device — the network is not reachable right now.')}</Text></View>}
+    <Text style={s.meta}>{rtl ? `${shown.length} من ${names.length || 99} اسمًا` : `${shown.length} of ${names.length || 99} Names`}</Text>
     {shown.map((name) => <View key={name.number} style={s.nameRow}>
       <View style={s.nameNumber}><Text style={s.hadithNumberText}>{name.number}</Text></View>
       <View style={{ flex: 1 }}>
         <Text style={s.namesArabic}>{name.name}</Text>
         <Text style={s.namesTransliteration}>{name.transliteration}</Text>
-        <Text style={s.dataBody}>{meaning(name)}</Text>
+        {!rtl && <Text style={s.dataBody}>{meaning(name)}</Text>}
       </View>
     </View>)}
-    {!!names.length && <View style={s.apiPanel}><Text style={s.apiTitle}>Kept on this device</Text><Text style={s.apiText}>The catalogue is stored after the first visit, so the Names can be read without a connection. The Qur'an translation you use elsewhere ({preferences.translationEdition}) does not affect these meanings.</Text></View>}
+    {!!names.length && <View style={s.apiPanel}><Text style={s.apiTitle}>{T('Kept on this device')}</Text><Text style={s.apiText}>The catalogue is stored after the first visit, so the Names can be read without a connection. The Qur'an translation you use elsewhere ({preferences.translationEdition}) does not affect these meanings.</Text></View>}
     <Pressable accessibilityLabel="Open the prophets catalogue" onPress={() => navigation.navigate('Prophet Names')} style={s.secondary}><Text style={s.secondaryText}>Prophets named in the Qur'an</Text></Pressable>
   </ScrollView></Page>}
 
-function ProphetNamesScreen({ navigation }: any) {
+function ProphetNamesScreen({ navigation }: any) {const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);
   const { preferences } = useQuranPreferences();
   const [open, setOpen] = useState<string | null>(null);
   const [verse, setVerse] = useState<any[]>([]);
@@ -785,11 +785,11 @@ function ProphetNamesScreen({ navigation }: any) {
       .then(setVerse)
       .catch((e: any) => setError(e.message || 'Please check your connection.'));
   }, [open, preferences.scriptEdition, preferences.translationEdition]);
-  return <Page><ToolBar title="Prophets" navigation={navigation} />
+  return <Page><ToolBar title={T('Prophets')} navigation={navigation} />
     <ScrollView contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
       <ToolGraphic tool="Names" size={68} />
-      <Text style={s.dataTitle}>Prophets in the Qur'an</Text>
-      <Text style={s.intro}>Twenty-five prophets are named in the Qur'an. Open one to read the verse the reference points to.</Text>
+      <Text style={s.dataTitle}>{T("Prophets in the Qur'an")}</Text>
+      <Text style={s.intro}>{T("Twenty-five prophets are named in the Qur'an. Open one to read the verse the reference points to.")}</Text>
       {PROPHETS.map((prophet) => {
         const isOpen = open === prophet.id;
         return <View key={prophet.id} style={s.dataCard}>
@@ -797,14 +797,14 @@ function ProphetNamesScreen({ navigation }: any) {
             <View style={s.nameRow}>
               <View style={s.nameNumber}><Text style={s.namesArabic}>{prophet.arabic}</Text></View>
               <View style={{ flex: 1 }}>
-                <Text style={s.namesTransliteration}>{prophet.transliteration} · {prophet.english}</Text>
-                <Text style={s.dataBody}>{prophet.note}</Text>
+                <Text style={s.namesTransliteration}>{rtl ? prophet.transliteration : `${prophet.transliteration} · ${prophet.english}`}</Text>
+                <Text style={s.dataBody}>{rtl ? prophet.noteAr : prophet.note}</Text>
               </View>
               {ico(isOpen ? 'chevron-down' : 'chevron-forward', 16, C.muted)}
             </View>
           </Pressable>
           {isOpen && <>
-            <Text style={s.duaKicker}>VERSE {prophet.reference}</Text>
+            <Text style={s.duaKicker}>{T('VERSE')} {prophet.reference}</Text>
             {!!error && <Text style={s.dataMeta}>{error}</Text>}
             {!error && !verse.length && <Spinner />}
             {verse.map((row) => <View key={row.edition}>
@@ -815,7 +815,7 @@ function ProphetNamesScreen({ navigation }: any) {
       })}
     </ScrollView></Page>}
 
-function DuasScreen({ navigation }: any) {
+function DuasScreen({ navigation }: any) {const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);
   const [payload, setPayload] = useState<{ shortcuts: string[]; categories: DuaCategory[] } | null>(null);
   const [error, setError] = useState('');
   const [query, setQuery] = useState('');
@@ -828,37 +828,37 @@ function DuasScreen({ navigation }: any) {
   useEffect(() => { void load(); }, []);
   const categories = (payload?.categories || []).filter((category) => `${category.en} ${category.ar}`.toLowerCase().includes(query.trim().toLowerCase()));
   const shortcuts = payload?.shortcuts || [];
-  return <Page><ToolBar title="Duas and Adhkar" navigation={navigation}/><ScrollView contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
+  return <Page><ToolBar title={T('Duas and Adhkar')} navigation={navigation}/><ScrollView contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
     <ToolGraphic tool="Duas" size={72} />
-    <Text style={s.dataTitle}>Duas and Adhkar</Text>
+    <Text style={s.dataTitle}>{T('Duas and Adhkar')}</Text>
     
-    <Text style={s.intro}>Remembrance for 132 occasions, in Arabic with transliteration and meaning. Each entry keeps the reference the source gives for it.</Text>
+    <Text style={s.intro}>{T('Remembrance for 132 occasions, in Arabic with transliteration and meaning. Each entry keeps the reference the source gives for it.')}</Text>
 
-    <View style={s.search}>{ico('search', 18, C.muted)}<TextInput accessibilityLabel="Search occasions" value={query} onChangeText={setQuery} style={s.searchInput} placeholder="Search an occasion" placeholderTextColor="#929B96" />{query.length > 0 && <Pressable accessibilityLabel="Clear occasion search" onPress={() => setQuery('')}>{ico('close', 16, C.muted)}</Pressable>}</View>
+    <View style={s.search}>{ico('search', 18, C.muted)}<TextInput accessibilityLabel="Search occasions" value={query} onChangeText={setQuery} style={s.searchInput} placeholder={T('Search an occasion')} placeholderTextColor="#929B96" />{query.length > 0 && <Pressable accessibilityLabel="Clear occasion search" onPress={() => setQuery('')}>{ico('close', 16, C.muted)}</Pressable>}</View>
 
     {!!error && <ErrorState message={error} retry={load} />}
     {!payload && !error && <Spinner />}
     {!!payload && <>
-      <Section title="Daily moments" />
+      <Section title={T('Daily moments')} />
       <View style={s.duaShortcutGrid}>{shortcuts.map((key) => {
         const category = payload.categories.find((entry) => entry.key === key);
         return <Pressable key={key} accessibilityLabel={`Open ${DUA_SHORTCUT_LABELS[key] || key}`} onPress={() => navigation.navigate('Dua Category', { key, label: DUA_SHORTCUT_LABELS[key] || key })} style={s.duaShortcut}>
-          <Text style={s.duaShortcutLabel}>{DUA_SHORTCUT_LABELS[key] || key}</Text>
-          <Text style={s.meta}>{category ? `${category.count} ${category.count === 1 ? 'dua' : 'duas'}` : 'Open'}</Text>
+          <Text style={s.duaShortcutLabel}>{T(DUA_SHORTCUT_LABELS[key] || key)}</Text>
+          <Text style={s.meta}>{category ? `${category.count} ${T(category.count === 1 ? 'dua' : 'duas')}` : T('Open')}</Text>
         </Pressable>;
       })}</View>
-      <Section title="All occasions" />
+      <Section title={T('All occasions')} />
       <View style={s.duaCategoryGrid}>{categories.map((category) => <Pressable key={category.key} accessibilityLabel={`Open ${category.en}`} onPress={() => navigation.navigate('Dua Category', { key: category.key, label: category.en })} style={s.duaCategoryCard}>
         <Text style={s.duaCategoryNo}>{category.number}</Text>
         <Text style={s.duaCategoryName}>{category.en}</Text>
-        <Text style={s.meta}>{category.count} {category.count === 1 ? 'dua' : 'duas'}</Text>
+        <Text style={s.meta}>{category.count} {T(category.count === 1 ? 'dua' : 'duas')}</Text>
       </Pressable>)}</View>
-      {!categories.length && <View style={s.empty}><Text style={s.dataBody}>No occasion matches that word.</Text></View>}
-      <View style={s.apiPanel}><Text style={s.apiTitle}>Kept on this device</Text><Text style={s.apiText}>Every occasion you open is stored locally, so it can be read again without a connection.</Text></View>
+      {!categories.length && <View style={s.empty}><Text style={s.dataBody}>{T('No occasion matches that word.')}</Text></View>}
+      <View style={s.apiPanel}><Text style={s.apiTitle}>{T('Kept on this device')}</Text><Text style={s.apiText}>{T('Every occasion you open is stored locally, so it can be read again without a connection.')}</Text></View>
     </>}
   </ScrollView></Page>}
 
-function DuaCategoryScreen({ route, navigation }: any) {
+function DuaCategoryScreen({ route, navigation }: any) {const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);
   const key = String(route.params?.key || 'morning');
   const label = route.params?.label || 'Adhkar';
   const [duas, setDuas] = useState<Dua[]>([]);
@@ -875,12 +875,12 @@ function DuaCategoryScreen({ route, navigation }: any) {
     <ScrollView contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
       {!!error && <ErrorState message={error} retry={load} />}
       {!error && !duas.length && <Spinner />}
-      {offline && <View style={s.offlineNote}><Text style={s.offlineNoteText}>Read from this device — the network is not reachable right now.</Text></View>}
+      {offline && <View style={s.offlineNote}><Text style={s.offlineNoteText}>{T('Read from this device — the network is not reachable right now.')}</Text></View>}
       {duas.map((dua) => <DuaCard key={dua.id} dua={dua} />)}
-      {!!duas.length && <View style={s.apiPanel}><Text style={s.apiTitle}>Collection</Text><Text style={s.apiText}>{duas[0].category || label}</Text></View>}
+      {!!duas.length && <View style={s.apiPanel}><Text style={s.apiTitle}>{T('Collection')}</Text><Text style={s.apiText}>{duas[0].category || label}</Text></View>}
     </ScrollView></Page>}
 
-function AdhkarScreen({ route, navigation }: any) {
+function AdhkarScreen({ route, navigation }: any) {const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);
   const [category, setCategory] = useState(route.params?.initial || 'morning');
   const [duas, setDuas] = useState<Dua[]>([]);
   const [offline, setOffline] = useState(false);
@@ -893,20 +893,20 @@ function AdhkarScreen({ route, navigation }: any) {
   };
   useEffect(() => { void load(); }, [category]);
   const morning = category === 'morning';
-  return <Page><ToolBar title="Daily Adhkar" navigation={navigation} />
+  return <Page><ToolBar title={T('Daily Adhkar')} navigation={navigation} />
     <ScrollView contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
       <ToolGraphic tool={morning ? 'Morning Adhkar' : 'Evening Adhkar'} size={72} />
       <Text style={s.dataTitle}>{morning ? 'Morning remembrance' : 'Evening remembrance'}</Text>
       <View style={s.choiceRow}>
-        <ChoicePill label="Morning" selected={morning} onPress={() => setCategory('morning')} />
-        <ChoicePill label="Evening" selected={!morning} onPress={() => setCategory('evening')} />
+        <ChoicePill label={T('Morning')} selected={morning} onPress={() => setCategory('morning')} />
+        <ChoicePill label={T('Evening')} selected={!morning} onPress={() => setCategory('evening')} />
       </View>
       <View style={{ height: 12 }} />
       <Pressable accessibilityLabel="Browse every occasion" onPress={() => navigation.navigate('Duas')} style={s.secondary}><Text style={s.secondaryText}>All duas and occasions</Text></Pressable>
       <View style={{ height: 14 }} />
       {!!error && <ErrorState message={error} retry={load} />}
       {!error && !duas.length && <Spinner />}
-      {offline && <View style={s.offlineNote}><Text style={s.offlineNoteText}>Read from this device — the network is not reachable right now.</Text></View>}
+      {offline && <View style={s.offlineNote}><Text style={s.offlineNoteText}>{T('Read from this device — the network is not reachable right now.')}</Text></View>}
       {duas.map((dua) => <DuaCard key={dua.id} dua={dua} />)}
     </ScrollView></Page>}
 
@@ -1219,8 +1219,8 @@ const ADHAN_TRACKS=[
 ];
 function AdhanScreen({navigation}:any){const{settings,update}=useWorshipSettings();const selected=ADHAN_TRACKS.find(x=>x.id===settings.adhanReciter)||ADHAN_TRACKS[0];const player=useAudioPlayer(selected.source);const status=useAudioPlayerStatus(player);const toggle=()=>status.playing?player.pause():player.play();useEffect(()=>()=>{player.pause()},[player]);return <Page><ToolBar title="Adhan" navigation={navigation}/><ScrollView contentContainerStyle={s.dataPage}><ToolGraphic tool="Adhan" size={82}/><Text style={s.dataTitle}>Choose an Adhan</Text><Text style={s.intro}>Preview a recording and choose which prayers may use Adhan. The bundled selection works without a network connection.</Text><View style={s.audioPreview}><Pressable accessibilityLabel={status.playing?'Pause Adhan preview':'Play Adhan preview'} onPress={toggle} style={s.audioPlay}>{ico(status.playing?'pause':'play',25,C.white)}</Pressable><View style={{flex:1}}><Text style={s.profileName}>{selected.title}</Text><Text style={s.profileSub}>{selected.detail}</Text></View><Pressable accessibilityLabel="Stop Adhan preview" onPress={()=>{player.seekTo(0);player.pause()}} style={s.stopButton}>{ico('stop-circle-outline',26,C.white)}</Pressable></View><Section title="Recordings"/><View style={s.settings}>{ADHAN_TRACKS.map(track=><Pressable accessibilityRole="radio" accessibilityState={{selected:track.id===selected.id}} key={track.id} onPress={()=>update({adhanReciter:track.id})} style={s.setting}><ToolGraphic tool="Adhan" size={44}/><View style={{flex:1}}><Text style={s.settingName}>{track.title}</Text><Text style={s.meta}>{track.detail}</Text></View>{ico(track.id===selected.id?'checkmark-circle':'ellipse-outline',20,track.id===selected.id?C.green:C.muted)}</Pressable>)}</View><Section title="Use Adhan for"/><View style={s.settings}>{['Fajr','Dhuhr','Asr','Maghrib','Isha'].map(name=><View key={name} style={s.setting}><Text style={[s.settingName,{flex:1}]}>{name}</Text><View style={{direction:'ltr'} as any}><Switch value={settings.adhanEnabled[name]} onValueChange={v=>update({adhanEnabled:{...settings.adhanEnabled,[name]:v}})} trackColor={{true:C.green}}/></View></View>)}</View><View style={s.sourceCard}>{ico('information-circle-outline',21,C.green)}<View style={{flex:1}}><Text style={s.sourceTitle}>Audio rights</Text><Text style={s.sourceBody}>Bundled and streamed Doha recordings: Internet Archive Public Domain Mark 1.0.</Text></View></View></ScrollView></Page>}
 
-function GuideDirectory({navigation}:any){return <Page><ToolBar title="Worship guides" navigation={navigation}/><ScrollView contentContainerStyle={s.dataPage}><ToolGraphic tool="Worship guides" size={78}/><Text style={s.dataTitle}>Learn with references</Text><Text style={s.intro}>Concise educational overviews with transparent Qur’an and Hadith references. Detailed rulings should be learned from a qualified local scholar.</Text><View style={s.guideGrid}>{WORSHIP_GUIDES.map(guide=><MotionPress key={guide.id} onPress={()=>navigation.navigate('Guide Detail',{guide})} style={s.guideCard}><View style={s.guideCardInner}><ToolGraphic tool={guide.id} size={62}/><Text style={s.exploreTitle}>{guide.title}</Text><Text style={s.exploreBody}>{guide.subtitle}</Text><View style={s.exploreArrow}>{ico('arrow-forward',15,C.green)}</View></View></MotionPress>)}</View></ScrollView></Page>}
-function GuideDetail({route,navigation}:any){const guide:WorshipGuide=route.params.guide;return <Page><ToolBar title={guide.title} navigation={navigation}/><ScrollView contentContainerStyle={s.dataPage}><ToolGraphic tool={guide.id} size={82}/><Text style={s.dataTitle}>{guide.subtitle}</Text>{guide.arabic&&<Text style={s.guideArabic}>{guide.arabic}</Text>}<Text style={s.intro}>{guide.introduction}</Text><Section title="Step by step"/><View style={s.settings}>{guide.steps.map((step,i)=><View key={step} style={s.guideStep}><View style={s.stepNo}><Text style={s.stepNoText}>{i+1}</Text></View><Text style={s.guideStepText}>{step}</Text></View>)}</View>{guide.note&&<View style={s.guideNote}><Text style={s.sourceTitle}>Important note</Text><Text style={s.sourceBody}>{guide.note}</Text></View>}<Section title="References"/>{guide.references.map(ref=><Pressable key={ref.url} onPress={()=>Linking.openURL(ref.url)} style={s.referenceRow}><Text style={s.settingName}>{ref.label}</Text>{ico('open-outline',18,C.green)}</Pressable>)}</ScrollView></Page>}
+function GuideDirectory({navigation}:any){const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);return <Page><ToolBar title="Worship guides" navigation={navigation}/><ScrollView contentContainerStyle={s.dataPage}><ToolGraphic tool="Worship guides" size={78}/><Text style={s.dataTitle}>Learn with references</Text><Text style={s.intro}>Concise educational overviews with transparent Qur’an and Hadith references. Detailed rulings should be learned from a qualified local scholar.</Text><View style={s.guideGrid}>{WORSHIP_GUIDES.map(guide=><MotionPress key={guide.id} onPress={()=>navigation.navigate('Guide Detail',{guide})} style={s.guideCard}><View style={s.guideCardInner}><ToolGraphic tool={guide.id} size={62}/><Text style={s.exploreTitle}>{guide.title}</Text><Text style={s.exploreBody}>{guide.subtitle}</Text><View style={s.exploreArrow}>{ico('arrow-forward',15,C.green)}</View></View></MotionPress>)}</View></ScrollView></Page>}
+function GuideDetail({route,navigation}:any){const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);const guide:WorshipGuide=route.params.guide;return <Page><ToolBar title={guide.title} navigation={navigation}/><ScrollView contentContainerStyle={s.dataPage}><ToolGraphic tool={guide.id} size={82}/><Text style={s.dataTitle}>{guide.subtitle}</Text>{guide.arabic&&<Text style={s.guideArabic}>{guide.arabic}</Text>}<Text style={s.intro}>{guide.introduction}</Text><Section title={T('Step by step')}/><View style={s.settings}>{guide.steps.map((step,i)=><View key={step} style={s.guideStep}><View style={s.stepNo}><Text style={s.stepNoText}>{i+1}</Text></View><Text style={s.guideStepText}>{step}</Text></View>)}</View>{guide.note&&<View style={s.guideNote}><Text style={s.sourceTitle}>{T('Important note')}</Text><Text style={s.sourceBody}>{guide.note}</Text></View>}<Section title={T('References')}/>{guide.references.map(ref=><Pressable key={ref.url} onPress={()=>Linking.openURL(ref.url)} style={s.referenceRow}><Text style={s.settingName}>{ref.label}</Text>{ico('open-outline',18,C.green)}</Pressable>)}</ScrollView></Page>}
 
 function HijriCalendarScreen({navigation}:any){const{location}=useAppLocation();const[days,setDays]=useState<CalendarDay[]>([]);const[error,setError]=useState('');const now=new Date();const load=async()=>{if(!location)return;setError('');setDays([]);try{setDays(await getGregorianCalendar(location.latitude,location.longitude,now.getMonth()+1,now.getFullYear()))}catch(e:any){setError(e.message)}};useEffect(()=>{load()},[location?.latitude,location?.longitude]);const first=days[0]?.gregorian.split('-').map(Number);const offset=first?new Date(first[2],first[1]-1,first[0]).getDay():0;return <Page><ToolBar title="Hijri calendar" navigation={navigation}/><ScrollView contentContainerStyle={s.dataPage}>{!location?<LocationPrompt compact/>:<><View style={s.calendarIntro}><Text style={s.calendarMonth}>{now.toLocaleDateString('en',{month:'long',year:'numeric'})}</Text><Text style={s.calendarHijri}>{days.length?`${days[0].hijriMonth} – ${days[days.length-1].hijriMonth} ${days[0].hijriYear} AH`:''}</Text></View>{error?<ErrorState message={error} retry={load}/>:!days.length?<Spinner/>:<><View style={s.weekHead}>{['S','M','T','W','T','F','S'].map((d,i)=><Text key={i} style={s.weekLabel}>{d}</Text>)}</View><View style={s.calendarGrid}>{Array.from({length:offset}).map((_,i)=><View key={`e${i}`} style={s.calendarCell}/>) }{days.map((d,i)=><View key={d.gregorian} style={[s.calendarCell,d.gregorian.startsWith(String(now.getDate()).padStart(2,'0'))&&s.calendarToday]}><Text style={s.gregorianDay}>{i+1}</Text><Text style={s.hijriDay}>{d.hijriDay}</Text></View>)}</View><View style={s.calendarLegend}><View style={s.legendDot}/><Text style={s.sourceBody}>Large number: Gregorian · Small number: Hijri</Text></View></>}</>}</ScrollView></Page>}
 function RamadanScreen({navigation}:any){const{location}=useAppLocation();const[days,setDays]=useState<CalendarDay[]>([]);const[year,setYear]=useState<number|null>(null);const[error,setError]=useState('');const load=async()=>{if(!location)return;setError('');setDays([]);try{const snap=await getPrayerSnapshot(location.latitude,location.longitude);const target=snap.hijriMonth>9?snap.hijriYear+1:snap.hijriYear;setYear(target);setDays(await getRamadanCalendar(location.latitude,location.longitude,target));}catch(e:any){setError(e.message)}};useEffect(()=>{load()},[location?.latitude,location?.longitude]);return <Page><ToolBar title="Ramadan" navigation={navigation}/><ScrollView contentContainerStyle={s.dataPage}>{!location?<LocationPrompt compact/>:<><LinearGradient colors={['#2A2849','#5146A4']} style={s.ramadanHero}><Text style={s.ramadanArabic}>رَمَضَان</Text><Text style={s.ramadanTitle}>Ramadan {year||''} AH</Text><Text style={s.ramadanSub}>A live 30-day Suhoor and Iftar timetable for {location.label}.</Text></LinearGradient><Pressable onPress={()=>navigation.navigate('Tools',{screen:'Fasting'})} style={[s.sourceCard,{marginTop:13}]}>{ico('create-outline',20,C.green)}<View style={{flex:1}}><Text style={s.sourceTitle}>Fasting record</Text><Text style={s.sourceBody}>Mark each day and keep your make-up ledger</Text></View>{ico('arrow-forward',18,C.green)}</Pressable>{error?<ErrorState message={error} retry={load}/>:!days.length?<Spinner/>:<><Section title="Fasting timetable" action={`${days.length} days`}/><View style={s.ramadanList}>{days.map(d=>{const fajr=d.prayers.find(p=>p.name==='Fajr');const maghrib=d.prayers.find(p=>p.name==='Maghrib');return <View key={d.gregorian} style={s.ramadanRow}><View style={s.ramadanDay}><Text style={s.ramadanDayNo}>{d.hijriDay}</Text><Text style={s.ramadanDayLabel}>RAM</Text></View><View style={{flex:1}}><Text style={s.ramadanDate}>{d.weekday} · {d.gregorian}</Text><Text style={s.meta}>{location.label}</Text></View><View style={s.fastTime}><Text style={s.fastLabel}>SUHOOR</Text><Text style={s.fastValue}>{fajr?.time}</Text></View><View style={s.fastTime}><Text style={s.fastLabel}>IFTAR</Text><Text style={s.fastValue}>{maghrib?.time}</Text></View></View>})}</View></>}</>}</ScrollView></Page>}
@@ -1778,32 +1778,32 @@ function HadithProgressBars(){
   </View>;
 }
 
-function HadithScreen({navigation}:any){
+function HadithScreen({navigation}:any){const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);
   const state=useHadithState();
   const [query,setQuery]=useState('');
   const loaded=getLoadedCollections();
   const results=query.trim().length>=3?searchLoadedCollections(query,60):[];
   const open=(slug:string,number?:number)=>navigation.navigate(number?'Hadith Detail':'Hadith Collection',number?{slug,number}:{slug});
-  return <Page><ToolBar title="Hadith" navigation={navigation}/><ScrollView contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
+  return <Page><ToolBar title={T('Hadith')} navigation={navigation}/><ScrollView contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
     <ToolGraphic tool="Hadith" size={72}/>
-    <Text style={s.dataTitle}>Hadith</Text>
+    <Text style={s.dataTitle}>{T('Hadith')}</Text>
     
     <Text style={s.intro}>Ten verified collections with matched Arabic and English texts. Grading is shown where the source publishes it—Sahih al-Bukhari and Sahih Muslim carry no separate grade because the collection itself is the grading.</Text>
 
-    <View style={s.search}>{ico('search',18,C.muted)}<TextInput accessibilityLabel="Search hadith in opened collections" value={query} onChangeText={setQuery} style={s.searchInput} placeholder="Search opened collections" placeholderTextColor="#929B96"/>{query.length>0&&<Pressable accessibilityLabel="Clear hadith search" onPress={()=>setQuery('')}>{ico('close',16,C.muted)}</Pressable>}</View>
+    <View style={s.search}>{ico('search',18,C.muted)}<TextInput accessibilityLabel="Search hadith in opened collections" value={query} onChangeText={setQuery} style={s.searchInput} placeholder={T('Search opened collections')} placeholderTextColor="#929B96"/>{query.length>0&&<Pressable accessibilityLabel="Clear hadith search" onPress={()=>setQuery('')}>{ico('close',16,C.muted)}</Pressable>}</View>
 
     {query.trim().length>=3?(results.length?<>
       <Text style={s.meta}>{results.length} match{results.length===1?'':'es'} in {loaded.length} opened collection{loaded.length===1?'':'s'}</Text>
       {results.map(hadith=>{const collection=HADITH_COLLECTIONS.find(item=>item.slug===hadith.slug);return <Pressable key={hadith.id} onPress={()=>open(hadith.slug,hadith.number)} style={s.dataCard}>
-        <Text style={s.dataMeta}>{collection?.name} · Hadith {hadith.number}</Text>
+        <Text style={s.dataMeta}>{rtl ? collection?.arabicName || collection?.name : collection?.name} · {T('Hadith')} {hadith.number}</Text>
         <Text style={s.dataBody} numberOfLines={3}>{hadith.english||hadith.arabic}</Text>
       </Pressable>})}
     </>:<View style={s.empty}><Text style={s.dataBody}>{loaded.length?'No match in the collections you have opened yet.':'Open a collection once to search inside it.'}</Text></View>):<>
       {state.recent.length>0&&<>
-        <Section title="Continue reading"/>
+        <Section title={T('Continue reading')}/>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap:10,paddingRight:20}}>
           {state.recent.slice(0,8).map(item=>{const collection=HADITH_COLLECTIONS.find(entry=>entry.slug===item.slug);return <Pressable key={`${item.slug}-${item.number}`} onPress={()=>open(item.slug,item.number)} style={s.recentChipWide}>
-            <Text style={s.dataMeta}>{collection?.name}</Text>
+            <Text style={s.dataMeta}>{rtl ? collection?.arabicName || collection?.name : collection?.name}</Text>
             <Text style={s.recentChipTitle}>Hadith {item.number}</Text>
           </Pressable>})}
         </ScrollView>
@@ -1816,7 +1816,7 @@ function HadithScreen({navigation}:any){
         </Pressable>)}
       </>}
       <HadithProgressBars/>
-      <Section title="Collections"/>
+      <Section title={T('Collections')}/>
       {HADITH_COLLECTIONS.map(collection=>{
         const total=state.totals[collection.slug]||0;
         const read=(state.read[collection.slug]||[]).length;
@@ -1826,18 +1826,18 @@ function HadithScreen({navigation}:any){
             <View style={{flex:1}}>
               <Text style={s.dataName}>{collection.name}</Text>
               <Text style={s.dataArabic}>{collection.arabicName}</Text>
-              <Text style={s.meta}>{collection.author} · {collection.kind}{collection.graded?' · graded':''}{total?` · ${total.toLocaleString()} hadith`:''}</Text>
+              <Text style={s.meta}>{T(collection.author)} · {T(collection.kind)}{collection.graded ? (rtl ? ' · مصنّف' : ' · graded') : ''}{total ? ` · ${total.toLocaleString()} ${T('hadith')}` : ''}</Text>
             </View>
             {ico('chevron-forward',18,C.muted)}
           </View>
           {percent>0&&<View style={s.hadithTrack}><View style={[s.hadithFill,{width:`${percent}%`}]}/></View>}
         </Pressable>;
       })}
-      <View style={s.apiPanel}><Text style={s.apiTitle}>Arabic and English together</Text><Text style={s.apiText}>Each collection carries Arabic and English editions, so every hadith you read is shown in both. Nothing is paraphrased.</Text></View>
+      <View style={s.apiPanel}><Text style={s.apiTitle}>{T('Arabic and English together')}</Text><Text style={s.apiText}>{T('Each collection carries Arabic and English editions, so every hadith you read is shown in both. Nothing is paraphrased.')}</Text></View>
     </>}
   </ScrollView></Page>}
 
-function HadithCollectionScreen({route,navigation}:any){
+function HadithCollectionScreen({route,navigation}:any){const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);
   const slug=route.params?.slug||'bukhari';
   const collection=HADITH_COLLECTIONS.find(item=>item.slug===slug);
   const [data,setData]=useState<HadithCollectionData|null>(null);
@@ -1850,11 +1850,11 @@ function HadithCollectionScreen({route,navigation}:any){
   useEffect(()=>{setLimit(20)},[book,query]);
   const page=data?getHadithPage(data,{book,query,offset:0,limit}):{rows:[],total:0,offset:0,hasMore:false};
   const read=new Set(useHadithState().read[slug]||[]);
-  return <Page><ToolBar title={collection?.name||'Hadith'} navigation={navigation}/>
+  return <Page><ToolBar title={rtl ? (collection?.arabicName || T('Hadith')) : (collection?.name || 'Hadith')} navigation={navigation}/>
     {!data&&!error&&<Spinner/>}
     {!!error&&<ErrorState message={error} retry={load}/>}
     {!!data&&<>
-      <View style={s.search}>{ico('search',18,C.muted)}<TextInput accessibilityLabel="Search this collection" value={query} onChangeText={setQuery} style={s.searchInput} placeholder="Search Arabic, English or number" placeholderTextColor="#929B96"/>{query.length>0&&<Pressable accessibilityLabel="Clear search" onPress={()=>setQuery('')}>{ico('close',16,C.muted)}</Pressable>}</View>
+      <View style={s.search}>{ico('search',18,C.muted)}<TextInput accessibilityLabel="Search this collection" value={query} onChangeText={setQuery} style={s.searchInput} placeholder={T('Search Arabic, English or number')} placeholderTextColor="#929B96"/>{query.length>0&&<Pressable accessibilityLabel="Clear search" onPress={()=>setQuery('')}>{ico('close',16,C.muted)}</Pressable>}</View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.choiceRow}>
         <ChoicePill label="All books" selected={book===null} onPress={()=>setBook(null)}/>
         {data.books.map(entry=><ChoicePill key={entry.number} label={`${entry.number}. ${entry.name}`} selected={book===entry.number} onPress={()=>setBook(entry.number)}/>)}
@@ -1872,14 +1872,14 @@ function HadithCollectionScreen({route,navigation}:any){
             {ico('chevron-forward',16,C.muted)}
           </View>
         </Pressable>)}
-        {!page.rows.length&&<View style={s.empty}><Text style={s.dataBody}>No hadith matches this filter.</Text></View>}
-        {page.hasMore&&<Pressable accessibilityLabel="Load more hadith" onPress={()=>setLimit(value=>value+20)} style={s.secondary}><Text style={s.secondaryText}>Load more</Text></Pressable>}
+        {!page.rows.length&&<View style={s.empty}><Text style={s.dataBody}>{T('No hadith matches this filter.')}</Text></View>}
+        {page.hasMore&&<Pressable accessibilityLabel="Load more hadith" onPress={()=>setLimit(value=>value+20)} style={s.secondary}><Text style={s.secondaryText}>{T('Load more')}</Text></Pressable>}
         <View style={s.apiPanel}><Text style={s.apiTitle}>{data.name}</Text><Text style={s.apiText}>{data.books.length} books · {data.hadiths.length.toLocaleString()} hadith</Text></View>
       </ScrollView>
     </>}
   </Page>}
 
-function HadithDetailScreen({route,navigation}:any){
+function HadithDetailScreen({route,navigation}:any){const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);
   const slug=route.params?.slug||'bukhari';
   const number=Number(route.params?.number||1);
   const collection=HADITH_COLLECTIONS.find(item=>item.slug===slug);
@@ -1912,7 +1912,7 @@ function HadithDetailScreen({route,navigation}:any){
     if(!hadith)return;
     try{await Clipboard.setStringAsync(`${hadith.arabic}\n\n${hadith.english}`);setCopied(true);setTimeout(()=>setCopied(false),1800)}catch{/* clipboard unavailable */}
   };
-  return <Page><ToolBar title={collection?.name||'Hadith'} navigation={navigation}/>
+  return <Page><ToolBar title={rtl ? (collection?.arabicName || T('Hadith')) : (collection?.name || 'Hadith')} navigation={navigation}/>
     {!hadith&&!error&&<Spinner/>}
     {!!error&&<ErrorState message={error} retry={load}/>}
     {!!hadith&&<ScrollView contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
@@ -1929,26 +1929,26 @@ function HadithDetailScreen({route,navigation}:any){
       <View style={s.actionRow}>
         <Pressable accessibilityLabel={saved?'Remove hadith from saved':'Save this hadith'} onPress={()=>{if(collection)void toggleHadithSaved(collection,hadith)}} style={s.secondary}><Text style={s.secondaryText}>{saved?'Saved':'Save'}</Text></Pressable>
         <Pressable accessibilityLabel="Copy hadith text" onPress={copy} style={s.secondary}><Text style={s.secondaryText}>{copied?'Copied':'Copy'}</Text></Pressable>
-        <Pressable accessibilityLabel="Share hadith" onPress={share} style={s.secondary}><Text style={s.secondaryText}>Share</Text></Pressable>
+        <Pressable accessibilityLabel="Share hadith" onPress={share} style={s.secondary}><Text style={s.secondaryText}>{T('Share')}</Text></Pressable>
       </View>
       <View style={s.hadithNav}>
         {neighbours.previous?<Pressable accessibilityLabel="Previous hadith" onPress={()=>navigation.replace('Hadith Detail',{slug,number:neighbours.previous?.number})} style={s.hadithNavBtn}><Text style={s.hadithNavText}>← {neighbours.previous.number}</Text></Pressable>:<View style={s.hadithNavBtn}/>}
         {neighbours.next?<Pressable accessibilityLabel="Next hadith" onPress={()=>navigation.replace('Hadith Detail',{slug,number:neighbours.next?.number})} style={[s.hadithNavBtn,{alignItems:'flex-end'}]}><Text style={s.hadithNavText}>{neighbours.next.number} →</Text></Pressable>:<View style={s.hadithNavBtn}/>}
       </View>
-      <View style={s.apiPanel}><Text style={s.apiTitle}>Source</Text><Text style={s.apiText}>{hadithReference(collection,hadith)}</Text></View>
+      <View style={s.apiPanel}><Text style={s.apiTitle}>{T('Source')}</Text><Text style={s.apiText}>{hadithReference(collection,hadith)}</Text></View>
     </ScrollView>}
   </Page>}
 
-function HadithSavedScreen({navigation}:any){
+function HadithSavedScreen({navigation}:any){const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);
   const state=useHadithState();
-  return <Page><ToolBar title="Saved hadith" navigation={navigation}/>
-    {!state.saved.length&&<View style={s.empty}><ToolGraphic tool="Hadith" size={54}/><Text style={s.dataTitle}>Nothing saved yet</Text><Text style={s.dataBody}>Save a hadith from any collection and it will appear here on this device only.</Text></View>}
+  return <Page><ToolBar title={T('Saved hadith')} navigation={navigation}/>
+    {!state.saved.length&&<View style={s.empty}><ToolGraphic tool="Hadith" size={54}/><Text style={s.dataTitle}>{T('Nothing saved yet')}</Text><Text style={s.dataBody}>{T('Save a hadith from any collection and it will appear here on this device only.')}</Text></View>}
     {state.saved.map(item=><View key={item.id} style={s.dataCard}>
       <Pressable onPress={()=>navigation.navigate('Hadith Detail',{slug:item.slug,number:item.number})}>
         <Text style={s.dataMeta}>{item.collection} · Hadith {item.number}</Text>
         <Text style={s.dataBody} numberOfLines={4}>{item.preview}</Text>
       </Pressable>
-      <Pressable accessibilityLabel="Remove saved hadith" onPress={()=>void removeHadithBookmark(item.id)} style={{marginTop:10,alignSelf:'flex-start'}}><Text style={s.dangerText}>Remove</Text></Pressable>
+      <Pressable accessibilityLabel="Remove saved hadith" onPress={()=>void removeHadithBookmark(item.id)} style={{marginTop:10,alignSelf:'flex-start'}}><Text style={s.dangerText}>{T('Remove')}</Text></Pressable>
     </View>)}
   </Page>}
 
@@ -2159,33 +2159,33 @@ function AudioCenterScreen({ navigation }: any) {
     </Pressable>}
 
     <View style={s.choiceRow}>
-      <ChoicePill label="Reciters" selected={tab === 'reciters'} onPress={() => { setTab('reciters'); setQuery(''); }} />
-      <ChoicePill label="Translation" selected={tab === 'translation'} onPress={() => { setTab('translation'); setQuery(''); }} />
-      <ChoicePill label="Surahs" selected={tab === 'surah'} onPress={() => { setTab('surah'); setQuery(''); }} />
-      <ChoicePill label="Saved" selected={tab === 'saved'} onPress={() => { setTab('saved'); setQuery(''); }} />
+      <ChoicePill label={T('Reciters')} selected={tab === 'reciters'} onPress={() => { setTab('reciters'); setQuery(''); }} />
+      <ChoicePill label={T('Translation')} selected={tab === 'translation'} onPress={() => { setTab('translation'); setQuery(''); }} />
+      <ChoicePill label={T('Surahs')} selected={tab === 'surah'} onPress={() => { setTab('surah'); setQuery(''); }} />
+      <ChoicePill label={T('Saved')} selected={tab === 'saved'} onPress={() => { setTab('saved'); setQuery(''); }} />
     </View>
 
     {loading ? <Spinner /> : !!error ? <ErrorState message={error} retry={load} /> : <>
       {tab === 'reciters' && <>
         <Section title={T('Recitation source')} />
         <View style={s.choiceRow}>
-          <ChoicePill label="Verse by verse" selected={settings.reciterMode === 'verse'} onPress={() => { void update({ reciterMode: 'verse' }); }} />
-          <ChoicePill label="Full Surah" selected={settings.reciterMode === 'surah'} onPress={() => { void update({ reciterMode: 'surah' }); }} />
+          <ChoicePill label={T('Verse by verse')} selected={settings.reciterMode === 'verse'} onPress={() => { void update({ reciterMode: 'verse' }); }} />
+          <ChoicePill label={T('Full Surah')} selected={settings.reciterMode === 'surah'} onPress={() => { void update({ reciterMode: 'surah' }); }} />
         </View>
         <Text style={s.meta}>{settings.reciterMode === 'verse' ? 'Verse-by-verse files, one track per ayah, with translation audio and reader controls.' : 'Complete Surah recordings — one continuous track per Surah.'}</Text>
-        <Section title={settings.reciterMode === 'verse' ? 'Arabic reciters' : 'Full-Surah reciters'} />
+        <Section title={T(settings.reciterMode === 'verse' ? 'Arabic reciters' : 'Full-Surah reciters')} />
         <View style={s.search}>{ico('search', 18, C.muted)}<TextInput accessibilityLabel="Search reciters" value={query} onChangeText={setQuery} style={s.searchInput} placeholder={T('Search a reciter')} placeholderTextColor="#929B96" />{query.length > 0 && <Pressable accessibilityLabel="Clear reciter search" onPress={() => setQuery('')}>{ico('close-circle', 18, C.muted)}</Pressable>}</View>
         <View style={s.settings}>{(settings.reciterMode === 'verse' ? reciters.map((edition) => <View key={edition.identifier} style={s.audioRow}>
           <Pressable accessibilityRole="radio" accessibilityState={{ selected: settings.reciter === edition.identifier }} onPress={() => { void update({ reciter: edition.identifier, reciterName: edition.englishName }); }} style={s.audioRowMain}>
             <ToolGraphic tool="Recitations" size={42} />
-            <View style={{ flex: 1 }}><Text style={s.settingName}>{edition.englishName}</Text><Text style={s.meta}>Verse by verse · {edition.identifier}</Text></View>
+            <View style={{ flex: 1 }}><Text style={s.settingName}>{edition.englishName}</Text><Text style={s.meta}>{T('Verse by verse')} · {edition.identifier}</Text></View>
             {ico(settings.reciter === edition.identifier ? 'checkmark-circle' : 'ellipse', 20, settings.reciter === edition.identifier ? C.green : C.muted)}
           </Pressable>
           <Pressable accessibilityLabel={`Play a sample from ${edition.englishName}`} onPress={() => { void sample(edition, 'arabic'); }} style={s.audioRowAction}>{busy === `sample-${edition.identifier}` ? <ActivityIndicator color={C.green} /> : ico('play-circle', 22, C.green)}</Pressable>
         </View>) : surahReciters.filter((reciter) => reciter.name.toLowerCase().includes(needle)).map((reciter) => <View key={reciter.id} style={s.audioRow}>
           <Pressable accessibilityRole="radio" accessibilityState={{ selected: settings.surahReciterId === reciter.id }} onPress={() => { void update({ surahReciterId: reciter.id, surahReciterName: reciter.name }); }} style={s.audioRowMain}>
             <ToolGraphic tool="Recitations" size={42} />
-            <View style={{ flex: 1 }}><Text style={s.settingName}>{reciter.name}</Text><Text style={s.meta}>{reciter.rewaya}{reciter.surahTotal ? ` · ${reciter.surahTotal} Surahs` : ''}</Text></View>
+            <View style={{ flex: 1 }}><Text style={s.settingName}>{reciter.name}</Text><Text style={s.meta}>{reciter.rewaya}{reciter.surahTotal ? (rtl ? ` · ${reciter.surahTotal} سورة` : ` · ${reciter.surahTotal} Surahs`) : ''}</Text></View>
             {ico(settings.surahReciterId === reciter.id ? 'checkmark-circle' : 'ellipse', 20, settings.surahReciterId === reciter.id ? C.green : C.muted)}
           </Pressable>
           <Pressable accessibilityLabel={`Play a sample from ${reciter.name}`} onPress={() => { void startChapter({ id: 1, name_simple: 'Al-Fatihah', name_arabic: 'الفاتحة', verses_count: 7 } as Chapter, 1); }} style={s.audioRowAction}>{busy === 'chapter-1' ? <ActivityIndicator color={C.green} /> : ico('play-circle', 22, C.green)}</Pressable>
