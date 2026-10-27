@@ -11,6 +11,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
  * scholar they trust, and the screen says so.
  */
 
+/** The language dates are written in, so a Ramadan row reads in Arabic too. */
+let dateLocale: string | undefined;
+export function setFastingDateLocale(code?: string) { dateLocale = code; }
+
 export type FastType = 'ramadan' | 'voluntary' | 'qada' | 'missed';
 export type MissedReason = 'travel' | 'illness' | 'menstruation' | 'nifas' | 'other';
 
@@ -184,5 +188,5 @@ export function labelForEntry(entry: FastEntry) {
 export function readableDate(date: string) {
   const parsed = new Date(`${date}T12:00:00`);
   if (Number.isNaN(parsed.getTime())) return date;
-  return parsed.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+  return parsed.toLocaleDateString(dateLocale, { weekday: 'short', day: 'numeric', month: 'short' });
 }
