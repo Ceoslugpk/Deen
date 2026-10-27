@@ -1,6 +1,6 @@
 function ExploreStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="ExploreHome" component={ExploreHome}/><Stack.Screen name="Adhkar" component={AdhkarScreen}/><Stack.Screen name="99 Names" component={NamesScreen}/><Stack.Screen name="Prophet Names" component={ProphetNamesScreen}/><Stack.Screen name="Duas" component={DuasScreen}/><Stack.Screen name="Dua Category" component={DuaCategoryScreen}/><Stack.Screen name="Hadith" component={HadithScreen}/><Stack.Screen name="Hadith Collection" component={HadithCollectionScreen}/><Stack.Screen name="Hadith Detail" component={HadithDetailScreen}/><Stack.Screen name="Hadith Saved" component={HadithSavedScreen}/><Stack.Screen name="Worship Guides" component={GuideDirectory}/><Stack.Screen name="Guide Detail" component={GuideDetail}/></Stack.Navigator>}
 
-function ToolsStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="ToolsHome" component={ToolsHomeScreen}/><Stack.Screen name="Prayer" component={PrayerScreen}/><Stack.Screen name="Qibla" component={QiblaScreen}/><Stack.Screen name="Location Setup" component={LocationSetupScreen}/><Stack.Screen name="Weekly Summary" component={WeeklySummaryScreen}/><Stack.Screen name="Notifications" component={NotificationScreen}/><Stack.Screen name="Adhan" component={AdhanScreen}/><Stack.Screen name="Hijri Calendar" component={HijriCalendarScreen}/><Stack.Screen name="Ramadan" component={RamadanScreen}/><Stack.Screen name="Fasting" component={FastingScreen}/><Stack.Screen name="Mosques" component={DataTool}/><Stack.Screen name="Zakat" component={ZakatScreen}/><Stack.Screen name="Tasbih" component={TasbihScreen}/></Stack.Navigator>}
+function ToolsStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="ToolsHome" component={ToolsHomeScreen}/><Stack.Screen name="Prayer" component={PrayerScreen}/><Stack.Screen name="Qibla" component={QiblaScreen}/><Stack.Screen name="Location Setup" component={LocationSetupScreen}/><Stack.Screen name="Weekly Summary" component={WeeklySummaryScreen}/><Stack.Screen name="Notifications" component={NotificationScreen}/><Stack.Screen name="Adhan" component={AdhanScreen}/><Stack.Screen name="Hijri Calendar" component={HijriCalendarScreen}/><Stack.Screen name="Ramadan" component={RamadanScreen}/><Stack.Screen name="Fasting" component={FastingScreen}/><Stack.Screen name="Mosques" component={DataTool}/><Stack.Screen name="Zakat" component={ZakatScreen}/><Stack.Screen name="Tasbih" component={TasbihScreen}/><Stack.Screen name="Pilgrimage" component={PilgrimageScreen}/><Stack.Screen name="Journey" component={JourneyScreen}/><Stack.Screen name="Holy site channels" component={HolyChannelsScreen}/></Stack.Navigator>}
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -51,6 +51,8 @@ import { loadDuaCategories, loadDuas } from './src/services/duaService';
 import { loadNameLanguage, loadNameOfDay, loadNames, saveNameLanguage } from './src/services/namesService';
 import { ARABIC_UI, ARABIC_UI_SEMIBOLD, ensureQuranFont, quranFontFamily as quranFont, QURAN_FONTS, useQuranFont } from './src/services/fonts';
 import { CARD, CARD_GAP, RADIUS, SPACE } from './src/design/tokens';
+import { completeJourney, clearJourney, JOURNEY_META, JOURNEY_STEPS, JourneyKind, JourneyStep, journeyProgress, setStepCount, setStepNote, startJourney, toggleStep, useJourneys, loadJourneys } from './src/services/journeyService';
+import { HOLY_CHANNELS, openChannel } from './src/services/holyChannels';
 import { clearFastDay, FastType, labelForEntry, loadFastingState, MISSED_REASONS, MissedReason, recordFast, readableDate, setFastingOwed, summariseFasting, useFasting } from './src/services/fastingService';
 import { buildWeeklySummary, loadActivity, logHifzReview, logMushafPage, logSurahOpen, logVerseRead, useActivity } from './src/services/activityService';
 import { downloadSurahAudio, loadDownloads, downloadSurahText, estimateFreeBytes, formatBytes, pauseDownload, removeDownload, resolveAudioSource, resumeDownload, retryDownload, totalDownloadBytes, useDownloads } from './src/services/downloadService';
@@ -115,6 +117,16 @@ const TOOL_IMAGES:Record<string,any>={
   Qibla:require('./assets/tool-icons/qibla.png'),
   Prayer:require('./assets/tool-icons/salah-guide.png'),
   Tools:require('./assets/tool-icons/tab-tools.png'),
+  Pilgrimage:require('./assets/tool-icons/pilgrimage.png'),
+  Umrah:require('./assets/tool-icons/pilgrimage.png'),
+  Hajj:require('./assets/tool-icons/pilgrimage.png'),
+  'Holy site channels':require('./assets/tool-icons/holy-sites.png'),
+  'ritual-ihram':require('./assets/tool-icons/ritual-ihram.png'),
+  'ritual-tawaf':require('./assets/tool-icons/ritual-tawaf.png'),
+  'ritual-sai':require('./assets/tool-icons/ritual-sai.png'),
+  'ritual-arafat':require('./assets/tool-icons/ritual-arafat.png'),
+  'ritual-jamarat':require('./assets/tool-icons/ritual-jamarat.png'),
+  'ritual-mina':require('./assets/tool-icons/ritual-mina.png'),
   Duas:require('./assets/tool-icons/duas.png'),
   Tasbih:require('./assets/tool-icons/tasbih.png'),
   Hijri:require('./assets/tool-icons/hijri.png'),
@@ -348,6 +360,7 @@ const PRAYER_TOOLS: [string, string, string][] = [
 ];
 
 const LIFE_TOOLS: [string, string, string][] = [
+  ['Umrah and Hajj', 'Rite-by-rite journeys, counters and the holy-site channels', 'Pilgrimage'],
   ['Tasbih', 'A quiet counter for your dhikr', 'Tasbih'],
   ['Zakat', 'Work out what is due, and record what you gave', 'Zakat'],
   ['Mosques', 'Prayer spaces around you', 'Mosques'],
@@ -882,6 +895,219 @@ function DataTool({route,navigation}:any){
  const load=async()=>{setError('');setLoaded(false);try{if(title==='Duas')setItems(await getDuas('morning'));else if(title==='99 Names')setItems(await getNames());else if(title==='Hadith')setItems([await getDailyHadith()]);else if(title==='Mosques'){if(!location){setItems([]);return}setItems(await getNearbyMosques(location.latitude,location.longitude));}}catch(e:any){setError(e.message)}finally{setLoaded(true)}};
  useEffect(()=>{load()},[title,location?.latitude,location?.longitude]);
  return <Page><ToolBar title={title} navigation={navigation}/><ScrollView contentContainerStyle={s.dataPage}><Text style={s.dataTitle}>{title==='Duas'?'Morning remembrance':title==='99 Names'?'The Beautiful Names':title==='Hadith'?'Hadith of the day':'Mosques near you'}</Text>{title==='Mosques'&&!location?<LocationPrompt compact/>:error?<ErrorState message={error} retry={load}/>:!loaded?<Spinner/>:!items.length?<View style={s.empty}><View style={s.errorIcon}>{ico('location-outline',24,C.green)}</View><Text style={s.errorTitle}>No live records nearby</Text><Text style={s.errorText}>The directory does not currently list a public mosque within 50 km of this location.</Text></View>:items.map((item:any,i)=><View key={item.number||item.slug||i} style={s.dataCard}>{title==='99 Names'?<><Text style={s.dataArabic}>{item.name}</Text><Text style={s.dataName}>{item.transliteration}</Text><Text style={s.dataBody}>{item.meaning}</Text></>:title==='Hadith'?<><Text style={s.dataBody}>{item.text}</Text><Text style={s.dataMeta}>{item.collection?.toUpperCase()} · {item.number}</Text></>:title==='Mosques'?<><Text style={s.dataName}>{item.name}</Text><Text style={s.dataBody}>{item.city}, {item.country}</Text><Text style={s.dataMeta}>{item.distance_km?.toFixed?.(1)} km · {item.source}</Text></>:<><Text style={s.dataArabic}>{item.arabic}</Text><Text style={s.dataBody}>{item.translation}</Text><Text style={s.dataMeta}>{item.category}</Text></>}</View>)}</ScrollView></Page>
+}
+
+const formatJourneyDay = (iso: string) => {
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });
+};
+
+function PilgrimageScreen({ navigation }: any) {
+  const { rtl } = useLanguage();
+  const journeys = useJourneys();
+  const meta = JOURNEY_META;
+  const kinds: JourneyKind[] = ['umrah', 'hajj'];
+  const openJourney = (kind: JourneyKind) => {
+    if (!journeys.active[kind]) startJourney(kind, meta[kind].title);
+    navigation.navigate('Journey', { kind });
+  };
+  return <Page><ToolBar title="Umrah and Hajj" navigation={navigation} />
+    <ScrollView contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
+      <ToolGraphic tool="Pilgrimage" size={78} />
+      <Text style={s.dataTitle}>Umrah and Hajj</Text>
+      <Text style={s.intro}>A private checklist for every rite, the counts you need to keep, and the verses that speak about them. Nothing leaves this device.</Text>
+      {kinds.map((kind) => {
+        const journey = journeys.active[kind];
+        const progress = journeyProgress(journey);
+        return <Pressable key={kind} accessibilityRole="button" accessibilityLabel={meta[kind].title} onPress={() => openJourney(kind)} style={[s.journeyCard, { flexDirection: rtl ? 'row-reverse' : 'row' }]}>
+          <ToolGraphic tool="Pilgrimage" size={52} />
+          <View style={{ flex: 1 }}>
+            <View style={[s.journeyTitleRow, { flexDirection: rtl ? 'row-reverse' : 'row' }]}>
+              <Text style={s.settingName}>{meta[kind].title}</Text>
+              <Text style={s.journeyArabic}>{meta[kind].arabic}</Text>
+            </View>
+            <Text style={s.meta}>{meta[kind].intro}</Text>
+            <View style={s.journeyBar}><View style={[s.journeyBarFill, { width: `${progress.percent}%` }]} /></View>
+            <Text style={s.dataMeta}>{journey ? `${progress.done} OF ${progress.total} RITES DONE · STARTED ${formatJourneyDay(journey.startedAt).toUpperCase()}` : 'NOT STARTED'}</Text>
+          </View>
+          {ico('arrow-forward', 17, '#B9BEC9')}
+        </Pressable>;
+      })}
+      <Section title="Holy site channels" />
+      <Pressable accessibilityRole="button" accessibilityLabel="Holy site channels" onPress={() => navigation.navigate('Holy site channels')} style={[s.settings, s.dataSourceRow]}>
+        <ToolGraphic tool="Holy site channels" size={40} />
+        <View style={{ flex: 1, marginHorizontal: 13 }}>
+          <Text style={s.settingName}>{rtl ? 'بثّ الحرمين' : 'Watch the Haramain live'}</Text>
+          <Text style={s.meta}>{rtl ? 'القنوات الرسمية من مكة والمدينة' : 'The official channels from Makkah and Madinah'}</Text>
+        </View>
+        {ico('arrow-forward', 17, '#B9BEC9')}
+      </Pressable>
+      <Section title="Completed journeys" action={`${journeys.history.length} kept`} />
+      {!journeys.history.length ? <View style={s.empty}><Text style={s.errorText}>{rtl ? 'لا رحلات مسجلة بعد' : 'No completed journeys yet. Finish one and it is kept here.'}</Text></View>
+        : journeys.history.map((journey) => <View key={journey.id} style={s.settings}>
+          <ToolGraphic tool="Pilgrimage" size={40} />
+          <View style={{ flex: 1, marginHorizontal: 13 }}>
+            <Text style={s.settingName}>{meta[journey.kind].title} · {journey.label}</Text>
+            <Text style={s.meta}>{journeyProgress(journey).done} of {journeyProgress(journey).total} rites · completed {formatJourneyDay(journey.completedAt || journey.startedAt)}</Text>
+          </View>
+        </View>)}
+    </ScrollView>
+  </Page>;
+}
+
+function JourneyScreen({ route, navigation }: any) {
+  const { rtl } = useLanguage();
+  const kind: JourneyKind = route.params.kind;
+  const { preferences } = useQuranPreferences();
+  const journeys = useJourneys();
+  const journey = journeys.active[kind];
+  const steps = JOURNEY_STEPS[kind];
+  const progress = journeyProgress(journey);
+  const [verseFor, setVerseFor] = useState<string | null>(null);
+  const [noteFor, setNoteFor] = useState<string | null>(null);
+  const [verses, setVerses] = useState<Record<string, { arabic: string; translation: string; reference: string }[]>>({});
+  const [loadingVerse, setLoadingVerse] = useState<string | null>(null);
+  const [verseError, setVerseError] = useState('');
+  const wentBack = useRef(false);
+  useEffect(() => {
+    if (!journey && !wentBack.current) { wentBack.current = true; navigation.goBack(); }
+  }, [journey, navigation]);
+
+  const loadVerses = async (step: JourneyStep) => {
+    if (verses[step.id] || !step.verseKeys?.length) { setVerseFor(verseFor === step.id ? null : step.id); return; }
+    setLoadingVerse(step.id);
+    setVerseError('');
+    try {
+      const loaded: { arabic: string; translation: string; reference: string }[] = [];
+      for (const key of step.verseKeys) {
+        const editions = await getAyahEditions(key, [preferences.scriptEdition, preferences.translationEdition]);
+        const arabic = editions.find((edition) => edition.language === 'ar')?.text || '';
+        const translation = editions.find((edition) => edition.language !== 'ar')?.text || '';
+        loaded.push({ arabic, translation, reference: key });
+      }
+      setVerses((current) => ({ ...current, [step.id]: loaded }));
+      setVerseFor(step.id);
+    } catch (e: any) {
+      setVerseError(e.message || 'Please check your connection.');
+    } finally {
+      setLoadingVerse(null);
+    }
+  };
+
+  if (!journey) return <Page><ToolBar title={JOURNEY_META[kind].title} navigation={navigation} /><View style={s.loading}><Spinner /></View></Page>;
+
+  return <Page><ToolBar title={`${JOURNEY_META[kind].title} journey`} navigation={navigation} />
+    <ScrollView contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
+      <ToolGraphic tool="Pilgrimage" size={72} />
+      <Text style={s.dataTitle}>{JOURNEY_META[kind].title}</Text>
+      <Text style={s.journeyArabic}>{JOURNEY_META[kind].arabic}</Text>
+      <View style={[s.summaryScore, { flexDirection: rtl ? 'row-reverse' : 'row' }]}>
+        <View>
+          <Text style={s.nextCardLabel}>RITES DONE</Text>
+          <Text style={s.zakatNo}>{progress.done}<Text style={s.weekScoreBody}> / {progress.total}</Text></Text>
+        </View>
+        <View style={{ alignItems: 'flex-end' }}>
+          <Text style={s.nextCardLabel}>PROGRESS</Text>
+          <Text style={s.zakatNo}>{progress.percent}%</Text>
+        </View>
+      </View>
+      <View style={s.journeyBar}><View style={[s.journeyBarFill, { width: `${progress.percent}%` }]} /></View>
+
+      {steps.map((step, index) => {
+        const checked = !!journey.done[step.id];
+        const count = journey.counts[step.id] || 0;
+        const note = journey.notes[step.id] || '';
+        return <View key={step.id} style={[s.stepCard, checked && s.stepCardDone]}>
+          <View style={[s.stepHead, { flexDirection: rtl ? 'row-reverse' : 'row' }]}>
+            <ToolGraphic tool={step.icon} size={44} />
+            <View style={{ flex: 1 }}>
+              <Text style={s.stepIndex}>RITE {index + 1}</Text>
+              <Text style={s.settingName}>{step.title}</Text>
+              <Text style={s.meta}>{step.short}</Text>
+            </View>
+            <Pressable accessibilityRole="checkbox" accessibilityState={{ checked }} accessibilityLabel={`Mark ${step.title} as done`}
+              onPress={() => toggleStep(kind, step.id)} style={[s.stepCheck, checked && s.stepCheckDone]}>
+              {!!checked && ico('checkmark', 16, C.white)}
+            </Pressable>
+          </View>
+          <Text style={s.dataBody}>{step.detail}</Text>
+          {!!step.counter && <View style={s.stepper}>
+            <Pressable accessibilityLabel={`One fewer ${step.counter.label}`} onPress={() => setStepCount(kind, step.id, count - 1, step.counter!.max)} style={s.stepButton}>{ico('remove', 20, C.green)}</Pressable>
+            <View style={s.stepCountBox}>
+              <Text style={s.stepCount}>{count}</Text>
+              <Text style={s.stepCountLabel}>of {step.counter.max} {step.counter.label}</Text>
+            </View>
+            <Pressable accessibilityLabel={`One more ${step.counter.label}`} onPress={() => setStepCount(kind, step.id, count + 1, step.counter!.max)} style={s.stepButton}>{ico('add', 20, C.green)}</Pressable>
+          </View>}
+          <View style={s.actionRow}>
+            {!!step.verseKeys?.length && <Pressable accessibilityLabel={`Read the verse for ${step.title}`} onPress={() => loadVerses(step)} style={s.secondary}>
+              <Text style={s.secondaryText}>{verseFor === step.id ? 'Hide the verse' : 'Read the verse'}</Text>
+            </Pressable>}
+            <Pressable accessibilityLabel={`Add a note for ${step.title}`} onPress={() => setNoteFor(noteFor === step.id ? null : step.id)} style={s.secondary}>
+              <Text style={s.secondaryText}>{note ? 'Edit your note' : 'A note'}</Text>
+            </Pressable>
+          </View>
+          {verseFor === step.id && <View style={s.verseBox}>
+            {loadingVerse === step.id ? <Spinner /> : (verses[step.id] || []).map((entry) => <View key={entry.reference}>
+              <Text style={s.dataMeta}>QURAN {entry.reference}</Text>
+              {!!entry.arabic && <Text style={s.verseArabic}>{entry.arabic}</Text>}
+              {!!entry.translation && <Text style={s.dataBody}>{entry.translation}</Text>}
+            </View>)}
+            {!!verseError && <Text style={s.meta}>{verseError}</Text>}
+          </View>}
+          {noteFor === step.id && <TextInput accessibilityLabel={`Note for ${step.title}`} value={note} onChangeText={(text) => setStepNote(kind, step.id, text)}
+            placeholder="A reminder to yourself — kept only on this device" placeholderTextColor={C.muted} style={s.searchInput} multiline />}
+          {!!note && noteFor !== step.id && <Text style={s.stepNote}>{note}</Text>}
+        </View>;
+      })}
+
+      <Section title="This journey" />
+      <View style={s.dataCard}>
+        <Text style={s.dataBody}>{progress.done === progress.total ? 'Every rite is marked. You can keep the journey in your history, or start a fresh one the next time you go.' : 'Mark each rite as you complete it. Counts and notes are saved as you go.'}</Text>
+        <View style={s.actionRow}>
+          {progress.done === progress.total && <Pressable accessibilityLabel="Complete this journey" onPress={() => { completeJourney(kind); navigation.goBack(); }} style={s.primary}><Text style={s.primaryText}>Complete journey</Text></Pressable>}
+          <Pressable accessibilityLabel="Start this journey again from the beginning" onPress={() => { clearJourney(kind); startJourney(kind, JOURNEY_META[kind].title); }} style={s.secondary}><Text style={s.secondaryText}>Start again</Text></Pressable>
+        </View>
+        <Pressable accessibilityLabel="Delete this journey" onPress={() => { clearJourney(kind); navigation.goBack(); }} style={s.dangerButton}><Text style={s.dangerText}>Delete journey</Text></Pressable>
+      </View>
+      <View style={s.apiPanel}>
+        <Text style={s.apiTitle}>{rtl ? 'تنبيه' : 'A note on the rites'}</Text>
+        <Text style={s.apiText}>{rtl ? 'هذا تنظيم خاص، وليس فتوى. تختلف المذاهب في تفاصيل المناسك وما يفسدها وما يجب فيها، فاستفتِ عالماً موثوقاً في حالتك.' : 'This is a personal checklist, not a ruling. The schools differ on the details of the rites, on what breaks them and on what is due for them, so confirm your own case with a scholar you trust.'}</Text>
+      </View>
+    </ScrollView>
+  </Page>;
+}
+
+function HolyChannelsScreen({ navigation }: any) {
+  const { rtl } = useLanguage();
+  const [opened, setOpened] = useState('');
+  const open = async (channel: (typeof HOLY_CHANNELS)[number]) => { setOpened(channel.id); await openChannel(channel); };
+  return <Page><ToolBar title={rtl ? 'بثّ الحرمين' : 'Holy site channels'} navigation={navigation} />
+    <ScrollView contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
+      <ToolGraphic tool="Holy site channels" size={76} />
+      <Text style={s.dataTitle}>{rtl ? 'بثّ الحرمين' : 'Holy site channels'}</Text>
+      <Text style={s.intro}>{rtl ? 'البثّ الرسمي من مكة والمدينة على مدار الساعة.' : 'The official broadcasts from Makkah and Madinah, around the clock.'}</Text>
+      {HOLY_CHANNELS.map((channel) => <View key={channel.id} style={s.channelCard}>
+        <View style={[s.channelHead, { flexDirection: rtl ? 'row-reverse' : 'row' }]}>
+          <ToolGraphic tool="Holy site channels" size={46} />
+          <View style={{ flex: 1 }}>
+            <Text style={s.dataMeta}>{channel.site.toUpperCase()} · {channel.channel.toUpperCase()}</Text>
+            <Text style={s.settingName}>{channel.place}</Text>
+            <Text style={s.channelArabic}>{channel.arabic}</Text>
+          </View>
+        </View>
+        <Text style={s.dataBody}>{channel.detail}</Text>
+        <Text style={s.meta}>{channel.broadcaster}</Text>
+        <Pressable accessibilityRole="button" accessibilityLabel={`Open ${channel.channel} live`} onPress={() => open(channel)} style={s.primary}>
+          <Text style={s.primaryText}>{opened === channel.id ? 'Opening…' : 'Open live stream'}</Text>
+        </Pressable>
+      </View>)}
+      <View style={s.apiPanel}>
+        <Text style={s.apiTitle}>{rtl ? 'كيف يُفتح البثّ' : 'How the stream opens'}</Text>
+        <Text style={s.apiText}>{rtl ? 'يُفتح البثّ خارج التطبيق في المتصفح أو تطبيق يوتيوب، لأن إعادة بثّه هنا تحتاج حقوقاً لا يملكها التطبيق.' : 'The stream opens outside this app, in your browser or the YouTube app, because re-broadcasting it here would need rights the app does not hold.'}</Text>
+      </View>
+    </ScrollView>
+  </Page>;
 }
 
 function FastingScreen({navigation}:any){
@@ -1571,9 +1797,29 @@ function FloatingTabBar({ state, navigation }: any) {
 }
 
 function Tabs(){return <Tab.Navigator screenOptions={{headerShown:false,tabBarHideOnKeyboard:true}} tabBar={(props:any)=><FloatingTabBar {...props}/>}><Tab.Screen name="Home" component={HomeScreen}/><Tab.Screen name="Quran" component={QuranStack}/><Tab.Screen name="Library" component={ExploreStack}/><Tab.Screen name="Tools" component={ToolsStack}/><Tab.Screen name="Settings" component={SettingsStack}/></Tab.Navigator>}
-export default function App(){const[fontsLoaded]=useFonts({DMSans_400Regular,DMSans_600SemiBold,DMSans_700Bold,Newsreader_600SemiBold,NotoNaskhArabic_400Regular,NotoNaskhArabic_600SemiBold,Amiri_400Regular,KFGQPCUthmanicHafs,IBMPlexSansArabic_400Regular,IBMPlexSansArabic_600SemiBold});useEffect(()=>{if(fontsLoaded){resumeSavedQuranPreload();void loadAudioSettings();void loadHadithState();void loadTasbihState();void loadDownloads();void loadActivity();void loadFastingState()}},[fontsLoaded]);if(!fontsLoaded)return <SafeAreaView style={s.safe}><Spinner/></SafeAreaView>;return <LanguageProvider><QuranPreferencesProvider><WorshipSettingsProvider><LocationProvider><NavigationContainer ref={navigationRef}><ExpoStatusBar style="dark"/><Tabs/><MiniPlayer/></NavigationContainer></LocationProvider></WorshipSettingsProvider></QuranPreferencesProvider></LanguageProvider>}
+export default function App(){const[fontsLoaded]=useFonts({DMSans_400Regular,DMSans_600SemiBold,DMSans_700Bold,Newsreader_600SemiBold,NotoNaskhArabic_400Regular,NotoNaskhArabic_600SemiBold,Amiri_400Regular,KFGQPCUthmanicHafs,IBMPlexSansArabic_400Regular,IBMPlexSansArabic_600SemiBold});useEffect(()=>{if(fontsLoaded){resumeSavedQuranPreload();void loadAudioSettings();void loadHadithState();void loadTasbihState();void loadDownloads();void loadActivity();void loadFastingState();void loadJourneys()}},[fontsLoaded]);if(!fontsLoaded)return <SafeAreaView style={s.safe}><Spinner/></SafeAreaView>;return <LanguageProvider><QuranPreferencesProvider><WorshipSettingsProvider><LocationProvider><NavigationContainer ref={navigationRef}><ExpoStatusBar style="dark"/><Tabs/><MiniPlayer/></NavigationContainer></LocationProvider></WorshipSettingsProvider></QuranPreferencesProvider></LanguageProvider>}
 
 const s=StyleSheet.create({
+  journeyCard:{flexDirection:'row',alignItems:'center',gap:CARD.gap,backgroundColor:C.white,borderRadius:RADIUS.xl,borderWidth:1,borderColor:C.line,padding:CARD.padding,marginBottom:CARD_GAP,...soft},
+  journeyTitleRow:{flexDirection:'row',alignItems:'center',gap:SPACE.sm},
+  journeyArabic:{color:C.green,fontSize:18,fontFamily:'KFGQPCUthmanicHafs',marginTop:SPACE.xs,marginBottom:SPACE.xs},
+  journeyBar:{height:6,borderRadius:3,backgroundColor:C.mint,overflow:'hidden',marginTop:SPACE.sm,marginBottom:SPACE.xs},
+  journeyBarFill:{height:6,borderRadius:3,backgroundColor:C.green},
+  stepCard:{backgroundColor:C.white,borderRadius:RADIUS.xl,borderWidth:1,borderColor:C.line,padding:CARD.padding,marginBottom:CARD_GAP,gap:CARD.gap,...soft},
+  stepCardDone:{borderColor:'#BFD9CF',backgroundColor:'#FBFCFB'},
+  stepHead:{flexDirection:'row',alignItems:'flex-start',gap:CARD.gap},
+  stepIndex:{color:C.muted,fontSize:9,fontFamily:'DMSans_700Bold',letterSpacing:1.4,marginBottom:SPACE.xs},
+  stepCheck:{width:32,height:32,borderRadius:16,borderWidth:1.5,borderColor:C.line,alignItems:'center',justifyContent:'center'},
+  stepCheckDone:{backgroundColor:C.green,borderColor:C.green},
+  stepCountBox:{alignItems:'center',minWidth:96},
+  stepCount:{color:C.ink,fontSize:24,fontFamily:'Newsreader_600SemiBold'},
+  stepCountLabel:{color:C.muted,fontSize:11,marginTop:SPACE.xs},
+  verseBox:{backgroundColor:C.mint,borderRadius:RADIUS.lg,padding:CARD.padding,gap:SPACE.sm,borderWidth:1,borderColor:C.line},
+  verseArabic:{color:C.ink,textAlign:'right',fontFamily:'KFGQPCUthmanicHafs',fontSize:24,lineHeight:48,includeFontPadding:false},
+  stepNote:{color:C.ink,fontSize:13,fontStyle:'italic',backgroundColor:C.mint,borderRadius:RADIUS.md,padding:SPACE.md},
+  channelCard:{backgroundColor:C.white,borderRadius:RADIUS.xl,borderWidth:1,borderColor:C.line,padding:CARD.padding,marginBottom:CARD_GAP,gap:SPACE.md,...soft},
+  channelHead:{flexDirection:'row',alignItems:'center',gap:CARD.gap},
+  channelArabic:{color:C.green,fontSize:18,fontFamily:'KFGQPCUthmanicHafs',marginTop:SPACE.xs},
   dataSourceRow:{marginTop:8},
   floatBarWrap:{position:'absolute',left:0,right:0,bottom:0,alignItems:'center',paddingBottom:Platform.OS==='ios'?24:16,pointerEvents:'box-none'},
   floatBar:{height:66,borderRadius:33,backgroundColor:C.white,borderWidth:1,borderColor:C.line,alignItems:'center',justifyContent:'space-between',paddingHorizontal:8,...shadow},
