@@ -57,7 +57,8 @@ import { clearFastDay, FastType, labelForEntry, loadFastingState, MISSED_REASONS
 import { buildWeeklySummary, loadActivity, logHifzReview, logMushafPage, logSurahOpen, logVerseRead, useActivity } from './src/services/activityService';
 import { addDays, addQada, ADVISORY, BISMILLAH_ARABIC, cycleStats, dayKey, daysBetween, deleteCycle, deleteNifas, deleteQada, endCycle, endNifas, EXPLANATIONS, FLOW_LEVELS, formatDay, formatLongDay, GHUSL_FARD, GHUSL_SUNNAH, LIMITS, loadWomensState, logPurity, nifasStats, NIYYAH_ARABIC, NIYYAH_MEANING, NIYYAH_TRANSLITERATION, PurityStatus, QadaReason, QADA_REASONS, qadaStats, recentPurity, REFERENCES, setFlow, setOptedIn, startCycle, startNifas, toggleQada, TUHR_SIGNS, useWomens, WORSHIP_GUIDANCE } from './src/services/womensService';
 import { BiometricInfo, biometricInfo, checkPin, removePin, RELOCK_OPTIONS, setPin, startLockWatch, unlockSession, unlockWithBiometric, updateLockSettings, useIsLocked, useLockConfig, loadLockConfig } from './src/services/privacyService';
-import { CURRENCIES, clearHistory, computeZakat, currencySymbol, deleteCalculation, formatMoney, livePrices, loadZakatState, marketIsFresh, NISAB_GOLD_GRAMS, NISAB_SILVER_GRAMS, refreshMarket, saveCalculation, setAssetAmount, setBasis, setCurrency, setLiabilityAmount, setMetalPrice, useLiveMetalPrices, useMarket, useZakat } from './src/services/zakatService';
+import { CURRENCIES, clearHistory, computeZakat, currencySymbol, deleteCalculation, formatMoney, livePrices, loadZakatState, marketIsFresh, NISAB_GOLD_GRAMS, NISAB_SILVER_GRAMS, refreshMarket, saveCalculation, setAssetAmount, setBasis, setCurrency, setLiabilityAmount, setMetalPrice, setMoneyLocale, useLiveMetalPrices, useMarket, useZakat } from './src/services/zakatService';
+import { tx } from './src/services/phase4Copy';
 import { downloadSurahAudio, loadDownloads, downloadSurahText, estimateFreeBytes, formatBytes, pauseDownload, removeDownload, resolveAudioSource, resumeDownload, retryDownload, totalDownloadBytes, useDownloads } from './src/services/downloadService';
 import { NAME_LANGUAGES } from './src/services/api';
 import { PROPHETS } from './src/content/prophets';
@@ -1225,8 +1226,10 @@ function haptic(kind: 'tap' | 'error' = 'tap') {
   }
 }
 
-function PrivateRow({ title, caption, graphic, onPress, rtl }: { title: string; caption: string; graphic: string; onPress: () => void; rtl: boolean }) {
-  return <Pressable accessibilityRole="button" accessibilityLabel={title} onPress={onPress} style={[s.setting, ]}>
+// `title` is what is shown, so it is translated; `label` is what a screen reader
+// and the QA scripts read, and it stays in English in both languages.
+function PrivateRow({ title, caption, graphic, onPress, rtl, label }: { title: string; caption: string; graphic: string; onPress: () => void; rtl: boolean; label?: string }) {
+  return <Pressable accessibilityRole="button" accessibilityLabel={label ?? title} onPress={onPress} style={s.setting}>
     <ToolGraphic tool={graphic} size={44} />
     <View style={{ flex: 1, marginHorizontal: 13 }}><Text style={s.settingName}>{title}</Text><Text style={s.meta}>{caption}</Text></View>
     {ico(rtl ? 'arrow-back' : 'arrow-forward', 17, '#B9BEC9')}
@@ -1266,7 +1269,8 @@ function usePrivateGate() {
 }
 
 function PrivateLockScreen({ navigation }: any) {
-  const { rtl } = useLanguage();
+  const { language, rtl } = useLanguage();
+  const T = (text: string) => tx(rtl, text);
   const { config, info } = usePrivateGate();
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
@@ -1276,7 +1280,7 @@ function PrivateLockScreen({ navigation }: any) {
     busy.current = true;
     const ok = await unlockWithBiometric();
     busy.current = false;
-    if (!ok) setError('That was not recognised. You can use your PIN instead.');
+    if (!ok) setError(T('That was not recognised. You can use your PIN instead.'));
   };
   useEffect(() => {
     if (config.biometric && info.available) void withBiometrics();
@@ -1285,7 +1289,7 @@ function PrivateLockScreen({ navigation }: any) {
     if (value.length < 4) return;
     if (await checkPin(value)) { setPin(''); setError(''); unlockSession(); return; }
     haptic('error');
-    setError('That is not the PIN saved on this device.');
+    setError(T('That is not the PIN saved on this device.'));
     setPin('');
   };
   const digit = async (value: string) => {
@@ -1295,13 +1299,13 @@ function PrivateLockScreen({ navigation }: any) {
     setError('');
     if (next.length === 4) await submit(next);
   };
-  return <Page><ToolBar title="Private" navigation={navigation} />
+  return <Page><ToolBar title={T('Private')} navigation={navigation} />
     <View style={s.pinPage}>
       <ToolGraphic tool="Privacy lock" size={78} />
-      <Text style={s.dataTitle}>Locked</Text>
-      <Text style={s.intro}>These records stay on this device. Unlock with {info.available ? `${info.label} or ` : ''}your PIN to open them.</Text>
+      <Text style={s.dataTitle}>{T('Locked')}</Text>
+      <Text style={s.intro}>{rtl ? 'تبقى هذه السجلات على هذا الجهاز. افتحيها بـ ' : 'These records stay on this device. Unlock with '}{info.available ? `${info.label}${rtl ? ' أو ' : ' or '}` : ''}{rtl ? 'الرمز لعرضها.' : 'your PIN to open them.'}</Text>
       <PinDots filled={pin.length} error={!!error} />
-      <Text style={[s.pinHint, !!error && s.pinHintError]}>{error || (config.pinSet ? 'Enter your 4-digit PIN' : 'No PIN has been set yet')}</Text>
+      <Text style={[s.pinHint, !!error && s.pinHintError]}>{error || (config.pinSet ? T('Enter your 4-digit PIN') : T('No PIN has been set yet'))}</Text>
       <PinKeypad onDigit={digit} onDelete={() => { setPin((value) => value.slice(0, -1)); setError(''); }} onBiometric={config.biometric && info.available ? withBiometrics : null} biometric={info} />
       {!config.pinSet && <Pressable accessibilityLabel="Set a PIN" onPress={() => navigation.navigate('Privacy Lock')} style={s.sectionLink}><Text style={s.sectionAction}>Set a PIN{rtl ? ' ←' : ' →'}</Text></Pressable>}
     </View>
@@ -1315,7 +1319,8 @@ function PrivateArea({ navigation, children }: { navigation: any; children: Reac
 }
 
 function WomenHubScreen({ navigation }: any) {
-  const { rtl } = useLanguage();
+  const { language, rtl } = useLanguage();
+  const T = (text: string) => tx(rtl, text);
   const womens = useWomens();
   const { config, info } = usePrivateGate();
   const stats = cycleStats(womens);
@@ -1323,100 +1328,101 @@ function WomenHubScreen({ navigation }: any) {
   const qada = qadaStats(womens);
   const today = dayKey();
 
-  if (!womens.optedIn) return <Page><ToolBar title="Women’s worship" navigation={navigation} />
+  if (!womens.optedIn) return <Page><ToolBar title={T('Women’s worship')} navigation={navigation} />
     <ScrollView contentContainerStyle={s.dataPage}>
       <ToolGraphic tool="Women’s worship" size={80} />
-      <Text style={s.dataTitle}>A private area</Text>
+      <Text style={s.dataTitle}>{T('A private area')}</Text>
       <Text style={s.intro}>Cycle and purity records, the days after childbirth, and the fasts owed because of them — kept only on this device. Nothing is uploaded and no account is involved.</Text>
       <View style={s.dataCard}>
-        <Text style={s.dataMeta}>WHAT IT HOLDS</Text>
+        <Text style={s.dataMeta}>{T('WHAT IT HOLDS')}</Text>
         <Text style={s.dataBody}>Your own cycle lengths and averages, a prediction worked out from your history rather than an assumption, purity and ghusl guidance, the post-natal days, and a running scorecard of make-up fasts.</Text>
-        <Text style={s.dataBody}>You can put a PIN in front of it, or use the face or fingerprint unlock your phone already has.</Text>
-        <Pressable accessibilityLabel="Turn on the women’s area" onPress={() => void setOptedIn(true)} style={s.primary}><Text style={s.primaryText}>Turn on this area</Text></Pressable>
+        <Text style={s.dataBody}>{T('You can put a PIN in front of it, or use the face or fingerprint unlock your phone already has.')}</Text>
+        <Pressable accessibilityLabel="Turn on the women’s area" onPress={() => void setOptedIn(true)} style={s.primary}><Text style={s.primaryText}>{T('Turn on this area')}</Text></Pressable>
       </View>
     </ScrollView>
   </Page>;
 
-  const status = nifas.active ? `Post-natal · day ${nifas.day}` : stats.status === 'flow' ? `Cycle · day ${stats.dayOfCycle}` : stats.status === 'spotting' ? 'Spotting' : stats.status === 'pure' ? 'Pure' : 'Nothing recorded today';
+  const status = nifas.active ? rtl ? `النفاس · اليوم ${nifas.day}` : `Post-natal · day ${nifas.day}` : stats.status === 'flow' ? rtl ? `الدورة · اليوم ${stats.dayOfCycle}` : `Cycle · day ${stats.dayOfCycle}` : stats.status === 'spotting' ? T('Spotting') : stats.status === 'pure' ? T('Pure') : T('Nothing recorded today');
   const detail = nifas.active
-    ? `${LIMITS.nifasMaxDays - nifas.day} days left inside the forty`
+    ? rtl ? `بقي ${LIMITS.nifasMaxDays - nifas.day} يومًا من الأربعين` : `${LIMITS.nifasMaxDays - nifas.day} days left inside the forty`
     : stats.active
-      ? `Started ${formatDay(stats.active.start)} · day ${stats.dayOfCycle}`
+      ? rtl ? `بدأت ${formatDay(stats.active.start, language)} · اليوم ${stats.dayOfCycle}` : `Started ${formatDay(stats.active.start, language)} · day ${stats.dayOfCycle}`
       : stats.nextStart
-        ? `Next cycle expected in ${stats.daysToNext} days`
-        : 'Record a cycle to see your averages';
+        ? rtl ? `الدورة القادمة المتوقعة بعد ${stats.daysToNext} يومًا` : `Next cycle expected in ${stats.daysToNext} days`
+        : T('Record a cycle to see your averages');
 
-  return <PrivateArea navigation={navigation}><Page><ToolBar title="Women’s worship" navigation={navigation} />
+  return <PrivateArea navigation={navigation}><Page><ToolBar title={T('Women’s worship')} navigation={navigation} />
     <ScrollView contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
       <LinearGradient colors={['#2A2849', '#5146A4']} style={s.summaryScore}>
-        <View style={{ flex: 1 }}><Text style={s.nextCardLabel}>TODAY · {formatDay(today).toUpperCase()}</Text><Text style={s.zakatNo}>{status}</Text><Text style={s.weekScoreBody}>{detail}</Text></View>
+        <View style={{ flex: 1 }}><Text style={s.nextCardLabel}>{T('TODAY')} · {formatDay(today, language).toUpperCase()}</Text><Text style={s.zakatNo}>{status}</Text><Text style={s.weekScoreBody}>{detail}</Text></View>
       </LinearGradient>
       <View style={s.statGrid}>
-        <StatBox label="AVERAGE CYCLE" value={stats.averageCycle ? `${stats.averageCycle} days` : '—'} hint={stats.averageCycle ? `From ${stats.cycleCount} recorded cycles` : stats.cycleCount ? 'Two cycles needed' : 'No history yet'} />
-        <StatBox label="NEXT EXPECTED" value={stats.nextStart ? formatDay(stats.nextStart) : '—'} hint={stats.daysToNext !== null ? `In ${stats.daysToNext} days` : undefined} />
-        <StatBox label="FASTS OWED" value={`${qada.remaining}`} hint={`${qada.done} settled`} />
-        <StatBox label="POST-NATAL" value={nifas.active ? `Day ${nifas.day}` : '—'} hint={nifas.active ? 'Active' : 'Not recorded'} />
+        <StatBox label={T('AVERAGE CYCLE')} value={stats.averageCycle ? rtl ? `${stats.averageCycle} يومًا` : `${stats.averageCycle} days` : '—'} hint={stats.averageCycle ? rtl ? `من ${stats.cycleCount} دورات مسجَّلة` : `From ${stats.cycleCount} recorded cycles` : stats.cycleCount ? T('Two cycles needed') : T('No history yet')} />
+        <StatBox label={T('NEXT EXPECTED')} value={stats.nextStart ? formatDay(stats.nextStart, language) : '—'} hint={stats.daysToNext !== null ? rtl ? `بعد ${stats.daysToNext} يومًا` : `In ${stats.daysToNext} days` : undefined} />
+        <StatBox label={T('FASTS OWED')} value={`${qada.remaining}`} hint={rtl ? `قُضي ${qada.done}` : `${qada.done} settled`} />
+        <StatBox label={T('POST-NATAL')} value={nifas.active ? rtl ? `اليوم ${nifas.day}` : `Day ${nifas.day}` : '—'} hint={nifas.active ? T('Active') : T('Not recorded')} />
       </View>
-      <Section title="Records" />
+      <Section title={T('Records')} />
       <View style={s.settings}>
-        <PrivateRow rtl={rtl} graphic="Cycle" title="Cycle" caption="Log the days, your flow, and the purity that follows" onPress={() => navigation.navigate('Cycle')} />
-        <PrivateRow rtl={rtl} graphic="Purity" title="Purity and ghusl" caption="The signs of tuhr, the ghusl, and the post-natal days" onPress={() => navigation.navigate('Purity')} />
-        <PrivateRow rtl={rtl} graphic="Qada fasts" title="Qada fasts" caption="Every day owed, and every day settled" onPress={() => navigation.navigate('Qada')} />
-        <PrivateRow rtl={rtl} graphic="Worship guides" title="Worship guidance" caption="What continues in these days, and the references" onPress={() => navigation.navigate('Women Guides')} />
+        <PrivateRow rtl={rtl} graphic="Cycle" title={T('Cycle')} label="Cycle" caption={T('Log the days, your flow, and the purity that follows')} onPress={() => navigation.navigate('Cycle')} />
+        <PrivateRow rtl={rtl} graphic="Purity" title={T('Purity and ghusl')} label="Purity and ghusl" caption={T('The signs of tuhr, the ghusl, and the post-natal days')} onPress={() => navigation.navigate('Purity')} />
+        <PrivateRow rtl={rtl} graphic="Qada fasts" title={T('Qada fasts')} label="Qada fasts" caption={T('Every day owed, and every day settled')} onPress={() => navigation.navigate('Qada')} />
+        <PrivateRow rtl={rtl} graphic="Worship guides" title={T('Worship guidance')} label="Worship guidance" caption={T('What continues in these days, and the references')} onPress={() => navigation.navigate('Women Guides')} />
       </View>
-      <Section title="Privacy" />
+      <Section title={T('Privacy')} />
       <View style={s.settings}>
-        <PrivateRow rtl={rtl} graphic="Privacy lock" title={config.pinSet ? 'Lock and PIN' : 'Add a PIN'} caption={config.pinSet ? (config.required ? `Locked · ${config.biometric && info.available ? `${info.label} or ` : ''}PIN` : 'PIN saved, lock is off') : info.available ? `Face and fingerprint unlock are ready on this device` : 'This device has no biometric unlock, so a PIN is used'} onPress={() => navigation.navigate('Privacy Lock')} />
+        <PrivateRow rtl={rtl} graphic="Privacy lock" title={config.pinSet ? T('Lock and PIN') : T('Add a PIN')} label={config.pinSet ? 'Lock and PIN' : 'Add a PIN'} caption={config.pinSet ? (config.required ? (rtl ? `مقفل · ${config.biometric && info.available ? `${info.label} أو ` : ''}الرمز` : `Locked · ${config.biometric && info.available ? `${info.label} or ` : ''}PIN`) : T('PIN saved, lock is off')) : info.available ? T('Face and fingerprint unlock are ready on this device') : T('This device has no biometric unlock, so a PIN is used')} onPress={() => navigation.navigate('Privacy Lock')} />
       </View>
       <View style={s.dataCard}>
-        <Text style={s.dataMeta}>KEPT ON THIS DEVICE</Text>
-        <Text style={s.dataBody}>Nothing here is uploaded, backed up to an account, or used for anything else. Clearing the app data removes these records for good.</Text>
+        <Text style={s.dataMeta}>{T('KEPT ON THIS DEVICE')}</Text>
+        <Text style={s.dataBody}>{T('Nothing here is uploaded, backed up to an account, or used for anything else. Clearing the app data removes these records for good.')}</Text>
       </View>
     </ScrollView>
   </Page></PrivateArea>;
 }
 
 function CycleScreen({ navigation }: any) {
-  const { rtl } = useLanguage();
+  const { language, rtl } = useLanguage();
+  const T = (text: string) => tx(rtl, text);
   const womens = useWomens();
   const stats = cycleStats(womens);
   const today = dayKey();
   const chips = recentPurity(womens, today, 14);
   const cycle = (status: PurityStatus) => (status === 'flow' ? 'spotting' : status === 'spotting' ? 'pure' : 'flow') as PurityStatus;
-  const statusWord: Record<string, string> = { flow: 'Flow', spotting: 'Spotting', pure: 'Pure' };
+  const statusWord: Record<string, string> = { flow: T('Flow'), spotting: T('Spotting'), pure: T('Pure') };
 
-  return <PrivateArea navigation={navigation}><Page><ToolBar title="Cycle" navigation={navigation} />
+  return <PrivateArea navigation={navigation}><Page><ToolBar title={T('Cycle')} navigation={navigation} />
     <ScrollView contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
       <ToolGraphic tool="Cycle" size={78} />
-      <Text style={s.dataTitle}>Your cycle</Text>
-      <Text style={s.intro}>Record the days as they come. The averages and the prediction are worked out from your own history — nothing is assumed about what your cycle should look like.</Text>
+      <Text style={s.dataTitle}>{T('Your cycle')}</Text>
+      <Text style={s.intro}>{T('Record the days as they come. The averages and the prediction are worked out from your own history — nothing is assumed about what your cycle should look like.')}</Text>
       <View style={s.dataCard}>
-        <Text style={s.dataMeta}>{stats.active ? `IN PROGRESS · DAY ${stats.dayOfCycle}` : 'NO CYCLE IN PROGRESS'}</Text>
-        <Text style={s.dataBody}>{stats.active ? `Started ${formatDay(stats.active.start)}. ${stats.dayOfCycle} ${stats.dayOfCycle === 1 ? 'day' : 'days'} so far.` : 'When bleeding begins, start a cycle here and the count begins from that day.'}</Text>
+        <Text style={s.dataMeta}>{stats.active ? (rtl ? `جارية · اليوم ${stats.dayOfCycle}` : `IN PROGRESS · DAY ${stats.dayOfCycle}`) : T('NO CYCLE IN PROGRESS')}</Text>
+        <Text style={s.dataBody}>{stats.active ? (rtl ? `بدأت ${formatDay(stats.active.start, language)}. مضى ${stats.dayOfCycle} ${stats.dayOfCycle === 1 ? T('day') : T('days')}.` : `Started ${formatDay(stats.active.start, language)}. ${stats.dayOfCycle} ${stats.dayOfCycle === 1 ? T('day') : T('days')} so far.`) : T('When bleeding begins, start a cycle here and the count begins from that day.')}</Text>
         {stats.active ? <>
-          <Text style={s.preferenceLabel}>FLOW</Text>
-          <View style={s.choiceRow}>{FLOW_LEVELS.map((level) => <ChoicePill key={level.id} label={level.label} selected={stats.active?.flow === level.id} onPress={() => void setFlow(level.id)} />)}</View>
+          <Text style={s.preferenceLabel}>{T('FLOW')}</Text>
+          <View style={s.choiceRow}>{FLOW_LEVELS.map((level) => <ChoicePill key={level.id} label={T(level.label)} selected={stats.active?.flow === level.id} onPress={() => void setFlow(level.id)} />)}</View>
           <View style={s.actionRow}>
-            <Pressable accessibilityLabel="Mark purity today" onPress={() => void endCycle(today)} style={s.secondary}><Text style={s.secondaryText}>Mark purity today</Text></Pressable>
+            <Pressable accessibilityLabel="Mark purity today" onPress={() => void endCycle(today)} style={s.secondary}><Text style={s.secondaryText}>{T('Mark purity today')}</Text></Pressable>
           </View>
-          <Text style={s.meta}>Purity ends the cycle and starts the count towards the next one.</Text>
-        </> : <Pressable accessibilityLabel="Start a cycle today" onPress={() => void startCycle(today)} style={s.primary}><Text style={s.primaryText}>Start a cycle today</Text></Pressable>}
+          <Text style={s.meta}>{T('Purity ends the cycle and starts the count towards the next one.')}</Text>
+        </> : <Pressable accessibilityLabel="Start a cycle today" onPress={() => void startCycle(today)} style={s.primary}><Text style={s.primaryText}>{T('Start a cycle today')}</Text></Pressable>}
       </View>
-      <Section title="Your pattern" />
+      <Section title={T('Your pattern')} />
       <View style={s.statGrid}>
-        <StatBox label="AVERAGE CYCLE" value={stats.averageCycle ? `${stats.averageCycle} days` : '—'} hint={stats.averageCycle ? 'From your last few cycles' : 'Two cycles needed'} />
-        <StatBox label="AVERAGE LENGTH" value={stats.averagePeriod ? `${stats.averagePeriod} days` : '—'} hint="Bleeding days" />
-        <StatBox label="NEXT EXPECTED" value={stats.nextStart ? formatDay(stats.nextStart) : '—'} hint={stats.daysToNext !== null ? `In ${stats.daysToNext} days` : undefined} />
-        <StatBox label="FERTILE WINDOW" value={stats.fertileStart ? `${formatDay(stats.fertileStart)} – ${formatDay(stats.fertileEnd as string)}` : '—'} hint="An estimate, not a certainty" />
+        <StatBox label={T('AVERAGE CYCLE')} value={stats.averageCycle ? rtl ? `${stats.averageCycle} يومًا` : `${stats.averageCycle} days` : '—'} hint={stats.averageCycle ? T('From your last few cycles') : T('Two cycles needed')} />
+        <StatBox label={T('AVERAGE LENGTH')} value={stats.averagePeriod ? rtl ? `${stats.averagePeriod} يومًا` : `${stats.averagePeriod} days` : '—'} hint={T('Bleeding days')} />
+        <StatBox label={T('NEXT EXPECTED')} value={stats.nextStart ? formatDay(stats.nextStart, language) : '—'} hint={stats.daysToNext !== null ? rtl ? `بعد ${stats.daysToNext} يومًا` : `In ${stats.daysToNext} days` : undefined} />
+        <StatBox label={T('FERTILE WINDOW')} value={stats.fertileStart ? `${formatDay(stats.fertileStart, language)} – ${formatDay(stats.fertileEnd as string, language)}` : '—'} hint={T('An estimate, not a certainty')} />
       </View>
-      <Section title="Day by day" action="Tap to change" />
+      <Section title={T('Day by day')} action={T('Tap to change')} />
       <View style={s.dataCard}>
-        <View style={s.purityRow}>{chips.map((chip) => <Pressable key={chip.date} accessibilityLabel={`${formatDay(chip.date)}: ${chip.status ? statusWord[chip.status] : 'not recorded'}`} onPress={() => void logPurity(chip.date, chip.status ? cycle(chip.status) : 'flow')} style={[s.purityChip, chip.status === 'flow' && s.purityFlow, chip.status === 'spotting' && s.puritySpotting, chip.status === 'pure' && s.purityPure, chip.date === today && s.purityToday]}><Text style={s.purityDay}>{Number(chip.date.slice(8, 10))}</Text><Text style={s.purityLabel}>{chip.status ? statusWord[chip.status].slice(0, 3) : '—'}</Text></Pressable>)}</View>
-        <Text style={s.meta}>The last fourteen days. Nothing is recorded until you tap a day.</Text>
+        <View style={s.purityRow}>{chips.map((chip) => <Pressable key={chip.date} accessibilityLabel={`${formatDay(chip.date, language)}: ${chip.status ? statusWord[chip.status] : 'not recorded'}`} onPress={() => void logPurity(chip.date, chip.status ? cycle(chip.status) : 'flow')} style={[s.purityChip, chip.status === 'flow' && s.purityFlow, chip.status === 'spotting' && s.puritySpotting, chip.status === 'pure' && s.purityPure, chip.date === today && s.purityToday]}><Text style={s.purityDay}>{Number(chip.date.slice(8, 10))}</Text><Text style={s.purityLabel}>{chip.status ? statusWord[chip.status].slice(0, 3) : '—'}</Text></Pressable>)}</View>
+        <Text style={s.meta}>{T('The last fourteen days. Nothing is recorded until you tap a day.')}</Text>
       </View>
-      <Section title="History" />
-      {!womens.cycles.length ? <View style={s.dataCard}><Text style={s.dataBody}>No cycles recorded yet.</Text></View> : <View style={s.settings}>{womens.cycles.slice(0, 12).map((entry) => <View key={entry.id} style={[s.setting, ]}>
-        <View style={{ flex: 1 }}><Text style={s.settingName}>{formatDay(entry.start)}{entry.end ? ` – ${formatDay(entry.end)}` : ' · ongoing'}</Text><Text style={s.meta}>{entry.end ? `${daysBetween(entry.start, entry.end) + 1} days` : `Day ${Math.max(1, daysBetween(entry.start, today) + 1)}`} · {FLOW_LEVELS.find((level) => level.id === entry.flow)?.label || 'Flow'}</Text></View>
+      <Section title={T('History')} />
+      {!womens.cycles.length ? <View style={s.dataCard}><Text style={s.dataBody}>{T('No cycles recorded yet.')}</Text></View> : <View style={s.settings}>{womens.cycles.slice(0, 12).map((entry) => <View key={entry.id} style={[s.setting, ]}>
+        <View style={{ flex: 1 }}><Text style={s.settingName}>{formatDay(entry.start, language)}{entry.end ? ` – ${formatDay(entry.end, language)}` : (rtl ? ' · مستمرة' : ' · ongoing')}</Text><Text style={s.meta}>{entry.end ? (rtl ? `${daysBetween(entry.start, entry.end) + 1} أيام` : `${daysBetween(entry.start, entry.end) + 1} days`) : (rtl ? `اليوم ${Math.max(1, daysBetween(entry.start, today) + 1)}` : `Day ${Math.max(1, daysBetween(entry.start, today) + 1)}`)} · {T(FLOW_LEVELS.find((level) => level.id === entry.flow)?.label || 'Flow')}</Text></View>
         <Pressable accessibilityLabel="Delete this cycle" onPress={() => void deleteCycle(entry.id)} style={s.stepButton}>{ico('trash-outline', 18, C.coral)}</Pressable>
       </View>)}</View>}
     </ScrollView>
@@ -1424,7 +1430,8 @@ function CycleScreen({ navigation }: any) {
 }
 
 function PurityScreen({ navigation }: any) {
-  const { rtl } = useLanguage();
+  const { language, rtl } = useLanguage();
+  const T = (text: string) => tx(rtl, text);
   const womens = useWomens();
   const nifas = nifasStats(womens);
   const [verse, setVerse] = useState<{ arabic: string; english: string } | null>(null);
@@ -1432,62 +1439,63 @@ function PurityScreen({ navigation }: any) {
   const load = () => getAyahEditions('2:222', ['quran-uthmani', 'en.sahih']).then((rows) => {
     setVerse({ arabic: rows[0]?.text || '', english: rows[1]?.text || '' });
     setVerseError('');
-  }).catch((error: any) => setVerseError(error?.message || 'The verse could not be loaded.'));
+  }).catch((error: any) => setVerseError(error?.message || T('The verse could not be loaded.')));
   useEffect(() => { void load(); }, []);
 
-  return <PrivateArea navigation={navigation}><Page><ToolBar title="Purity and ghusl" navigation={navigation} />
+  return <PrivateArea navigation={navigation}><Page><ToolBar title={T('Purity and ghusl')} navigation={navigation} />
     <ScrollView contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
       <ToolGraphic tool="Purity" size={78} />
-      <Text style={s.dataTitle}>Purity and ghusl</Text>
-      <Text style={s.intro}>What ends the bleeding, the washing that follows it, and the days after childbirth. The well-known positions are described here; the ruling for your case belongs with a scholar you trust.</Text>
+      <Text style={s.dataTitle}>{T('Purity and ghusl')}</Text>
+      <Text style={s.intro}>{T('What ends the bleeding, the washing that follows it, and the days after childbirth. The well-known positions are described here; the ruling for your case belongs with a scholar you trust.')}</Text>
       <LinearGradient colors={['#2A2849', '#5146A4']} style={s.summaryScore}>
         <View style={{ flex: 1 }}>
-          <Text style={s.nextCardLabel}>{nifas.active ? 'POST-NATAL' : 'NIFAS NOT RECORDED'}</Text>
-          <Text style={s.zakatNo}>{nifas.active ? `Day ${nifas.day}` : '—'}</Text>
-          <Text style={s.weekScoreBody}>{nifas.active ? (nifas.pastLimit ? 'Past forty days — speak to a scholar and a doctor' : `${nifas.remaining} days remain inside the forty`) : `Bleeding after childbirth is commonly counted up to ${LIMITS.nifasMaxDays} days.`}</Text>
+          <Text style={s.nextCardLabel}>{nifas.active ? T('POST-NATAL') : T('NIFAS NOT RECORDED')}</Text>
+          <Text style={s.zakatNo}>{nifas.active ? rtl ? `اليوم ${nifas.day}` : `Day ${nifas.day}` : '—'}</Text>
+          <Text style={s.weekScoreBody}>{nifas.active ? (nifas.pastLimit ? T('Past forty days — speak to a scholar and a doctor') : rtl ? `بقي ${nifas.remaining} يومًا من الأربعين` : `${nifas.remaining} days remain inside the forty`) : (rtl ? `يُعدّ دم ما بعد الولادة عادةً إلى ${LIMITS.nifasMaxDays} يومًا.` : `Bleeding after childbirth is commonly counted up to ${LIMITS.nifasMaxDays} days.`)}</Text>
         </View>
       </LinearGradient>
       <View style={s.dataCard}>
         {nifas.active ? <>
-          <Text style={s.dataMeta}>STARTED {formatDay(nifas.active.start).toUpperCase()}</Text>
+          <Text style={s.dataMeta}>{rtl ? 'بدأت' : 'STARTED'} {formatDay(nifas.active.start, language)}</Text>
           <View style={s.actionRow}>
-            <Pressable accessibilityLabel="I am pure now" onPress={() => void endNifas(dayKey())} style={s.primary}><Text style={s.primaryText}>I am pure now</Text></Pressable>
+            <Pressable accessibilityLabel="I am pure now" onPress={() => void endNifas(dayKey())} style={s.primary}><Text style={s.primaryText}>{T('I am pure now')}</Text></Pressable>
           </View>
         </> : <>
-          <Text style={s.dataBody}>Record the birth when it happens and the counter follows the days. Purity is marked the day the bleeding stops.</Text>
-          <Pressable accessibilityLabel="Record a birth" onPress={() => void startNifas(dayKey())} style={s.primary}><Text style={s.primaryText}>Record a birth today</Text></Pressable>
+          <Text style={s.dataBody}>{T('Record the birth when it happens and the counter follows the days. Purity is marked the day the bleeding stops.')}</Text>
+          <Pressable accessibilityLabel="Record a birth" onPress={() => void startNifas(dayKey())} style={s.primary}><Text style={s.primaryText}>{T('Record a birth today')}</Text></Pressable>
         </>}
       </View>
       {!!womens.nifas.filter((entry) => entry.end).length && <><Section title="Earlier births" /><View style={s.settings}>{womens.nifas.filter((entry) => entry.end).slice(0, 6).map((entry) => <View key={entry.id} style={[s.setting, ]}>
-        <View style={{ flex: 1 }}><Text style={s.settingName}>{formatDay(entry.start)} – {formatDay(entry.end as string)}</Text><Text style={s.meta}>{daysBetween(entry.start, entry.end as string) + 1} days</Text></View>
+        <View style={{ flex: 1 }}><Text style={s.settingName}>{formatDay(entry.start, language)} – {formatDay(entry.end as string, language)}</Text><Text style={s.meta}>{daysBetween(entry.start, entry.end as string) + 1} days</Text></View>
         <Pressable accessibilityLabel="Delete this record" onPress={() => void deleteNifas(entry.id)} style={s.stepButton}>{ico('trash-outline', 18, C.coral)}</Pressable>
       </View>)}</View></>}
-      <Section title="The verse on menstruation" action="Quran 2:222" />
+      <Section title={T('The verse on menstruation')} action={T('Quran 2:222')} />
       {verseError ? <ErrorState message={verseError} retry={load} /> : !verse ? <Spinner /> : <View style={s.dataCard}>
         <Text style={s.dataArabic}>{verse.arabic}</Text>
         <Text style={s.dataBody}>{verse.english}</Text>
       </View>}
-      <Section title="Signs that bleeding has ended" />
-      <View style={s.settings}>{TUHR_SIGNS.map((block) => <View key={block.title} style={s.guideBlock}><Text style={s.guideTitle}>{block.title}</Text><Text style={s.dataBody}>{block.body}</Text></View>)}</View>
-      <Section title="The ghusl — what is required" />
+      <Section title={T('Signs that bleeding has ended')} />
+      <View style={s.settings}>{TUHR_SIGNS.map((block) => <View key={block.title} style={s.guideBlock}><Text style={s.guideTitle}>{T(block.title)}</Text><Text style={s.dataBody}>{T(block.body)}</Text></View>)}</View>
+      <Section title={T('The ghusl — what is required')} />
       <View style={s.dataCard}>
         <Text style={s.dataArabic}>{BISMILLAH_ARABIC}</Text>
-        <Text style={s.dataMeta}>THE INTENTION, IN THE HEART AND ON THE TONGUE</Text>
+        <Text style={s.dataMeta}>{T('THE INTENTION, IN THE HEART AND ON THE TONGUE')}</Text>
         <Text style={s.dataArabic}>{NIYYAH_ARABIC}</Text>
-        <Text style={s.dataBody}>{NIYYAH_TRANSLITERATION} — {NIYYAH_MEANING}</Text>
+        <Text style={s.dataBody}>{rtl ? `${NIYYAH_ARABIC} — ${NIYYAH_TRANSLITERATION}` : `${NIYYAH_TRANSLITERATION} — ${NIYYAH_MEANING}`}</Text>
       </View>
-      <View style={s.settings}>{GHUSL_FARD.map((step, index) => <View key={step} style={[s.setting, ]}><View style={s.stepNo}><Text style={s.stepNoText}>{index + 1}</Text></View><Text style={[s.guideStepText, { flex: 1 }]}>{step}</Text></View>)}</View>
-      <Section title="The ghusl — as the Prophet ﷺ performed it" />
-      <View style={s.settings}>{GHUSL_SUNNAH.map((step, index) => <View key={step} style={[s.setting, ]}><View style={s.stepNo}><Text style={s.stepNoText}>{index + 1}</Text></View><Text style={[s.guideStepText, { flex: 1 }]}>{step}</Text></View>)}</View>
-      <Section title="Hayd, nifas and istihadha" />
-      <View style={s.settings}>{EXPLANATIONS.map((block) => <View key={block.title} style={s.guideBlock}><Text style={s.guideTitle}>{block.title}</Text><Text style={s.dataBody}>{block.body}</Text></View>)}</View>
-      <View style={s.dataCard}><Text style={s.dataMeta}>BEFORE YOU RELY ON ANY OF THIS</Text><Text style={s.dataBody}>{ADVISORY}</Text></View>
+      <View style={s.settings}>{GHUSL_FARD.map((step, index) => <View key={step} style={s.setting}><View style={s.stepNo}><Text style={s.stepNoText}>{index + 1}</Text></View><Text style={[s.guideStepText, { flex: 1 }]}>{T(step)}</Text></View>)}</View>
+      <Section title={T('The ghusl — as the Prophet ﷺ performed it')} />
+      <View style={s.settings}>{GHUSL_SUNNAH.map((step, index) => <View key={step} style={s.setting}><View style={s.stepNo}><Text style={s.stepNoText}>{index + 1}</Text></View><Text style={[s.guideStepText, { flex: 1 }]}>{T(step)}</Text></View>)}</View>
+      <Section title={T('Hayd, nifas and istihadha')} />
+      <View style={s.settings}>{EXPLANATIONS.map((block) => <View key={block.title} style={s.guideBlock}><Text style={s.guideTitle}>{T(block.title)}</Text><Text style={s.dataBody}>{T(block.body)}</Text></View>)}</View>
+      <View style={s.dataCard}><Text style={s.dataMeta}>{T('BEFORE YOU RELY ON ANY OF THIS')}</Text><Text style={s.dataBody}>{T(ADVISORY)}</Text></View>
     </ScrollView>
   </Page></PrivateArea>;
 }
 
 function QadaScreen({ navigation }: any) {
-  const { rtl } = useLanguage();
+  const { language, rtl } = useLanguage();
+  const T = (text: string) => tx(rtl, text);
   const womens = useWomens();
   const qada = qadaStats(womens);
   const [date, setDate] = useState(dayKey());
@@ -1495,37 +1503,37 @@ function QadaScreen({ navigation }: any) {
   const owed = womens.qada.filter((entry) => !entry.done);
   const settled = womens.qada.filter((entry) => entry.done);
 
-  return <PrivateArea navigation={navigation}><Page><ToolBar title="Qada fasts" navigation={navigation} />
+  return <PrivateArea navigation={navigation}><Page><ToolBar title={T('Qada fasts')} navigation={navigation} />
     <ScrollView contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
       <ToolGraphic tool="Qada fasts" size={78} />
-      <Text style={s.dataTitle}>Days owed</Text>
-      <Text style={s.intro}>Fast days missed through menstruation or the post-natal days are made up one for one, before the next Ramadan. This is the running count.</Text>
+      <Text style={s.dataTitle}>{T('Days owed')}</Text>
+      <Text style={s.intro}>{T('Fast days missed through menstruation or the post-natal days are made up one for one, before the next Ramadan. This is the running count.')}</Text>
       <LinearGradient colors={['#2A2849', '#5146A4']} style={s.summaryScore}>
-        <View><Text style={s.nextCardLabel}>STILL OWED</Text><Text style={s.zakatNo}>{qada.remaining}</Text><Text style={s.weekScoreBody}>{qada.total} recorded in total</Text></View>
-        <View style={{ alignItems: 'flex-end' }}><Text style={s.nextCardLabel}>SETTLED</Text><Text style={s.zakatNo}>{qada.done}</Text><Text style={s.weekScoreBody}>{qada.percent}% complete</Text></View>
+        <View><Text style={s.nextCardLabel}>{T('STILL OWED')}</Text><Text style={s.zakatNo}>{qada.remaining}</Text><Text style={s.weekScoreBody}>{qada.total} {rtl ? 'مسجَّلة في المجموع' : 'recorded in total'}</Text></View>
+        <View style={{ alignItems: 'flex-end' }}><Text style={s.nextCardLabel}>{T('SETTLED')}</Text><Text style={s.zakatNo}>{qada.done}</Text><Text style={s.weekScoreBody}>{qada.percent}% {rtl ? 'مكتمل' : 'complete'}</Text></View>
       </LinearGradient>
       <View style={s.progressTrack}><View style={[s.progressFill, { width: `${qada.percent}%` } as any]} /></View>
-      <Section title="Add a missed day" />
+      <Section title={T('Add a missed day')} />
       <View style={s.dataCard}>
-        <Text style={s.preferenceLabel}>THE DAY THAT WAS MISSED</Text>
+        <Text style={s.preferenceLabel}>{T('THE DAY THAT WAS MISSED')}</Text>
         <View style={s.dayStepper}>
           <Pressable accessibilityLabel="One day earlier" onPress={() => setDate((value) => addDays(value, -1))} style={s.stepButton}>{ico(rtl ? 'arrow-forward' : 'arrow-back', 19, C.green)}</Pressable>
-          <View style={{ flex: 1, alignItems: 'center' }}><Text style={s.settingName}>{formatLongDay(date)}</Text><Text style={s.meta}>{date}</Text></View>
+          <View style={{ flex: 1, alignItems: 'center' }}><Text style={s.settingName}>{formatLongDay(date, language)}</Text><Text style={s.meta}>{date}</Text></View>
           <Pressable accessibilityLabel="One day later" onPress={() => setDate((value) => addDays(value, 1))} style={s.stepButton}>{ico(rtl ? 'arrow-back' : 'arrow-forward', 19, C.green)}</Pressable>
         </View>
-        <Text style={s.preferenceLabel}>WHY IT WAS MISSED</Text>
-        <View style={s.choiceGrid}>{QADA_REASONS.map((item) => <ChoicePill key={item.id} label={item.label} selected={reason === item.id} onPress={() => setReason(item.id)} />)}</View>
-        <Pressable accessibilityLabel="Add this day to the ledger" onPress={() => void addQada(date, reason)} style={s.primary}><Text style={s.primaryText}>Add this day</Text></Pressable>
+        <Text style={s.preferenceLabel}>{T('WHY IT WAS MISSED')}</Text>
+        <View style={s.choiceGrid}>{QADA_REASONS.map((item) => <ChoicePill key={item.id} label={T(item.label)} selected={reason === item.id} onPress={() => setReason(item.id)} />)}</View>
+        <Pressable accessibilityLabel="Add this day to the ledger" onPress={() => void addQada(date, reason)} style={s.primary}><Text style={s.primaryText}>{T('Add this day')}</Text></Pressable>
       </View>
-      <Section title="Still owed" action={`${owed.length}`} />
-      {!owed.length ? <View style={s.dataCard}><Text style={s.dataBody}>Nothing outstanding. Every recorded day has been settled.</Text></View> : <View style={s.settings}>{owed.map((entry) => <View key={entry.id} style={[s.setting, ]}>
-        <Pressable accessibilityLabel={`Mark ${formatDay(entry.date)} as settled`} onPress={() => void toggleQada(entry.id)} style={s.stepCheck}>{entry.done ? ico('checkmark', 22, C.green) : null}</Pressable>
-        <View style={{ flex: 1 }}><Text style={s.settingName}>{formatDay(entry.date)}</Text><Text style={s.meta}>{QADA_REASONS.find((item) => item.id === entry.reason)?.label}</Text></View>
+      <Section title={T('Still owed')} action={`${owed.length}`} />
+      {!owed.length ? <View style={s.dataCard}><Text style={s.dataBody}>{T('Nothing outstanding. Every recorded day has been settled.')}</Text></View> : <View style={s.settings}>{owed.map((entry) => <View key={entry.id} style={[s.setting, ]}>
+        <Pressable accessibilityLabel={`Mark ${formatDay(entry.date, language)} as settled`} onPress={() => void toggleQada(entry.id)} style={s.stepCheck}>{entry.done ? ico('checkmark', 22, C.green) : null}</Pressable>
+        <View style={{ flex: 1 }}><Text style={s.settingName}>{formatDay(entry.date, language)}</Text><Text style={s.meta}>{T(QADA_REASONS.find((item) => item.id === entry.reason)?.label ?? '')}</Text></View>
         <Pressable accessibilityLabel="Delete this entry" onPress={() => void deleteQada(entry.id)} style={s.stepButton}>{ico('trash-outline', 18, C.coral)}</Pressable>
       </View>)}</View>}
       {!!settled.length && <><Section title="Settled" action={`${settled.length}`} /><View style={s.settings}>{settled.slice(0, 20).map((entry) => <View key={entry.id} style={[s.setting, ]}>
-        <Pressable accessibilityLabel={`Reopen ${formatDay(entry.date)}`} onPress={() => void toggleQada(entry.id)} style={[s.stepCheck, s.stepCheckDone]}>{ico('checkmark', 22, C.white)}</Pressable>
-        <View style={{ flex: 1 }}><Text style={s.settingName}>{formatDay(entry.date)}</Text><Text style={s.meta}>Made up on {entry.doneOn ? formatDay(entry.doneOn) : '—'}</Text></View>
+        <Pressable accessibilityLabel={`Reopen ${formatDay(entry.date, language)}`} onPress={() => void toggleQada(entry.id)} style={[s.stepCheck, s.stepCheckDone]}>{ico('checkmark', 22, C.white)}</Pressable>
+        <View style={{ flex: 1 }}><Text style={s.settingName}>{formatDay(entry.date, language)}</Text><Text style={s.meta}>Made up on {entry.doneOn ? formatDay(entry.doneOn, language) : '—'}</Text></View>
         <Pressable accessibilityLabel="Delete this entry" onPress={() => void deleteQada(entry.id)} style={s.stepButton}>{ico('trash-outline', 18, C.coral)}</Pressable>
       </View>)}</View></>}
     </ScrollView>
@@ -1533,24 +1541,27 @@ function QadaScreen({ navigation }: any) {
 }
 
 function WomenGuidesScreen({ navigation }: any) {
-  return <PrivateArea navigation={navigation}><Page><ToolBar title="Worship guidance" navigation={navigation} />
+  const { language, rtl } = useLanguage();
+  const T = (text: string) => tx(rtl, text);
+  return <PrivateArea navigation={navigation}><Page><ToolBar title={T('Worship guidance')} navigation={navigation} />
     <ScrollView contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
       <ToolGraphic tool="Worship guides" size={78} />
-      <Text style={s.dataTitle}>Worship in these days</Text>
-      <Text style={s.intro}>What is lifted, what continues, and what is owed afterwards. These are the well-known positions, described plainly — the ruling for your situation belongs with a scholar you trust.</Text>
-      <Section title="The acts of worship" />
-      <View style={s.settings}>{WORSHIP_GUIDANCE.map((block) => <View key={block.title} style={s.guideBlock}><Text style={s.guideTitle}>{block.title}</Text><Text style={s.dataBody}>{block.body}</Text></View>)}</View>
-      <Section title="The terms" />
-      <View style={s.settings}>{EXPLANATIONS.map((block) => <View key={block.title} style={s.guideBlock}><Text style={s.guideTitle}>{block.title}</Text><Text style={s.dataBody}>{block.body}</Text></View>)}</View>
-      <Section title="References" />
-      <View style={s.settings}>{REFERENCES.map((reference) => <View key={reference} style={s.setting}><ToolGraphic tool="Quran" size={28} /><Text style={[s.settingName, { flex: 1, marginHorizontal: 13 }]}>{reference}</Text></View>)}</View>
-      <View style={s.dataCard}><Text style={s.dataMeta}>AND SEE A DOCTOR</Text><Text style={s.dataBody}>{ADVISORY}</Text></View>
+      <Text style={s.dataTitle}>{T('Worship in these days')}</Text>
+      <Text style={s.intro}>{T('What is lifted, what continues, and what is owed afterwards. These are the well-known positions, described plainly — the ruling for your situation belongs with a scholar you trust.')}</Text>
+      <Section title={T('The acts of worship')} />
+      <View style={s.settings}>{WORSHIP_GUIDANCE.map((block) => <View key={block.title} style={s.guideBlock}><Text style={s.guideTitle}>{T(block.title)}</Text><Text style={s.dataBody}>{T(block.body)}</Text></View>)}</View>
+      <Section title={T('The terms')} />
+      <View style={s.settings}>{EXPLANATIONS.map((block) => <View key={block.title} style={s.guideBlock}><Text style={s.guideTitle}>{T(block.title)}</Text><Text style={s.dataBody}>{T(block.body)}</Text></View>)}</View>
+      <Section title={T('References')} />
+      <View style={s.settings}>{REFERENCES.map((reference) => <View key={reference} style={s.setting}><ToolGraphic tool="Quran" size={28} /><Text style={[s.settingName, { flex: 1, marginHorizontal: 13 }]}>{T(reference)}</Text></View>)}</View>
+      <View style={s.dataCard}><Text style={s.dataMeta}>{T('AND SEE A DOCTOR')}</Text><Text style={s.dataBody}>{T(ADVISORY)}</Text></View>
     </ScrollView>
   </Page></PrivateArea>;
 }
 
 function PrivacyLockScreen({ navigation }: any) {
-  const { rtl } = useLanguage();
+  const { language, rtl } = useLanguage();
+  const T = (text: string) => tx(rtl, text);
   const { config, info } = usePrivateGate();
   const [stage, setStage] = useState<'idle' | 'create' | 'confirm'>('idle');
   const [draft, setDraft] = useState('');
@@ -1577,64 +1588,66 @@ function PrivacyLockScreen({ navigation }: any) {
     if (next.length < 4) return;
     if (stage === 'create') { setFirst(next); setDraft(''); setStage('confirm'); return; }
     if (next === first) await finish(next);
-    else { haptic('error'); setError('Those did not match. Start again.'); setDraft(''); setFirst(''); setStage('create'); }
+    else { haptic('error'); setError(T('Those did not match. Start again.')); setDraft(''); setFirst(''); setStage('create'); }
   };
 
-  if (stage !== 'idle') return <Page><ToolBar title="Private" navigation={navigation} />
+  if (stage !== 'idle') return <Page><ToolBar title={T('Private')} navigation={navigation} />
     <View style={s.pinPage}>
       <ToolGraphic tool="Privacy lock" size={78} />
-      <Text style={s.dataTitle}>{stage === 'create' ? 'Choose a PIN' : 'Confirm it'}</Text>
-      <Text style={s.intro}>Four digits. There is no reset link and no recovery email — this code lives on this device only, so choose one you will remember.</Text>
+      <Text style={s.dataTitle}>{stage === 'create' ? T('Choose a PIN') : T('Confirm it')}</Text>
+      <Text style={s.intro}>{T('Four digits. There is no reset link and no recovery email — this code lives on this device only, so choose one you will remember.')}</Text>
       <PinDots filled={draft.length} error={!!error} />
-      <Text style={[s.pinHint, !!error && s.pinHintError]}>{error || (stage === 'create' ? 'Enter four digits' : 'Enter the same four digits')}</Text>
+      <Text style={[s.pinHint, !!error && s.pinHintError]}>{error || (stage === 'create' ? T('Enter four digits') : T('Enter the same four digits'))}</Text>
       <PinKeypad onDigit={digit} onDelete={() => { setDraft((value) => value.slice(0, -1)); setError(''); }} biometric={info} />
-      <Pressable accessibilityLabel="Cancel" onPress={() => { setStage('idle'); setDraft(''); setFirst(''); setError(''); }} style={s.dangerButton}><Text style={s.dangerText}>Cancel</Text></Pressable>
+      <Pressable accessibilityLabel="Cancel" onPress={() => { setStage('idle'); setDraft(''); setFirst(''); setError(''); }} style={s.dangerButton}><Text style={s.dangerText}>{T('Cancel')}</Text></Pressable>
     </View>
   </Page>;
 
-  return <Page><ToolBar title="Lock and PIN" navigation={navigation} />
+  return <Page><ToolBar title={T('Lock and PIN')} navigation={navigation} />
     <ScrollView contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
       <ToolGraphic tool="Privacy lock" size={78} />
-      <Text style={s.dataTitle}>Private by default</Text>
-      <Text style={s.intro}>The women’s screens can be put behind a gate. The PIN is stored as a salted digest, never as the digits themselves, and the face or fingerprint scan is handled entirely by your phone — this app is only told yes or no.</Text>
+      <Text style={s.dataTitle}>{T('Private by default')}</Text>
+      <Text style={s.intro}>{T('The women’s screens can be put behind a gate. The PIN is stored as a salted digest, never as the digits themselves, and the face or fingerprint scan is handled entirely by your phone — this app is only told yes or no.')}</Text>
       <View style={s.dataCard}>
-        <Text style={s.dataMeta}>THE PIN</Text>
-        <Text style={s.dataBody}>{config.pinSet ? 'A PIN is saved on this device.' : 'No PIN yet. Choose one to switch the lock on.'}</Text>
+        <Text style={s.dataMeta}>{T('THE PIN')}</Text>
+        <Text style={s.dataBody}>{config.pinSet ? T('A PIN is saved on this device.') : T('No PIN yet. Choose one to switch the lock on.')}</Text>
         <View style={s.actionRow}>
-          <Pressable accessibilityLabel={config.pinSet ? 'Change the PIN' : 'Set a PIN'} onPress={() => { setStage('create'); setDraft(''); setFirst(''); setError(''); setNote(''); }} style={s.primary}><Text style={s.primaryText}>{config.pinSet ? 'Change PIN' : 'Set a PIN'}</Text></Pressable>
-          {config.pinSet && <Pressable accessibilityLabel="Remove the PIN" onPress={() => void removePin().then(() => setNote('The PIN and the lock were removed.'))} style={s.secondary}><Text style={s.secondaryText}>Remove PIN</Text></Pressable>}
+          <Pressable accessibilityLabel={config.pinSet ? 'Change the PIN' : 'Set a PIN'} onPress={() => { setStage('create'); setDraft(''); setFirst(''); setError(''); setNote(''); }} style={s.primary}><Text style={s.primaryText}>{config.pinSet ? T('Change PIN') : T('Set a PIN')}</Text></Pressable>
+          {config.pinSet && <Pressable accessibilityLabel="Remove the PIN" onPress={() => void removePin().then(() => setNote(T('The PIN and the lock were removed.')))} style={s.secondary}><Text style={s.secondaryText}>{T('Remove PIN')}</Text></Pressable>}
         </View>
-        {!!note && <Text style={s.dataMeta}>{note.toUpperCase()}</Text>}
+        {!!note && <Text style={s.dataMeta}>{T(note).toUpperCase()}</Text>}
       </View>
       {config.pinSet && <>
-        <Section title="The gate" />
+        <Section title={T('The gate')} />
         <View style={s.settings}>
           <View style={[s.setting, ]}>
             <ToolGraphic tool="Privacy lock" size={44} />
-            <View style={{ flex: 1, marginHorizontal: 13 }}><Text style={s.settingName}>Lock the women’s area</Text><Text style={s.meta}>Ask for the PIN whenever these screens are opened</Text></View>
+            <View style={{ flex: 1, marginHorizontal: 13 }}><Text style={s.settingName}>{T('Lock the women’s area')}</Text><Text style={s.meta}>{T('Ask for the PIN whenever these screens are opened')}</Text></View>
             <View style={{ direction: 'ltr' } as any}><Switch accessibilityLabel="Lock the women’s area" value={config.required} onValueChange={(value) => void updateLockSettings({ required: value })} trackColor={{ true: C.green }} /></View>
           </View>
           <View style={[s.setting, ]}>
             <ToolGraphic tool="Privacy lock" size={44} />
-            <View style={{ flex: 1, marginHorizontal: 13 }}><Text style={s.settingName}>{info.available ? `Use ${info.label}` : 'Biometric unlock'}</Text><Text style={s.meta}>{info.available ? (info.enrolled ? 'Set up on this device' : 'Not enrolled on this device yet') : 'This device cannot use face or fingerprint unlock, so the PIN is used'}</Text></View>
+            <View style={{ flex: 1, marginHorizontal: 13 }}><Text style={s.settingName}>{info.available ? `Use ${info.label}` : T('Biometric unlock')}</Text><Text style={s.meta}>{info.available ? (info.enrolled ? T('Set up on this device') : T('Not enrolled on this device yet')) : T('This device cannot use face or fingerprint unlock, so the PIN is used')}</Text></View>
             <View style={{ direction: 'ltr' } as any}><Switch accessibilityLabel="Use biometric unlock" disabled={!info.available} value={config.biometric && info.available} onValueChange={(value) => void updateLockSettings({ biometric: value })} trackColor={{ true: C.green }} /></View>
           </View>
         </View>
-        <Section title="Lock again" />
+        <Section title={T('Lock again')} />
         <View style={s.dataCard}>
-          <Text style={s.preferenceLabel}>WHEN THE APP IS PUT AWAY</Text>
-          <View style={s.choiceGrid}>{RELOCK_OPTIONS.map((option) => <ChoicePill key={option.minutes} label={option.label} selected={config.relockMinutes === option.minutes} onPress={() => void updateLockSettings({ relockMinutes: option.minutes })} />)}</View>
-          <Text style={s.meta}>Choosing “Immediately” closes the gate the moment the app moves to the background.</Text>
+          <Text style={s.preferenceLabel}>{T('WHEN THE APP IS PUT AWAY')}</Text>
+          <View style={s.choiceGrid}>{RELOCK_OPTIONS.map((option) => <ChoicePill key={option.minutes} label={T(option.label)} selected={config.relockMinutes === option.minutes} onPress={() => void updateLockSettings({ relockMinutes: option.minutes })} />)}</View>
+          <Text style={s.meta}>{T('Choosing “Immediately” closes the gate the moment the app moves to the background.')}</Text>
         </View>
       </>}
-      <View style={s.dataCard}><Text style={s.dataMeta}>IF THE PIN IS FORGOTTEN</Text><Text style={s.dataBody}>There is no recovery by design — no email, no account, no server that could hand it over. Removing the app clears the records along with the code, which is the only way back in.</Text></View>
+      <View style={s.dataCard}><Text style={s.dataMeta}>{T('IF THE PIN IS FORGOTTEN')}</Text><Text style={s.dataBody}>{T('There is no recovery by design — no email, no account, no server that could hand it over. Removing the app clears the records along with the code, which is the only way back in.')}</Text></View>
     </ScrollView>
   </Page>;
 }
 
 /* ==================== Phase 4 · Zakat ==================== */
 function ZakatScreen({ navigation }: any) {
-  const { rtl } = useLanguage();
+  const { language, rtl } = useLanguage();
+  const T = (text: string) => tx(rtl, text);
+  useEffect(() => { setMoneyLocale(language); }, [language]);
   const zakat = useZakat();
   const market = useMarket();
   const [refreshing, setRefreshing] = useState(false);
@@ -1655,84 +1668,84 @@ function ZakatScreen({ navigation }: any) {
 
   const metalPrice = (metal: 'gold' | 'silver') => (metal === 'gold' ? result.goldPerGram : result.silverPerGram);
 
-  return <Page><ToolBar title="Zakat" navigation={navigation} />
+  return <Page><ToolBar title={T('Zakat')} navigation={navigation} />
     <ScrollView contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
       <ToolGraphic tool="Zakat" size={78} />
-      <Text style={s.dataTitle}>Work out what is due</Text>
-      <Text style={s.intro}>List what you own, subtract what falls due, and compare what is left with the nisab. Prices and exchange rates are fetched live where they are reachable and kept on this device when they are not. This is arithmetic, not a ruling — take the details to a scholar.</Text>
+      <Text style={s.dataTitle}>{T('Work out what is due')}</Text>
+      <Text style={s.intro}>{T('List what you own, subtract what falls due, and compare what is left with the nisab. Prices and exchange rates are fetched live where they are reachable and kept on this device when they are not. This is arithmetic, not a ruling — take the details to a scholar.')}</Text>
 
-      <Section title="Currency" action={zakat.currency} />
+      <Section title={T('Currency')} action={zakat.currency} />
       <View style={s.preferencePanel}>
         <View style={s.choiceGrid}>{CURRENCIES.map((currency) => <ChoicePill key={currency.code} label={currency.code} selected={zakat.currency === currency.code} onPress={() => void setCurrency(currency.code)} />)}</View>
-        <Text style={s.meta}>{CURRENCIES.find((item) => item.code === zakat.currency)?.name} · every figure below is shown in it.</Text>
+        <Text style={s.meta}>{T(CURRENCIES.find((item) => item.code === zakat.currency)?.name ?? zakat.currency)} · {T('every figure below is shown in it.')}</Text>
       </View>
 
-      <Section title="What you own" />
+      <Section title={T('What you own')} />
       <View style={s.settings}>
         {zakat.assets.map((asset) => <View key={asset.id} style={[s.assetRow, ]}>
           <View style={{ flex: 1, marginHorizontal: 4 }}>
-            <Text style={s.settingName}>{asset.label}</Text>
-            {asset.kind === 'gold' || asset.kind === 'silver' ? <Text style={s.meta}>{formatMoney(Number(asset.amount) || 0, zakat.currency, 0)} at {formatMoney(metalPrice(asset.kind), zakat.currency)} per gram</Text> : <Text style={s.meta}>{asset.kind === 'cash' || asset.kind === 'bank' ? 'Balances on the day of your Zakat' : 'Market value today'}</Text>}
+            <Text style={s.settingName}>{T(asset.label)}</Text>
+            {asset.kind === 'gold' || asset.kind === 'silver' ? <Text style={s.meta}>{formatMoney(Number(asset.amount) || 0, zakat.currency, 0)} {rtl ? 'بسعر' : 'at'} {formatMoney(metalPrice(asset.kind), zakat.currency)} {rtl ? 'للغرام' : 'per gram'}</Text> : <Text style={s.meta}>{asset.kind === 'cash' || asset.kind === 'bank' ? T('Balances on the day of your Zakat') : T('Market value today')}</Text>}
           </View>
           <TextInput accessibilityLabel={`${asset.label} amount`} keyboardType="numeric" value={asset.amount ? String(asset.amount) : ''} onChangeText={(value) => void setAssetAmount(asset.id, Number(value.replace(/[^0-9.]/g, '')) || 0)} placeholder="0" placeholderTextColor={C.muted} style={s.assetInput} />
         </View>)}
       </View>
 
-      <Section title="What falls due" />
+      <Section title={T('What falls due')} />
       <View style={s.settings}>
         {zakat.liabilities.map((item) => <View key={item.id} style={[s.assetRow, ]}>
-          <View style={{ flex: 1, marginHorizontal: 4 }}><Text style={s.settingName}>{item.label}</Text><Text style={s.meta}>Subtracted from the total above</Text></View>
+          <View style={{ flex: 1, marginHorizontal: 4 }}><Text style={s.settingName}>{T(item.label)}</Text><Text style={s.meta}>{T('Subtracted from the total above')}</Text></View>
           <TextInput accessibilityLabel={`${item.label} amount`} keyboardType="numeric" value={item.amount ? String(item.amount) : ''} onChangeText={(value) => void setLiabilityAmount(item.id, Number(value.replace(/[^0-9.]/g, '')) || 0)} placeholder="0" placeholderTextColor={C.muted} style={s.assetInput} />
         </View>)}
       </View>
 
-      <Section title="Gold and silver prices" />
+      <Section title={T('Gold and silver prices')} />
       <View style={s.dataCard}>
-        <Text style={s.preferenceLabel}>PER GRAM, IN {zakat.currency}</Text>
+        <Text style={s.preferenceLabel}>{rtl ? 'لكل غرام، بالعملة ' : 'PER GRAM, IN '}{zakat.currency}</Text>
         <View style={[s.metalRow, ]}>
-          <View style={{ flex: 1 }}><Text style={s.settingName}>Gold</Text><Text style={s.meta}>Nisab is {NISAB_GOLD_GRAMS} grams</Text></View>
+          <View style={{ flex: 1 }}><Text style={s.settingName}>{T('Gold')}</Text><Text style={s.meta}>{rtl ? `النصاب ${NISAB_GOLD_GRAMS} غرامًا` : `Nisab is ${NISAB_GOLD_GRAMS} grams`}</Text></View>
           <TextInput accessibilityLabel="Gold price per gram" keyboardType="numeric" value={result.goldPerGram ? String(Number(result.goldPerGram.toFixed(2))) : ''} onChangeText={(value) => void setMetalPrice('gold', Number(value.replace(/[^0-9.]/g, '')) || 0)} placeholder="0" placeholderTextColor={C.muted} style={s.assetInput} />
         </View>
         <View style={[s.metalRow, ]}>
-          <View style={{ flex: 1 }}><Text style={s.settingName}>Silver</Text><Text style={s.meta}>Nisab is {NISAB_SILVER_GRAMS} grams</Text></View>
+          <View style={{ flex: 1 }}><Text style={s.settingName}>{T('Silver')}</Text><Text style={s.meta}>{rtl ? `النصاب ${NISAB_SILVER_GRAMS} غرامًا` : `Nisab is ${NISAB_SILVER_GRAMS} grams`}</Text></View>
           <TextInput accessibilityLabel="Silver price per gram" keyboardType="numeric" value={result.silverPerGram ? String(Number(result.silverPerGram.toFixed(2))) : ''} onChangeText={(value) => void setMetalPrice('silver', Number(value.replace(/[^0-9.]/g, '')) || 0)} placeholder="0" placeholderTextColor={C.muted} style={s.assetInput} />
         </View>
         <View style={s.actionRow}>
-          <Pressable accessibilityLabel="Use live prices" onPress={() => void useLiveMetalPrices()} style={s.secondary}><Text style={s.secondaryText}>Use live prices</Text></Pressable>
-          <Pressable accessibilityLabel="Refresh prices and rates" onPress={refresh} style={s.secondary}><Text style={s.secondaryText}>{refreshing ? 'Refreshing…' : 'Refresh'}</Text></Pressable>
+          <Pressable accessibilityLabel="Use live prices" onPress={() => void useLiveMetalPrices()} style={s.secondary}><Text style={s.secondaryText}>{T('Use live prices')}</Text></Pressable>
+          <Pressable accessibilityLabel="Refresh prices and rates" onPress={refresh} style={s.secondary}><Text style={s.secondaryText}>{refreshing ? T('Refreshing…') : T('Refresh')}</Text></Pressable>
         </View>
-        <Text style={s.meta}>{zakat.prices.custom ? 'You are using your own prices.' : fresh ? 'Prices and exchange rates were fetched within the last twelve hours.' : 'Prices and rates were last saved on this device.'}{market.fetchedAt ? ` Updated ${new Date(market.fetchedAt).toLocaleString()}.` : ''}</Text>
+        <Text style={s.meta}>{zakat.prices.custom ? T('You are using your own prices.') : fresh ? T('Prices and exchange rates were fetched within the last twelve hours.') : T('Prices and rates were last saved on this device.')}{market.fetchedAt ? ` ${rtl ? 'آخر تحديث' : 'Updated'} ${new Date(market.fetchedAt).toLocaleString(language === 'ar' ? 'ar-u-nu-latn' : language)}.` : ''}</Text>
       </View>
 
-      <Section title="The nisab" />
+      <Section title={T('The nisab')} />
       <View style={s.dataCard}>
-        <View style={s.choiceRow}><ChoicePill label={`Gold · ${NISAB_GOLD_GRAMS}g`} selected={zakat.basis === 'gold'} onPress={() => void setBasis('gold')} /><ChoicePill label={`Silver · ${NISAB_SILVER_GRAMS}g`} selected={zakat.basis === 'silver'} onPress={() => void setBasis('silver')} /></View>
+        <View style={s.choiceRow}><ChoicePill label={`${T('Gold')} · ${NISAB_GOLD_GRAMS}${rtl ? ' غ' : 'g'}`} selected={zakat.basis === 'gold'} onPress={() => void setBasis('gold')} /><ChoicePill label={`${T('Silver')} · ${NISAB_SILVER_GRAMS}${rtl ? ' غ' : 'g'}`} selected={zakat.basis === 'silver'} onPress={() => void setBasis('silver')} /></View>
         <View style={s.statGrid}>
-          <StatBox label="GOLD NISAB" value={formatMoney(NISAB_GOLD_GRAMS * result.goldPerGram, zakat.currency, 0)} hint={`${NISAB_GOLD_GRAMS} grams`} />
-          <StatBox label="SILVER NISAB" value={formatMoney(NISAB_SILVER_GRAMS * result.silverPerGram, zakat.currency, 0)} hint={`${NISAB_SILVER_GRAMS} grams`} />
+          <StatBox label={T('GOLD NISAB')} value={formatMoney(NISAB_GOLD_GRAMS * result.goldPerGram, zakat.currency, 0)} hint={`${NISAB_GOLD_GRAMS} ${rtl ? 'غرامًا' : 'grams'}`} />
+          <StatBox label={T('SILVER NISAB')} value={formatMoney(NISAB_SILVER_GRAMS * result.silverPerGram, zakat.currency, 0)} hint={`${NISAB_SILVER_GRAMS} ${rtl ? 'غرامًا' : 'grams'}`} />
         </View>
-        <Text style={s.meta}>Scholars differ on which of the two to measure against. The lower threshold brings more wealth into Zakat; take the choice to someone you trust.</Text>
+        <Text style={s.meta}>{T('Scholars differ on which of the two to measure against. The lower threshold brings more wealth into Zakat; take the choice to someone you trust.')}</Text>
       </View>
 
-      <Section title="The result" />
+      <Section title={T('The result')} />
       <LinearGradient colors={['#2A2849', '#5146A4']} style={s.summaryScore}>
-        <View><Text style={s.nextCardLabel}>ZAKAT DUE · 2.5%</Text><Text style={s.zakatNo}>{formatMoney(result.zakat, zakat.currency)}</Text><Text style={s.weekScoreBody}>{result.above ? 'Your net wealth is above the nisab' : 'Below the nisab — nothing is due'}</Text></View>
+        <View><Text style={s.nextCardLabel}>{T('ZAKAT DUE · 2.5%')}</Text><Text style={s.zakatNo}>{formatMoney(result.zakat, zakat.currency)}</Text><Text style={s.weekScoreBody}>{result.above ? T('Your net wealth is above the nisab') : T('Below the nisab — nothing is due')}</Text></View>
       </LinearGradient>
       <View style={s.statGrid}>
-        <StatBox label="GROSS ASSETS" value={formatMoney(result.gross, zakat.currency, 0)} hint="Everything listed above" />
-        <StatBox label="LIABILITIES" value={formatMoney(result.liabilities, zakat.currency, 0)} hint="Subtracted" />
-        <StatBox label="NET WEALTH" value={formatMoney(result.net, zakat.currency, 0)} hint="What Zakat is taken from" />
-        <StatBox label="NISAB" value={formatMoney(result.nisab, zakat.currency, 0)} hint={zakat.basis === 'gold' ? 'Gold threshold' : 'Silver threshold'} />
+        <StatBox label={T('GROSS ASSETS')} value={formatMoney(result.gross, zakat.currency, 0)} hint={T('Everything listed above')} />
+        <StatBox label={T('LIABILITIES')} value={formatMoney(result.liabilities, zakat.currency, 0)} hint={T('Subtracted')} />
+        <StatBox label={T('NET WEALTH')} value={formatMoney(result.net, zakat.currency, 0)} hint={T('What Zakat is taken from')} />
+        <StatBox label={T('NISAB')} value={formatMoney(result.nisab, zakat.currency, 0)} hint={zakat.basis === 'gold' ? T('Gold threshold') : T('Silver threshold')} />
       </View>
-      <Pressable accessibilityLabel="Save this calculation" onPress={() => void saveCalculation(result).then(() => setSaved('Saved on this device.'))} style={s.primary}><Text style={s.primaryText}>Save this calculation</Text></Pressable>
+      <Pressable accessibilityLabel="Save this calculation" onPress={() => void saveCalculation(result).then(() => setSaved(T('Saved on this device.')))} style={s.primary}><Text style={s.primaryText}>{T('Save this calculation')}</Text></Pressable>
       {!!saved && <Text style={s.dataMeta}>{saved.toUpperCase()}</Text>}
 
-      <Section title="History" action={zakat.history.length ? `${zakat.history.length} saved` : undefined} onPress={zakat.history.length ? () => void clearHistory() : undefined} />
-      {!zakat.history.length ? <View style={s.dataCard}><Text style={s.dataBody}>No saved calculations yet. Save one and it stays here on this device.</Text></View> : <View style={s.settings}>{zakat.history.map((entry) => <View key={entry.id} style={[s.setting, ]}>
-        <View style={{ flex: 1 }}><Text style={s.settingName}>{formatMoney(entry.zakat, entry.currency)}</Text><Text style={s.meta}>{new Date(entry.at).toLocaleDateString()} · net {formatMoney(entry.net, entry.currency, 0)} · {entry.above ? 'above' : 'below'} the {entry.basis} nisab</Text></View>
+      <Section title={T('History')} action={zakat.history.length ? `${zakat.history.length} ${rtl ? 'محفوظة' : 'saved'}` : undefined} onPress={zakat.history.length ? () => void clearHistory() : undefined} />
+      {!zakat.history.length ? <View style={s.dataCard}><Text style={s.dataBody}>{T('No saved calculations yet. Save one and it stays here on this device.')}</Text></View> : <View style={s.settings}>{zakat.history.map((entry) => <View key={entry.id} style={[s.setting, ]}>
+        <View style={{ flex: 1 }}><Text style={s.settingName}>{formatMoney(entry.zakat, entry.currency)}</Text><Text style={s.meta}>{new Date(entry.at).toLocaleDateString(language === 'ar' ? 'ar-u-nu-latn' : language)} · {rtl ? 'الصافي' : 'net'} {formatMoney(entry.net, entry.currency, 0)} · {entry.above ? (rtl ? 'فوق' : 'above') : (rtl ? 'دون' : 'below')} {rtl ? 'نصاب' : 'the'} {entry.basis === 'gold' ? T('Gold') : T('Silver')} {rtl ? '' : 'nisab'}</Text></View>
         <Pressable accessibilityLabel="Delete this calculation" onPress={() => void deleteCalculation(entry.id)} style={s.stepButton}>{ico('trash-outline', 18, C.coral)}</Pressable>
       </View>)}</View>}
-      <View style={s.dataCard}><Text style={s.dataMeta}>BEFORE YOU PAY</Text><Text style={s.dataBody}>What counts as zakatable, how business stock is valued and which debts may be deducted differ between schools and situations. This figure is a careful estimate to take to a scholar, and your Zakat year matters as much as the total.</Text></View>
+      <View style={s.dataCard}><Text style={s.dataMeta}>{T('BEFORE YOU PAY')}</Text><Text style={s.dataBody}>{T('What counts as zakatable, how business stock is valued and which debts may be deducted differ between schools and situations. This figure is a careful estimate to take to a scholar, and your Zakat year matters as much as the total.')}</Text></View>
     </ScrollView>
   </Page>;
 }

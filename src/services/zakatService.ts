@@ -393,20 +393,26 @@ export function currencySymbol(code: string) {
   return CURRENCIES.find((item) => item.code === code)?.symbol || code;
 }
 
+let moneyLocale = 'en';
+
+export function setMoneyLocale(locale: string) {
+  moneyLocale = locale === 'ar' ? 'ar-u-nu-latn' : locale || 'en';
+}
+
 export function formatMoney(value: number, code = state.currency, maximumFractionDigits = 2) {
   const safe = Number.isFinite(value) ? value : 0;
   try {
-    return new Intl.NumberFormat(undefined, {
+    return new Intl.NumberFormat(moneyLocale, {
       style: 'currency',
       currency: code,
       maximumFractionDigits,
     }).format(safe);
   } catch {
-    return `${currencySymbol(code)} ${safe.toLocaleString(undefined, { maximumFractionDigits })}`;
+    return `${currencySymbol(code)} ${safe.toLocaleString(moneyLocale, { maximumFractionDigits })}`;
   }
 }
 
 export function formatNumber(value: number, maximumFractionDigits = 2) {
   const safe = Number.isFinite(value) ? value : 0;
-  return safe.toLocaleString(undefined, { maximumFractionDigits });
+  return safe.toLocaleString(moneyLocale, { maximumFractionDigits });
 }
