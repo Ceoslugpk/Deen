@@ -60,6 +60,11 @@ export const HADITH_COLLECTIONS: HadithCollection[] = [
   { slug: 'dehlawi', name: 'Forty Hadith of Shah Waliullah', arabicName: 'الأربعون لولي الله الدهلوي', author: 'Shah Waliullah Dehlawi', kind: 'Forty', graded: false },
 ];
 
+export function hadithSourceLabel(rtl: boolean, slug: string): string {
+  const known = HADITH_COLLECTIONS.find((collection) => collection.slug.toLowerCase() === (slug || '').toLowerCase());
+  return rtl ? known?.arabicName || slug : (known?.name || slug).toUpperCase();
+}
+
 const EDITION_BASE = 'https://cdn.jsdelivr.net/gh/fawazahmed0/hadith-api@1/editions';
 const STATE_KEY = 'hadith-state-v1';
 const MEMORY_LIMIT = 3;

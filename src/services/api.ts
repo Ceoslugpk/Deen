@@ -5,7 +5,7 @@ export type Chapter = { id: number; name_simple: string; name_arabic: string; ve
 export type Verse = { id: number; verse_key: string; text_uthmani: string; translation?: string; audio?: string; page?: number; juz?: number; hizbQuarter?: number; surah_name?: string };
 export type DailyHadith = { collection: string; number: string; text: string; arabic?: string };
 export type DivineName = { number: number; name: string; transliteration: string; meaning: string; meanings: Record<string, string> };
-export type DailyAyah = { reference: string; arabic: string; translation: string };
+export type DailyAyah = { reference: string; arabicReference?: string; arabic: string; translation: string };
 export type QuranEdition = { identifier: string; language: string; englishName: string; name: string; type: string; direction?: string };
 export type QuranSearchResult = { verseKey: string; surahId: number; surahName: string; ayah: number; text: string; edition: string };
 export type AudioEdition = { identifier: string; language: string; englishName: string; name: string; type: string; direction?: string };
@@ -129,7 +129,12 @@ export async function getAyahOfDay(): Promise<DailyAyah> {
     json(`${QURAN}/ayah/${ayahNumber}/quran-uthmani`),
     json(`${QURAN}/ayah/${ayahNumber}/en.sahih`),
   ]);
-  return { reference: `${arabic.surah.englishName} ${arabic.surah.number}:${arabic.numberInSurah}`, arabic: arabic.text, translation: english.text };
+  return {
+    reference: `${arabic.surah.englishName} ${arabic.surah.number}:${arabic.numberInSurah}`,
+    arabicReference: `${arabic.surah.name} ${arabic.surah.number}:${arabic.numberInSurah}`,
+    arabic: arabic.text,
+    translation: english.text,
+  };
 }
 
 export async function getJuzVerses(juz: number, options: { script?: string; translation?: string } = {}): Promise<Verse[]> {
