@@ -935,6 +935,10 @@ const AR: Record<string, string> = {
   'Mark each rite as you complete it. Counts and notes are saved as you go.': 'علّم كل نُسُك عند إتمامه. تُحفظ العدّادات والملاحظات مع تقدّمك.',
   'Every rite is marked. You can keep the journey in your history, or start a fresh one the next time you go.': 'كل المناسك معلَّمة. يمكنك الاحتفاظ بهذه الرحلة في سجلّك، أو بدء رحلة جديدة في المرة القادمة.',
   'This is a private record, not a ruling. What obliges a make-up fast, and what excuses a day, depends on your situation: travel, illness, pregnancy, the monthly cycle and post-natal bleeding each have their own rules. Please confirm your own case with a scholar or a trusted, sourced guide. Everything here stays on this device, and nothing is uploaded.': 'هذا سجل خاص، وليس فتوى. وما يوجب القضاء، وما يُعذر فيه من يوم، يختلف بحالِك: فالسفر والمرض والحمل والحيض والنفاس لكلٍّ منها حكمه. فاستوثقي من حالك عند عالم أو مرجع موثوق. وكل ما هنا يبقى على هذا الجهاز، ولا يُرفع إلى أي مكان.',
+  'General': 'عام',
+  'Downloads the Arabic script and translation you have selected, one Surah at a time. Preparation continues while you use other screens and prioritizes your current reading Surah.': 'يُنزَّل النص العربي والترجمة التي اخترتها، سورة سورة. ويستمر التحضير أثناء استخدامك للشاشات الأخرى، ويُقدّم السورة التي تقرأها الآن.',
+  'Cycle and purity records, the days after childbirth, and the fasts owed because of them — kept only on this device. Nothing is uploaded and no account is involved.': 'سجل الدورة والطهارة، وأيام ما بعد الولادة، والصيام الذي يجب قضاؤه بسببها — لا يحفظها إلا هذا الجهاز. لا يُرفع شيء، ولا حساب في الأمر.',
+  'Your own cycle lengths and averages, a prediction worked out from your history rather than an assumption, purity and ghusl guidance, the post-natal days, and a running scorecard of make-up fasts.': 'طول دورتك ومعدلاتك أنت، وتوقّع يُستخرج من سجلّك لا من افتراض، ودليل الطهارة والغسل، وأيام النفاس، وبيان متجدّد لأيام القضاء.',
 };
 
 const PRAYERS: Record<string, string> = {
@@ -956,4 +960,14 @@ export function clockTime(rtl: boolean, time: string): string {
   return time.replace(/\s*(AM|PM)\s*$/i, (_match, half: string) =>
     half.toUpperCase() === 'AM' ? ' ص' : ' م',
   );
+}
+
+/** Arabic nouns change form with the number in front of them: after three to
+    ten the plural is read, after eleven and above the singular returns. */
+export function arNoun(n: number, one: string, two: string, few: string, many: string): string {
+  const m = Math.abs(Math.trunc(n)) % 100;
+  if (m === 1) return one;
+  if (m === 2) return two;
+  if (m >= 3 && m <= 10) return few;
+  return many;
 }
