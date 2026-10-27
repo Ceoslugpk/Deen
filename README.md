@@ -13,6 +13,21 @@ A polished Expo + React Native Islamic companion app for iOS, Android, and web.
 - English UI with Arabic Quran typography and RTL-ready preferences
 - Graceful local fallback data when APIs are unavailable
 
+## Build for Android and iOS
+
+Everything needed to produce an APK, an AAB and a signed IPA — toolchain versions,
+accounts, store submission and troubleshooting — is in **[BUILD.md](./BUILD.md)**.
+
+In short, on Expo's build servers:
+
+```bash
+npm install
+npm install -g eas-cli && eas login
+eas build --platform android --profile preview      # APK to install
+eas build --platform android --profile production   # AAB for Google Play
+eas build --platform ios --profile production       # IPA for TestFlight
+```
+
 ## Run locally
 
 ```bash
