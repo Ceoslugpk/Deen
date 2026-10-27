@@ -1,6 +1,6 @@
 function ExploreStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="ExploreHome" component={ExploreHome}/><Stack.Screen name="Adhkar" component={AdhkarScreen}/><Stack.Screen name="99 Names" component={NamesScreen}/><Stack.Screen name="Prophet Names" component={ProphetNamesScreen}/><Stack.Screen name="Duas" component={DuasScreen}/><Stack.Screen name="Dua Category" component={DuaCategoryScreen}/><Stack.Screen name="Hadith" component={HadithScreen}/><Stack.Screen name="Hadith Collection" component={HadithCollectionScreen}/><Stack.Screen name="Hadith Detail" component={HadithDetailScreen}/><Stack.Screen name="Hadith Saved" component={HadithSavedScreen}/><Stack.Screen name="Worship Guides" component={GuideDirectory}/><Stack.Screen name="Guide Detail" component={GuideDetail}/></Stack.Navigator>}
 
-function ToolsStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="ToolsHome" component={ToolsHomeScreen}/><Stack.Screen name="Prayer" component={PrayerScreen}/><Stack.Screen name="Qibla" component={QiblaScreen}/><Stack.Screen name="Location Setup" component={LocationSetupScreen}/><Stack.Screen name="Weekly Summary" component={WeeklySummaryScreen}/><Stack.Screen name="Notifications" component={NotificationScreen}/><Stack.Screen name="Adhan" component={AdhanScreen}/><Stack.Screen name="Hijri Calendar" component={HijriCalendarScreen}/><Stack.Screen name="Ramadan" component={RamadanScreen}/><Stack.Screen name="Fasting" component={FastingScreen}/><Stack.Screen name="Mosques" component={DataTool}/><Stack.Screen name="Zakat" component={ZakatScreen}/><Stack.Screen name="Tasbih" component={TasbihScreen}/><Stack.Screen name="Pilgrimage" component={PilgrimageScreen}/><Stack.Screen name="Journey" component={JourneyScreen}/><Stack.Screen name="Holy site channels" component={HolyChannelsScreen}/></Stack.Navigator>}
+function ToolsStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="ToolsHome" component={ToolsHomeScreen}/><Stack.Screen name="Prayer" component={PrayerScreen}/><Stack.Screen name="Qibla" component={QiblaScreen}/><Stack.Screen name="Location Setup" component={LocationSetupScreen}/><Stack.Screen name="Weekly Summary" component={WeeklySummaryScreen}/><Stack.Screen name="Notifications" component={NotificationScreen}/><Stack.Screen name="Adhan" component={AdhanScreen}/><Stack.Screen name="Hijri Calendar" component={HijriCalendarScreen}/><Stack.Screen name="Ramadan" component={RamadanScreen}/><Stack.Screen name="Fasting" component={FastingScreen}/><Stack.Screen name="Mosques" component={DataTool}/><Stack.Screen name="Zakat" component={ZakatScreen}/><Stack.Screen name="Tasbih" component={TasbihScreen}/><Stack.Screen name="Pilgrimage" component={PilgrimageScreen}/><Stack.Screen name="Journey" component={JourneyScreen}/><Stack.Screen name="Holy site channels" component={HolyChannelsScreen}/><Stack.Screen name="Women" component={WomenHubScreen}/><Stack.Screen name="Cycle" component={CycleScreen}/><Stack.Screen name="Purity" component={PurityScreen}/><Stack.Screen name="Qada" component={QadaScreen}/><Stack.Screen name="Women Guides" component={WomenGuidesScreen}/><Stack.Screen name="Privacy Lock" component={PrivacyLockScreen}/></Stack.Navigator>}
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -55,6 +55,9 @@ import { completeJourney, clearJourney, JOURNEY_META, JOURNEY_STEPS, JourneyKind
 import { HOLY_CHANNELS, openChannel } from './src/services/holyChannels';
 import { clearFastDay, FastType, labelForEntry, loadFastingState, MISSED_REASONS, MissedReason, recordFast, readableDate, setFastingOwed, summariseFasting, useFasting } from './src/services/fastingService';
 import { buildWeeklySummary, loadActivity, logHifzReview, logMushafPage, logSurahOpen, logVerseRead, useActivity } from './src/services/activityService';
+import { addDays, addQada, ADVISORY, BISMILLAH_ARABIC, cycleStats, dayKey, daysBetween, deleteCycle, deleteNifas, deleteQada, endCycle, endNifas, EXPLANATIONS, FLOW_LEVELS, formatDay, formatLongDay, GHUSL_FARD, GHUSL_SUNNAH, LIMITS, loadWomensState, logPurity, nifasStats, NIYYAH_ARABIC, NIYYAH_MEANING, NIYYAH_TRANSLITERATION, PurityStatus, QadaReason, QADA_REASONS, qadaStats, recentPurity, REFERENCES, setFlow, setOptedIn, startCycle, startNifas, toggleQada, TUHR_SIGNS, useWomens, WORSHIP_GUIDANCE } from './src/services/womensService';
+import { BiometricInfo, biometricInfo, checkPin, removePin, RELOCK_OPTIONS, setPin, startLockWatch, unlockSession, unlockWithBiometric, updateLockSettings, useIsLocked, useLockConfig, loadLockConfig } from './src/services/privacyService';
+import { CURRENCIES, clearHistory, computeZakat, currencySymbol, deleteCalculation, formatMoney, livePrices, loadZakatState, marketIsFresh, NISAB_GOLD_GRAMS, NISAB_SILVER_GRAMS, refreshMarket, saveCalculation, setAssetAmount, setBasis, setCurrency, setLiabilityAmount, setMetalPrice, useLiveMetalPrices, useMarket, useZakat } from './src/services/zakatService';
 import { downloadSurahAudio, loadDownloads, downloadSurahText, estimateFreeBytes, formatBytes, pauseDownload, removeDownload, resolveAudioSource, resumeDownload, retryDownload, totalDownloadBytes, useDownloads } from './src/services/downloadService';
 import { NAME_LANGUAGES } from './src/services/api';
 import { PROPHETS } from './src/content/prophets';
@@ -179,6 +182,11 @@ const TOOL_IMAGES:Record<string,any>={
   'Quran Topics':require('./assets/tool-icons/quran-topics.png'),
   'Quran Vocabulary':require('./assets/tool-icons/quran-vocabulary.png'),
   Tajweed:require('./assets/tool-icons/tajweed.png'),
+  'Women’s worship':require('./assets/tool-icons/womens-area.png'),
+  Cycle:require('./assets/tool-icons/cycle.png'),
+  Purity:require('./assets/tool-icons/purity.png'),
+  'Qada fasts':require('./assets/tool-icons/qada-fasts.png'),
+  'Privacy lock':require('./assets/tool-icons/privacy-lock.png'),
 };
 function ToolGraphic({tool,size=58}:{tool:string;size?:number}){const image=TOOL_IMAGES[tool];const enter=useRef(new Animated.Value(.78)).current;const fade=useRef(new Animated.Value(0)).current;useEffect(()=>{Animated.parallel([Animated.spring(enter,{toValue:1,friction:6,tension:75,useNativeDriver:true}),Animated.timing(fade,{toValue:1,duration:350,useNativeDriver:true})]).start()},[]);return <Animated.View accessibilityElementsHidden style={[s.graphicFrame,{width:size,height:size,opacity:fade,transform:[{scale:enter}]}]}>{image?<Image source={image} resizeMode="contain" style={{width:size-6,height:size-6}}/>:ico('sparkles-outline',size*.48,C.green)}</Animated.View>}
 const plainTajweed=(value:string)=>value.replace(/\[([a-z])(?::\d+)?\[([^\]]*)\]/g,'$2');
@@ -365,9 +373,11 @@ const LIFE_TOOLS: [string, string, string][] = [
   ['Zakat', 'Work out what is due, and record what you gave', 'Zakat'],
   ['Mosques', 'Prayer spaces around you', 'Mosques'],
   ['Worship guides', 'Step-by-step references for each act of worship', 'Library'],
+  ['Women’s worship', 'Cycle, purity and the fasts owed — private to this device', 'Women'],
 ];
 
 function ToolsHomeScreen({ navigation }: any) {
+  const womens = useWomens();
   const open = (route: string) => { if (route === 'Library') navigation.navigate('Library', { screen: 'Worship Guides' }); else navigation.navigate(route); };
   const row = ([title, caption, route]: [string, string, string]) => <Pressable key={title} onPress={() => open(route)} style={s.settings} accessibilityRole="button" accessibilityLabel={title}>
     <ToolGraphic tool={route === 'Library' ? 'Worship guides' : title} size={44} />
@@ -383,7 +393,7 @@ function ToolsHomeScreen({ navigation }: any) {
       <Text style={s.dataArabic}>أَدَوَاتٌ لِلْعِبَادَةِ</Text>
       <Text style={s.dataBody}>Everything that helps you keep a day of worship: the prayer times that move with the sun, the calendar that marks the month, and the records you keep for yourself.</Text>
       <Section title="Prayer" />{PRAYER_TOOLS.map(row)}
-      <Section title="Daily life" />{LIFE_TOOLS.map(row)}
+      <Section title="Daily life" />{LIFE_TOOLS.filter((item) => item[2] !== 'Women' || womens.optedIn).map(row)}
     </ScrollView>
   </Page>;
 }
@@ -920,10 +930,10 @@ function PilgrimageScreen({ navigation }: any) {
       {kinds.map((kind) => {
         const journey = journeys.active[kind];
         const progress = journeyProgress(journey);
-        return <Pressable key={kind} accessibilityRole="button" accessibilityLabel={meta[kind].title} onPress={() => openJourney(kind)} style={[s.journeyCard, { flexDirection: rtl ? 'row-reverse' : 'row' }]}>
+        return <Pressable key={kind} accessibilityRole="button" accessibilityLabel={meta[kind].title} onPress={() => openJourney(kind)} style={[s.journeyCard, ]}>
           <ToolGraphic tool="Pilgrimage" size={52} />
           <View style={{ flex: 1 }}>
-            <View style={[s.journeyTitleRow, { flexDirection: rtl ? 'row-reverse' : 'row' }]}>
+            <View style={[s.journeyTitleRow, ]}>
               <Text style={s.settingName}>{meta[kind].title}</Text>
               <Text style={s.journeyArabic}>{meta[kind].arabic}</Text>
             </View>
@@ -1002,7 +1012,7 @@ function JourneyScreen({ route, navigation }: any) {
       <ToolGraphic tool="Pilgrimage" size={72} />
       <Text style={s.dataTitle}>{JOURNEY_META[kind].title}</Text>
       <Text style={s.journeyArabic}>{JOURNEY_META[kind].arabic}</Text>
-      <View style={[s.summaryScore, { flexDirection: rtl ? 'row-reverse' : 'row' }]}>
+      <View style={[s.summaryScore, ]}>
         <View>
           <Text style={s.nextCardLabel}>RITES DONE</Text>
           <Text style={s.zakatNo}>{progress.done}<Text style={s.weekScoreBody}> / {progress.total}</Text></Text>
@@ -1019,7 +1029,7 @@ function JourneyScreen({ route, navigation }: any) {
         const count = journey.counts[step.id] || 0;
         const note = journey.notes[step.id] || '';
         return <View key={step.id} style={[s.stepCard, checked && s.stepCardDone]}>
-          <View style={[s.stepHead, { flexDirection: rtl ? 'row-reverse' : 'row' }]}>
+          <View style={[s.stepHead, ]}>
             <ToolGraphic tool={step.icon} size={44} />
             <View style={{ flex: 1 }}>
               <Text style={s.stepIndex}>RITE {index + 1}</Text>
@@ -1089,7 +1099,7 @@ function HolyChannelsScreen({ navigation }: any) {
       <Text style={s.dataTitle}>{rtl ? 'بثّ الحرمين' : 'Holy site channels'}</Text>
       <Text style={s.intro}>{rtl ? 'البثّ الرسمي من مكة والمدينة على مدار الساعة.' : 'The official broadcasts from Makkah and Madinah, around the clock.'}</Text>
       {HOLY_CHANNELS.map((channel) => <View key={channel.id} style={s.channelCard}>
-        <View style={[s.channelHead, { flexDirection: rtl ? 'row-reverse' : 'row' }]}>
+        <View style={[s.channelHead, ]}>
           <ToolGraphic tool="Holy site channels" size={46} />
           <View style={{ flex: 1 }}>
             <Text style={s.dataMeta}>{channel.site.toUpperCase()} · {channel.channel.toUpperCase()}</Text>
@@ -1133,14 +1143,14 @@ function FastingScreen({navigation}:any){
         <Pressable accessibilityLabel="Record today as a voluntary fast" onPress={()=>mark('voluntary')} style={s.secondary}><Text style={s.secondaryText}>Voluntary</Text></Pressable>
         <Pressable accessibilityLabel="Record today as a make-up fast" onPress={()=>mark('qada')} style={s.secondary}><Text style={s.secondaryText}>Make-up day</Text></Pressable>
       </View>
-      {!!summary.today && <Pressable accessibilityLabel="Clear today’s fasting record" onPress={undo} style={[s.dangerButton]}><Text style={s.dangerText}>Clear today</Text></Pressable>}
+      {!!summary.today && <Pressable accessibilityLabel="Clear today’s fasting record" onPress={undo} style={s.dangerButton}><Text style={s.dangerText}>Clear today</Text></Pressable>}
     </View>
     <Section title="If today was not fasted" />
     <View style={s.dataCard}>
       <Text style={s.dataBody}>Recording a missed day adds one day to the make-up ledger below.</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap:7,marginTop:11}}>{MISSED_REASONS.map(item=><ChoicePill key={item.id} label={item.label} selected={reason===item.id} onPress={()=>setReason(item.id)}/>)}</ScrollView>
       <Text style={s.meta}>{MISSED_REASONS.find(item=>item.id===reason)?.detail}</Text>
-      <Pressable accessibilityLabel="Record today as not fasted" onPress={()=>mark('missed',{reason})} style={[s.primary]}><Text style={s.primaryText}>Record as not fasted</Text></Pressable>
+      <Pressable accessibilityLabel="Record today as not fasted" onPress={()=>mark('missed',{reason})} style={s.primary}><Text style={s.primaryText}>Record as not fasted</Text></Pressable>
     </View>
     <Section title="Make-up ledger" action={`${summary.qada} settled`} />
     <View style={s.dataCard}>
@@ -1205,7 +1215,528 @@ function GuideDetail({route,navigation}:any){const guide:WorshipGuide=route.para
 
 function HijriCalendarScreen({navigation}:any){const{location}=useAppLocation();const[days,setDays]=useState<CalendarDay[]>([]);const[error,setError]=useState('');const now=new Date();const load=async()=>{if(!location)return;setError('');setDays([]);try{setDays(await getGregorianCalendar(location.latitude,location.longitude,now.getMonth()+1,now.getFullYear()))}catch(e:any){setError(e.message)}};useEffect(()=>{load()},[location?.latitude,location?.longitude]);const first=days[0]?.gregorian.split('-').map(Number);const offset=first?new Date(first[2],first[1]-1,first[0]).getDay():0;return <Page><ToolBar title="Hijri calendar" navigation={navigation}/><ScrollView contentContainerStyle={s.dataPage}>{!location?<LocationPrompt compact/>:<><View style={s.calendarIntro}><Text style={s.calendarMonth}>{now.toLocaleDateString('en',{month:'long',year:'numeric'})}</Text><Text style={s.calendarHijri}>{days.length?`${days[0].hijriMonth} – ${days[days.length-1].hijriMonth} ${days[0].hijriYear} AH`:''}</Text></View>{error?<ErrorState message={error} retry={load}/>:!days.length?<Spinner/>:<><View style={s.weekHead}>{['S','M','T','W','T','F','S'].map((d,i)=><Text key={i} style={s.weekLabel}>{d}</Text>)}</View><View style={s.calendarGrid}>{Array.from({length:offset}).map((_,i)=><View key={`e${i}`} style={s.calendarCell}/>) }{days.map((d,i)=><View key={d.gregorian} style={[s.calendarCell,d.gregorian.startsWith(String(now.getDate()).padStart(2,'0'))&&s.calendarToday]}><Text style={s.gregorianDay}>{i+1}</Text><Text style={s.hijriDay}>{d.hijriDay}</Text></View>)}</View><View style={s.calendarLegend}><View style={s.legendDot}/><Text style={s.sourceBody}>Large number: Gregorian · Small number: Hijri</Text></View></>}</>}</ScrollView></Page>}
 function RamadanScreen({navigation}:any){const{location}=useAppLocation();const[days,setDays]=useState<CalendarDay[]>([]);const[year,setYear]=useState<number|null>(null);const[error,setError]=useState('');const load=async()=>{if(!location)return;setError('');setDays([]);try{const snap=await getPrayerSnapshot(location.latitude,location.longitude);const target=snap.hijriMonth>9?snap.hijriYear+1:snap.hijriYear;setYear(target);setDays(await getRamadanCalendar(location.latitude,location.longitude,target));}catch(e:any){setError(e.message)}};useEffect(()=>{load()},[location?.latitude,location?.longitude]);return <Page><ToolBar title="Ramadan" navigation={navigation}/><ScrollView contentContainerStyle={s.dataPage}>{!location?<LocationPrompt compact/>:<><LinearGradient colors={['#2A2849','#5146A4']} style={s.ramadanHero}><Text style={s.ramadanArabic}>رَمَضَان</Text><Text style={s.ramadanTitle}>Ramadan {year||''} AH</Text><Text style={s.ramadanSub}>A live 30-day Suhoor and Iftar timetable for {location.label}.</Text></LinearGradient><Pressable onPress={()=>navigation.navigate('Tools',{screen:'Fasting'})} style={[s.sourceCard,{marginTop:13}]}>{ico('create-outline',20,C.green)}<View style={{flex:1}}><Text style={s.sourceTitle}>Fasting record</Text><Text style={s.sourceBody}>Mark each day and keep your make-up ledger</Text></View>{ico('arrow-forward',18,C.green)}</Pressable>{error?<ErrorState message={error} retry={load}/>:!days.length?<Spinner/>:<><Section title="Fasting timetable" action={`${days.length} days`}/><View style={s.ramadanList}>{days.map(d=>{const fajr=d.prayers.find(p=>p.name==='Fajr');const maghrib=d.prayers.find(p=>p.name==='Maghrib');return <View key={d.gregorian} style={s.ramadanRow}><View style={s.ramadanDay}><Text style={s.ramadanDayNo}>{d.hijriDay}</Text><Text style={s.ramadanDayLabel}>RAM</Text></View><View style={{flex:1}}><Text style={s.ramadanDate}>{d.weekday} · {d.gregorian}</Text><Text style={s.meta}>{location.label}</Text></View><View style={s.fastTime}><Text style={s.fastLabel}>SUHOOR</Text><Text style={s.fastValue}>{fajr?.time}</Text></View><View style={s.fastTime}><Text style={s.fastLabel}>IFTAR</Text><Text style={s.fastValue}>{maghrib?.time}</Text></View></View>})}</View></>}</>}</ScrollView></Page>}
-function ZakatScreen({navigation}:any){const[value,setValue]=useState('');const total=Number(value.replace(/,/g,''))||0;return <Page><ToolBar title="Zakat calculator" navigation={navigation}/><View style={s.dataPage}><Text style={s.dataTitle}>Calculate with clarity</Text><Text style={s.intro}>Enter your eligible wealth after deductible liabilities. Confirm the nisab threshold with a qualified local scholar.</Text><Text style={s.inputLabel}>ZAKATABLE WEALTH</Text><TextInput keyboardType="numeric" value={value} onChangeText={setValue} placeholder="0.00" style={s.moneyInput}/><LinearGradient colors={['#2A2849','#5146A4']} style={s.zakatResult}><Text style={s.nextCardLabel}>ESTIMATED ZAKAT · 2.5%</Text><Text style={s.zakatNo}>{(total*.025).toLocaleString(undefined,{maximumFractionDigits:2})}</Text></LinearGradient></View></Page>}
+/* ==================== Phase 4 · women's area ==================== */
+function haptic(kind: 'tap' | 'error' = 'tap') {
+  try {
+    if (kind === 'error') void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    else void Haptics.selectionAsync();
+  } catch (error) {
+    /* haptics are unavailable on some devices and on the web */
+  }
+}
+
+function PrivateRow({ title, caption, graphic, onPress, rtl }: { title: string; caption: string; graphic: string; onPress: () => void; rtl: boolean }) {
+  return <Pressable accessibilityRole="button" accessibilityLabel={title} onPress={onPress} style={[s.setting, ]}>
+    <ToolGraphic tool={graphic} size={44} />
+    <View style={{ flex: 1, marginHorizontal: 13 }}><Text style={s.settingName}>{title}</Text><Text style={s.meta}>{caption}</Text></View>
+    {ico(rtl ? 'arrow-back' : 'arrow-forward', 17, '#B9BEC9')}
+  </Pressable>;
+}
+
+function StatBox({ label, value, hint }: { label: string; value: string; hint?: string }) {
+  return <View style={s.statBox}><Text style={s.statLabel}>{label}</Text><Text style={s.statValue}>{value}</Text>{!!hint && <Text style={s.meta}>{hint}</Text>}</View>;
+}
+
+function PinDots({ filled, error }: { filled: number; error?: boolean }) {
+  return <View style={s.pinDots}>{Array.from({ length: 4 }, (_, i) => <View key={i} style={[s.pinDot, i < filled && s.pinDotFilled, !!error && s.pinDotError]} />)}</View>;
+}
+
+function PinKeypad({ onDigit, onDelete, onBiometric, biometric }: { onDigit: (digit: string) => void; onDelete: () => void; onBiometric?: (() => void) | null; biometric: BiometricInfo }) {
+  const rows = [['1', '2', '3'], ['4', '5', '6'], ['7', '8', '9']];
+  return <View style={s.pinPad}>
+    {rows.map((row) => <View key={row.join('')} style={s.pinRow}>{row.map((digit) => <Pressable key={digit} accessibilityRole="button" accessibilityLabel={`Digit ${digit}`} onPress={() => onDigit(digit)} style={({ pressed }) => [s.pinKey, pressed && s.press]}><Text style={s.pinKeyText}>{digit}</Text></Pressable>)}</View>)}
+    <View style={s.pinRow}>
+      {onBiometric ? <Pressable accessibilityRole="button" accessibilityLabel={`Unlock with ${biometric.label}`} onPress={onBiometric} style={s.pinKey}>{ico(biometric.kind === 'face' ? 'scan-outline' : 'finger-print-outline', 22, C.green)}</Pressable> : <View style={s.pinKeyGhost} />}
+      <Pressable accessibilityRole="button" accessibilityLabel="Digit 0" onPress={() => onDigit('0')} style={({ pressed }) => [s.pinKey, pressed && s.press]}><Text style={s.pinKeyText}>0</Text></Pressable>
+      <Pressable accessibilityRole="button" accessibilityLabel="Delete the last digit" onPress={onDelete} style={s.pinKey}>{ico('backspace-outline', 20, C.ink)}</Pressable>
+    </View>
+  </View>;
+}
+
+function usePrivateGate() {
+  const config = useLockConfig();
+  const locked = useIsLocked();
+  const [info, setInfo] = useState<BiometricInfo>({ available: false, enrolled: false, kind: 'none', label: 'Biometric' });
+  useEffect(() => {
+    let alive = true;
+    void biometricInfo(true).then((value) => { if (alive) setInfo(value); });
+    return () => { alive = false; };
+  }, []);
+  return { config, locked, info };
+}
+
+function PrivateLockScreen({ navigation }: any) {
+  const { rtl } = useLanguage();
+  const { config, info } = usePrivateGate();
+  const [pin, setPin] = useState('');
+  const [error, setError] = useState('');
+  const busy = useRef(false);
+  const withBiometrics = async () => {
+    if (busy.current) return;
+    busy.current = true;
+    const ok = await unlockWithBiometric();
+    busy.current = false;
+    if (!ok) setError('That was not recognised. You can use your PIN instead.');
+  };
+  useEffect(() => {
+    if (config.biometric && info.available) void withBiometrics();
+  }, [config.biometric, info.available]);
+  const submit = async (value: string) => {
+    if (value.length < 4) return;
+    if (await checkPin(value)) { setPin(''); setError(''); unlockSession(); return; }
+    haptic('error');
+    setError('That is not the PIN saved on this device.');
+    setPin('');
+  };
+  const digit = async (value: string) => {
+    haptic();
+    const next = (pin + value).slice(0, 4);
+    setPin(next);
+    setError('');
+    if (next.length === 4) await submit(next);
+  };
+  return <Page><ToolBar title="Private" navigation={navigation} />
+    <View style={s.pinPage}>
+      <ToolGraphic tool="Privacy lock" size={78} />
+      <Text style={s.dataTitle}>Locked</Text>
+      <Text style={s.intro}>These records stay on this device. Unlock with {info.available ? `${info.label} or ` : ''}your PIN to open them.</Text>
+      <PinDots filled={pin.length} error={!!error} />
+      <Text style={[s.pinHint, !!error && s.pinHintError]}>{error || (config.pinSet ? 'Enter your 4-digit PIN' : 'No PIN has been set yet')}</Text>
+      <PinKeypad onDigit={digit} onDelete={() => { setPin((value) => value.slice(0, -1)); setError(''); }} onBiometric={config.biometric && info.available ? withBiometrics : null} biometric={info} />
+      {!config.pinSet && <Pressable accessibilityLabel="Set a PIN" onPress={() => navigation.navigate('Privacy Lock')} style={s.sectionLink}><Text style={s.sectionAction}>Set a PIN{rtl ? ' ←' : ' →'}</Text></Pressable>}
+    </View>
+  </Page>;
+}
+
+function PrivateArea({ navigation, children }: { navigation: any; children: React.ReactNode }) {
+  const { locked } = usePrivateGate();
+  if (locked) return <PrivateLockScreen navigation={navigation} />;
+  return <>{children}</>;
+}
+
+function WomenHubScreen({ navigation }: any) {
+  const { rtl } = useLanguage();
+  const womens = useWomens();
+  const { config, info } = usePrivateGate();
+  const stats = cycleStats(womens);
+  const nifas = nifasStats(womens);
+  const qada = qadaStats(womens);
+  const today = dayKey();
+
+  if (!womens.optedIn) return <Page><ToolBar title="Women’s worship" navigation={navigation} />
+    <ScrollView contentContainerStyle={s.dataPage}>
+      <ToolGraphic tool="Women’s worship" size={80} />
+      <Text style={s.dataTitle}>A private area</Text>
+      <Text style={s.intro}>Cycle and purity records, the days after childbirth, and the fasts owed because of them — kept only on this device. Nothing is uploaded and no account is involved.</Text>
+      <View style={s.dataCard}>
+        <Text style={s.dataMeta}>WHAT IT HOLDS</Text>
+        <Text style={s.dataBody}>Your own cycle lengths and averages, a prediction worked out from your history rather than an assumption, purity and ghusl guidance, the post-natal days, and a running scorecard of make-up fasts.</Text>
+        <Text style={s.dataBody}>You can put a PIN in front of it, or use the face or fingerprint unlock your phone already has.</Text>
+        <Pressable accessibilityLabel="Turn on the women’s area" onPress={() => void setOptedIn(true)} style={s.primary}><Text style={s.primaryText}>Turn on this area</Text></Pressable>
+      </View>
+    </ScrollView>
+  </Page>;
+
+  const status = nifas.active ? `Post-natal · day ${nifas.day}` : stats.status === 'flow' ? `Cycle · day ${stats.dayOfCycle}` : stats.status === 'spotting' ? 'Spotting' : stats.status === 'pure' ? 'Pure' : 'Nothing recorded today';
+  const detail = nifas.active
+    ? `${LIMITS.nifasMaxDays - nifas.day} days left inside the forty`
+    : stats.active
+      ? `Started ${formatDay(stats.active.start)} · day ${stats.dayOfCycle}`
+      : stats.nextStart
+        ? `Next cycle expected in ${stats.daysToNext} days`
+        : 'Record a cycle to see your averages';
+
+  return <PrivateArea navigation={navigation}><Page><ToolBar title="Women’s worship" navigation={navigation} />
+    <ScrollView contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
+      <LinearGradient colors={['#2A2849', '#5146A4']} style={s.summaryScore}>
+        <View style={{ flex: 1 }}><Text style={s.nextCardLabel}>TODAY · {formatDay(today).toUpperCase()}</Text><Text style={s.zakatNo}>{status}</Text><Text style={s.weekScoreBody}>{detail}</Text></View>
+      </LinearGradient>
+      <View style={s.statGrid}>
+        <StatBox label="AVERAGE CYCLE" value={stats.averageCycle ? `${stats.averageCycle} days` : '—'} hint={stats.averageCycle ? `From ${stats.cycleCount} recorded cycles` : stats.cycleCount ? 'Two cycles needed' : 'No history yet'} />
+        <StatBox label="NEXT EXPECTED" value={stats.nextStart ? formatDay(stats.nextStart) : '—'} hint={stats.daysToNext !== null ? `In ${stats.daysToNext} days` : undefined} />
+        <StatBox label="FASTS OWED" value={`${qada.remaining}`} hint={`${qada.done} settled`} />
+        <StatBox label="POST-NATAL" value={nifas.active ? `Day ${nifas.day}` : '—'} hint={nifas.active ? 'Active' : 'Not recorded'} />
+      </View>
+      <Section title="Records" />
+      <View style={s.settings}>
+        <PrivateRow rtl={rtl} graphic="Cycle" title="Cycle" caption="Log the days, your flow, and the purity that follows" onPress={() => navigation.navigate('Cycle')} />
+        <PrivateRow rtl={rtl} graphic="Purity" title="Purity and ghusl" caption="The signs of tuhr, the ghusl, and the post-natal days" onPress={() => navigation.navigate('Purity')} />
+        <PrivateRow rtl={rtl} graphic="Qada fasts" title="Qada fasts" caption="Every day owed, and every day settled" onPress={() => navigation.navigate('Qada')} />
+        <PrivateRow rtl={rtl} graphic="Worship guides" title="Worship guidance" caption="What continues in these days, and the references" onPress={() => navigation.navigate('Women Guides')} />
+      </View>
+      <Section title="Privacy" />
+      <View style={s.settings}>
+        <PrivateRow rtl={rtl} graphic="Privacy lock" title={config.pinSet ? 'Lock and PIN' : 'Add a PIN'} caption={config.pinSet ? (config.required ? `Locked · ${config.biometric && info.available ? `${info.label} or ` : ''}PIN` : 'PIN saved, lock is off') : info.available ? `Face and fingerprint unlock are ready on this device` : 'This device has no biometric unlock, so a PIN is used'} onPress={() => navigation.navigate('Privacy Lock')} />
+      </View>
+      <View style={s.dataCard}>
+        <Text style={s.dataMeta}>KEPT ON THIS DEVICE</Text>
+        <Text style={s.dataBody}>Nothing here is uploaded, backed up to an account, or used for anything else. Clearing the app data removes these records for good.</Text>
+      </View>
+    </ScrollView>
+  </Page></PrivateArea>;
+}
+
+function CycleScreen({ navigation }: any) {
+  const { rtl } = useLanguage();
+  const womens = useWomens();
+  const stats = cycleStats(womens);
+  const today = dayKey();
+  const chips = recentPurity(womens, today, 14);
+  const cycle = (status: PurityStatus) => (status === 'flow' ? 'spotting' : status === 'spotting' ? 'pure' : 'flow') as PurityStatus;
+  const statusWord: Record<string, string> = { flow: 'Flow', spotting: 'Spotting', pure: 'Pure' };
+
+  return <PrivateArea navigation={navigation}><Page><ToolBar title="Cycle" navigation={navigation} />
+    <ScrollView contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
+      <ToolGraphic tool="Cycle" size={78} />
+      <Text style={s.dataTitle}>Your cycle</Text>
+      <Text style={s.intro}>Record the days as they come. The averages and the prediction are worked out from your own history — nothing is assumed about what your cycle should look like.</Text>
+      <View style={s.dataCard}>
+        <Text style={s.dataMeta}>{stats.active ? `IN PROGRESS · DAY ${stats.dayOfCycle}` : 'NO CYCLE IN PROGRESS'}</Text>
+        <Text style={s.dataBody}>{stats.active ? `Started ${formatDay(stats.active.start)}. ${stats.dayOfCycle} ${stats.dayOfCycle === 1 ? 'day' : 'days'} so far.` : 'When bleeding begins, start a cycle here and the count begins from that day.'}</Text>
+        {stats.active ? <>
+          <Text style={s.preferenceLabel}>FLOW</Text>
+          <View style={s.choiceRow}>{FLOW_LEVELS.map((level) => <ChoicePill key={level.id} label={level.label} selected={stats.active?.flow === level.id} onPress={() => void setFlow(level.id)} />)}</View>
+          <View style={s.actionRow}>
+            <Pressable accessibilityLabel="Mark purity today" onPress={() => void endCycle(today)} style={s.secondary}><Text style={s.secondaryText}>Mark purity today</Text></Pressable>
+          </View>
+          <Text style={s.meta}>Purity ends the cycle and starts the count towards the next one.</Text>
+        </> : <Pressable accessibilityLabel="Start a cycle today" onPress={() => void startCycle(today)} style={s.primary}><Text style={s.primaryText}>Start a cycle today</Text></Pressable>}
+      </View>
+      <Section title="Your pattern" />
+      <View style={s.statGrid}>
+        <StatBox label="AVERAGE CYCLE" value={stats.averageCycle ? `${stats.averageCycle} days` : '—'} hint={stats.averageCycle ? 'From your last few cycles' : 'Two cycles needed'} />
+        <StatBox label="AVERAGE LENGTH" value={stats.averagePeriod ? `${stats.averagePeriod} days` : '—'} hint="Bleeding days" />
+        <StatBox label="NEXT EXPECTED" value={stats.nextStart ? formatDay(stats.nextStart) : '—'} hint={stats.daysToNext !== null ? `In ${stats.daysToNext} days` : undefined} />
+        <StatBox label="FERTILE WINDOW" value={stats.fertileStart ? `${formatDay(stats.fertileStart)} – ${formatDay(stats.fertileEnd as string)}` : '—'} hint="An estimate, not a certainty" />
+      </View>
+      <Section title="Day by day" action="Tap to change" />
+      <View style={s.dataCard}>
+        <View style={s.purityRow}>{chips.map((chip) => <Pressable key={chip.date} accessibilityLabel={`${formatDay(chip.date)}: ${chip.status ? statusWord[chip.status] : 'not recorded'}`} onPress={() => void logPurity(chip.date, chip.status ? cycle(chip.status) : 'flow')} style={[s.purityChip, chip.status === 'flow' && s.purityFlow, chip.status === 'spotting' && s.puritySpotting, chip.status === 'pure' && s.purityPure, chip.date === today && s.purityToday]}><Text style={s.purityDay}>{Number(chip.date.slice(8, 10))}</Text><Text style={s.purityLabel}>{chip.status ? statusWord[chip.status].slice(0, 3) : '—'}</Text></Pressable>)}</View>
+        <Text style={s.meta}>The last fourteen days. Nothing is recorded until you tap a day.</Text>
+      </View>
+      <Section title="History" />
+      {!womens.cycles.length ? <View style={s.dataCard}><Text style={s.dataBody}>No cycles recorded yet.</Text></View> : <View style={s.settings}>{womens.cycles.slice(0, 12).map((entry) => <View key={entry.id} style={[s.setting, ]}>
+        <View style={{ flex: 1 }}><Text style={s.settingName}>{formatDay(entry.start)}{entry.end ? ` – ${formatDay(entry.end)}` : ' · ongoing'}</Text><Text style={s.meta}>{entry.end ? `${daysBetween(entry.start, entry.end) + 1} days` : `Day ${Math.max(1, daysBetween(entry.start, today) + 1)}`} · {FLOW_LEVELS.find((level) => level.id === entry.flow)?.label || 'Flow'}</Text></View>
+        <Pressable accessibilityLabel="Delete this cycle" onPress={() => void deleteCycle(entry.id)} style={s.stepButton}>{ico('trash-outline', 18, C.coral)}</Pressable>
+      </View>)}</View>}
+    </ScrollView>
+  </Page></PrivateArea>;
+}
+
+function PurityScreen({ navigation }: any) {
+  const { rtl } = useLanguage();
+  const womens = useWomens();
+  const nifas = nifasStats(womens);
+  const [verse, setVerse] = useState<{ arabic: string; english: string } | null>(null);
+  const [verseError, setVerseError] = useState('');
+  const load = () => getAyahEditions('2:222', ['quran-uthmani', 'en.sahih']).then((rows) => {
+    setVerse({ arabic: rows[0]?.text || '', english: rows[1]?.text || '' });
+    setVerseError('');
+  }).catch((error: any) => setVerseError(error?.message || 'The verse could not be loaded.'));
+  useEffect(() => { void load(); }, []);
+
+  return <PrivateArea navigation={navigation}><Page><ToolBar title="Purity and ghusl" navigation={navigation} />
+    <ScrollView contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
+      <ToolGraphic tool="Purity" size={78} />
+      <Text style={s.dataTitle}>Purity and ghusl</Text>
+      <Text style={s.intro}>What ends the bleeding, the washing that follows it, and the days after childbirth. The well-known positions are described here; the ruling for your case belongs with a scholar you trust.</Text>
+      <LinearGradient colors={['#2A2849', '#5146A4']} style={s.summaryScore}>
+        <View style={{ flex: 1 }}>
+          <Text style={s.nextCardLabel}>{nifas.active ? 'POST-NATAL' : 'NIFAS NOT RECORDED'}</Text>
+          <Text style={s.zakatNo}>{nifas.active ? `Day ${nifas.day}` : '—'}</Text>
+          <Text style={s.weekScoreBody}>{nifas.active ? (nifas.pastLimit ? 'Past forty days — speak to a scholar and a doctor' : `${nifas.remaining} days remain inside the forty`) : `Bleeding after childbirth is commonly counted up to ${LIMITS.nifasMaxDays} days.`}</Text>
+        </View>
+      </LinearGradient>
+      <View style={s.dataCard}>
+        {nifas.active ? <>
+          <Text style={s.dataMeta}>STARTED {formatDay(nifas.active.start).toUpperCase()}</Text>
+          <View style={s.actionRow}>
+            <Pressable accessibilityLabel="I am pure now" onPress={() => void endNifas(dayKey())} style={s.primary}><Text style={s.primaryText}>I am pure now</Text></Pressable>
+          </View>
+        </> : <>
+          <Text style={s.dataBody}>Record the birth when it happens and the counter follows the days. Purity is marked the day the bleeding stops.</Text>
+          <Pressable accessibilityLabel="Record a birth" onPress={() => void startNifas(dayKey())} style={s.primary}><Text style={s.primaryText}>Record a birth today</Text></Pressable>
+        </>}
+      </View>
+      {!!womens.nifas.filter((entry) => entry.end).length && <><Section title="Earlier births" /><View style={s.settings}>{womens.nifas.filter((entry) => entry.end).slice(0, 6).map((entry) => <View key={entry.id} style={[s.setting, ]}>
+        <View style={{ flex: 1 }}><Text style={s.settingName}>{formatDay(entry.start)} – {formatDay(entry.end as string)}</Text><Text style={s.meta}>{daysBetween(entry.start, entry.end as string) + 1} days</Text></View>
+        <Pressable accessibilityLabel="Delete this record" onPress={() => void deleteNifas(entry.id)} style={s.stepButton}>{ico('trash-outline', 18, C.coral)}</Pressable>
+      </View>)}</View></>}
+      <Section title="The verse on menstruation" action="Quran 2:222" />
+      {verseError ? <ErrorState message={verseError} retry={load} /> : !verse ? <Spinner /> : <View style={s.dataCard}>
+        <Text style={s.dataArabic}>{verse.arabic}</Text>
+        <Text style={s.dataBody}>{verse.english}</Text>
+      </View>}
+      <Section title="Signs that bleeding has ended" />
+      <View style={s.settings}>{TUHR_SIGNS.map((block) => <View key={block.title} style={s.guideBlock}><Text style={s.guideTitle}>{block.title}</Text><Text style={s.dataBody}>{block.body}</Text></View>)}</View>
+      <Section title="The ghusl — what is required" />
+      <View style={s.dataCard}>
+        <Text style={s.dataArabic}>{BISMILLAH_ARABIC}</Text>
+        <Text style={s.dataMeta}>THE INTENTION, IN THE HEART AND ON THE TONGUE</Text>
+        <Text style={s.dataArabic}>{NIYYAH_ARABIC}</Text>
+        <Text style={s.dataBody}>{NIYYAH_TRANSLITERATION} — {NIYYAH_MEANING}</Text>
+      </View>
+      <View style={s.settings}>{GHUSL_FARD.map((step, index) => <View key={step} style={[s.setting, ]}><View style={s.stepNo}><Text style={s.stepNoText}>{index + 1}</Text></View><Text style={[s.guideStepText, { flex: 1 }]}>{step}</Text></View>)}</View>
+      <Section title="The ghusl — as the Prophet ﷺ performed it" />
+      <View style={s.settings}>{GHUSL_SUNNAH.map((step, index) => <View key={step} style={[s.setting, ]}><View style={s.stepNo}><Text style={s.stepNoText}>{index + 1}</Text></View><Text style={[s.guideStepText, { flex: 1 }]}>{step}</Text></View>)}</View>
+      <Section title="Hayd, nifas and istihadha" />
+      <View style={s.settings}>{EXPLANATIONS.map((block) => <View key={block.title} style={s.guideBlock}><Text style={s.guideTitle}>{block.title}</Text><Text style={s.dataBody}>{block.body}</Text></View>)}</View>
+      <View style={s.dataCard}><Text style={s.dataMeta}>BEFORE YOU RELY ON ANY OF THIS</Text><Text style={s.dataBody}>{ADVISORY}</Text></View>
+    </ScrollView>
+  </Page></PrivateArea>;
+}
+
+function QadaScreen({ navigation }: any) {
+  const { rtl } = useLanguage();
+  const womens = useWomens();
+  const qada = qadaStats(womens);
+  const [date, setDate] = useState(dayKey());
+  const [reason, setReason] = useState<QadaReason>('menstruation');
+  const owed = womens.qada.filter((entry) => !entry.done);
+  const settled = womens.qada.filter((entry) => entry.done);
+
+  return <PrivateArea navigation={navigation}><Page><ToolBar title="Qada fasts" navigation={navigation} />
+    <ScrollView contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
+      <ToolGraphic tool="Qada fasts" size={78} />
+      <Text style={s.dataTitle}>Days owed</Text>
+      <Text style={s.intro}>Fast days missed through menstruation or the post-natal days are made up one for one, before the next Ramadan. This is the running count.</Text>
+      <LinearGradient colors={['#2A2849', '#5146A4']} style={s.summaryScore}>
+        <View><Text style={s.nextCardLabel}>STILL OWED</Text><Text style={s.zakatNo}>{qada.remaining}</Text><Text style={s.weekScoreBody}>{qada.total} recorded in total</Text></View>
+        <View style={{ alignItems: 'flex-end' }}><Text style={s.nextCardLabel}>SETTLED</Text><Text style={s.zakatNo}>{qada.done}</Text><Text style={s.weekScoreBody}>{qada.percent}% complete</Text></View>
+      </LinearGradient>
+      <View style={s.progressTrack}><View style={[s.progressFill, { width: `${qada.percent}%` } as any]} /></View>
+      <Section title="Add a missed day" />
+      <View style={s.dataCard}>
+        <Text style={s.preferenceLabel}>THE DAY THAT WAS MISSED</Text>
+        <View style={s.dayStepper}>
+          <Pressable accessibilityLabel="One day earlier" onPress={() => setDate((value) => addDays(value, -1))} style={s.stepButton}>{ico(rtl ? 'arrow-forward' : 'arrow-back', 19, C.green)}</Pressable>
+          <View style={{ flex: 1, alignItems: 'center' }}><Text style={s.settingName}>{formatLongDay(date)}</Text><Text style={s.meta}>{date}</Text></View>
+          <Pressable accessibilityLabel="One day later" onPress={() => setDate((value) => addDays(value, 1))} style={s.stepButton}>{ico(rtl ? 'arrow-back' : 'arrow-forward', 19, C.green)}</Pressable>
+        </View>
+        <Text style={s.preferenceLabel}>WHY IT WAS MISSED</Text>
+        <View style={s.choiceGrid}>{QADA_REASONS.map((item) => <ChoicePill key={item.id} label={item.label} selected={reason === item.id} onPress={() => setReason(item.id)} />)}</View>
+        <Pressable accessibilityLabel="Add this day to the ledger" onPress={() => void addQada(date, reason)} style={s.primary}><Text style={s.primaryText}>Add this day</Text></Pressable>
+      </View>
+      <Section title="Still owed" action={`${owed.length}`} />
+      {!owed.length ? <View style={s.dataCard}><Text style={s.dataBody}>Nothing outstanding. Every recorded day has been settled.</Text></View> : <View style={s.settings}>{owed.map((entry) => <View key={entry.id} style={[s.setting, ]}>
+        <Pressable accessibilityLabel={`Mark ${formatDay(entry.date)} as settled`} onPress={() => void toggleQada(entry.id)} style={s.stepCheck}>{entry.done ? ico('checkmark', 22, C.green) : null}</Pressable>
+        <View style={{ flex: 1 }}><Text style={s.settingName}>{formatDay(entry.date)}</Text><Text style={s.meta}>{QADA_REASONS.find((item) => item.id === entry.reason)?.label}</Text></View>
+        <Pressable accessibilityLabel="Delete this entry" onPress={() => void deleteQada(entry.id)} style={s.stepButton}>{ico('trash-outline', 18, C.coral)}</Pressable>
+      </View>)}</View>}
+      {!!settled.length && <><Section title="Settled" action={`${settled.length}`} /><View style={s.settings}>{settled.slice(0, 20).map((entry) => <View key={entry.id} style={[s.setting, ]}>
+        <Pressable accessibilityLabel={`Reopen ${formatDay(entry.date)}`} onPress={() => void toggleQada(entry.id)} style={[s.stepCheck, s.stepCheckDone]}>{ico('checkmark', 22, C.white)}</Pressable>
+        <View style={{ flex: 1 }}><Text style={s.settingName}>{formatDay(entry.date)}</Text><Text style={s.meta}>Made up on {entry.doneOn ? formatDay(entry.doneOn) : '—'}</Text></View>
+        <Pressable accessibilityLabel="Delete this entry" onPress={() => void deleteQada(entry.id)} style={s.stepButton}>{ico('trash-outline', 18, C.coral)}</Pressable>
+      </View>)}</View></>}
+    </ScrollView>
+  </Page></PrivateArea>;
+}
+
+function WomenGuidesScreen({ navigation }: any) {
+  return <PrivateArea navigation={navigation}><Page><ToolBar title="Worship guidance" navigation={navigation} />
+    <ScrollView contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
+      <ToolGraphic tool="Worship guides" size={78} />
+      <Text style={s.dataTitle}>Worship in these days</Text>
+      <Text style={s.intro}>What is lifted, what continues, and what is owed afterwards. These are the well-known positions, described plainly — the ruling for your situation belongs with a scholar you trust.</Text>
+      <Section title="The acts of worship" />
+      <View style={s.settings}>{WORSHIP_GUIDANCE.map((block) => <View key={block.title} style={s.guideBlock}><Text style={s.guideTitle}>{block.title}</Text><Text style={s.dataBody}>{block.body}</Text></View>)}</View>
+      <Section title="The terms" />
+      <View style={s.settings}>{EXPLANATIONS.map((block) => <View key={block.title} style={s.guideBlock}><Text style={s.guideTitle}>{block.title}</Text><Text style={s.dataBody}>{block.body}</Text></View>)}</View>
+      <Section title="References" />
+      <View style={s.settings}>{REFERENCES.map((reference) => <View key={reference} style={s.setting}><ToolGraphic tool="Quran" size={28} /><Text style={[s.settingName, { flex: 1, marginHorizontal: 13 }]}>{reference}</Text></View>)}</View>
+      <View style={s.dataCard}><Text style={s.dataMeta}>AND SEE A DOCTOR</Text><Text style={s.dataBody}>{ADVISORY}</Text></View>
+    </ScrollView>
+  </Page></PrivateArea>;
+}
+
+function PrivacyLockScreen({ navigation }: any) {
+  const { rtl } = useLanguage();
+  const { config, info } = usePrivateGate();
+  const [stage, setStage] = useState<'idle' | 'create' | 'confirm'>('idle');
+  const [draft, setDraft] = useState('');
+  const [first, setFirst] = useState('');
+  const [error, setError] = useState('');
+  const [note, setNote] = useState('');
+
+  const finish = async (value: string) => {
+    await setPin(value);
+    haptic();
+    setStage('idle');
+    setDraft('');
+    setFirst('');
+    setError('');
+    setNote('Your PIN is saved on this device.');
+  };
+  const digit = async (value: string) => {
+    haptic();
+    setNote('');
+    if (stage === 'idle') return;
+    const next = (draft + value).slice(0, 4);
+    setDraft(next);
+    setError('');
+    if (next.length < 4) return;
+    if (stage === 'create') { setFirst(next); setDraft(''); setStage('confirm'); return; }
+    if (next === first) await finish(next);
+    else { haptic('error'); setError('Those did not match. Start again.'); setDraft(''); setFirst(''); setStage('create'); }
+  };
+
+  if (stage !== 'idle') return <Page><ToolBar title="Private" navigation={navigation} />
+    <View style={s.pinPage}>
+      <ToolGraphic tool="Privacy lock" size={78} />
+      <Text style={s.dataTitle}>{stage === 'create' ? 'Choose a PIN' : 'Confirm it'}</Text>
+      <Text style={s.intro}>Four digits. There is no reset link and no recovery email — this code lives on this device only, so choose one you will remember.</Text>
+      <PinDots filled={draft.length} error={!!error} />
+      <Text style={[s.pinHint, !!error && s.pinHintError]}>{error || (stage === 'create' ? 'Enter four digits' : 'Enter the same four digits')}</Text>
+      <PinKeypad onDigit={digit} onDelete={() => { setDraft((value) => value.slice(0, -1)); setError(''); }} biometric={info} />
+      <Pressable accessibilityLabel="Cancel" onPress={() => { setStage('idle'); setDraft(''); setFirst(''); setError(''); }} style={s.dangerButton}><Text style={s.dangerText}>Cancel</Text></Pressable>
+    </View>
+  </Page>;
+
+  return <Page><ToolBar title="Lock and PIN" navigation={navigation} />
+    <ScrollView contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
+      <ToolGraphic tool="Privacy lock" size={78} />
+      <Text style={s.dataTitle}>Private by default</Text>
+      <Text style={s.intro}>The women’s screens can be put behind a gate. The PIN is stored as a salted digest, never as the digits themselves, and the face or fingerprint scan is handled entirely by your phone — this app is only told yes or no.</Text>
+      <View style={s.dataCard}>
+        <Text style={s.dataMeta}>THE PIN</Text>
+        <Text style={s.dataBody}>{config.pinSet ? 'A PIN is saved on this device.' : 'No PIN yet. Choose one to switch the lock on.'}</Text>
+        <View style={s.actionRow}>
+          <Pressable accessibilityLabel={config.pinSet ? 'Change the PIN' : 'Set a PIN'} onPress={() => { setStage('create'); setDraft(''); setFirst(''); setError(''); setNote(''); }} style={s.primary}><Text style={s.primaryText}>{config.pinSet ? 'Change PIN' : 'Set a PIN'}</Text></Pressable>
+          {config.pinSet && <Pressable accessibilityLabel="Remove the PIN" onPress={() => void removePin().then(() => setNote('The PIN and the lock were removed.'))} style={s.secondary}><Text style={s.secondaryText}>Remove PIN</Text></Pressable>}
+        </View>
+        {!!note && <Text style={s.dataMeta}>{note.toUpperCase()}</Text>}
+      </View>
+      {config.pinSet && <>
+        <Section title="The gate" />
+        <View style={s.settings}>
+          <View style={[s.setting, ]}>
+            <ToolGraphic tool="Privacy lock" size={44} />
+            <View style={{ flex: 1, marginHorizontal: 13 }}><Text style={s.settingName}>Lock the women’s area</Text><Text style={s.meta}>Ask for the PIN whenever these screens are opened</Text></View>
+            <View style={{ direction: 'ltr' } as any}><Switch accessibilityLabel="Lock the women’s area" value={config.required} onValueChange={(value) => void updateLockSettings({ required: value })} trackColor={{ true: C.green }} /></View>
+          </View>
+          <View style={[s.setting, ]}>
+            <ToolGraphic tool="Privacy lock" size={44} />
+            <View style={{ flex: 1, marginHorizontal: 13 }}><Text style={s.settingName}>{info.available ? `Use ${info.label}` : 'Biometric unlock'}</Text><Text style={s.meta}>{info.available ? (info.enrolled ? 'Set up on this device' : 'Not enrolled on this device yet') : 'This device cannot use face or fingerprint unlock, so the PIN is used'}</Text></View>
+            <View style={{ direction: 'ltr' } as any}><Switch accessibilityLabel="Use biometric unlock" disabled={!info.available} value={config.biometric && info.available} onValueChange={(value) => void updateLockSettings({ biometric: value })} trackColor={{ true: C.green }} /></View>
+          </View>
+        </View>
+        <Section title="Lock again" />
+        <View style={s.dataCard}>
+          <Text style={s.preferenceLabel}>WHEN THE APP IS PUT AWAY</Text>
+          <View style={s.choiceGrid}>{RELOCK_OPTIONS.map((option) => <ChoicePill key={option.minutes} label={option.label} selected={config.relockMinutes === option.minutes} onPress={() => void updateLockSettings({ relockMinutes: option.minutes })} />)}</View>
+          <Text style={s.meta}>Choosing “Immediately” closes the gate the moment the app moves to the background.</Text>
+        </View>
+      </>}
+      <View style={s.dataCard}><Text style={s.dataMeta}>IF THE PIN IS FORGOTTEN</Text><Text style={s.dataBody}>There is no recovery by design — no email, no account, no server that could hand it over. Removing the app clears the records along with the code, which is the only way back in.</Text></View>
+    </ScrollView>
+  </Page>;
+}
+
+/* ==================== Phase 4 · Zakat ==================== */
+function ZakatScreen({ navigation }: any) {
+  const { rtl } = useLanguage();
+  const zakat = useZakat();
+  const market = useMarket();
+  const [refreshing, setRefreshing] = useState(false);
+  const [saved, setSaved] = useState('');
+  const result = computeZakat(zakat);
+  const live = livePrices(zakat.currency);
+  const fresh = marketIsFresh();
+  const symbol = currencySymbol(zakat.currency);
+
+  const refresh = async () => {
+    setRefreshing(true);
+    await refreshMarket();
+    setRefreshing(false);
+  };
+  useEffect(() => {
+    if (!market.fetchedAt) void refresh();
+  }, []);
+
+  const metalPrice = (metal: 'gold' | 'silver') => (metal === 'gold' ? result.goldPerGram : result.silverPerGram);
+
+  return <Page><ToolBar title="Zakat" navigation={navigation} />
+    <ScrollView contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
+      <ToolGraphic tool="Zakat" size={78} />
+      <Text style={s.dataTitle}>Work out what is due</Text>
+      <Text style={s.intro}>List what you own, subtract what falls due, and compare what is left with the nisab. Prices and exchange rates are fetched live where they are reachable and kept on this device when they are not. This is arithmetic, not a ruling — take the details to a scholar.</Text>
+
+      <Section title="Currency" action={zakat.currency} />
+      <View style={s.preferencePanel}>
+        <View style={s.choiceGrid}>{CURRENCIES.map((currency) => <ChoicePill key={currency.code} label={currency.code} selected={zakat.currency === currency.code} onPress={() => void setCurrency(currency.code)} />)}</View>
+        <Text style={s.meta}>{CURRENCIES.find((item) => item.code === zakat.currency)?.name} · every figure below is shown in it.</Text>
+      </View>
+
+      <Section title="What you own" />
+      <View style={s.settings}>
+        {zakat.assets.map((asset) => <View key={asset.id} style={[s.assetRow, ]}>
+          <View style={{ flex: 1, marginHorizontal: 4 }}>
+            <Text style={s.settingName}>{asset.label}</Text>
+            {asset.kind === 'gold' || asset.kind === 'silver' ? <Text style={s.meta}>{formatMoney(Number(asset.amount) || 0, zakat.currency, 0)} at {formatMoney(metalPrice(asset.kind), zakat.currency)} per gram</Text> : <Text style={s.meta}>{asset.kind === 'cash' || asset.kind === 'bank' ? 'Balances on the day of your Zakat' : 'Market value today'}</Text>}
+          </View>
+          <TextInput accessibilityLabel={`${asset.label} amount`} keyboardType="numeric" value={asset.amount ? String(asset.amount) : ''} onChangeText={(value) => void setAssetAmount(asset.id, Number(value.replace(/[^0-9.]/g, '')) || 0)} placeholder="0" placeholderTextColor={C.muted} style={s.assetInput} />
+        </View>)}
+      </View>
+
+      <Section title="What falls due" />
+      <View style={s.settings}>
+        {zakat.liabilities.map((item) => <View key={item.id} style={[s.assetRow, ]}>
+          <View style={{ flex: 1, marginHorizontal: 4 }}><Text style={s.settingName}>{item.label}</Text><Text style={s.meta}>Subtracted from the total above</Text></View>
+          <TextInput accessibilityLabel={`${item.label} amount`} keyboardType="numeric" value={item.amount ? String(item.amount) : ''} onChangeText={(value) => void setLiabilityAmount(item.id, Number(value.replace(/[^0-9.]/g, '')) || 0)} placeholder="0" placeholderTextColor={C.muted} style={s.assetInput} />
+        </View>)}
+      </View>
+
+      <Section title="Gold and silver prices" />
+      <View style={s.dataCard}>
+        <Text style={s.preferenceLabel}>PER GRAM, IN {zakat.currency}</Text>
+        <View style={[s.metalRow, ]}>
+          <View style={{ flex: 1 }}><Text style={s.settingName}>Gold</Text><Text style={s.meta}>Nisab is {NISAB_GOLD_GRAMS} grams</Text></View>
+          <TextInput accessibilityLabel="Gold price per gram" keyboardType="numeric" value={result.goldPerGram ? String(Number(result.goldPerGram.toFixed(2))) : ''} onChangeText={(value) => void setMetalPrice('gold', Number(value.replace(/[^0-9.]/g, '')) || 0)} placeholder="0" placeholderTextColor={C.muted} style={s.assetInput} />
+        </View>
+        <View style={[s.metalRow, ]}>
+          <View style={{ flex: 1 }}><Text style={s.settingName}>Silver</Text><Text style={s.meta}>Nisab is {NISAB_SILVER_GRAMS} grams</Text></View>
+          <TextInput accessibilityLabel="Silver price per gram" keyboardType="numeric" value={result.silverPerGram ? String(Number(result.silverPerGram.toFixed(2))) : ''} onChangeText={(value) => void setMetalPrice('silver', Number(value.replace(/[^0-9.]/g, '')) || 0)} placeholder="0" placeholderTextColor={C.muted} style={s.assetInput} />
+        </View>
+        <View style={s.actionRow}>
+          <Pressable accessibilityLabel="Use live prices" onPress={() => void useLiveMetalPrices()} style={s.secondary}><Text style={s.secondaryText}>Use live prices</Text></Pressable>
+          <Pressable accessibilityLabel="Refresh prices and rates" onPress={refresh} style={s.secondary}><Text style={s.secondaryText}>{refreshing ? 'Refreshing…' : 'Refresh'}</Text></Pressable>
+        </View>
+        <Text style={s.meta}>{zakat.prices.custom ? 'You are using your own prices.' : fresh ? 'Prices and exchange rates were fetched within the last twelve hours.' : 'Prices and rates were last saved on this device.'}{market.fetchedAt ? ` Updated ${new Date(market.fetchedAt).toLocaleString()}.` : ''}</Text>
+      </View>
+
+      <Section title="The nisab" />
+      <View style={s.dataCard}>
+        <View style={s.choiceRow}><ChoicePill label={`Gold · ${NISAB_GOLD_GRAMS}g`} selected={zakat.basis === 'gold'} onPress={() => void setBasis('gold')} /><ChoicePill label={`Silver · ${NISAB_SILVER_GRAMS}g`} selected={zakat.basis === 'silver'} onPress={() => void setBasis('silver')} /></View>
+        <View style={s.statGrid}>
+          <StatBox label="GOLD NISAB" value={formatMoney(NISAB_GOLD_GRAMS * result.goldPerGram, zakat.currency, 0)} hint={`${NISAB_GOLD_GRAMS} grams`} />
+          <StatBox label="SILVER NISAB" value={formatMoney(NISAB_SILVER_GRAMS * result.silverPerGram, zakat.currency, 0)} hint={`${NISAB_SILVER_GRAMS} grams`} />
+        </View>
+        <Text style={s.meta}>Scholars differ on which of the two to measure against. The lower threshold brings more wealth into Zakat; take the choice to someone you trust.</Text>
+      </View>
+
+      <Section title="The result" />
+      <LinearGradient colors={['#2A2849', '#5146A4']} style={s.summaryScore}>
+        <View><Text style={s.nextCardLabel}>ZAKAT DUE · 2.5%</Text><Text style={s.zakatNo}>{formatMoney(result.zakat, zakat.currency)}</Text><Text style={s.weekScoreBody}>{result.above ? 'Your net wealth is above the nisab' : 'Below the nisab — nothing is due'}</Text></View>
+      </LinearGradient>
+      <View style={s.statGrid}>
+        <StatBox label="GROSS ASSETS" value={formatMoney(result.gross, zakat.currency, 0)} hint="Everything listed above" />
+        <StatBox label="LIABILITIES" value={formatMoney(result.liabilities, zakat.currency, 0)} hint="Subtracted" />
+        <StatBox label="NET WEALTH" value={formatMoney(result.net, zakat.currency, 0)} hint="What Zakat is taken from" />
+        <StatBox label="NISAB" value={formatMoney(result.nisab, zakat.currency, 0)} hint={zakat.basis === 'gold' ? 'Gold threshold' : 'Silver threshold'} />
+      </View>
+      <Pressable accessibilityLabel="Save this calculation" onPress={() => void saveCalculation(result).then(() => setSaved('Saved on this device.'))} style={s.primary}><Text style={s.primaryText}>Save this calculation</Text></Pressable>
+      {!!saved && <Text style={s.dataMeta}>{saved.toUpperCase()}</Text>}
+
+      <Section title="History" action={zakat.history.length ? `${zakat.history.length} saved` : undefined} onPress={zakat.history.length ? () => void clearHistory() : undefined} />
+      {!zakat.history.length ? <View style={s.dataCard}><Text style={s.dataBody}>No saved calculations yet. Save one and it stays here on this device.</Text></View> : <View style={s.settings}>{zakat.history.map((entry) => <View key={entry.id} style={[s.setting, ]}>
+        <View style={{ flex: 1 }}><Text style={s.settingName}>{formatMoney(entry.zakat, entry.currency)}</Text><Text style={s.meta}>{new Date(entry.at).toLocaleDateString()} · net {formatMoney(entry.net, entry.currency, 0)} · {entry.above ? 'above' : 'below'} the {entry.basis} nisab</Text></View>
+        <Pressable accessibilityLabel="Delete this calculation" onPress={() => void deleteCalculation(entry.id)} style={s.stepButton}>{ico('trash-outline', 18, C.coral)}</Pressable>
+      </View>)}</View>}
+      <View style={s.dataCard}><Text style={s.dataMeta}>BEFORE YOU PAY</Text><Text style={s.dataBody}>What counts as zakatable, how business stock is valued and which debts may be deducted differ between schools and situations. This figure is a careful estimate to take to a scholar, and your Zakat year matters as much as the total.</Text></View>
+    </ScrollView>
+  </Page>;
+}
+
 function HadithProgressBars(){
   const state=useHadithState();
   const rows=HADITH_COLLECTIONS.map(collection=>{
@@ -1412,7 +1943,7 @@ const DATA_SOURCES: { name: string; ar: string; endpoint: string; detail: string
   { name: 'AlAdhan', ar: 'الأذان', endpoint: 'api.aladhan.com',
     detail: 'Prayer times by calculation method for any coordinate, the Hijri calendar, and the Ramadan timetable for suhoor and iftar.',
     arDetail: 'مواقيت الصلاة حسب طريقة الحساب لأي موقع، والتقويم الهجري، وجدول رمضان للإمساك والإفطار.' },
-  { name: 'MP3Quran', ar: 'إم بي 3 قرآن', endpoint: 'mp3quran.net',
+  { name: 'Gold and silver prices', ar: 'أسعار الذهب والفضة', endpoint: 'api.gold-api.com', detail: 'Spot gold and silver prices per troy ounce, converted to a price per gram for the nisab threshold.', arDetail: 'أسعار الذهب والفضة الفورية للأوقية، وتحوّل إلى سعر الغرام لحساب النصاب.' }, { name: 'Exchange rates', ar: 'أسعار الصرف', endpoint: 'open.er-api.com', detail: 'Daily reference exchange rates, used to show Zakat figures in the currency you choose.', arDetail: 'أسعار صرف مرجعية يومية، تُستخدم لعرض أرقام الزكاة بالعملة التي تختارها.' }, { name: 'MP3Quran', ar: 'إم بي 3 قرآن', endpoint: 'mp3quran.net',
     detail: 'Complete Surah recitations from published reciters, used when you play a whole Surah rather than verse by verse.',
     arDetail: 'تلاوات كاملة للسور من القرّاء المنشورين، وتُستخدم عند تشغيل السورة كاملة.' },
 ];
@@ -1437,9 +1968,9 @@ function DataSourcesScreen({ navigation }: any) {
 
 function SettingsStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="Settings" component={SettingsScreen}/><Stack.Screen name="Data sources" component={DataSourcesScreen}/></Stack.Navigator>}
 
-function SettingsScreen({navigation}:any){const{language,rtl,setLanguage}=useLanguage();const{settings,update}=useWorshipSettings();return <Page><ScrollView contentContainerStyle={s.scroll}><TopBar overline={rtl?'خصوصية بلا حساب':'PRIVATE BY DESIGN'} title={rtl?'الإعدادات':'Settings'} right={<MotionGlyph name="shield-checkmark-outline" size={20}/>}/><LinearGradient colors={['#2A2849','#5146A4']} style={s.privacyHero}><MotionGlyph name="shield-checkmark-outline" size={25} inverse/><View style={{flex:1}}><Text style={s.profileName}>{rtl?'لا حساب. لا تتبع.':'No account. No tracking.'}</Text><Text style={s.profileSub}>{rtl?'تبقى عبادتك خاصة وتظل تفضيلاتك على هذا الجهاز.':'Your worship stays private and your preferences remain on this device.'}</Text></View></LinearGradient><View style={s.privacyPoints}><View style={s.privacyPoint}>{ico('person-remove-outline',19,C.green)}<Text style={s.privacyPointText}>{rtl?'دون تسجيل':'No sign-up'}</Text></View><View style={s.privacyPoint}>{ico('cloud-offline-outline',19,C.green)}<Text style={s.privacyPointText}>{rtl?'دون ملف سحابي':'No cloud profile'}</Text></View><View style={s.privacyPoint}>{ico('analytics-outline',19,C.green)}<Text style={s.privacyPointText}>{rtl?'دون تتبع إعلاني':'No ad tracking'}</Text></View></View>
+function SettingsScreen({navigation}:any){const{language,rtl,setLanguage}=useLanguage();const{settings,update}=useWorshipSettings();const womens=useWomens();const lock=useLockConfig();return <Page><ScrollView contentContainerStyle={s.scroll}><TopBar overline={rtl?'خصوصية بلا حساب':'PRIVATE BY DESIGN'} title={rtl?'الإعدادات':'Settings'} right={<MotionGlyph name="shield-checkmark-outline" size={20}/>}/><LinearGradient colors={['#2A2849','#5146A4']} style={s.privacyHero}><MotionGlyph name="shield-checkmark-outline" size={25} inverse/><View style={{flex:1}}><Text style={s.profileName}>{rtl?'لا حساب. لا تتبع.':'No account. No tracking.'}</Text><Text style={s.profileSub}>{rtl?'تبقى عبادتك خاصة وتظل تفضيلاتك على هذا الجهاز.':'Your worship stays private and your preferences remain on this device.'}</Text></View></LinearGradient><View style={s.privacyPoints}><View style={s.privacyPoint}>{ico('person-remove-outline',19,C.green)}<Text style={s.privacyPointText}>{rtl?'دون تسجيل':'No sign-up'}</Text></View><View style={s.privacyPoint}>{ico('cloud-offline-outline',19,C.green)}<Text style={s.privacyPointText}>{rtl?'دون ملف سحابي':'No cloud profile'}</Text></View><View style={s.privacyPoint}>{ico('analytics-outline',19,C.green)}<Text style={s.privacyPointText}>{rtl?'دون تتبع إعلاني':'No ad tracking'}</Text></View></View>
 <Section title={rtl?'حساب أوقات الصلاة':'Prayer calculation'}/><View style={s.preferencePanel}><View style={s.preferenceHead}><ToolGraphic tool="Qibla" size={54}/><View style={{flex:1}}><Text style={s.settingName}>{rtl?'طريقة الحساب':'Calculation method'}</Text><Text style={s.meta}>{rtl?'تُحفظ على هذا الجهاز وتُطبق على جميع مواقيت الصلاة.':'Saved on this device and applied throughout the app.'}</Text></View></View><View style={s.choiceGrid}>{PRAYER_METHODS.map(method=><ChoicePill key={method.id} label={method.name} selected={settings.calculationMethod===method.id} onPress={()=>update({calculationMethod:method.id,calculationMethodName:method.name})}/>)}</View><Text style={s.preferenceLabel}>{rtl?'المذهب لحساب العصر':'ASR MADHAB'}</Text><View style={s.choiceRow}><ChoicePill label="Shafi" selected={settings.madhab==='shafi'} onPress={()=>update({madhab:'shafi'})}/><ChoicePill label="Hanafi" selected={settings.madhab==='hanafi'} onPress={()=>update({madhab:'hanafi'})}/></View><Text style={s.preferenceLabel}>{rtl?'تنسيق الوقت':'TIME FORMAT'}</Text><View style={s.choiceRow}><ChoicePill label="12 hour" selected={settings.timeFormat==='12'} onPress={()=>update({timeFormat:'12'})}/><ChoicePill label="24 hour" selected={settings.timeFormat==='24'} onPress={()=>update({timeFormat:'24'})}/></View></View>
-<Section title={rtl?'التفضيلات':'Preferences'}/><View style={s.settings}><View style={s.setting}><MotionGlyph name="language-outline" size={19}/><View style={{flex:1}}><Text style={s.settingName}>{rtl?'English interface':'Arabic interface'}</Text><Text style={s.meta}>{rtl?'Left-to-right layout':'واجهة عربية من اليمين إلى اليسار'}</Text></View><View style={{direction:'ltr'} as any}><Switch value={language==='ar'} onValueChange={v=>setLanguage(v?'ar':'en')} trackColor={{true:C.green}}/></View></View><View style={s.setting}><ToolGraphic tool="Arabic Quran" size={44}/><View style={{flex:1}}><Text style={s.settingName}>{rtl?'قراءة القرآن':'Quran reading'}</Text><Text style={s.meta}>{rtl?'النص العثماني · صحيح إنترناشيونال':'Uthmani Arabic · Sahih International English'}</Text></View></View></View><Pressable onPress={()=>navigation.navigate('Data sources')} style={[s.settings,s.dataSourceRow]} accessibilityRole="button" accessibilityLabel="Data sources"><ToolGraphic tool="Quran" size={40}/><View style={{flex:1,marginHorizontal:13}}><Text style={s.settingName}>{rtl?'مصادر البيانات':'Data sources'}</Text><Text style={s.meta}>{rtl?'من أين يأتي نص القرآن والمواقيت والحديث والصوت':'Where the Quran text, prayer times, hadith and audio come from'}</Text></View>{ico('arrow-forward',17,'#B9BEC9')}</Pressable></ScrollView></Page>}
+<Section title={rtl?'التفضيلات':'Preferences'}/><View style={s.settings}><View style={s.setting}><MotionGlyph name="language-outline" size={19}/><View style={{flex:1}}><Text style={s.settingName}>{rtl?'English interface':'Arabic interface'}</Text><Text style={s.meta}>{rtl?'Left-to-right layout':'واجهة عربية من اليمين إلى اليسار'}</Text></View><View style={{direction:'ltr'} as any}><Switch accessibilityLabel={rtl?'Arabic interface':'Arabic interface'} value={language==='ar'} onValueChange={v=>setLanguage(v?'ar':'en')} trackColor={{true:C.green}}/></View></View><View style={s.setting}><ToolGraphic tool="Arabic Quran" size={44}/><View style={{flex:1}}><Text style={s.settingName}>{rtl?'قراءة القرآن':'Quran reading'}</Text><Text style={s.meta}>{rtl?'النص العثماني · صحيح إنترناشيونال':'Uthmani Arabic · Sahih International English'}</Text></View></View><View style={s.setting}><ToolGraphic tool="Women’s worship" size={44}/><View style={{flex:1,marginHorizontal:13}}><Text style={s.settingName}>{rtl?'عبادة النساء':'Women’s worship'}</Text><Text style={s.meta}>{rtl?(womens.optedIn?'الدورة والطهارة والقضاء · على هذا الجهاز فقط':'مساحة خاصة للدورة والطهارة والقضاء'):(womens.optedIn?'Cycle, purity and Qada records · on this device only':'A private area for the cycle, purity and Qada records')}</Text></View><View style={{direction:'ltr'} as any}><Switch accessibilityLabel="Women’s worship" value={womens.optedIn} onValueChange={(value)=>void setOptedIn(value)} trackColor={{true:C.green}}/></View></View>{womens.optedIn&&<Pressable accessibilityRole="button" accessibilityLabel="Lock and PIN" onPress={()=>navigation.navigate('Tools',{screen:'Privacy Lock'})} style={s.setting}><ToolGraphic tool="Privacy lock" size={44}/><View style={{flex:1,marginHorizontal:13}}><Text style={s.settingName}>{rtl?'القفل والرمز':'Lock and PIN'}</Text><Text style={s.meta}>{rtl?(lock.pinSet?(lock.required?'مقفل':'الرمز محفوظ'):'لا رمز بعد'):(lock.pinSet?(lock.required?'Locked':'PIN saved, lock is off'):'No PIN yet')}</Text></View>{ico(rtl?'arrow-back':'arrow-forward',17,'#B9BEC9')}</Pressable>}</View><Pressable onPress={()=>navigation.navigate('Data sources')} style={[s.settings,s.dataSourceRow]} accessibilityRole="button" accessibilityLabel="Data sources"><ToolGraphic tool="Quran" size={40}/><View style={{flex:1,marginHorizontal:13}}><Text style={s.settingName}>{rtl?'مصادر البيانات':'Data sources'}</Text><Text style={s.meta}>{rtl?'من أين يأتي نص القرآن والمواقيت والحديث والصوت':'Where the Quran text, prayer times, hadith and audio come from'}</Text></View>{ico('arrow-forward',17,'#B9BEC9')}</Pressable></ScrollView></Page>}
 const navigationRef = createNavigationContainerRef<any>();
 const AUDIO_LANGUAGES: Record<string, string> = {
   en: 'English', ur: 'Urdu', zh: 'Chinese', fr: 'French', ru: 'Russian',
@@ -1798,7 +2329,7 @@ function FloatingTabBar({ state, navigation }: any) {
 }
 
 function Tabs(){return <Tab.Navigator screenOptions={{headerShown:false,tabBarHideOnKeyboard:true}} tabBar={(props:any)=><FloatingTabBar {...props}/>}><Tab.Screen name="Home" component={HomeScreen}/><Tab.Screen name="Quran" component={QuranStack}/><Tab.Screen name="Library" component={ExploreStack}/><Tab.Screen name="Tools" component={ToolsStack}/><Tab.Screen name="Settings" component={SettingsStack}/></Tab.Navigator>}
-export default function App(){const[fontsLoaded]=useFonts({DMSans_400Regular,DMSans_600SemiBold,DMSans_700Bold,Newsreader_600SemiBold,NotoNaskhArabic_400Regular,NotoNaskhArabic_600SemiBold,Amiri_400Regular,KFGQPCUthmanicHafs,IBMPlexSansArabic_400Regular,IBMPlexSansArabic_600SemiBold});useEffect(()=>{if(fontsLoaded){resumeSavedQuranPreload();void loadAudioSettings();void loadHadithState();void loadTasbihState();void loadDownloads();void loadActivity();void loadFastingState();void loadJourneys()}},[fontsLoaded]);if(!fontsLoaded)return <SafeAreaView style={s.safe}><Spinner/></SafeAreaView>;return <LanguageProvider><QuranPreferencesProvider><WorshipSettingsProvider><LocationProvider><NavigationContainer ref={navigationRef}><ExpoStatusBar style="dark"/><Tabs/><MiniPlayer/></NavigationContainer></LocationProvider></WorshipSettingsProvider></QuranPreferencesProvider></LanguageProvider>}
+export default function App(){const[fontsLoaded]=useFonts({DMSans_400Regular,DMSans_600SemiBold,DMSans_700Bold,Newsreader_600SemiBold,NotoNaskhArabic_400Regular,NotoNaskhArabic_600SemiBold,Amiri_400Regular,KFGQPCUthmanicHafs,IBMPlexSansArabic_400Regular,IBMPlexSansArabic_600SemiBold});useEffect(()=>{if(fontsLoaded){resumeSavedQuranPreload();void loadAudioSettings();void loadHadithState();void loadTasbihState();void loadDownloads();void loadActivity();void loadFastingState();void loadJourneys();void loadWomensState();void loadZakatState();void loadLockConfig();void refreshMarket();startLockWatch()}},[fontsLoaded]);if(!fontsLoaded)return <SafeAreaView style={s.safe}><Spinner/></SafeAreaView>;return <LanguageProvider><QuranPreferencesProvider><WorshipSettingsProvider><LocationProvider><NavigationContainer ref={navigationRef}><ExpoStatusBar style="dark"/><Tabs/><MiniPlayer/></NavigationContainer></LocationProvider></WorshipSettingsProvider></QuranPreferencesProvider></LanguageProvider>}
 
 const s=StyleSheet.create({
   journeyCard:{flexDirection:'row',alignItems:'center',gap:CARD.gap,backgroundColor:C.white,borderRadius:RADIUS.xl,borderWidth:1,borderColor:C.line,padding:CARD.padding,marginBottom:CARD_GAP,...soft},
@@ -1929,4 +2460,35 @@ const s=StyleSheet.create({
   nameRow:{flexDirection:'row',alignItems:'flex-start',gap:12,paddingVertical:12,borderBottomWidth:1,borderColor:C.line},
   nameNumber:{width:56,alignItems:'flex-end'},
 backRow:{marginBottom:4,flexDirection:'row'},
-  sectionLink:{paddingVertical:15,marginVertical:-15,paddingHorizontal:10,marginHorizontal:-10},stopButton:{width:44,height:44,alignItems:'center',justifyContent:'center'},verseAction:{width:36,height:36,alignItems:'center',justifyContent:'center'},searchGo:{width:44,height:44,alignItems:'center',justifyContent:'center'}});
+  sectionLink:{paddingVertical:15,marginVertical:-15,paddingHorizontal:12,marginHorizontal:-12},stopButton:{width:44,height:44,alignItems:'center',justifyContent:'center'},verseAction:{width:36,height:36,alignItems:'center',justifyContent:'center'},searchGo:{width:44,height:44,alignItems:'center',justifyContent:'center'},
+pinPage:{flex:1,alignItems:'center',paddingHorizontal:24,paddingTop:4,paddingBottom:24},
+pinDots:{flexDirection:'row',gap:14,marginTop:24},
+pinDot:{width:14,height:14,borderRadius:7,borderWidth:1.5,borderColor:C.line},
+pinDotFilled:{backgroundColor:C.green,borderColor:C.green},
+pinDotError:{backgroundColor:C.coral,borderColor:C.coral},
+pinPad:{width:'100%',maxWidth:340,gap:12,marginTop:20},
+pinRow:{flexDirection:'row',gap:12},
+pinKey:{flex:1,height:64,borderRadius:20,backgroundColor:C.card,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,...soft},
+pinKeyGhost:{flex:1,height:64},
+pinKeyText:{color:C.ink,fontSize:22,fontFamily:'DMSans_700Bold'},
+pinHint:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:12,marginTop:14,textAlign:'center',minHeight:20},
+pinHintError:{color:C.coral},
+statGrid:{flexDirection:'row',flexWrap:'wrap',gap:12,marginTop:12},
+statBox:{width:'47%',backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...soft},
+statLabel:{color:C.muted,fontFamily:'DMSans_700Bold',fontSize:10,letterSpacing:1.1},
+statValue:{color:C.ink,fontFamily:'Newsreader_600SemiBold',fontSize:22,marginTop:4},
+guideBlock:{padding:16,borderBottomWidth:1,borderColor:C.line},
+guideTitle:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:13,marginBottom:6},
+purityRow:{flexDirection:'row',flexWrap:'wrap',gap:8},
+purityChip:{width:44,height:52,borderRadius:14,backgroundColor:C.bg,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line},
+purityDay:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:13},
+purityLabel:{color:C.muted,fontFamily:'DMSans_600SemiBold',fontSize:9,marginTop:2},
+purityFlow:{backgroundColor:'#F7EDF0',borderColor:'#E8CFD5'},
+puritySpotting:{backgroundColor:'#FFF1DD',borderColor:'#F0DCBE'},
+purityPure:{backgroundColor:C.mint,borderColor:'#CFC7EE'},
+purityToday:{borderColor:C.green,borderWidth:1.5},
+dayStepper:{flexDirection:'row',alignItems:'center',gap:12,marginTop:4},
+
+assetRow:{minHeight:69,alignItems:'center',paddingHorizontal:12,borderBottomWidth:1,borderColor:C.line},
+assetInput:{width:120,backgroundColor:C.bg,borderWidth:1,borderColor:C.line,borderRadius:14,paddingHorizontal:12,paddingVertical:8,fontSize:15,fontFamily:'DMSans_700Bold',color:C.ink,textAlign:'right',outlineStyle:'none'} as any,
+metalRow:{alignItems:'center',minHeight:56,borderBottomWidth:1,borderColor:C.line}});

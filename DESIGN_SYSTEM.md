@@ -129,13 +129,30 @@ Note: `hitSlop` is **not** honoured by React Native Web (no overlay is rendered)
 so touch targets must be real boxes.
 
 ### Right-to-left
-React Native does **not** mirror `flexDirection:'row'` automatically, so every row that
-has an icon-then-text order is written as:
+`Page` puts `direction: rtl` on the screen container in Arabic, so **every
+`flexDirection:'row'` inside a screen mirrors on its own**. Rows must therefore be
+written plainly:
 ```jsx
-style={[s.row, { flexDirection: rtl ? 'row-reverse' : 'row' }]}
+<View style={s.setting}>   // icon, then text, then arrow — mirrored for free
 ```
+Adding `flexDirection: rtl ? 'row-reverse' : 'row'` on top of that cancels the mirror
+and leaves the row looking left-to-right inside a right-to-left screen. That mistake was
+made once and removed from 21 rows: only things rendered *outside* `Page` — the floating
+menu and the mini player — need the explicit flip, because nothing sets their direction.
+
 Horizontal padding and margins use symmetric values so they flip for free; text
 alignment is left to `textAlign:'auto'` except for Arabic script, which is pinned right.
+
+### Sensitive screens
+The women's area sits behind an opt-in and, once a PIN exists, behind a gate:
+- `PrivateArea` wraps each of its screens and swaps in `PrivateLockScreen` while locked.
+- The PIN is a salted SHA-256 digest, never the digits; biometrics are requested through
+  the OS and the app only learns yes or no. `hitSlop` does nothing on the web, so the
+  keypad keys are real 64pt boxes.
+- Relocking is driven by `AppState`, not by a timer, so nothing polls in the background.
+- Records live in one AsyncStorage key (`deen-womens-v1`) and are never uploaded.
+- The Tools row and the Settings switch are the only entry points; with the area off,
+  no women's screen is in the tab's reach.
 
 ### How it is kept honest
 - Tokens live in `src/design/tokens.ts` and are referenced by the newer styles.
@@ -143,6 +160,9 @@ alignment is left to `textAlign:'auto'` except for Arabic script, which is pinne
   (circles and hairlines preserved).
 - `qa-tools/redesign-qa.cjs` checks every tab at 320 / 390 / 768 / 1280 in both
   directions for horizontal overflow and for text clipped by its own box.
+- `qa-tools/women-zakat-check.cjs` drives the whole women's flow (opt-in, PIN create →
+  confirm → wrong code → unlock, cycle, Qada, nifas, Zakat) and sweeps 320–1280.
+- `qa-tools/new-screens-rtl.cjs` re-walks those screens with the interface in Arabic.
 - `qa-tools/screen-drill.cjs` walks every reachable screen (40 at the last run) and
   reports, per screen: the header text, whether a back button is present, overflow,
   clipped text, and any press target under 44pt. `node qa-tools/screen-drill.cjs 1 390`.
@@ -163,4 +183,5 @@ alignment is left to `textAlign:'auto'` except for Arabic script, which is pinne
    `accessibilityLabel` and `accessibilityRole`.
 5. One icon per feature, one accent colour, no colour for its own sake.
 6. Run `qa-tools/screen-drill.cjs` and the width sweep at all four widths, in English
-   and Arabic, before committing.
+   and Arabic, before committing. Add new rows to the women's or Zakat screens to
+   `qa-tools/women-zakat-check.cjs` and `qa-tools/new-screens-rtl.cjs`.
