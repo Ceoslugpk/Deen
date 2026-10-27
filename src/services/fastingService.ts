@@ -39,6 +39,22 @@ export const MISSED_REASONS: { id: MissedReason; label: string; detail: string }
   { id: 'other', label: 'Other', detail: 'Any other reason' },
 ];
 
+/** The same list in Arabic, for the Arabic interface. */
+const MISSED_REASONS_AR: Record<string, { label: string; detail: string }> = {
+  travel: { label: 'سفر', detail: 'يوم أُفطر في سفر' },
+  illness: { label: 'مرض', detail: 'يوم أُفطر بسبب المرض' },
+  menstruation: { label: 'الحيض', detail: 'يوم لم يُصم في فترة الحيض' },
+  nifas: { label: 'النفاس', detail: 'يوم لم يُصم بعد الولادة' },
+  other: { label: 'سبب آخر', detail: 'أي سبب آخر' },
+};
+
+export function missedReasons(rtl?: boolean) {
+  return MISSED_REASONS.map((item) => {
+    const ar = rtl ? MISSED_REASONS_AR[item.id] : undefined;
+    return ar ? { ...item, label: ar.label, detail: ar.detail } : item;
+  });
+}
+
 const KEY = 'deen-fasting-v1';
 const EMPTY: FastingState = { entries: [], owed: 0 };
 
@@ -175,14 +191,17 @@ export function summariseFasting(next: FastingState = state): FastingSummary {
   };
 }
 
-export function labelForEntry(entry: FastEntry) {
+/** The entry label in the language of the interface. */
+export function labelForEntry(entry: FastEntry, rtl?: boolean) {
   if (entry.type === 'missed') {
     const reason = MISSED_REASONS.find((item) => item.id === entry.reason);
-    return `Missed · ${reason?.label || 'recorded'}`;
+    const ar = rtl ? MISSED_REASONS_AR[entry.reason || ''] : undefined;
+    const label = (rtl && ar ? ar.label : reason?.label) || (rtl ? 'مسجل' : 'recorded');
+    return rtl ? `أُفطر · ${label}` : `Missed · ${label}`;
   }
-  if (entry.type === 'qada') return 'Make-up fast';
-  if (entry.type === 'voluntary') return 'Voluntary fast';
-  return 'Ramadan fast';
+  if (entry.type === 'qada') return rtl ? 'صيام قضاء' : 'Make-up fast';
+  if (entry.type === 'voluntary') return rtl ? 'صيام تطوع' : 'Voluntary fast';
+  return rtl ? 'صيام رمضان' : 'Ramadan fast';
 }
 
 export function readableDate(date: string) {
