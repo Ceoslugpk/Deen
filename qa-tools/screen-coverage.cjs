@@ -65,10 +65,21 @@ const GROUPS = {
     ],
   },
   // one of each kind of content screen, opened all the way down
+  // one of each kind of content screen, opened all the way down.
+  // A step may carry its own chain of taps and its own tab:
+  // [name, pattern to tap (or null to measure where the openers land), openers, tab]
   deep: {
     tab: 'Tools',
-    open: ['أدلة العبادة', 'دليل الوضوء'],
-    steps: [['A worship guide', null]],
+    seed: [['deen-womens-v1', JSON.stringify({ optedIn: true, cycles: [], nifas: [], purity: {}, qada: [] })]],
+    steps: [
+      ['A worship guide', null, ['أدلة العبادة', 'دليل الوضوء']],
+      ['The Umrah journey', null, ['العمرة والحج', 'عُمْرَة']],
+      ['Holy site channels', 'قنوات الحرمين', ['العمرة والحج']],
+      ['The cycle record', null, ['عبادة النساء', 'الدورة']],
+      ['Hifz practice', null, ['الحفظ', 'استدعاء مع الإخفاء'], 'Quran'],
+      ['Tafsir compare', 'التفسير والمقارنة', null, 'Quran'],
+      ['The privacy lock', null, ['عبادة النساء', 'أضيفي رمزًا']],
+    ],
   },
   reading: {
     tab: 'Quran',
@@ -123,11 +134,14 @@ const GROUPS = {
     return true;
   };
 
-  for (const [name, pattern] of group.steps) {
-    await page.evaluate((i) => window.__tab(i), TABS[group.tab]);
+  for (const step of group.steps) {
+    const name = step[0];
+    const pattern = step[1];
+    const openers = step[2] === undefined ? (group.open || []) : (step[2] || []);
+    await page.evaluate((i) => window.__tab(i), TABS[step[3] || group.tab]);
     await page.waitForTimeout(2200);
     await page.evaluate(HELPERS);
-    for (const openPattern of group.open || []) { if (!(await tap(openPattern))) { console.log(name.padEnd(12), 'unreachable (opener)'); } }
+    for (const openPattern of openers) { if (!(await tap(openPattern))) { console.log(name.padEnd(12), 'unreachable (opener)'); } }
     if (pattern === null) {
       const textsNow = await page.evaluate(() => window.__texts());
       const issuesNow = await page.evaluate(() => window.__issues());
