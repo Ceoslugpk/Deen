@@ -23,6 +23,8 @@ LIGHT_MIN = 0.41
 MID_MAX = 0.14
 CORNER_MAX = 25.0
 BORDER_MAX = 10
+CLEAR_MIN = 0.25     # below this the frame is filled, not transparent
+
 
 
 def metrics(path):
@@ -62,6 +64,7 @@ def metrics(path):
 
     mid = sum(1 for y in range(h) for x in range(w) if 10 < px[x, y][3] < 245)
     solid = sum(1 for y in range(h) for x in range(w) if px[x, y][3] >= 245)
+    clear = sum(1 for y in range(h) for x in range(w) if px[x, y][3] < 10)
     return {
         'size': f'{w}x{h}',
         'border': border,
@@ -69,32 +72,46 @@ def metrics(path):
         'light': light,
         'mid': mid / float(total),
         'solid': solid / float(total),
+        'clear': clear / float(total),
         'opaque': opaque / float(total),
     }
 
 
-def main(paths):
-    print(f"{'icon':<26}{'size':>9}{'border':>8}{'corners':>9}{'light':>7}{'mid':>7}{'':>3} verdict")
-    for p in paths:
-        m = metrics(p)
-        fails = []
-        if m['size'] != '160x160':
-            fails.append('SIZE')
-        if m['border'] >= BORDER_MAX:
-            fails.append('EDGE')
-        if m['corners'] >= CORNER_MAX:
-            fails.append('PANEL')
+def verdict(m, dark=True):
+    """Applies the thresholds. Light icons are judged on absence of ground, not tone."""
+    fails = []
+    if m['size'] != '160x160':
+        fails.append('SIZE')
+    if m['border'] >= BORDER_MAX:
+        fails.append('EDGE')
+    if m['corners'] >= CORNER_MAX:
+        fails.append('PANEL')
+    if m['clear'] < CLEAR_MIN:
+        fails.append('FILLED')
+    if m['opaque'] < 0.02:
+        fails.append('EMPTY')
+    if dark:
         if m['light'] < LIGHT_MIN:
             fails.append('DARK')
         if m['mid'] > MID_MAX:
             fails.append('HAZE')
-        note = ','.join(fails) if fails else 'ok'
-        if not fails:
-            note = 'ok'
+    return ','.join(fails) if fails else 'ok'
+
+
+def main(paths):
+    print(f"{'icon':<28}{'size':>9}{'clear':>7}{'border':>8}{'corners':>9}{'light':>7}{'mid':>7}   verdict")
+    flagged = 0
+    for p in paths:
+        m = metrics(p)
+        dark = p.endswith('-dark.png')
+        note = verdict(m, dark)
+        if note != 'ok':
+            flagged += 1
         print(
-            f"{Path(p).name.removesuffix('.png'):<26}{m['size']:>9}{m['border']:>8}"
-            f"{m['corners']:>9.1f}{m['light']:>7.2f}{m['mid']:>6.0%}{'':>3} {note}"
+            f"{Path(p).name.removesuffix('.png'):<28}{m['size']:>9}{m['clear']:>6.0%}"
+            f"{m['border']:>8}{m['corners']:>9.1f}{m['light']:>7.2f}{m['mid']:>6.0%}   {note}"
         )
+    print(f"\n{len(paths)} icons, {flagged} flagged")
 
 
 if __name__ == '__main__':
