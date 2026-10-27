@@ -55,7 +55,7 @@ const GROUPS = {
   const group = GROUPS[process.argv[2]];
   if (!group) { console.log('usage: node qa-tools/screen-coverage.cjs <' + Object.keys(GROUPS).join('|') + '>'); process.exit(1); }
   const b = await chromium.launch();
-  const ctx = await b.newContext({ viewport: { width: 390, height: 900 }, geolocation: { latitude: 25.2048, longitude: 55.2708 }, permissions: ['geolocation'] });
+  const ctx = await b.newContext({ viewport: { width: Number(process.argv[3] || 390), height: 900 }, geolocation: { latitude: 25.2048, longitude: 55.2708 }, permissions: ['geolocation'] });
   const page = await ctx.newPage();
   page.on('dialog', (d) => d.accept().catch(() => {}));
   const errors = [];
