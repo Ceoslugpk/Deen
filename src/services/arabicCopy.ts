@@ -1,11 +1,11 @@
-// Arabic copy for the women's area and the Zakat calculator.
+// Arabic copy for the app.
 
 //
 
-// The Phase 4 screens were written in English only. Rather than scatter a
-// hundred ternaries through the JSX, the strings are listed here against their
-// English and looked up at render time: tx(rtl, 'Days owed'). A string that has
-// no entry yet reads exactly as it does in English, so an untranslated label is
+// The screens were written in English. Rather than scatter hundreds of
+// ternaries through the JSX, the strings are listed here against their English
+// and looked up at render time: tx(rtl, 'Days owed'). A string that has no
+// entry yet reads exactly as it does in English, so an untranslated label is
 // never a blank.
 
 //
@@ -14,6 +14,80 @@
 // screens by them, in both languages.
 
 const AR: Record<string, string> = {
+  'Current location': 'الموقع الحالي',
+  'Choose your prayer location': 'اختر موقعك لأوقات الصلاة',
+  'No location is assumed. Use GPS once, select a city, or enter coordinates manually.': 'لا نفترض أي موقع. استخدم تحديد الموقع مرة، أو اختر مدينة، أو أدخل الإحداثيات يدويًا.',
+  'Locating…': 'جارٍ التحديد…',
+  'Use my location': 'استخدم موقعي',
+  'Choose manually': 'اختيار يدوي',
+  'Tools': 'الأدوات',
+  'Everything that helps you keep a day of worship: the prayer times that move with the sun, the calendar that marks the month, and the records you keep for yourself.': 'كل ما يعينك على يوم عبادة: مواقيت الصلاة التي تتحرّك مع الشمس، والتقويم الذي يرصد الشهر، والسجلات التي تحفظها لنفسك.',
+  'A purposeful morning': 'صباحٌ مقصود',
+  'A purposeful afternoon': 'عصرٌ مقصود',
+  'A peaceful evening': 'مساءٌ هادئ',
+  'CACHED': 'مخزَّن',
+  'prayers today': 'صلوات اليوم',
+  'day streak': 'يوم متتابع',
+  'this week': 'هذا الأسبوع',
+  'This week': 'هذا الأسبوع',
+  'Prayer schedule': 'جدول الصلاة',
+  'Quran': 'القرآن',
+  'Read with verified Arabic and translation': 'اقرأ بنص عربي موثَّق وترجمته',
+  'Continue': 'واصل',
+  'Qibla': 'القبلة',
+  'Find the direction of the Kaaba': 'اعرف اتجاه الكعبة من مكانك',
+  'Morning Adhkar': 'أذكار الصباح',
+  'Begin the day with authentic remembrance': 'ابدأ يومك بذكر ثابت',
+  'Evening Adhkar': 'أذكار المساء',
+  'Close the day with authentic remembrance': 'اختم يومك بذكر ثابت',
+  'Tasbih': 'السبحة',
+  'Audio': 'الصوت',
+  'Listen to Quran recitation and Adhan': 'استمع إلى تلاوة القرآن والأذان',
+  'For your day': 'ليومك',
+  'All tools': 'كل الأدوات',
+  'Daily reflection': 'تأمل اليوم',
+  'AYAH OF THE DAY': 'آية اليوم',
+  'NAME OF ALLAH': 'اسم من أسماء الله',
+  'DUA OF THE DAY': 'دعاء اليوم',
+  'QUICK TASBIH': 'سبحة سريعة',
+  'Subhan Allah · tap to count': 'سبحان الله · اضغط للعد',
+  'Loading verified Quran text…': 'جارٍ تحميل النص القرآني الموثَّق…',
+  'Loading verified dua…': 'جارٍ تحميل الدعاء الموثَّق…',
+  'Loading today’s authenticated hadith…': 'جارٍ تحميل حديث اليوم الموثَّق…',
+  'Loading Hijri date…': 'جارٍ تحميل التاريخ الهجري…',
+  'Continue reading': 'واصل القراءة',
+  'Open Quran': 'افتح القرآن',
+  'CONTINUE READING': 'واصل القراءة',
+  'FEATURED READING': 'قراءة مختارة',
+  'Surah Ya-Sin': 'سورة يس',
+  'Read now': 'اقرأ الآن',
+  'Hadith of the day': 'حديث اليوم',
+  'Prayer': 'الصلاة',
+  'Today’s times, the next one, and what you completed': 'مواقيت اليوم، والقادمة، وما أديته',
+  'Adhan': 'الأذان',
+  'Which call plays, and how it is announced': 'أي أذان يُشغَّل، وكيف يُعلَن',
+  'Notifications': 'التنبيهات',
+  'Reminders for each prayer and for dhikr': 'تذكير بكل صلاة وبالأذكار',
+  'Location': 'الموقع',
+  'Choose a city, coordinates, or let the phone decide': 'اختر مدينة أو إحداثيات، أو دع الهاتف يحدّدها',
+  'Hijri Calendar': 'التقويم الهجري',
+  'Dates, months, and the days that matter': 'التواريخ والأشهر والأيام المهمة',
+  'Ramadan': 'رمضان',
+  'Suhoor and Iftar for every day of the month': 'السحور والإفطار لكل يوم من الشهر',
+  'Fasting': 'الصيام',
+  'Your fasts, missed days, and make-up record': 'صيامك، والأيام التي فاتتك، وسجل القضاء',
+  'Weekly Summary': 'ملخص الأسبوع',
+  'Seven days of worship in one page': 'سبعة أيام من العبادة في صفحة واحدة',
+  'Daily life': 'الحياة اليومية',
+  'Umrah and Hajj': 'العمرة والحج',
+  'Rite-by-rite journeys, counters and the holy-site channels': 'رحلة بكل نسك، وعدّادات، وقنوات الحرمين',
+  'A quiet counter for your dhikr': 'عداد هادئ لذكرك',
+  'Work out what is due, and record what you gave': 'احسب ما يجب، وسجّل ما أديته',
+  'Mosques': 'المساجد',
+  'Prayer spaces around you': 'أماكن الصلاة من حولك',
+  'Worship guides': 'أدلة العبادة',
+  'Step-by-step references for each act of worship': 'مراجع خطوة بخطوة لكل عبادة',
+  'Cycle, purity and the fasts owed — private to this device': 'الدورة والطهارة والقضاء — خاصة بهذا الجهاز',
   'A private area': 'مساحة خاصة',
   'Change the PIN': 'تغيير الرمز',
   'Flow': 'دم',
@@ -276,6 +350,14 @@ const AR: Record<string, string> = {
   'BEFORE YOU PAY': 'قبل أن تؤدّي',
   'What counts as zakatable, how business stock is valued and which debts may be deducted differ between schools and situations. This figure is a careful estimate to take to a scholar, and your Zakat year matters as much as the total.': 'ما يُعدّ مالًا زكويًا، وكيف تُقوَّم بضائع التجارة، وأيّ الديون تُطرح، يختلف باختلاف المذاهب والأحوال. وهذا الرقم تقدير محرَّر تأخذينه إلى عالم، وحولان الحول أهميته كأهمية المبلغ.',
 };
+
+const PRAYERS: Record<string, string> = {
+  Fajr: 'الفجر', Sunrise: 'الشروق', Dhuhr: 'الظهر', Asr: 'العصر', Maghrib: 'المغرب', Isha: 'العشاء',
+};
+
+export function prayerName(rtl: boolean, name: string): string {
+  return rtl ? PRAYERS[name] ?? name : name;
+}
 
 export function tx(rtl: boolean, text: string): string {
   return rtl ? AR[text] ?? text : text;
