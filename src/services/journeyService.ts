@@ -10,6 +10,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
  * rite and points to the verses; it never decides a case for anyone.
  */
 
+/** The language a journey's date is written in. */
+let journeyDateLocale: string | undefined;
+export function setJourneyDateLocale(code?: string) { journeyDateLocale = code; }
+
 export type JourneyKind = 'umrah' | 'hajj';
 
 export type JourneyStep = {
@@ -297,5 +301,5 @@ export function journeyProgress(journey: Journey | null) {
 
 export function readableDate(iso: string) {
   const date = new Date(iso);
-  return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });
+  return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString(journeyDateLocale, { day: 'numeric', month: 'long', year: 'numeric' });
 }
