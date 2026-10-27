@@ -1,3 +1,4 @@
+import { JOURNEY_META_AR, JOURNEY_STEPS_AR } from '../content/journeyAr';
 import { useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -302,4 +303,24 @@ export function journeyProgress(journey: Journey | null) {
 export function readableDate(iso: string) {
   const date = new Date(iso);
   return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString(journeyDateLocale, { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+/** The Umrah and Hajj wording in the language of the interface. */
+export function journeyMeta(kind: JourneyKind, rtl?: boolean) {
+  const base = JOURNEY_META[kind];
+  const ar = rtl ? JOURNEY_META_AR[kind] : undefined;
+  return ar ? { ...base, intro: ar.intro } : base;
+}
+
+/** A single rite in the language of the interface. */
+export function localizeJourneyStep(step: JourneyStep, rtl?: boolean): JourneyStep {
+  const ar = rtl ? JOURNEY_STEPS_AR[step.id] : undefined;
+  if (!ar) return step;
+  return {
+    ...step,
+    title: ar.title,
+    short: ar.short,
+    detail: ar.detail,
+    counter: step.counter ? { ...step.counter, label: ar.counterLabel || step.counter.label } : step.counter,
+  };
 }

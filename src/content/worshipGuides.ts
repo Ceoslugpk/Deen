@@ -1,3 +1,5 @@
+import { arabicReference, WORSHIP_GUIDES_AR } from './worshipGuidesAr';
+
 export type WorshipGuide = {
   id: string;
   title: string;
@@ -83,3 +85,21 @@ export const WORSHIP_GUIDES: WorshipGuide[] = [
     note: 'The amount and whether cash is accepted differ by scholarly view and locality.'
   }
 ];
+
+/**
+ * Returns the guide in the language of the interface. A guide without an Arabic
+ * wording yet simply reads in English, so nothing on the screen is ever blank.
+ */
+export function localizeGuide(guide: WorshipGuide, rtl?: boolean): WorshipGuide {
+  const ar = rtl ? WORSHIP_GUIDES_AR[guide.id] : undefined;
+  if (!ar) return guide;
+  return {
+    ...guide,
+    title: ar.title,
+    subtitle: ar.subtitle,
+    introduction: ar.introduction,
+    steps: ar.steps.length === guide.steps.length ? ar.steps : guide.steps,
+    note: ar.note !== undefined ? ar.note : guide.note,
+    references: guide.references.map((ref) => ({ ...ref, label: arabicReference(ref.label) })),
+  };
+}

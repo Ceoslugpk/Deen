@@ -1,6 +1,6 @@
 export type Prayer = { name: string; time: string; raw: string };
-export type PrayerSnapshot = { prayers: Prayer[]; hijri: string; hijriYear: number; hijriMonth: number; readable: string; timezone: string; method: string };
-export type CalendarDay = { gregorian: string; weekday: string; hijriDay: number; hijriMonth: string; hijriYear: number; prayers: Prayer[] };
+export type PrayerSnapshot = { prayers: Prayer[]; hijri: string; hijriAr?: string; hijriYear: number; hijriMonth: number; readable: string; timezone: string; method: string };
+export type CalendarDay = { gregorian: string; weekday: string; weekdayAr?: string; hijriDay: number; hijriMonth: string; hijriMonthAr?: string; hijriYear: number; prayers: Prayer[] };
 export type Chapter = { id: number; name_simple: string; name_arabic: string; verses_count: number; revelation_place?: string; translated_name?: { name: string } };
 export type Verse = { id: number; verse_key: string; text_uthmani: string; translation?: string; audio?: string; page?: number; juz?: number; hizbQuarter?: number; surah_name?: string };
 export type DailyHadith = { collection: string; number: string; text: string; arabic?: string };
@@ -45,6 +45,7 @@ export async function getPrayerSnapshot(latitude = 25.2048, longitude = 55.2708,
   return {
     prayers,
     hijri: `${h.day} ${h.month.en} ${h.year} AH`,
+    hijriAr: `${h.day} ${h.month.ar} ${h.year} هـ`,
     hijriYear: Number(h.year),
     hijriMonth: Number(h.month.number),
     readable: data.date.readable,
@@ -57,13 +58,23 @@ export async function getPrayerTimes(latitude = 25.2048, longitude = 55.2708): P
   return (await getPrayerSnapshot(latitude, longitude)).prayers;
 }
 
+/** The Arabic name of a weekday, built from a `DD-MM-YYYY` date. */
+function gregorianWeekday(date: string): string | undefined {
+  const [day, month, year] = String(date).split('-').map(Number);
+  if (!day || !month || !year) return undefined;
+  return new Date(year, month - 1, day).toLocaleDateString('ar-u-nu-latn', { weekday: 'long' });
+}
+
 function calendarDay(row: any): CalendarDay {
   const names = ['Fajr', 'Sunrise', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
   return {
     gregorian: row.date.gregorian.date,
     weekday: row.date.gregorian.weekday.en,
+    // AlAdhan's Gregorian block has no Arabic weekday, so it is built from the date
+    weekdayAr: gregorianWeekday(row.date.gregorian.date),
     hijriDay: Number(row.date.hijri.day),
     hijriMonth: row.date.hijri.month.en,
+    hijriMonthAr: row.date.hijri.month.ar,
     hijriYear: Number(row.date.hijri.year),
     prayers: names.map(name => ({ name, raw: cleanTime(row.timings[name]), time: displayTime(row.timings[name]) })),
   };
