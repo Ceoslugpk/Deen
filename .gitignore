@@ -10,3 +10,7 @@ audit-*.png
 responsive-*.png
 current-ui.png
 screenshots/
+
+# Python bytecode
+__pycache__/
+*.pyc
