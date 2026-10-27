@@ -2964,14 +2964,22 @@ function AppShell() {
   const { hydrated } = useQuranPreferences();
   const [onboarding, setOnboarding] = useState<boolean | null>(null);
   const [splash, setSplash] = useState(true);
+  const [stalled, setStalled] = useState(false);
 
   useEffect(() => {
     void loadOnboarding().then(value => setOnboarding(!value?.completed)).catch(() => setOnboarding(false));
   }, []);
 
+  // A storage read that never settles must not leave the app stuck behind the
+  // splash. Six seconds is far longer than hydration takes on any device.
+  useEffect(() => {
+    const timer = setTimeout(() => setStalled(true), 6000);
+    return () => clearTimeout(timer);
+  }, []);
+
   return <View style={s.shellRoot}>
     <Root />
-    {splash && <View style={s.shellLayer}><Splash ready={ready && hydrated} onDone={() => setSplash(false)} /></View>}
+    {splash && <View style={s.shellLayer}><Splash ready={(ready && hydrated) || stalled} onDone={() => setSplash(false)} /></View>}
     {!splash && onboarding === true && <View style={s.shellLayer}><Onboarding onFinish={() => setOnboarding(false)} /></View>}
   </View>;
 }
