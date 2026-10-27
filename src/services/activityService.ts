@@ -13,6 +13,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
  * Nothing here leaves the device and no account is involved.
  */
 
+/** The language the week is written in, so the summary reads in Arabic too. */
+let dateLocale: string | undefined;
+export function setActivityDateLocale(code?: string) {
+  dateLocale = code;
+}
+
 export type ActivityDay = {
   date: string;
   verses: string[];
@@ -157,8 +163,8 @@ export function buildWeeklySummary(options: {
     return {
       key,
       date,
-      label: date.toLocaleDateString(undefined, { weekday: 'long' }),
-      short: date.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }),
+      label: date.toLocaleDateString(dateLocale, { weekday: 'long' }),
+      short: date.toLocaleDateString(dateLocale, { day: 'numeric', month: 'short' }),
       prayers: (prayerHistory[key] || []).length,
       verses: entry?.verses.length || 0,
       surahs: entry?.surahs.length || 0,
