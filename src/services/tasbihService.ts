@@ -16,7 +16,7 @@ const MEANING_AR: Record<string, string> = {
   'Allah is the Greatest': 'الله أكبر من كل شيء',
   'There is no god but Allah': 'لا معبود بحق إلا الله',
   'I seek forgiveness from Allah': 'أطلب مغفرة الله',
-  'O Allah, send blessings upon Muhammad': 'اللهم صلِّ وسلِّم على نبينا محمد',
+  'O Allah, send blessings upon Muhammad': 'اللهم صلِّ وسلِّم على نبينا محمد ﷺ',
   'There is no power except with Allah': 'لا حول ولا قوة إلا بالله',
   'Allah is sufficient for us': 'حسبنا الله ونعم الوكيل',
 };
