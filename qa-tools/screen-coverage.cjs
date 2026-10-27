@@ -72,6 +72,7 @@ const GROUPS = {
     tab: 'Tools',
     seed: [['deen-womens-v1', JSON.stringify({ optedIn: true, cycles: [], nifas: [], purity: {}, qada: [] })]],
     steps: [
+      ['A hadith collection', null, ['الحديث', '^صحيح البخاري$'], 'Library'],
       ['A worship guide', null, ['أدلة العبادة', 'دليل الوضوء']],
       ['The Umrah journey', null, ['العمرة والحج', 'عُمْرَة']],
       ['Holy site channels', 'قنوات الحرمين', ['العمرة والحج']],

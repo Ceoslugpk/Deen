@@ -59,7 +59,7 @@ import { buildWeeklySummary, loadActivity, logHifzReview, logMushafPage, logSura
 import { addDays, addQada, ADVISORY, BISMILLAH_ARABIC, cycleStats, dayKey, daysBetween, deleteCycle, deleteNifas, deleteQada, endCycle, endNifas, EXPLANATIONS, FLOW_LEVELS, formatDay, formatLongDay, GHUSL_FARD, GHUSL_SUNNAH, LIMITS, loadWomensState, logPurity, nifasStats, NIYYAH_ARABIC, NIYYAH_MEANING, NIYYAH_TRANSLITERATION, PurityStatus, QadaReason, QADA_REASONS, qadaStats, recentPurity, REFERENCES, setFlow, setOptedIn, startCycle, startNifas, toggleQada, TUHR_SIGNS, useWomens, WORSHIP_GUIDANCE } from './src/services/womensService';
 import { BiometricInfo, biometricInfo, checkPin, removePin, RELOCK_OPTIONS, setPin, startLockWatch, unlockSession, unlockWithBiometric, updateLockSettings, useIsLocked, useLockConfig, loadLockConfig } from './src/services/privacyService';
 import { CURRENCIES, clearHistory, computeZakat, currencySymbol, deleteCalculation, formatMoney, livePrices, loadZakatState, marketIsFresh, NISAB_GOLD_GRAMS, NISAB_SILVER_GRAMS, refreshMarket, saveCalculation, setAssetAmount, setBasis, setCurrency, setLiabilityAmount, setMetalPrice, setMoneyLocale, useLiveMetalPrices, useMarket, useZakat } from './src/services/zakatService';
-import { clockTime, prayerName, tx } from './src/services/arabicCopy';
+import { arNoun, clockTime, prayerName, tx } from './src/services/arabicCopy';
 import { downloadSurahAudio, loadDownloads, downloadSurahText, estimateFreeBytes, formatBytes, pauseDownload, removeDownload, resolveAudioSource, resumeDownload, retryDownload, totalDownloadBytes, useDownloads } from './src/services/downloadService';
 import { NAME_LANGUAGES } from './src/services/api';
 import { PROPHETS } from './src/content/prophets';
@@ -747,7 +747,7 @@ function JuzReaderScreen({route,navigation}:any){const juz=route.params.juz;cons
 function HizbDirectoryScreen({navigation}:any){const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);return <Page><ToolBar title={T('60 Hizb')} navigation={navigation}/><ScrollView contentContainerStyle={s.dataPage}><ToolGraphic tool="60 Hizb" size={72}/><Text style={s.dataTitle}>{T('Read by Hizb')}</Text><Text style={s.intro}>{T('Each Hizb contains four quarter-Hizb sections.')}</Text><View style={s.juzGrid}>{Array.from({length:60},(_,i)=>i+1).map(hizb=><Pressable key={hizb} onPress={()=>navigation.navigate('Hizb Reader',{hizb})} style={s.juzCard}><Text style={s.juzNo}>{hizb}</Text><Text style={s.meta}>{T('HIZB')}</Text></Pressable>)}</View></ScrollView></Page>}
 function HizbReaderScreen({route,navigation}:any){const hizb=route.params.hizb;const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);const{preferences}=useQuranPreferences();const[verses,setVerses]=useState<Verse[]>([]);const[error,setError]=useState('');const load=()=>getHizbVerses(hizb,{script:preferences.scriptEdition,translation:preferences.translationEdition}).then(setVerses).catch(e=>setError(e.message));useEffect(()=>{load()},[hizb,preferences.scriptEdition,preferences.translationEdition]);return <Page><ToolBar title={rtl?`الحزب ${hizb}`:`Hizb ${hizb}`} navigation={navigation}/><ScrollView contentContainerStyle={s.readerScroll}><View style={s.mushafNav}><Pressable disabled={hizb===1} onPress={()=>navigation.replace('Hizb Reader',{hizb:hizb-1})} style={[s.stepButton,hizb===1&&{opacity:.3}]}>{ico('arrow-back',19,C.green)}</Pressable><Text style={s.dataMeta}>{rtl?`الأرباع ${(hizb-1)*4+1}–${hizb*4}`:`QUARTERS ${(hizb-1)*4+1}–${hizb*4}`}</Text><Pressable disabled={hizb===60} onPress={()=>navigation.replace('Hizb Reader',{hizb:hizb+1})} style={[s.stepButton,hizb===60&&{opacity:.3}]}>{ico('arrow-forward',19,C.green)}</Pressable></View>{error?<ErrorState message={error} retry={load}/>:!verses.length?<Spinner/>:verses.map(v=><View key={v.verse_key} style={s.ayah}><Text style={s.dataMeta}>{v.surah_name} · {v.verse_key} · {rtl?`الربع ${v.hizbQuarter}`:`QUARTER ${v.hizbQuarter}`}</Text>{preferences.scriptEdition==='quran-tajweed'?<TajweedText text={v.text_uthmani} style={[s.ayahAr,{fontSize:preferences.fontSize,lineHeight:preferences.fontSize*preferences.lineHeight,fontFamily:quranFont(preferences.arabicFont),includeFontPadding:false}]}/>:<Text style={[s.ayahAr,{fontSize:preferences.fontSize,lineHeight:preferences.fontSize*preferences.lineHeight,fontFamily:quranFont(preferences.arabicFont),includeFontPadding:false}]}>{v.text_uthmani}</Text>}{preferences.showTranslation&&<Text style={s.ayahTranslation}>{v.translation}</Text>}</View>)}</ScrollView></Page>}
 
-function QuranPreloadScreen({navigation}:any){const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);const{preferences}=useQuranPreferences();const[state,setState]=useState(getPreloadState());useEffect(()=>{const unsubscribe=subscribePreload(setState);refreshPreload({script:preferences.scriptEdition,translation:preferences.translationEdition});return unsubscribe},[preferences.scriptEdition,preferences.translationEdition]);const start=()=>startQuranPreload({script:preferences.scriptEdition,translation:preferences.translationEdition});return <Page><ToolBar title={T('Offline Quran')} navigation={navigation}/><ScrollView contentContainerStyle={s.dataPage}><ToolGraphic tool="Offline Quran" size={76}/><Text style={s.dataTitle}>{T('Prepare for offline reading')}</Text><Text style={s.intro}>Downloads the Arabic script and translation you have selected, one Surah at a time. Preparation continues while you use other screens and prioritizes your current reading Surah.</Text><View style={s.preloadScore}><Text style={s.planDays}>{state.cached}</Text><Text style={s.settingName}>{T('of 114 Surahs cached')}</Text><View style={s.preloadTrack}><View style={[s.preloadFill,{width:`${state.cached/114*100}%`} as any]}/></View><Text style={s.meta}>{T(preferences.scriptName)} · {T(rtl ? preferences.translationLanguage : preferences.translationName)}{state.current?(rtl?` · يجهّز سورة ${state.current}`:` · Preparing Surah ${state.current}`):''}</Text>{state.usage&&<Text style={s.cacheUsage}>{rtl?`ذاكرة المصحف ${(state.usage.byNamespace.quran/1048576).toFixed(1)} ميغابايت · الحد ${(state.usage.limits.quran/1000000).toFixed(0)} ميغابايت · الإجمالي ${(state.usage.limits.total/1000000).toFixed(0)} ميغابايت`:`Quran cache ${(state.usage.byNamespace.quran/1048576).toFixed(1)} MB · limit ${(state.usage.limits.quran/1000000).toFixed(0)} MB · total limit ${(state.usage.limits.total/1000000).toFixed(0)} MB`}</Text>}</View>{state.error&&<ErrorState message={state.error} retry={start}/>}<View style={s.actionRow}>{!state.running?<Pressable onPress={start} style={s.primary}><Text style={s.primaryText}>{T(state.cached ? 'Resume preparation' : 'Preload all')}</Text></Pressable>:<Pressable onPress={pauseQuranPreload} style={s.secondary}><Text style={s.secondaryText}>{T('Pause')}</Text></Pressable>}<Pressable onPress={clearPreparedQuran} style={s.dangerButton}><Text style={s.dangerText}>{T('Clear Quran cache')}</Text></Pressable></View><View style={s.sourceCard}>{ico('shield-checkmark-outline',21,C.green)}<View style={{flex:1}}><Text style={s.sourceTitle}>{T('Managed low-priority preparation')}</Text><Text style={s.sourceBody}>{T('Cached Surahs open first, already-saved content is skipped, and bounded LRU storage prevents unlimited growth.')}</Text></View></View></ScrollView></Page>}
+function QuranPreloadScreen({navigation}:any){const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);const{preferences}=useQuranPreferences();const[state,setState]=useState(getPreloadState());useEffect(()=>{const unsubscribe=subscribePreload(setState);refreshPreload({script:preferences.scriptEdition,translation:preferences.translationEdition});return unsubscribe},[preferences.scriptEdition,preferences.translationEdition]);const start=()=>startQuranPreload({script:preferences.scriptEdition,translation:preferences.translationEdition});return <Page><ToolBar title={T('Offline Quran')} navigation={navigation}/><ScrollView contentContainerStyle={s.dataPage}><ToolGraphic tool="Offline Quran" size={76}/><Text style={s.dataTitle}>{T('Prepare for offline reading')}</Text><Text style={s.intro}>{T('Downloads the Arabic script and translation you have selected, one Surah at a time. Preparation continues while you use other screens and prioritizes your current reading Surah.')}</Text><View style={s.preloadScore}><Text style={s.planDays}>{state.cached}</Text><Text style={s.settingName}>{T('of 114 Surahs cached')}</Text><View style={s.preloadTrack}><View style={[s.preloadFill,{width:`${state.cached/114*100}%`} as any]}/></View><Text style={s.meta}>{T(preferences.scriptName)} · {T(rtl ? preferences.translationLanguage : preferences.translationName)}{state.current?(rtl?` · يجهّز سورة ${state.current}`:` · Preparing Surah ${state.current}`):''}</Text>{state.usage&&<Text style={s.cacheUsage}>{rtl?`ذاكرة المصحف ${(state.usage.byNamespace.quran/1048576).toFixed(1)} ميغابايت · الحد ${(state.usage.limits.quran/1000000).toFixed(0)} ميغابايت · الإجمالي ${(state.usage.limits.total/1000000).toFixed(0)} ميغابايت`:`Quran cache ${(state.usage.byNamespace.quran/1048576).toFixed(1)} MB · limit ${(state.usage.limits.quran/1000000).toFixed(0)} MB · total limit ${(state.usage.limits.total/1000000).toFixed(0)} MB`}</Text>}</View>{state.error&&<ErrorState message={state.error} retry={start}/>}<View style={s.actionRow}>{!state.running?<Pressable onPress={start} style={s.primary}><Text style={s.primaryText}>{T(state.cached ? 'Resume preparation' : 'Preload all')}</Text></Pressable>:<Pressable onPress={pauseQuranPreload} style={s.secondary}><Text style={s.secondaryText}>{T('Pause')}</Text></Pressable>}<Pressable onPress={clearPreparedQuran} style={s.dangerButton}><Text style={s.dangerText}>{T('Clear Quran cache')}</Text></Pressable></View><View style={s.sourceCard}>{ico('shield-checkmark-outline',21,C.green)}<View style={{flex:1}}><Text style={s.sourceTitle}>{T('Managed low-priority preparation')}</Text><Text style={s.sourceBody}>{T('Cached Surahs open first, already-saved content is skipped, and bounded LRU storage prevents unlimited growth.')}</Text></View></View></ScrollView></Page>}
 function ReadingPlansScreen({navigation}:any){const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);const[plan,setPlan]=useState<any>(null);useEffect(()=>{loadPlan().then(setPlan)},[]);const start=async(days:number)=>{const next={days,startedAt:Date.now(),completed:[]};await savePlan(next);setPlan(next)};const today=plan?Math.min(plan.days,Math.floor((Date.now()-plan.startedAt)/86400000)+1):0;const toggle=async()=>{const completed=plan.completed.includes(today)?plan.completed.filter((x:number)=>x!==today):[...plan.completed,today];const next={...plan,completed};await savePlan(next);setPlan(next)};return <Page><ToolBar title={T('Reading plans')} navigation={navigation}/><ScrollView contentContainerStyle={s.dataPage}><ToolGraphic tool="Reading Plans" size={72}/><Text style={s.dataTitle}>{T('Complete the Quran')}</Text>{!plan?<><Text style={s.intro}>{T('Choose a private local plan. Progress stays on this device.')}</Text><View style={s.planGrid}>{[30,60,90,120].map(days=><Pressable key={days} onPress={()=>start(days)} style={s.planCard}><Text style={s.planDays}>{days}</Text><Text style={s.settingName}>{T('day plan')}</Text><Text style={s.meta}>{rtl?`${(604/days).toFixed(1)} صفحة يومياً`:`${(604/days).toFixed(1)} pages daily`}</Text></Pressable>)}</View></>:<><View style={s.summaryScore}><View><Text style={s.nextCardLabel}>{T('CURRENT DAY')}</Text><Text style={s.zakatNo}>{today} / {plan.days}</Text></View><View><Text style={s.nextCardLabel}>{T('COMPLETED')}</Text><Text style={s.zakatNo}>{plan.completed.length}</Text></View></View><Pressable onPress={toggle} style={s.planToday}><Text style={s.settingName}>{rtl?`قراءة اليوم ${today}`:`Day ${today} reading`}</Text>{ico(plan.completed.includes(today)?'checkmark-circle':'ellipse-outline',28,C.green)}</Pressable><Pressable onPress={async()=>{await savePlan(null);setPlan(null)}} style={s.dangerButton}><Text style={s.dangerText}>{T('End current plan')}</Text></Pressable></>}</ScrollView></Page>}
 function HifzScreen({navigation}:any){const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);const[chapters,setChapters]=useState<Chapter[]>([]);const[status,setStatus]=useState<Record<number,HifzStatus>>({});const[filter,setFilter]=useState<'all'|HifzStatus>('all');useEffect(()=>{getChapters().then(setChapters);loadHifz().then(setStatus)},[]);const cycle=async(id:number)=>{const current=status[id]||'not-started';const next:HifzStatus=current==='not-started'?'revising':current==='revising'?'memorized':'not-started';const value={...status,[id]:next};setStatus(value);await saveHifz(value)};const shown=chapters.filter(c=>filter==='all'||(status[c.id]||'not-started')===filter);const memorized=Object.values(status).filter(x=>x==='memorized').length;return <Page><ToolBar title={T('Hifz tracker')} navigation={navigation}/><ScrollView contentContainerStyle={s.dataPage}><ToolGraphic tool="Hifz" size={72}/><Text style={s.dataTitle}>{rtl?`حفظت ${memorized} من 114`:`${memorized} of 114 memorized`}</Text><Pressable onPress={()=>navigation.navigate('Hifz Practice')} style={s.practiceLaunch}><View><Text style={s.settingName}>{T('Hide-and-peek recall')}</Text><Text style={s.meta}>{T('Test a verse from your revising or memorized Surahs')}</Text></View>{ico('play-circle',28,C.green)}</Pressable><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap: 8}}>{(['all','not-started','revising','memorized'] as const).map(value=><ChoicePill key={value} label={T(value.replace('-',' '))} selected={filter===value} onPress={()=>setFilter(value)}/>)}</ScrollView><View style={{height:13}}/><View style={s.settings}>{shown.map(c=><Pressable key={c.id} onPress={()=>cycle(c.id)} style={s.translationRow}><View style={s.surahNum}><Text style={s.surahNumText}>{c.id}</Text></View><View style={{flex:1}}><Text style={s.settingName}>{c.name_simple}</Text><Text style={s.meta}>{rtl?`${c.verses_count} آية`:`${c.verses_count} verses`}</Text></View><Text style={s.hifzStatus}>{T((status[c.id]||'not-started').replace('-',' '))}</Text></Pressable>)}</View></ScrollView></Page>}
 
@@ -943,7 +943,7 @@ function DownloadsScreen({ route, navigation }: any) {
         <Text style={s.dataMeta}>{T('KEEP THIS SURAH')}</Text>
         <Text style={s.dataName}>{focusName}</Text>
         <Text style={s.meta}>{T('Audio')}: {editionLabel}{T(settings.reciterMode === 'surah' ? ' (file per Surah)' : ' (full-Surah file)')}</Text>
-        <Text style={s.meta}>Text: {T(preferences.scriptName)} · {T(rtl ? preferences.translationLanguage : preferences.translationName)}</Text>
+        <Text style={s.meta}>{T('Text')}: {T(preferences.scriptName)} · {T(rtl ? preferences.translationLanguage : preferences.translationName)}</Text>
         <View style={s.actionRow}>
           <Pressable accessibilityLabel="Keep the audio for this Surah" disabled={!url || busy === 'audio'} onPress={() => { void keepAudio(); }} style={[s.secondary, (!url || busy === 'audio') && { opacity: 0.5 }]}><Text style={s.secondaryText}>{T(busy === 'audio' ? 'Downloading…' : 'Keep audio')}</Text></Pressable>
           <Pressable accessibilityLabel="Keep the text for this Surah" disabled={busy === 'text'} onPress={() => { void keepText(); }} style={[s.secondary, busy === 'text' && { opacity: 0.5 }]}><Text style={s.secondaryText}>{T(busy === 'text' ? 'Saving…' : 'Keep text')}</Text></Pressable>
@@ -1031,7 +1031,7 @@ function NamesScreen({ navigation }: any) {const{rtl}=useLanguage();const T=(tex
         <Text style={s.dataBody}>{meaning(name)}</Text>
       </View>
     </View>)}
-    {!!names.length && <View style={s.apiPanel}><Text style={s.apiTitle}>{T('Kept on this device')}</Text><Text style={s.apiText}>The catalogue is stored after the first visit, so the Names can be read without a connection. The Qur'an translation you use elsewhere ({preferences.translationEdition}) does not affect these meanings.</Text></View>}
+    {!!names.length && <View style={s.apiPanel}><Text style={s.apiTitle}>{T('Kept on this device')}</Text><Text style={s.apiText}>{rtl?`يُخزَّن الدليل بعد أول زيارة، فتُقرأ الأسماء بلا اتصال. وترجمة القرآن التي تقرأ بها في موضع آخر (${preferences.translationEdition}) لا أثر لها على هذه المعاني.`:`The catalogue is stored after the first visit, so the Names can be read without a connection. The Qur'an translation you use elsewhere (${preferences.translationEdition}) does not affect these meanings.`}</Text></View>}
     <Pressable accessibilityLabel="Open the prophets catalogue" onPress={() => navigation.navigate('Prophet Names')} style={s.secondary}><Text style={s.secondaryText}>{T("Prophets named in the Qur'an")}</Text></Pressable>
   </ScrollView></Page>}
 
@@ -1234,7 +1234,7 @@ function PilgrimageScreen({ navigation }: any) {
           <ToolGraphic tool="Pilgrimage" size={40} />
           <View style={{ flex: 1, marginHorizontal: 12 }}>
             <Text style={s.settingName}>{meta[journey.kind].title} · {journey.label}</Text>
-            <Text style={s.meta}>{journeyProgress(journey).done} of {journeyProgress(journey).total} rites · completed {formatJourneyDay(journey.completedAt || journey.startedAt)}</Text>
+            <Text style={s.meta}>{rtl?`${journeyProgress(journey).done} من ${journeyProgress(journey).total} من المناسك · أُتمَّت ${formatJourneyDay(journey.completedAt || journey.startedAt)}`:`${journeyProgress(journey).done} of ${journeyProgress(journey).total} rites · completed ${formatJourneyDay(journey.completedAt || journey.startedAt)}`}</Text>
           </View>
         </View>)}
     </ScrollView>
@@ -1336,7 +1336,7 @@ function JourneyScreen({ route, navigation }: any) {
           </View>
           {verseFor === step.id && <View style={s.verseBox}>
             {loadingVerse === step.id ? <Spinner /> : (verses[step.id] || []).map((entry) => <View key={entry.reference}>
-              <Text style={s.dataMeta}>QURAN {entry.reference}</Text>
+              <Text style={s.dataMeta}>{T('QURAN')} {entry.reference}</Text>
               {!!entry.arabic && <Text style={s.verseArabic}>{entry.arabic}</Text>}
               {!!entry.translation && <Text style={s.dataBody}>{entry.translation}</Text>}
             </View>)}
@@ -1613,10 +1613,10 @@ function WomenHubScreen({ navigation }: any) {
     <ScrollView contentContainerStyle={s.dataPage}>
       <ToolGraphic tool="Women’s worship" size={80} />
       <Text style={s.dataTitle}>{T('A private area')}</Text>
-      <Text style={s.intro}>Cycle and purity records, the days after childbirth, and the fasts owed because of them — kept only on this device. Nothing is uploaded and no account is involved.</Text>
+      <Text style={s.intro}>{T('Cycle and purity records, the days after childbirth, and the fasts owed because of them — kept only on this device. Nothing is uploaded and no account is involved.')}</Text>
       <View style={s.dataCard}>
         <Text style={s.dataMeta}>{T('WHAT IT HOLDS')}</Text>
-        <Text style={s.dataBody}>Your own cycle lengths and averages, a prediction worked out from your history rather than an assumption, purity and ghusl guidance, the post-natal days, and a running scorecard of make-up fasts.</Text>
+        <Text style={s.dataBody}>{T('Your own cycle lengths and averages, a prediction worked out from your history rather than an assumption, purity and ghusl guidance, the post-natal days, and a running scorecard of make-up fasts.')}</Text>
         <Text style={s.dataBody}>{T('You can put a PIN in front of it, or use the face or fingerprint unlock your phone already has.')}</Text>
         <Pressable accessibilityLabel="Turn on the women’s area" onPress={() => void setOptedIn(true)} style={s.primary}><Text style={s.primaryText}>{T('Turn on this area')}</Text></Pressable>
       </View>
@@ -1747,7 +1747,7 @@ function PurityScreen({ navigation }: any) {
         </>}
       </View>
       {!!womens.nifas.filter((entry) => entry.end).length && <><Section title={T('Earlier births')} /><View style={s.settings}>{womens.nifas.filter((entry) => entry.end).slice(0, 6).map((entry) => <View key={entry.id} style={[s.setting, ]}>
-        <View style={{ flex: 1 }}><Text style={s.settingName}>{formatDay(entry.start, language)} – {formatDay(entry.end as string, language)}</Text><Text style={s.meta}>{daysBetween(entry.start, entry.end as string) + 1} days</Text></View>
+        <View style={{ flex: 1 }}><Text style={s.settingName}>{formatDay(entry.start, language)} – {formatDay(entry.end as string, language)}</Text><Text style={s.meta}>{rtl?`${daysBetween(entry.start, entry.end as string) + 1} ${arNoun(daysBetween(entry.start, entry.end as string) + 1, 'يوم', 'يومان', 'أيام', 'يومًا')}`:`${daysBetween(entry.start, entry.end as string) + 1} days`}</Text></View>
         <Pressable accessibilityLabel="Delete this record" onPress={() => void deleteNifas(entry.id)} style={s.stepButton}>{ico('trash-outline', 18, C.coral)}</Pressable>
       </View>)}</View></>}
       <Section title={T('The verse on menstruation')} action={T('Quran 2:222')} />
@@ -2043,7 +2043,7 @@ function HadithProgressBars(){
   const hadithTotal=rows.reduce((sum,row)=>sum+row.total,0);
   return <View style={s.dataCard}>
     <Text style={s.dataMeta}>{T('READING PROGRESS')}</Text>
-    <Text style={s.dataTitle}>{readTotal} of {hadithTotal.toLocaleString()} opened</Text>
+    <Text style={s.dataTitle}>{rtl?`فُتح ${readTotal} من ${hadithTotal.toLocaleString()}`:`${readTotal} of ${hadithTotal.toLocaleString()} opened`}</Text>
     <View style={{marginTop:12,gap:10}}>{rows.map(row=><View key={row.collection.slug}>
       <View style={s.hadithProgressHead}><Text style={s.hadithProgressName}>{rtl ? row.collection.arabicName : row.collection.name}</Text><Text style={s.meta}>{row.read} / {row.total.toLocaleString()}</Text></View>
       <View style={s.hadithTrack}><View style={[s.hadithFill,{width:`${row.percent}%`}]}/></View>
@@ -2066,7 +2066,7 @@ function HadithScreen({navigation}:any){const{rtl}=useLanguage();const T=(text:s
     <View style={s.search}>{ico('search',18,C.muted)}<TextInput accessibilityLabel="Search hadith in opened collections" value={query} onChangeText={setQuery} style={s.searchInput} placeholder={T('Search opened collections')} placeholderTextColor="#929B96"/>{query.length>0&&<Pressable accessibilityLabel="Clear hadith search" onPress={()=>setQuery('')}>{ico('close',16,C.muted)}</Pressable>}</View>
 
     {query.trim().length>=3?(results.length?<>
-      <Text style={s.meta}>{results.length} match{results.length===1?'':'es'} in {loaded.length} opened collection{loaded.length===1?'':'s'}</Text>
+      <Text style={s.meta}>{rtl?`${results.length} ${arNoun(results.length, 'نتيجة', 'نتيجتان', 'نتائج', 'نتيجة')} في ${loaded.length} ${arNoun(loaded.length, 'مجموعة مفتوحة', 'مجموعتين مفتوحتين', 'مجموعات مفتوحة', 'مجموعة مفتوحة')}`:`${results.length} match${results.length===1?'':'es'} in ${loaded.length} opened collection${loaded.length===1?'':'s'}`}</Text>
       {results.map(hadith=>{const collection=HADITH_COLLECTIONS.find(item=>item.slug===hadith.slug);return <Pressable key={hadith.id} onPress={()=>open(hadith.slug,hadith.number)} style={s.dataCard}>
         <Text style={s.dataMeta}>{rtl ? collection?.arabicName || collection?.name : collection?.name} · {T('Hadith')} {hadith.number}</Text>
         <Text style={s.dataBody} numberOfLines={3}>{hadith.english||hadith.arabic}</Text>
@@ -2077,14 +2077,14 @@ function HadithScreen({navigation}:any){const{rtl}=useLanguage();const T=(text:s
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap:10,paddingRight:20}}>
           {state.recent.slice(0,8).map(item=>{const collection=HADITH_COLLECTIONS.find(entry=>entry.slug===item.slug);return <Pressable key={`${item.slug}-${item.number}`} onPress={()=>open(item.slug,item.number)} style={s.recentChipWide}>
             <Text style={s.dataMeta}>{rtl ? collection?.arabicName || collection?.name : collection?.name}</Text>
-            <Text style={s.recentChipTitle}>Hadith {item.number}</Text>
+            <Text style={s.recentChipTitle}>{T('Hadith')} {item.number}</Text>
           </Pressable>})}
         </ScrollView>
       </>}
       {state.saved.length>0&&<>
         <Section title={T('Saved hadith')} action={T('See all')} onPress={()=>navigation.navigate('Hadith Saved')}/>
         {state.saved.slice(0,3).map(item=><Pressable key={item.id} onPress={()=>open(item.slug,item.number)} style={s.dataCard}>
-          <Text style={s.dataMeta}>{item.collection} · Hadith {item.number}</Text>
+          <Text style={s.dataMeta}>{item.collection} · {T('Hadith')} {item.number}</Text>
           <Text style={s.dataBody} numberOfLines={2}>{item.preview}</Text>
         </Pressable>)}
       </>}
@@ -2132,13 +2132,13 @@ function HadithCollectionScreen({route,navigation}:any){const{rtl}=useLanguage()
         <ChoicePill label={T('All books')} selected={book===null} onPress={()=>setBook(null)}/>
         {data.books.map(entry=><ChoicePill key={entry.number} label={`${entry.number}. ${entry.name}`} selected={book===entry.number} onPress={()=>setBook(entry.number)}/>)}
       </ScrollView>
-      <Text style={s.meta}>{page.total.toLocaleString()} hadith{book!==null?' in this book':''} · showing {page.rows.length}{data.arabicReady?'':' · Arabic text loading'}</Text>
+      <Text style={s.meta}>{rtl?`${page.total.toLocaleString()} ${arNoun(Number(page.total), 'حديث', 'حديثان', 'أحاديث', 'حديثًا')}${book!==null?' في هذا الكتاب':''} · يُعرض ${page.rows.length}${data.arabicReady?'':' · جارٍ تحميل النص العربي'}`:`${page.total.toLocaleString()} hadith${book!==null?' in this book':''} · showing ${page.rows.length}${data.arabicReady?'':' · Arabic text loading'}`}</Text>
       <ScrollView contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
-        {page.rows.map(hadith=><Pressable key={hadith.id} accessibilityLabel={`Hadith ${hadith.number}`} onPress={()=>navigation.navigate('Hadith Detail',{slug,number:hadith.number})} style={s.dataCard}>
+        {page.rows.map(hadith=><Pressable key={hadith.id} accessibilityLabel={`${T('Hadith')} ${hadith.number}`} onPress={()=>navigation.navigate('Hadith Detail',{slug,number:hadith.number})} style={s.dataCard}>
           <View style={s.hadithRowTop}>
             <View style={s.hadithNumber}><Text style={s.hadithNumberText}>{hadith.number}</Text></View>
             <View style={{flex:1}}>
-              <Text style={s.dataMeta}>{hadith.book?`Book ${hadith.book} · ${hadith.bookName}`:hadith.bookName}{hadith.grades.length?` · ${hadith.grades[0].grade}`:''}{read.has(hadith.number)?' · read':''}</Text>
+              <Text style={s.dataMeta}>{hadith.book?(rtl?`الكتاب ${hadith.book} · ${hadith.bookName}`:`Book ${hadith.book} · ${hadith.bookName}`):hadith.bookName}{hadith.grades.length?` · ${hadith.grades[0].grade}`:''}{read.has(hadith.number)?(rtl?' · مقروء':' · read'):''}</Text>
               {!!hadith.arabic&&<Text style={s.dataArabic} numberOfLines={2}>{hadith.arabic}</Text>}
               <Text style={s.dataBody} numberOfLines={3}>{hadith.english}</Text>
             </View>
@@ -2147,7 +2147,7 @@ function HadithCollectionScreen({route,navigation}:any){const{rtl}=useLanguage()
         </Pressable>)}
         {!page.rows.length&&<View style={s.empty}><Text style={s.dataBody}>{T('No hadith matches this filter.')}</Text></View>}
         {page.hasMore&&<Pressable accessibilityLabel="Load more hadith" onPress={()=>setLimit(value=>value+20)} style={s.secondary}><Text style={s.secondaryText}>{T('Load more')}</Text></Pressable>}
-        <View style={s.apiPanel}><Text style={s.apiTitle}>{data.name}</Text><Text style={s.apiText}>{data.books.length} books · {data.hadiths.length.toLocaleString()} hadith</Text></View>
+        <View style={s.apiPanel}><Text style={s.apiTitle}>{data.name}</Text><Text style={s.apiText}>{rtl?`${data.books.length} ${arNoun(data.books.length, 'كتاب', 'كتابان', 'كتب', 'كتابًا')} · ${data.hadiths.length.toLocaleString()} ${arNoun(data.hadiths.length, 'حديث', 'حديثان', 'أحاديث', 'حديثًا')}`:`${data.books.length} books · ${data.hadiths.length.toLocaleString()} hadith`}</Text></View>
       </ScrollView>
     </>}
   </Page>}
@@ -2193,7 +2193,7 @@ function HadithDetailScreen({route,navigation}:any){const{rtl}=useLanguage();con
         <View style={s.hadithNumberLarge}><Text style={s.hadithNumberText}>{hadith.number}</Text></View>
         <View style={{flex:1}}>
           <Text style={s.dataName}>{collection?.name}</Text>
-          <Text style={s.meta}>{hadith.book?`Book ${hadith.book} · ${hadith.bookName}`:'General'}</Text>
+          <Text style={s.meta}>{hadith.book?(rtl?`الكتاب ${hadith.book} · ${hadith.bookName}`:`Book ${hadith.book} · ${hadith.bookName}`):T('General')}</Text>
         </View>
       </View>
       {hadith.grades.length>0&&<View style={s.hadithGrades}>{hadith.grades.map((grade,index)=><View key={`${grade.name}-${index}`} style={s.hadithGrade}><Text style={s.hadithGradeText}>{grade.grade}</Text><Text style={s.hadithGradeSource}>{grade.name}</Text></View>)}</View>}
@@ -2218,7 +2218,7 @@ function HadithSavedScreen({navigation}:any){const{rtl}=useLanguage();const T=(t
     {!state.saved.length&&<View style={s.empty}><ToolGraphic tool="Hadith" size={54}/><Text style={s.dataTitle}>{T('Nothing saved yet')}</Text><Text style={s.dataBody}>{T('Save a hadith from any collection and it will appear here on this device only.')}</Text></View>}
     {state.saved.map(item=><View key={item.id} style={s.dataCard}>
       <Pressable onPress={()=>navigation.navigate('Hadith Detail',{slug:item.slug,number:item.number})}>
-        <Text style={s.dataMeta}>{item.collection} · Hadith {item.number}</Text>
+        <Text style={s.dataMeta}>{item.collection} · {T('Hadith')} {item.number}</Text>
         <Text style={s.dataBody} numberOfLines={4}>{item.preview}</Text>
       </Pressable>
       <Pressable accessibilityLabel="Remove saved hadith" onPress={()=>void removeHadithBookmark(item.id)} style={{marginTop:10,alignSelf:'flex-start'}}><Text style={s.dangerText}>{T('Remove')}</Text></Pressable>
@@ -2419,7 +2419,7 @@ function AudioCenterScreen({ navigation }: any) {
 
     {!!session && <Pressable onPress={() => { void resumeSession(); }} style={s.continueBar}>
       <ToolGraphic tool="Recitations" size={46} />
-      <View style={{ flex: 1 }}><Text style={s.dailyKicker}>{T('CONTINUE LISTENING')}</Text><Text style={s.settingName}>{session.chapterName}</Text><Text style={s.meta}>{busy === 'resume' ? 'Preparing…' : `Verse queue · saved ${new Date(session.savedAt).toLocaleDateString()}`}</Text></View>
+      <View style={{ flex: 1 }}><Text style={s.dailyKicker}>{T('CONTINUE LISTENING')}</Text><Text style={s.settingName}>{session.chapterName}</Text><Text style={s.meta}>{busy === 'resume' ? T('Preparing…') : (rtl?`طابور الآيات · حُفظ ${new Date(session.savedAt).toLocaleDateString()}`:`Verse queue · saved ${new Date(session.savedAt).toLocaleDateString()}`)}</Text></View>
       {ico('play-circle', 22, C.green)}
     </Pressable>}
 
@@ -2497,7 +2497,7 @@ function AudioCenterScreen({ navigation }: any) {
         <View style={s.settings}>{shownChapters.map((chapter) => <View key={chapter.id} style={s.audioRow}>
           <Pressable onPress={() => { void startChapter(chapter, 1); }} style={s.audioRowMain}>
             <View style={s.surahNo}><Text style={s.surahNoText}>{chapter.id}</Text></View>
-            <View style={{ flex: 1 }}><Text style={s.settingName}>{chapter.name_simple}</Text><Text style={s.meta}>{chapter.verses_count} verses · {chapter.translated_name?.name}</Text></View>
+            <View style={{ flex: 1 }}><Text style={s.settingName}>{chapter.name_simple}</Text><Text style={s.meta}>{rtl?`${chapter.verses_count} ${arNoun(chapter.verses_count, 'آية', 'آيتان', 'آيات', 'آية')} · ${chapter.translated_name?.name}`:`${chapter.verses_count} verses · ${chapter.translated_name?.name}`}</Text></View>
           </Pressable>
           <Pressable accessibilityLabel={`Play ${chapter.name_simple}`} onPress={() => { void startChapter(chapter, 1); }} style={s.audioRowAction}>{busy === `chapter-${chapter.id}` ? <ActivityIndicator color={C.green} /> : ico('play-circle', 22, C.green)}</Pressable>
         </View>)}</View>
@@ -2507,14 +2507,14 @@ function AudioCenterScreen({ navigation }: any) {
         <Section title={T('Recently played')} action={recent.length ? 'Clear' : undefined} onPress={recent.length ? () => { void clearRecentPlays().then(() => setRecent([])); } : undefined} />
         {!recent.length ? <Text style={s.meta}>{T('Nothing played yet.')}</Text> : recent.map((item, index) => <Pressable key={`${item.chapterId}-${item.edition}-${index}`} onPress={() => { const chapter = chapters.find((c) => c.id === item.chapterId); if (chapter) void startChapter(chapter, item.ayahNumber); }} style={s.queueRow}>
           <ToolGraphic tool="Recitations" size={38} />
-          <View style={{ flex: 1 }}><Text style={s.settingName}>{item.chapterName} · verse {item.ayahNumber}</Text><Text style={s.meta}>{item.performer}</Text></View>
+          <View style={{ flex: 1 }}><Text style={s.settingName}>{rtl?`${item.chapterName} · آية ${item.ayahNumber}`:`${item.chapterName} · verse ${item.ayahNumber}`}</Text><Text style={s.meta}>{item.performer}</Text></View>
           {ico('play-circle', 20, C.green)}
         </Pressable>)}
         <Section title={T('Playlists')} />
         {!playlists.length ? <Text style={s.meta}>{T('Save the current queue to build a playlist.')}</Text> : playlists.map((playlist) => <View key={playlist.id} style={s.queueRow}>
           <Pressable onPress={() => { void playQueue(playlist.tracks, 0); }} style={s.audioRowMain}>
             <ToolGraphic tool="Audio" size={38} />
-            <View style={{ flex: 1 }}><Text style={s.settingName}>{playlist.name}</Text><Text style={s.meta}>{playlist.tracks.length} tracks · saved locally</Text></View>
+            <View style={{ flex: 1 }}><Text style={s.settingName}>{playlist.name}</Text><Text style={s.meta}>{rtl?`${playlist.tracks.length} ${arNoun(playlist.tracks.length, 'مقطع', 'مقطعان', 'مقاطع', 'مقطعًا')} · محفوظ على الجهاز`:`${playlist.tracks.length} tracks · saved locally`}</Text></View>
           </Pressable>
           <Pressable accessibilityLabel={`Delete ${playlist.name}`} onPress={() => { void deletePlaylist(playlist.id).then(setPlaylists); }} style={s.audioRowAction}>{ico('trash', 19, C.coral)}</Pressable>
         </View>)}
@@ -2586,7 +2586,7 @@ function AudioPlayerScreen({ navigation }: any) {
         <TextInput accessibilityLabel="Playlist name" value={name} onChangeText={setName} placeholder={track.chapterName} placeholderTextColor="#929B96" style={[s.textField, { flex: 1, marginTop: 0 }]} />
         <Pressable onPress={() => { void savePlaylist(name, audio.queue).then((next) => { setPlaylists(next); setName(''); }); }} style={s.primarySmall}><Text style={s.primaryText}>{T('Save')}</Text></Pressable>
       </View>
-      {!!playlists.length && <Text style={s.meta}>{playlists.length} playlist{playlists.length > 1 ? 's' : ''} stored on this device.</Text>}
+      {!!playlists.length && <Text style={s.meta}>{rtl?`${playlists.length} ${arNoun(playlists.length, 'قائمة', 'قائمتان', 'قوائم', 'قائمة')} محفوظة على هذا الجهاز.`:`${playlists.length} playlist${playlists.length > 1 ? 's' : ''} stored on this device.`}</Text>}
     </View>
     <View style={s.sourceCard}>{ico('server', 21, C.green)}<View style={{ flex: 1 }}><Text style={s.sourceTitle}>{T('Now playing')}</Text><Text style={s.sourceBody}>{track.performer}</Text></View></View>
     <View style={{ height: 40 }} />
