@@ -613,3 +613,33 @@ export function formatClock(seconds: number) {
   const minutes = Math.floor(safe / 60);
   return `${minutes}:${String(safe % 60).padStart(2, '0')}`;
 }
+
+/* The recitation catalogue carries names in Latin script only, so the Arabic
+   names are kept here and shown when the app is in Arabic. */
+const RECITER_AR: Record<string, string> = {
+  'Abdul Basit': 'عبد الباسط عبد الصمد',
+  'Abdul Samad': 'عبد الصمد',
+  'Abdullah Basfar': 'عبد الله بصفر',
+  'Abdurrahmaan As-Sudais': 'عبد الرحمن السديس',
+  'Abu Bakr Ash-Shaatree': 'أبو بكر الشاطري',
+  'Ahmed ibn Ali al-Ajamy': 'أحمد بن علي العجمي',
+  'Alafasy': 'مشاري العفاسي',
+  'Ayman Sowaid': 'أيمن سويد',
+  'Hani Rifai': 'هاني الرفاعي',
+  'Hudhaify': 'علي الحذيفي',
+  'Husary': 'محمود خليل الحصري',
+  'Husary (Mujawwad)': 'محمود خليل الحصري (مجوّد)',
+  'Ibrahim Akhdar': 'إبراهيم الأخضر',
+  'Maher Al Muaiqly': 'ماهر المعيقلي',
+  'Minshawi': 'محمد صديق المنشاوي',
+  'Minshawy (Mujawwad)': 'محمد صديق المنشاوي (مجوّد)',
+  'Muhammad Ayyoub': 'محمد أيوب',
+  'Muhammad Jibreel': 'محمد جبريل',
+  'Parhizgar': 'شهريار برهيزغار',
+  'Saood bin Ibraaheem Ash-Shuraym': 'سعود بن إبراهيم الشريم',
+};
+
+export function reciterLabel(name: string, rtl: boolean): string {
+  if (!rtl) return name;
+  return RECITER_AR[name] ?? name;
+}
