@@ -145,7 +145,7 @@ alignment is left to `textAlign:'auto'` except for Arabic script, which is pinne
 
 ### Two languages
 The app is English and Arabic. Strings that sit in the JSX are written in
-English and translated through a dictionary, `src/services/phase4Copy.ts`:
+English and translated through a dictionary, `src/services/arabicCopy.ts`:
 
 ```tsx
 const T = (text: string) => tx(rtl, text);   // once per component
@@ -214,3 +214,36 @@ The women's area sits behind an opt-in and, once a PIN exists, behind a gate:
    and Arabic, before committing. Add new rows to the women's or Zakat screens to
    `qa-tools/women-zakat-check.cjs` (English) and `qa-tools/phase4-arabic.cjs`
    (Arabic, which also reports untranslated strings at 390, 320 and 768).
+
+
+## Spacing
+
+Layout spacing sits on a 4pt grid with an 8pt rhythm. The scale is
+
+| token | pt | used for |
+|---|---|---|
+| `xs` | 4 | icon to its label |
+| `sm` | 8 | a tight gap, inline padding |
+| `md` | 12 | inside a field, between a row's parts |
+| `lg` | 16 | card padding, the page gutter |
+| `xl` | 20 | between rows |
+| `2xl` | 24 | card to card |
+| `3xl` | 32 | between blocks |
+| `4xl` | 48 | between sections |
+
+Three rules decide a value:
+
+1. **Layout spacing is a multiple of 4.** Padding, margin and gap are 4, 8,
+   12, 16, 20, 24, 32, 48. Nothing else. The whole stylesheet was moved onto
+   this grid: the 13pt row margins are 12, the 7pt gaps are 8.
+2. **2, 6 and 10 are allowed inside a component only** — the gap between an
+   icon and its label, the padding of a chip. They never set the distance
+   between two blocks. (iOS and Android both use an 8pt layout grid with a
+   4pt sub-grid for small elements; the half steps are the seam between
+   them.)
+3. **A hairline is a stroke, not a gap.** Borders stay at 1pt whatever the
+   grid says, and `top`/`right`/`bottom`/`left` are positional offsets, not
+   spacing — they are tuned by eye and stay off the scale.
+
+The page gutter is 16 (`s.scroll`), a card's padding is 16, and cards sit
+24 apart, so a column of cards reads as one rhythm at every width.
