@@ -71,7 +71,19 @@ const server = http.createServer((req, res) => {
   let file = path.join(ROOT, decodeURIComponent(url.pathname));
   if (!file.startsWith(ROOT)) { res.writeHead(403); res.end(); return; }
   fs.stat(file, (err, stat) => {
-    if (err || stat.isDirectory()) file = path.join(ROOT, 'index.html');
+    if (err || stat.isDirectory()) {
+      // A missing asset used to fall through to index.html and come back as
+      // 200 text/html. That is how seven .ttf files went missing from an export
+      // without a single 404: expo-font was handed HTML, never resolved, and the
+      // app sat on its loading screen. Only navigation routes get the fallback.
+      const isAsset = url.pathname.startsWith('/assets/') || url.pathname.startsWith('/_expo/');
+      if (isAsset) {
+        res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+        res.end(`asset not found: ${url.pathname}`);
+        return;
+      }
+      file = path.join(ROOT, 'index.html');
+    }
     fs.readFile(file, (readErr, body) => {
       if (readErr) { res.writeHead(404); res.end('Not found'); return; }
       res.writeHead(200, { 'Content-Type': TYPES[path.extname(file)] || 'application/octet-stream', 'Cache-Control': 'no-cache' });
