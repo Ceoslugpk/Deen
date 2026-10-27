@@ -247,3 +247,44 @@ Three rules decide a value:
 
 The page gutter is 16 (`s.scroll`), a card's padding is 16, and cards sit
 24 apart, so a column of cards reads as one rhythm at every width.
+
+## Dark palette
+
+The app has two palettes chosen at run time — `system`, `light` or `dark`, set
+in Settings. Dark is not a second design: it is the same hues resting on a deep
+warm ink, so gold stays gold and the indigo stays the indigo.
+
+| token | light | dark | what it is |
+|---|---|---|---|
+| `bg` | `#F7F5F2` | `#12111A` | the paper behind everything |
+| `card` | `#FFFDF9` | `#1B1926` | raised surfaces |
+| `ink` | `#25233A` | `#F1EDE6` | body text |
+| `muted` | `#6A6979` | `#9C98AB` | secondary text, held at 4.5:1 |
+| `green` | `#5146A4` | `#A79AEA` | accents, icons, text on dark |
+| `accent` | `#5146A4` | `#4B3F8F` | **filled** buttons and pills |
+| `gold` | `#B49352` | `#D8BC80` | gold details |
+| `line` | `#E7E2E5` | `#2E2A3C` | hairlines |
+| `onAccent` | `#FFFFFF` | `#F6F2EC` | text sitting on `accent` |
+
+Two rules keep it honest:
+
+1. **A fill and an accent are different tokens.** `green` is a colour you read
+   (a label, an icon, a rule); `accent` is a colour you put text on. In dark
+   mode the accent has to stay deep enough for near-white text, which is why
+   the two diverge only there.
+2. **Every surface goes dark, so every text colour has to come up.** Text
+   colours are lifted to at least 0.62 lightness when the dark palette is
+   applied, and each screen is measured with `qa-tools/theme-contrast.cjs` —
+   no text below its WCAG target on any tab, in either palette.
+
+Colours written literally into the stylesheet are moved with the palette by
+hue-preserving tone mapping (light surfaces fall to deep ones, ink rises, gold
+and warm accents are held up), so a literal colour never survives a theme
+change by accident.
+
+**Icons have dark variants.** Every illustrated icon has a `-dark.png`: the
+same artwork with its line work raised to a light ink and its fills lifted,
+transparency untouched. `ToolGraphic`, the floating menu and the two hero
+scenes pick the variant that matches the palette. `qa-tools/icon-luminance.cjs`
+proves none of them disappear into the dark: 0 dark-on-dark icons across all
+five tabs.
