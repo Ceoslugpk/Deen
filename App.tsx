@@ -55,7 +55,7 @@ import {
 import {
   DEFAULT_WORSHIP_SETTINGS, loadDailyContent, loadPrayerCache, loadPrayerCompletion, loadPrayerHistory, loadQuickTasbih, loadStoredLocation, loadWorshipSettings,
   saveDailyContent, savePrayerCache, savePrayerCompletion, saveQuickTasbih, saveStoredLocation, saveWorshipSettings,
-  WorshipSettings,
+  WorshipSettings, loadOnboarding, saveOnboarding, loadLanguage, saveLanguage,
 } from './src/services/localState';
 import { getNotificationHealth, NotificationHealth, requestNotificationPermission, schedulePrayerNotifications, sendTestNotification } from './src/services/notifications';
 import { localizeGuide, WORSHIP_GUIDES, WorshipGuide } from './src/content/worshipGuides';
@@ -308,10 +308,35 @@ function LocationProvider({children}:{children:React.ReactNode}) {
   return <LocationContext.Provider value={{location,locating,useDevice,useDubai,setManual:commit,clear:()=>commit(null)}}>{children}</LocationContext.Provider>;
 }
 function useAppLocation(){const value=useContext(LocationContext);if(!value)throw new Error('Location provider missing');return value}
-type AppLanguage='en'|'ar';
-type LanguageState={language:AppLanguage;rtl:boolean;setLanguage:(language:AppLanguage)=>void};
-const LanguageContext=createContext<LanguageState>({language:'en',rtl:false,setLanguage:()=>{}});
-function LanguageProvider({children}:{children:React.ReactNode}){const[language,setLanguageState]=useState<AppLanguage>('en');const rtl=language==='ar';const setLanguage=(next:AppLanguage)=>{setLanguageState(next);I18nManager.allowRTL(true);if(Platform.OS!=='web'&&I18nManager.isRTL!==(next==='ar'))I18nManager.forceRTL(next==='ar')};useEffect(()=>{const code=language==='ar'?'ar-u-nu-latn':undefined;setMoneyLocale(language);setFastingDateLocale(code);setActivityDateLocale(code);setJourneyDateLocale(code)},[language]);useEffect(()=>{if(Platform.OS==='web'&&typeof document!=='undefined'){document.documentElement.dir='ltr';document.documentElement.lang=language;document.documentElement.dataset.appDirection=rtl?'rtl':'ltr'}},[rtl,language]);return <LanguageContext.Provider value={{language,rtl,setLanguage}}>{children}</LanguageContext.Provider>}
+type AppLanguage=LanguageCode;
+type LanguageState={language:AppLanguage;rtl:boolean;ready:boolean;setLanguage:(language:AppLanguage)=>void};
+const LanguageContext=createContext<LanguageState>({language:'en',rtl:false,ready:false,setLanguage:()=>{}});
+/**
+ * The interface language. Eleven are offered and three of them read right to
+ * left. Only English and Arabic have finished interface copy, so the rest are
+ * shown as they are and fall back to English until theirs is written.
+ */
+function LanguageProvider({children}:{children:React.ReactNode}){
+  const[language,setLanguageState]=useState<AppLanguage>('en');
+  const[ready,setReady]=useState(false);
+  const rtl=isRtl(language);
+  const setLanguage=(next:AppLanguage)=>{
+    setLanguageState(next);
+    void saveLanguage(next);
+    const wantsRtl=isRtl(next);
+    I18nManager.allowRTL(true);
+    if(Platform.OS!=='web'&&I18nManager.isRTL!==wantsRtl)I18nManager.forceRTL(wantsRtl);
+  };
+  useEffect(()=>{void loadLanguage().then(saved=>{if(saved&&languageByCode(saved))setLanguageState(saved as AppLanguage);setReady(true)}).catch(()=>setReady(true))},[]);
+  useEffect(()=>{
+    // Dates follow the language only where the copy is finished; an English
+    // interface with French dates would be a surprise.
+    const dateLocale=language==='ar'?'ar-u-nu-latn':language==='en'?'en':undefined;
+    setMoneyLocale(language);setFastingDateLocale(dateLocale);setActivityDateLocale(dateLocale);setJourneyDateLocale(dateLocale);
+  },[language]);
+  useEffect(()=>{if(Platform.OS==='web'&&typeof document!=='undefined'){document.documentElement.dir='ltr';document.documentElement.lang=language;document.documentElement.dataset.appDirection=rtl?'rtl':'ltr'}},[rtl,language]);
+  return <LanguageContext.Provider value={{language,rtl,ready,setLanguage}}>{children}</LanguageContext.Provider>;
+}
 function useLanguage(){return useContext(LanguageContext)}
 const ico = (name: any, size = 21, color?: string) => <CustomIcon name={String(name)} size={size} color={color} />;
 function MotionGlyph({ name, size = 22, delay = 0, inverse = false }: { name: any; size?: number; delay?: number; inverse?: boolean }) {
@@ -2336,6 +2361,8 @@ function SettingsStack(){return <Stack.Navigator screenOptions={{headerShown:fal
 function SettingsScreen({navigation}:any){const{language,rtl,setLanguage}=useLanguage();const T=(text:string)=>tx(rtl,text);const{mode:themeMode,setMode}=useTheme();const{settings,update}=useWorshipSettings();const womens=useWomens();const lock=useLockConfig();return <Page><ScrollView contentContainerStyle={s.scroll}><View style={s.backRow}><IconButton name={rtl?'arrow-forward':'arrow-back'} onPress={()=>navigation.goBack()}/></View><TopBar overline={rtl?'خصوصية بلا حساب':'PRIVATE BY DESIGN'} title={rtl?'الإعدادات':'Settings'} right={<MotionGlyph name="shield-checkmark-outline" size={20}/>}/><LinearGradient colors={[C.heroA,C.green]} style={s.privacyHero}><MotionGlyph name="shield-checkmark-outline" size={25} inverse/><View style={{flex:1}}><Text style={s.profileName}>{rtl?'لا حساب. لا تتبع.':'No account. No tracking.'}</Text><Text style={s.profileSub}>{rtl?'تبقى عبادتك خاصة وتظل تفضيلاتك على هذا الجهاز.':'Your worship stays private and your preferences remain on this device.'}</Text></View></LinearGradient><View style={s.privacyPoints}><View style={s.privacyPoint}>{ico('person-remove-outline',19,C.green)}<Text style={s.privacyPointText}>{rtl?'دون تسجيل':'No sign-up'}</Text></View><View style={s.privacyPoint}>{ico('cloud-offline-outline',19,C.green)}<Text style={s.privacyPointText}>{rtl?'دون ملف سحابي':'No cloud profile'}</Text></View><View style={s.privacyPoint}>{ico('analytics-outline',19,C.green)}<Text style={s.privacyPointText}>{rtl?'دون تتبع إعلاني':'No ad tracking'}</Text></View></View>
 <Section title={rtl?'حساب أوقات الصلاة':'Prayer calculation'}/><View style={s.preferencePanel}><View style={s.preferenceHead}><ToolGraphic tool="Qibla" size={54}/><View style={{flex:1}}><Text style={s.settingName}>{rtl?'طريقة الحساب':'Calculation method'}</Text><Text style={s.meta}>{rtl?'تُحفظ على هذا الجهاز وتُطبق على جميع مواقيت الصلاة.':'Saved on this device and applied throughout the app.'}</Text></View></View><View style={s.choiceGrid}>{PRAYER_METHODS.map(method=><ChoicePill key={method.id} label={rtl?method.ar:method.name} selected={settings.calculationMethod===method.id} onPress={()=>update({calculationMethod:method.id,calculationMethodName:method.name})}/>)}</View><Text style={s.preferenceLabel}>{rtl?'المذهب لحساب العصر':'ASR MADHAB'}</Text><View style={s.choiceRow}><ChoicePill label={rtl?'الشافعي':'Shafi'} selected={settings.madhab==='shafi'} onPress={()=>update({madhab:'shafi'})}/><ChoicePill label={rtl?'الحنفي':'Hanafi'} selected={settings.madhab==='hanafi'} onPress={()=>update({madhab:'hanafi'})}/></View><Text style={s.preferenceLabel}>{rtl?'تنسيق الوقت':'TIME FORMAT'}</Text><View style={s.choiceRow}><ChoicePill label={rtl?'12 ساعة':'12 hour'} selected={settings.timeFormat==='12'} onPress={()=>update({timeFormat:'12'})}/><ChoicePill label={rtl?'24 ساعة':'24 hour'} selected={settings.timeFormat==='24'} onPress={()=>update({timeFormat:'24'})}/></View></View>
 <Section title={T('Appearance')}/><View style={s.settings}><View style={s.setting}><MotionGlyph name="moon-outline" size={19}/><View style={{flex:1}}><Text style={s.settingName}>{T('Appearance')}</Text><Text style={s.meta}>{T('Light, dark, or whatever the device is set to')}</Text></View></View><View style={s.choiceRow}><ChoicePill label={T('System')} selected={themeMode==='system'} onPress={()=>setMode('system')}/><ChoicePill label={T('Light')} selected={themeMode==='light'} onPress={()=>setMode('light')}/><ChoicePill label={T('Dark')} selected={themeMode==='dark'} onPress={()=>setMode('dark')}/></View></View><Section title={rtl?'التفضيلات':'Preferences'}/><View style={s.settings}><View style={s.setting}><MotionGlyph name="language-outline" size={19}/><View style={{flex:1}}><Text style={s.settingName}>{rtl?'واجهة عربية':'English interface'}</Text><Text style={s.meta}>{rtl?'تخطيط من اليمين إلى اليسار':'Left-to-right layout'}</Text></View><View style={{direction:'ltr'} as any}><Switch accessibilityLabel={rtl?'Arabic interface':'Arabic interface'} value={language==='ar'} onValueChange={v=>setLanguage(v?'ar':'en')} trackColor={{true:C.green}}/></View></View><View style={s.setting}><ToolGraphic tool="Arabic Quran" size={44}/><View style={{flex:1}}><Text style={s.settingName}>{rtl?'قراءة القرآن':'Quran reading'}</Text><Text style={s.meta}>{rtl?'النص العثماني · صحيح إنترناشيونال':'Uthmani Arabic · Sahih International English'}</Text></View></View><View style={s.setting}><ToolGraphic tool="Women’s worship" size={44}/><View style={{flex:1,marginHorizontal: 12}}><Text style={s.settingName}>{rtl?'عبادة النساء':'Women’s worship'}</Text><Text style={s.meta}>{rtl?(womens.optedIn?'الدورة والطهارة والقضاء · على هذا الجهاز فقط':'مساحة خاصة للدورة والطهارة والقضاء'):(womens.optedIn?'Cycle, purity and Qada records · on this device only':'A private area for the cycle, purity and Qada records')}</Text></View><View style={{direction:'ltr'} as any}><Switch accessibilityLabel={T('Women’s worship')} value={womens.optedIn} onValueChange={(value)=>void setOptedIn(value)} trackColor={{true:C.green}}/></View></View>{womens.optedIn&&<Pressable accessibilityRole="button" accessibilityLabel={T('Lock and PIN')} onPress={()=>navigation.navigate('Tools',{screen:'Privacy Lock'})} style={s.setting}><ToolGraphic tool="Privacy lock" size={44}/><View style={{flex:1,marginHorizontal: 12}}><Text style={s.settingName}>{rtl?'القفل والرمز':'Lock and PIN'}</Text><Text style={s.meta}>{rtl?(lock.pinSet?(lock.required?'مقفل':'الرمز محفوظ'):'لا رمز بعد'):(lock.pinSet?(lock.required?'Locked':'PIN saved, lock is off'):'No PIN yet')}</Text></View>{ico(rtl?'arrow-back':'arrow-forward',17,C.chevron)}</Pressable>}</View><Pressable onPress={()=>navigation.navigate('Data sources')} style={[s.settings,s.dataSourceRow]} accessibilityRole="button" accessibilityLabel={T('Data sources')}><ToolGraphic tool="Quran" size={40}/><View style={{flex:1,marginHorizontal: 12}}><Text style={s.settingName}>{rtl?'مصادر البيانات':'Data sources'}</Text><Text style={s.meta}>{rtl?'من أين يأتي نص القرآن والمواقيت والحديث والصوت':'Where the Quran text, prayer times, hadith and audio come from'}</Text></View>{ico('arrow-forward',17,C.chevron)}</Pressable></ScrollView></Page>}
+import { DEFAULT_RECITER, LANGUAGES, Language, LanguageCode, languageByCode, isRtl } from './src/services/languages';
+
 const navigationRef = createNavigationContainerRef<any>();
 const AUDIO_LANGUAGES: Record<string, string> = {
   en: 'English', ur: 'Urdu', zh: 'Chinese', fr: 'French', ru: 'Russian',
@@ -2724,13 +2751,278 @@ function Root() {
   </NavigationContainer>;
 }
 
-export default function App(){const[fontsLoaded]=useFonts({DMSans_400Regular,DMSans_600SemiBold,DMSans_700Bold,Newsreader_600SemiBold,NotoNaskhArabic_400Regular,NotoNaskhArabic_600SemiBold,Amiri_400Regular,KFGQPCUthmanicHafs,IBMPlexSansArabic_400Regular,IBMPlexSansArabic_600SemiBold});useEffect(()=>{if(fontsLoaded){resumeSavedQuranPreload();void loadAudioSettings();void loadHadithState();void loadTasbihState();void loadDownloads();void loadActivity();void loadFastingState();void loadJourneys();void loadWomensState();void loadZakatState();void loadLockConfig();void refreshMarket();startLockWatch()}},[fontsLoaded]);if(!fontsLoaded)return <SafeAreaView style={s.safe}><Spinner/></SafeAreaView>;return <ThemeProvider><LanguageProvider><QuranPreferencesProvider><WorshipSettingsProvider><LocationProvider><Root/></LocationProvider></WorshipSettingsProvider></QuranPreferencesProvider></LanguageProvider></ThemeProvider>}
+/* ==================== First run ==================== */
+/**
+ * Splash and onboarding.
+ *
+ * Both are built from the app's own palette, radii and motion timings rather
+ * than borrowed from a starter template, so the first thing a person sees
+ * already looks like the app they are about to use.
+ */
+
+/** The splash stays at least this long, so the mark has time to settle. */
+const SPLASH_MIN_MS = 1150;
+
+/** A child that rises into place. Used to stagger the language cards. */
+function RiseIn({ delay = 0, distance = 14, children, style }: { delay?: number; distance?: number; children: React.ReactNode; style?: any; key?: string | number }) {
+  const value = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(value, { toValue: 1, duration: 520, delay, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+    return () => { value.stopAnimation(); };
+  }, [delay, distance]);
+  return <Animated.View style={[style, { opacity: value, transform: [{ translateY: value.interpolate({ inputRange: [0, 1], outputRange: [distance, 0] }) }] }]}>{children}</Animated.View>;
+}
+
+/**
+ * The splash. The mark settles in, the wordmark follows it, and an aura drifts
+ * behind them. It leaves the moment the app behind it is ready, and never
+ * before it has held long enough to read as a beginning rather than a flash.
+ */
+function Splash({ ready, onDone }: { ready: boolean; onDone: () => void }) {
+  const { dark } = useTheme();
+  const { rtl } = useLanguage();
+  const T = (text: string) => tx(rtl, text);
+  const still = useCalmMotion();
+  const mark = useRef(new Animated.Value(.74)).current;
+  const words = useRef(new Animated.Value(0)).current;
+  const halo = useRef(new Animated.Value(0)).current;
+  const progress = useRef(new Animated.Value(0)).current;
+  const fade = useRef(new Animated.Value(1)).current;
+  const driftY = useDrift(9000, -26, 26, still);
+  const driftX = useDrift(11000, 18, -18, still);
+  const [held, setHeld] = useState(false);
+  const leaving = useRef(false);
+
+  useEffect(() => {
+    Animated.spring(mark, { toValue: 1, friction: 5, tension: 64, useNativeDriver: true }).start();
+    Animated.timing(words, { toValue: 1, duration: 520, delay: 280, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+    const timer = setTimeout(() => setHeld(true), SPLASH_MIN_MS);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (still) { halo.setValue(.5); return; }
+    const loop = Animated.loop(Animated.sequence([
+      Animated.timing(halo, { toValue: 1, duration: 1900, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+      Animated.timing(halo, { toValue: 0, duration: 1900, easing: Easing.in(Easing.quad), useNativeDriver: true }),
+    ]));
+    loop.start();
+    return () => loop.stop();
+  }, [still]);
+
+  useEffect(() => {
+    if (ready) { progress.setValue(1); return; }
+    const loop = Animated.loop(Animated.sequence([
+      Animated.timing(progress, { toValue: 1, duration: 1200, easing: Easing.inOut(Easing.quad), useNativeDriver: false }),
+      Animated.timing(progress, { toValue: 0, duration: 900, easing: Easing.inOut(Easing.quad), useNativeDriver: false }),
+    ]));
+    loop.start();
+    return () => loop.stop();
+  }, [ready]);
+
+  // It goes as soon as the app behind it is ready and the mark has had its moment.
+  useEffect(() => {
+    if (!ready || !held || leaving.current) return;
+    leaving.current = true;
+    Animated.timing(fade, { toValue: 0, duration: 320, easing: Easing.in(Easing.quad), useNativeDriver: true }).start(() => onDone());
+  }, [ready, held, onDone]);
+
+  return <Animated.View style={[s.splashRoot, { opacity: fade }]}>
+    <StatusBar barStyle="light-content" />
+    <LinearGradient colors={dark ? [C.heroA, '#191531', C.deep] : [C.heroA, C.heroB, '#3A3280']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.splashFill} />
+    <Animated.View style={[s.splashAuraA, { transform: [{ translateX: driftX }, { translateY: driftY }] }]} />
+    <Animated.View style={[s.splashAuraB, { transform: [{ translateX: driftY }, { translateY: driftX }] }]} />
+    <View style={s.splashStage}>
+      <View style={s.splashMarkWrap}>
+        <Animated.View style={[s.splashHalo, { opacity: halo, transform: [{ scale: halo.interpolate({ inputRange: [0, 1], outputRange: [.9, 1.22] }) }] }]} />
+        <Animated.View style={{ transform: [{ scale: mark }] }}>
+          <Image source={dark ? LOGO_MARK_DARK : LOGO_MARK} resizeMode="contain" style={s.splashMark} />
+        </Animated.View>
+      </View>
+      <Animated.View style={[s.splashWords, { opacity: words, transform: [{ translateY: words.interpolate({ inputRange: [0, 1], outputRange: [14, 0] }) }] }]}>
+        <Text style={s.splashName}>{T('Deen Companion')}</Text>
+        <Text style={s.splashTagline}>{T('Your day, kept with care')}</Text>
+      </Animated.View>
+    </View>
+    <View style={s.splashTrack}>
+      <Animated.View style={[s.splashBar, { width: progress.interpolate({ inputRange: [0, 1], outputRange: ['12%', '76%'] }) }]} />
+    </View>
+  </Animated.View>;
+}
+
+/**
+ * Onboarding: three choices, one screen each.
+ *
+ * Choosing on the first step carries the other two with it — that is the whole
+ * point of the screen. The two steps after it let you pull them apart again if
+ * you read one language and listen in another.
+ */
+function Onboarding({ onFinish }: { onFinish: () => void }) {
+  const { dark } = useTheme();
+  const { rtl, language, setLanguage } = useLanguage();
+  const T = (text: string) => tx(rtl, text);
+  const { update } = useQuranPreferences();
+  const [step, setStep] = useState(0);
+  const [app, setApp] = useState<LanguageCode>(language);
+  const [text, setText] = useState<LanguageCode>(language);
+  const [voice, setVoice] = useState<LanguageCode>(language);
+  const [busy, setBusy] = useState(false);
+  const slide = useRef(new Animated.Value(0)).current;
+
+  // Each step arrives from the side rather than simply appearing.
+  useEffect(() => {
+    slide.setValue(0);
+    Animated.timing(slide, { toValue: 1, duration: 420, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+  }, [step]);
+
+  // One choice moves the rest with it.
+  const chooseApp = (code: LanguageCode) => { setApp(code); setLanguage(code); setText(code); setVoice(code); };
+  const chosen: LanguageCode = step === 0 ? app : step === 1 ? text : voice;
+  const pick = (code: LanguageCode) => { if (step === 0) chooseApp(code); else if (step === 1) setText(code); else setVoice(code); };
+
+  const steps = [
+    { title: T('How should the app speak to you?'), caption: T('This sets the words on every screen, and it carries the Quran text and the voice with it. You can change either of those next.') },
+    { title: T('Which meaning beside the Arabic?'), caption: T('The Quran is always shown in Arabic. This is the text you read next to it.') },
+    { title: T('Which voice with the recitation?'), caption: T('Recitation stays the Arabic Qur’an. This adds a voice in your own language underneath it.') },
+  ];
+  const active = steps[step];
+
+  /** A short line under a card saying honestly what that choice can offer. */
+  const hint = (entry: Language) => {
+    if (step === 0) return entry.uiReady ? null : T('Interface stays in English');
+    if (step === 1) return !entry.text ? T('Text stays in English') : entry.text.kind === 'tafsir' ? T('A tafsir, not a translation') : null;
+    return entry.voice ? null : T('Recitation only');
+  };
+
+  const finish = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      setLanguage(app);
+      const textEntry = languageByCode(text);
+      const voiceEntry = languageByCode(voice);
+      // The text read beside the Arabic.
+      if (textEntry?.text) await update({ translationEdition: textEntry.text.identifier, translationName: textEntry.text.name, translationLanguage: textEntry.english });
+      // The voice heard under the recitation. Arabic has none: for Arabic the
+      // audio *is* the recitation.
+      await saveAudioSettings(voiceEntry?.voice
+        ? { reciter: DEFAULT_RECITER.identifier, reciterName: DEFAULT_RECITER.name, translationAudioEnabled: true, translationEdition: voiceEntry.voice.identifier, translationName: voiceEntry.voice.name }
+        : { reciter: DEFAULT_RECITER.identifier, reciterName: DEFAULT_RECITER.name, translationAudioEnabled: false });
+      await saveOnboarding({ completed: true, app, text, voice, at: Date.now() });
+      onFinish();
+    } catch { setBusy(false); }
+  };
+
+  return <View style={s.safe}>
+    <StatusBar barStyle={dark ? 'light-content' : 'dark-content'} />
+    <View style={s.onbTop}>
+      <Image source={dark ? LOGO_MARK_DARK : LOGO_MARK} resizeMode="contain" style={s.appLogo} />
+    </View>
+    <ScrollView contentContainerStyle={s.onbScroll} showsVerticalScrollIndicator={false}>
+      <Animated.View style={[s.onbHead, { opacity: slide, transform: [{ translateX: slide.interpolate({ inputRange: [0, 1], outputRange: [rtl ? -26 : 26, 0] }) }] }]}>
+        <Text style={s.h1}>{active.title}</Text>
+        <Text style={s.onbCaption}>{active.caption}</Text>
+      </Animated.View>
+      <View style={s.onbList} key={step}>
+        {LANGUAGES.map((entry, index) => {
+          const selected = chosen === entry.code;
+          const note = hint(entry);
+          return <RiseIn key={entry.code} delay={index * 40}>
+            <MotionPress style={[s.onbCard, selected && s.onbCardOn]} onPress={() => pick(entry.code)}>
+              <View style={s.onbCardTop}>
+                <View style={s.onbCardText}>
+                  <Text style={[s.onbCardName, entry.rtl && s.onbCardNameRtl]}>{entry.native}</Text>
+                  {entry.native !== entry.english && <Text style={s.onbCardSub}>{entry.english}</Text>}
+                </View>
+                <View style={[s.onbTick, selected && s.onbTickOn]}>{selected && ico('checkmark', 16, C.onAccent)}</View>
+              </View>
+              {note ? <Text style={s.onbCardNote}>{note}</Text> : null}
+            </MotionPress>
+          </RiseIn>;
+        })}
+      </View>
+    </ScrollView>
+    <View style={s.onbFoot}>
+      <View style={s.onbDots}>{steps.map((_, index) => <View key={index} style={[s.onbDot, index === step && s.onbDotOn]} />)}</View>
+      <View style={s.onbActions}>
+        {step > 0 && <MotionPress style={s.onbGhost} onPress={() => setStep(step - 1)}><Text style={s.onbGhostText}>{T('Back')}</Text></MotionPress>}
+        <MotionPress style={[s.onbCta, busy && s.onbCtaOff]} onPress={() => { if (step < steps.length - 1) setStep(step + 1); else void finish(); }}>
+          <Text style={s.onbCtaText}>{step < steps.length - 1 ? T('Continue') : T('Begin')}</Text>
+        </MotionPress>
+      </View>
+    </View>
+  </View>;
+}
+
+/**
+ * The gate. A splash while the app settles, then onboarding the first time
+ * through, then the app itself. The app is mounted underneath the whole time,
+ * so the first screen is warm by the time it is uncovered.
+ */
+function AppShell() {
+  const { ready } = useLanguage();
+  const { hydrated } = useQuranPreferences();
+  const [onboarding, setOnboarding] = useState<boolean | null>(null);
+  const [splash, setSplash] = useState(true);
+
+  useEffect(() => {
+    void loadOnboarding().then(value => setOnboarding(!value?.completed)).catch(() => setOnboarding(false));
+  }, []);
+
+  return <View style={s.shellRoot}>
+    <Root />
+    {splash && <View style={s.shellLayer}><Splash ready={ready && hydrated} onDone={() => setSplash(false)} /></View>}
+    {!splash && onboarding === true && <View style={s.shellLayer}><Onboarding onFinish={() => setOnboarding(false)} /></View>}
+  </View>;
+}
+
+export default function App(){const[fontsLoaded]=useFonts({DMSans_400Regular,DMSans_600SemiBold,DMSans_700Bold,Newsreader_600SemiBold,NotoNaskhArabic_400Regular,NotoNaskhArabic_600SemiBold,Amiri_400Regular,KFGQPCUthmanicHafs,IBMPlexSansArabic_400Regular,IBMPlexSansArabic_600SemiBold});useEffect(()=>{if(fontsLoaded){resumeSavedQuranPreload();void loadAudioSettings();void loadHadithState();void loadTasbihState();void loadDownloads();void loadActivity();void loadFastingState();void loadJourneys();void loadWomensState();void loadZakatState();void loadLockConfig();void refreshMarket();startLockWatch()}},[fontsLoaded]);if(!fontsLoaded)return <SafeAreaView style={s.safe}><Spinner/></SafeAreaView>;return <ThemeProvider><LanguageProvider><QuranPreferencesProvider><WorshipSettingsProvider><LocationProvider><AppShell/></LocationProvider></WorshipSettingsProvider></QuranPreferencesProvider></LanguageProvider></ThemeProvider>}
 
 let s: Record<string, any> = makeStyles();
 
 /** Builds the style sheet for the palette that is currently in use. */
 function makeStyles() {
   const created: Record<string, any> = StyleSheet.create({
+ shellRoot:{flex:1,backgroundColor:C.bg},
+ shellLayer:{position:'absolute',left:0,right:0,top:0,bottom:0},
+ splashRoot:{flex:1,backgroundColor:C.heroA,alignItems:'center',justifyContent:'center',overflow:'hidden'},
+ splashFill:{position:'absolute',left:0,right:0,top:0,bottom:0},
+ splashAuraA:{position:'absolute',top:-90,left:-70,width:320,height:320,borderRadius:160,backgroundColor:C.gold,opacity:.16},
+ splashAuraB:{position:'absolute',bottom:-120,right:-90,width:360,height:360,borderRadius:180,backgroundColor:C.green,opacity:.24},
+ splashStage:{alignItems:'center',justifyContent:'center',gap:26,paddingHorizontal:40},
+ splashMarkWrap:{width:112,height:112,alignItems:'center',justifyContent:'center'},
+ splashHalo:{position:'absolute',width:112,height:112,borderRadius:56,backgroundColor:C.gold,opacity:.22},
+ splashMark:{width:88,height:88},
+ splashWords:{alignItems:'center',gap:8},
+ splashName:{color:C.onHero,fontSize:30,fontFamily:'Newsreader_600SemiBold',letterSpacing:-.6,textAlign:'center'},
+ splashTagline:{color:'rgba(255,255,255,.68)',fontSize:13,fontFamily:'DMSans_400Regular',textAlign:'center',letterSpacing:.2},
+ splashTrack:{position:'absolute',bottom:56,left:'22%',right:'22%',height:3,borderRadius:2,backgroundColor:'rgba(255,255,255,.22)',overflow:'hidden'},
+ splashBar:{height:3,borderRadius:2,backgroundColor:C.onHero},
+ onbTop:{paddingHorizontal:20,paddingTop:20,paddingBottom:4},
+ onbScroll:{paddingHorizontal:20,paddingTop:8,paddingBottom:20},
+ onbHead:{marginBottom:20},
+ onbCaption:{color:C.muted,fontSize:14,fontFamily:'DMSans_400Regular',lineHeight:22,marginTop:10},
+ onbList:{gap:10},
+ onbCard:{backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line},
+ onbCardOn:{borderColor:C.green,backgroundColor:C.mint},
+ onbCardTop:{flexDirection:'row',alignItems:'center',gap:12},
+ onbCardText:{flex:1,gap:2},
+ onbCardName:{color:C.ink,fontSize:17,fontFamily:'DMSans_600SemiBold'},
+ onbCardNameRtl:{textAlign:'right'},
+ onbCardSub:{color:C.muted,fontSize:12,fontFamily:'DMSans_400Regular'},
+ onbCardNote:{color:C.muted,fontSize:11,fontFamily:'DMSans_400Regular',marginTop:8},
+ onbTick:{width:26,height:26,borderRadius:13,backgroundColor:C.blue,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line},
+ onbTickOn:{backgroundColor:C.green,borderColor:C.green},
+ onbFoot:{paddingHorizontal:20,paddingTop:12,paddingBottom:24,gap:14,borderTopWidth:1,borderColor:C.line,backgroundColor:C.bg},
+ onbDots:{flexDirection:'row',justifyContent:'center',gap:6},
+ onbDot:{width:7,height:7,borderRadius:4,backgroundColor:C.line},
+ onbDotOn:{width:24,backgroundColor:C.green},
+ onbActions:{flexDirection:'row',gap:10},
+ onbCta:{flex:1,flexDirection:'row',alignItems:'center',justifyContent:'center',minHeight:52,borderRadius:18,backgroundColor:C.green},
+ onbCtaOff:{opacity:.6},
+ onbCtaText:{color:C.onAccent,fontSize:15,fontFamily:'DMSans_700Bold'},
+ onbGhost:{flexDirection:'row',alignItems:'center',justifyContent:'center',minHeight:52,paddingHorizontal:22,borderRadius:18,borderWidth:1,borderColor:C.line},
+ onbGhostText:{color:C.ink,fontSize:15,fontFamily:'DMSans_600SemiBold'},
   journeyCard:{flexDirection:'row',alignItems:'center',gap:CARD.gap,backgroundColor:C.white,borderRadius:RADIUS.xl,borderWidth:1,borderColor:C.line,padding:CARD.padding,marginBottom:CARD_GAP,...soft},
   journeyTitleRow:{flexDirection:'row',alignItems:'center',gap:SPACE.sm},
   journeyArabic:{color:C.green,fontSize:18,fontFamily:'KFGQPCUthmanicHafs',marginTop:SPACE.xs,marginBottom:SPACE.xs},

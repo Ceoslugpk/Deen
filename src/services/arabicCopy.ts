@@ -1070,6 +1070,22 @@ const AR: Record<string, string> = {
   // The shared header. The name is rendered as a wordmark beside the mark, so
   // it takes a real name in Arabic rather than a transliteration.
   'Deen Companion': 'رفيق الدين',
+
+  // Splash and first run. Choosing a language here carries the Quran text and
+  // the audio voice with it, so the wording of these screens says so plainly.
+  'Your day, kept with care': 'رفيقُك في يومِك',
+  'How should the app speak to you?': 'كيف يُخاطبك التطبيق؟',
+  'This sets the words on every screen, and it carries the Quran text and the voice with it. You can change either of those next.': 'هذا يحدّد كلمات كل شاشة، ويتبعه نص القرآن والصوت معًا. ويمكنك تغيير أيٍّ منهما في الخطوة التالية.',
+  'Which meaning beside the Arabic?': 'أيُّ معنًى بجانب العربية؟',
+  'The Quran is always shown in Arabic. This is the text you read next to it.': 'يُعرض القرآن دائمًا بالعربية، وهذا هو النص الذي تقرأه بجانبه.',
+  'Which voice with the recitation?': 'أيُّ صوتٍ مع التلاوة؟',
+  'Recitation stays the Arabic Qur’an. This adds a voice in your own language underneath it.': 'التلاوة تبقى القرآن بالعربية، وهذا يُضيف إليها صوتًا بلغتك.',
+  'Interface stays in English': 'الواجهة تبقى بالإنجليزية',
+  'Text stays in English': 'النص يبقى بالإنجليزية',
+  'Recitation only': 'تلاوة فقط',
+  'A tafsir, not a translation': 'تفسير، وليس ترجمة',
+  'Back': 'رجوع',
+  'Begin': 'ابدأ',
   'Show the light theme': 'التبديل إلى المظهر الفاتح',
   'Show the dark theme': 'التبديل إلى المظهر الداكن',
   'Settings': 'الإعدادات',
