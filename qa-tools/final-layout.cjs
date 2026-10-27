@@ -50,7 +50,7 @@ const issues = (page) => page.evaluate(() => {
   // RTL over the same tabs
   await page.setViewportSize({ width: 390, height: 844 });
   await page.locator('[role="button"][aria-label="Settings"]').first().click(); await page.waitForTimeout(1600);
-  await page.locator('[role="switch"]').last().evaluate((n) => n.click()); await page.waitForTimeout(2600);
+  await page.locator('[role="switch"][aria-label="Arabic interface"]').first().evaluate((n) => n.click()); await page.waitForTimeout(2600);
   out.rtl = {};
   for (const w of [320, 768]) {
     await page.setViewportSize({ width: w, height: 900 });

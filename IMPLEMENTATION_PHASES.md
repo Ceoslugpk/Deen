@@ -151,6 +151,6 @@ The complete application passes privacy, offline, localization, accessibility, r
 - [ ] Phase 4 — In progress
   - [x] Fasting record: mark Ramadan, voluntary and make-up days, record a missed day with its reason, Qada ledger that settles itself, streak and 21-day history, all private and on-device
   - [x] Umrah and Hajj journeys, checklists, references and holy-site channels: Umrah and Hajj rite-by-rite journeys with counters (circuits, lengths, pebbles), private notes and live-fetched Quran references, a journeys hub with progress and completed history, plus official Makkah and Madinah live channel links that open outside the app
-  - [ ] Women's worship area with PIN lock, cycle, purity and Nifas records and Qada fasts
-  - [ ] Multi-asset, multi-currency Zakat with Nisab and local history
+  - [x] Women's worship area with PIN lock, cycle, purity and Nifas records and Qada fasts: opt-in private area behind an optional gate (4-digit PIN stored as a salted SHA-256, or the device's Face ID / fingerprint where it has one, relocking on background), cycle logging with averages, prediction and a day-by-day purity strip, purity and ghusl guidance with live-fetched Quran 2:222, a 40-day post-natal counter, and a Qada fast scorecard with reasons, completion and history
+  - [x] Multi-asset, multi-currency Zakat with Nisab and local history: cash, bank, gold and silver by weight, investments, business stock, receivables and other assets against deductible debts, in 24 currencies with amounts carried across at the going rate, gold (85g) and silver (595g) nisab with live prices that can be overridden, a 2.5% result, and a saved-calculation history kept on the device
 - [ ] Phase 5 — Not started
