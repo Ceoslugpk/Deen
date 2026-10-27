@@ -14,6 +14,12 @@
 // screens by them, in both languages.
 
 const AR: Record<string, string> = {
+  'A live 30-day Suhoor and Iftar timetable for': 'جدول حيّ للسحور والإفطار على مدى 30 يومًا لـ',
+  'Fasting timetable': 'جدول الصيام',
+  'RAM': 'رمضان',
+  'SUHOOR': 'السحور',
+  'IFTAR': 'الإفطار',
+  'Mark each day and keep your make-up ledger': 'علّم كل يوم واحتفظ بسجل قضائك',
   'Solar event': 'حدث شمسي',
   'Completed': 'مؤداة',
   'Up next': 'التالية',
