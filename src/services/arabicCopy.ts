@@ -934,6 +934,7 @@ const AR: Record<string, string> = {
   'ARABIC REFERENCE': 'المرجع العربي',
   'Mark each rite as you complete it. Counts and notes are saved as you go.': 'علّم كل نُسُك عند إتمامه. تُحفظ العدّادات والملاحظات مع تقدّمك.',
   'Every rite is marked. You can keep the journey in your history, or start a fresh one the next time you go.': 'كل المناسك معلَّمة. يمكنك الاحتفاظ بهذه الرحلة في سجلّك، أو بدء رحلة جديدة في المرة القادمة.',
+  'This is a private record, not a ruling. What obliges a make-up fast, and what excuses a day, depends on your situation: travel, illness, pregnancy, the monthly cycle and post-natal bleeding each have their own rules. Please confirm your own case with a scholar or a trusted, sourced guide. Everything here stays on this device, and nothing is uploaded.': 'هذا سجل خاص، وليس فتوى. وما يوجب القضاء، وما يُعذر فيه من يوم، يختلف بحالِك: فالسفر والمرض والحمل والحيض والنفاس لكلٍّ منها حكمه. فاستوثقي من حالك عند عالم أو مرجع موثوق. وكل ما هنا يبقى على هذا الجهاز، ولا يُرفع إلى أي مكان.',
 };
 
 const PRAYERS: Record<string, string> = {
@@ -946,4 +947,13 @@ export function prayerName(rtl: boolean, name: string): string {
 
 export function tx(rtl: boolean, text: string): string {
   return rtl ? AR[text] ?? text : text;
+}
+
+/** Prayer times arrive from the API as 12-hour clock strings such as "5:42 PM".
+    In Arabic they are written with ص for the morning and م for the evening. */
+export function clockTime(rtl: boolean, time: string): string {
+  if (!rtl) return time;
+  return time.replace(/\s*(AM|PM)\s*$/i, (_match, half: string) =>
+    half.toUpperCase() === 'AM' ? ' ص' : ' م',
+  );
 }
