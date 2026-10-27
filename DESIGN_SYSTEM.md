@@ -143,6 +143,35 @@ menu and the mini player — need the explicit flip, because nothing sets their 
 Horizontal padding and margins use symmetric values so they flip for free; text
 alignment is left to `textAlign:'auto'` except for Arabic script, which is pinned right.
 
+### Two languages
+The app is English and Arabic. Strings that sit in the JSX are written in
+English and translated through a dictionary, `src/services/phase4Copy.ts`:
+
+```tsx
+const T = (text: string) => tx(rtl, text);   // once per component
+<Section title={T('Records')} />
+```
+
+The rules that keep it predictable:
+
+- Anything a screen renders goes through `T()`, including strings that arrive
+  from a service (`{T(asset.label)}`, `{T(block.body)}` — the services stay in
+  English).
+- `accessibilityLabel` stays in English in both languages. The QA scripts drive
+  the screens by those labels, so translating them would break the harnesses
+  for no gain to a reader.
+- Strings built at run time (`Day ${n}`) cannot be looked up, so they carry an
+  explicit `rtl ? … : …`.
+- Dates and money take the language as well (`formatDay(key, language)`,
+  `setMoneyLocale(language)`), but the numbering system stays Latin — swapping
+  in Arabic-Indic digits halfway down a screen reads as a fault, not as a
+  translation.
+- A string with no entry reads as it does in English. Nothing disappears.
+
+`qa-tools/phase4-arabic.cjs` walks every state of these screens in Arabic and
+prints any leaf text still carrying Latin letters, so an untranslated string is
+found rather than assumed.
+
 ### Sensitive screens
 The women's area sits behind an opt-in and, once a PIN exists, behind a gate:
 - `PrivateArea` wraps each of its screens and swaps in `PrivateLockScreen` while locked.
@@ -162,7 +191,6 @@ The women's area sits behind an opt-in and, once a PIN exists, behind a gate:
   directions for horizontal overflow and for text clipped by its own box.
 - `qa-tools/women-zakat-check.cjs` drives the whole women's flow (opt-in, PIN create →
   confirm → wrong code → unlock, cycle, Qada, nifas, Zakat) and sweeps 320–1280.
-- `qa-tools/new-screens-rtl.cjs` re-walks those screens with the interface in Arabic.
 - `qa-tools/screen-drill.cjs` walks every reachable screen (40 at the last run) and
   reports, per screen: the header text, whether a back button is present, overflow,
   clipped text, and any press target under 44pt. `node qa-tools/screen-drill.cjs 1 390`.
@@ -184,4 +212,5 @@ The women's area sits behind an opt-in and, once a PIN exists, behind a gate:
 5. One icon per feature, one accent colour, no colour for its own sake.
 6. Run `qa-tools/screen-drill.cjs` and the width sweep at all four widths, in English
    and Arabic, before committing. Add new rows to the women's or Zakat screens to
-   `qa-tools/women-zakat-check.cjs` and `qa-tools/new-screens-rtl.cjs`.
+   `qa-tools/women-zakat-check.cjs` (English) and `qa-tools/phase4-arabic.cjs`
+   (Arabic, which also reports untranslated strings at 390, 320 and 768).

@@ -192,7 +192,7 @@ window.__setInput = (label, value) => {
   out.netWealth = netText;
   await press('Save this calculation'); await page.waitForTimeout(1200);
   await page.evaluate(HELPERS);
-  out.historySaved = await has('Saved on this device|above the gold nisab|below the gold nisab');
+  out.historySaved = await has('Saved on this device|above the gold nisab|below the gold nisab|above the Gold nisab|below the Gold nisab');
 
   // 11 — widths + RTL on the two heaviest screens
   const sweep = {};

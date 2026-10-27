@@ -145,9 +145,16 @@ export function daysBetween(from: string, to: string) {
   return Math.round((parseDay(to).getTime() - parseDay(from).getTime()) / 86_400_000);
 }
 
+// Arabic months and weekdays, but the digits stay as they are everywhere else
+// in the app — switching numbering systems halfway down a screen reads as a
+// mistake rather than as a translation.
+function dateLocale(locale: string) {
+  return locale === 'ar' ? 'ar-u-nu-latn' : locale;
+}
+
 export function formatDay(key: string, locale = 'en') {
   try {
-    return parseDay(key).toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short' });
+    return parseDay(key).toLocaleDateString(dateLocale(locale), { weekday: 'short', day: 'numeric', month: 'short' });
   } catch {
     return key;
   }
@@ -155,7 +162,7 @@ export function formatDay(key: string, locale = 'en') {
 
 export function formatLongDay(key: string, locale = 'en') {
   try {
-    return parseDay(key).toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    return parseDay(key).toLocaleDateString(dateLocale(locale), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   } catch {
     return key;
   }
