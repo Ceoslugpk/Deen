@@ -183,11 +183,43 @@ def panel_key(path: Path, vmax: float = 110.0, chroma: float = 20.0) -> str:
              for x in range(band) for y in range(band)]
     return 'corners %.0f -> %.0f' % (sum(corners) / len(corners), sum(after) / len(after))
 
+def tone(path: Path, target: float = 0.92, max_gain: float = 3.5) -> str:
+    """Lifts a muted render into the palette's brightness range.
+
+    Some renders come back correct in shape but painted in mid-tones: nothing in
+    them is brighter than about 0.6, so they read as grey on the dark ground.
+    The palette wants off-white at 0.93, so this scales every colour by one gain
+    chosen to bring the 95th-percentile pixel up to `target`. One gain for the
+    whole image keeps the relative tones and the hue of every accent, and the
+    icon is left untouched when it is already bright enough.
+    """
+    im = Image.open(path).convert('RGBA')
+    px = im.load()
+    w, h = im.size
+    lums = sorted((0.2126 * px[x, y][0] + 0.7152 * px[x, y][1] + 0.0722 * px[x, y][2]) / 255.0
+                  for y in range(h) for x in range(w) if px[x, y][3] >= 128)
+    if not lums:
+        return 'nothing opaque — left alone'
+    p95 = lums[int(len(lums) * 0.95)]
+    if p95 >= 0.85:
+        return 'already bright (p95 %.2f) — left alone' % p95
+    gain = min(max_gain, max(1.0, target / max(p95, 0.01)))
+    for y in range(h):
+        for x in range(w):
+            r, g, b, a = px[x, y]
+            if a:
+                px[x, y] = (min(255, round(r * gain)), min(255, round(g * gain)),
+                            min(255, round(b * gain)), a)
+    im.save(path)
+    return 'p95 %.2f -> %.2f (gain %.2f)' % (p95, min(1.0, p95 * gain), gain)
+
+
 if __name__ == '__main__' and len(sys.argv) > 1:
     # python3 qa-tools/dark_icon.py <paths…>          key out the ground and size to 160
     # python3 qa-tools/dark_icon.py --flood <paths…>  also remove a painted card
+    # python3 qa-tools/dark_icon.py --tone <paths…>   lift a muted render into the palette
     mode = sys.argv[1]
-    args = sys.argv[2:] if mode in ('--flood', '--wand', '--panel') else sys.argv[1:]
+    args = sys.argv[2:] if mode in ('--flood', '--wand', '--panel', '--tone') else sys.argv[1:]
     for arg in args:
         p = Path(arg)
         if mode == '--flood':
@@ -196,6 +228,9 @@ if __name__ == '__main__' and len(sys.argv) > 1:
             wand(p)
         elif mode == '--panel':
             print('%-28s %s' % (p.name, panel_key(p)))
+            continue
+        elif mode == '--tone':
+            print('%-28s %s' % (p.name, tone(p)))
             continue
         else:
             lift(p)
