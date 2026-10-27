@@ -39,6 +39,8 @@ const KEYS = {
   prayerCompletion: '@deen/prayer-completion/v1',
   dailyContent: '@deen/daily-content/v1',
   tasbihQuick: '@deen/tasbih-quick/v1',
+  onboarding: '@deen/onboarding/v1',
+  language: '@deen/language/v1',
 };
 
 async function readJson<T>(key: string): Promise<T | null> {
@@ -132,4 +134,53 @@ export async function loadQuickTasbih(): Promise<number> {
 
 export async function saveQuickTasbih(value: number) {
   return writeJson(KEYS.tasbihQuick, value);
+}
+
+/**
+ * What the first-run screens chose. Kept so the app opens where you left it,
+ * and so the set-up can be walked through again from Settings.
+ */
+export type OnboardingState = {
+  completed: boolean;
+  /** The language of the interface. */
+  app: string;
+  /** The language of the Quran text beside the Arabic. */
+  text: string;
+  /** The language of the voice under the recitation. */
+  voice: string;
+  /** When it was finished, as a Unix millisecond stamp. */
+  at?: number;
+};
+
+export async function loadOnboarding(): Promise<OnboardingState | null> {
+  return readJson<OnboardingState>(KEYS.onboarding);
+}
+
+export async function saveOnboarding(value: OnboardingState) {
+  await writeJson(KEYS.onboarding, value);
+}
+
+export async function clearOnboarding() {
+  try {
+    await AsyncStorage.removeItem(KEYS.onboarding);
+  } catch {
+    return;
+  }
+}
+
+/** The interface language, remembered between launches. */
+export async function loadLanguage(): Promise<string | null> {
+  try {
+    return await AsyncStorage.getItem(KEYS.language);
+  } catch {
+    return null;
+  }
+}
+
+export async function saveLanguage(code: string) {
+  try {
+    await AsyncStorage.setItem(KEYS.language, code);
+  } catch {
+    return;
+  }
 }
