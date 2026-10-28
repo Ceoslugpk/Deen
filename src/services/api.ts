@@ -1,6 +1,6 @@
 export type Prayer = { name: string; time: string; raw: string };
 export type PrayerSnapshot = { prayers: Prayer[]; hijri: string; hijriAr?: string; hijriYear: number; hijriMonth: number; readable: string; timezone: string; method: string };
-export type CalendarDay = { gregorian: string; weekday: string; weekdayAr?: string; hijriDay: number; hijriMonth: string; hijriMonthAr?: string; hijriYear: number; prayers: Prayer[] };
+export type CalendarDay = { gregorian: string; weekday: string; weekdayAr?: string; hijriDay: number; hijriMonth: string; hijriMonthAr?: string; hijriMonthNumber: number; hijriYear: number; prayers: Prayer[] };
 export type Chapter = { id: number; name_simple: string; name_arabic: string; verses_count: number; revelation_place?: string; translated_name?: { name: string } };
 export type Verse = { id: number; verse_key: string; text_uthmani: string; translation?: string; audio?: string; page?: number; juz?: number; hizbQuarter?: number; surah_name?: string };
 export type DailyHadith = { collection: string; number: string; text: string; arabic?: string };
@@ -75,6 +75,8 @@ function calendarDay(row: any, timeFormat: '12' | '24' = '12'): CalendarDay {
     hijriDay: Number(row.date.hijri.day),
     hijriMonth: row.date.hijri.month.en,
     hijriMonthAr: row.date.hijri.month.ar,
+    // The number is what a fixed Hijri date can be matched against by name
+    hijriMonthNumber: Number(row.date.hijri.month.number),
     hijriYear: Number(row.date.hijri.year),
     prayers: names.map(name => ({ name, raw: cleanTime(row.timings[name]), time: displayTime(row.timings[name], timeFormat) })),
   };
@@ -108,6 +110,41 @@ export async function getPrayerCalendar(
     `?latitude=${latitude}&longitude=${longitude}&method=${method}&school=${school}`,
   );
   return data.map((row: any) => calendarDay(row, timeFormat));
+}
+
+/**
+ * A run of consecutive Gregorian months as one list of days.
+ *
+ * Fixed Hijri dates - Ashura, the Eids, the start of Ramadan - do not fall on
+ * a predictable Gregorian day, so the only honest way to say when one lands is
+ * to read the mapping for the months it could fall in. This fetches those
+ * months once and hands them back in order.
+ */
+export async function getCalendarSpan(
+  latitude: number,
+  longitude: number,
+  months: number,
+  options: PrayerRequestOptions = {},
+): Promise<CalendarDay[]> {
+  const now = new Date();
+  const wanted: [number, number][] = [];
+  for (let ahead = 0; ahead < months; ahead += 1) {
+    const when = new Date(now.getFullYear(), now.getMonth() + ahead, 1);
+    wanted.push([when.getFullYear(), when.getMonth() + 1]);
+  }
+  /* Three at a time rather than a dozen at once - the endpoint throttles a
+     burst - and a month that fails is dropped rather than losing the lot.
+     A partial map still answers "when is Eid"; an empty one answers nothing. */
+  const out: CalendarDay[] = [];
+  for (let i = 0; i < wanted.length; i += 3) {
+    const batch = wanted.slice(i, i + 3);
+    const settled = await Promise.allSettled(
+      batch.map(([y, mo]) => getPrayerCalendar(latitude, longitude, mo, y, options)),
+    );
+    for (const result of settled) if (result.status === 'fulfilled') out.push(...result.value);
+  }
+  // `out` is built in order because the batches are awaited in order
+  return out;
 }
 
 export async function getRamadanCalendar(latitude: number, longitude: number, hijriYear: number): Promise<CalendarDay[]> {
@@ -158,8 +195,19 @@ export async function getPageVerses(page: number, options: { script?: string; tr
 }
 
 export async function getAyahOfDay(): Promise<DailyAyah> {
-  const start = new Date(new Date().getFullYear(), 0, 0);
-  const day = Math.floor((Date.now() - start.getTime()) / 86400000);
+  return getAyahForDate(new Date());
+}
+
+/**
+ * The ayah for a given day.
+ *
+ * The day is chosen by position in the year, so which ayah a date gets is
+ * fixed and knowable in advance - which is what lets the app fetch the next
+ * several before they are needed and keep them on the device.
+ */
+export async function getAyahForDate(date: Date): Promise<DailyAyah> {
+  const start = new Date(date.getFullYear(), 0, 0);
+  const day = Math.floor((new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime() - start.getTime()) / 86400000);
   const ayahNumber = (day % 6236) + 1;
   const [arabic, english] = await Promise.all([
     json(`${QURAN}/ayah/${ayahNumber}/quran-uthmani`),

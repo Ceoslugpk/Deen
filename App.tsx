@@ -11,11 +11,13 @@ function ToolsStack(){return <Stack.Navigator screenOptions={{headerShown:false}
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  AccessibilityInfo, ActivityIndicator, Alert, Animated, BackHandler, Easing, Image, ImageBackground, Linking, Platform, Pressable,
+  AccessibilityInfo, ActivityIndicator, Alert, Animated, BackHandler, Easing, Image, ImageBackground, Linking, Platform,
+  Pressable as BarePressable,
   I18nManager, RefreshControl, SafeAreaView, ScrollView, Share, StatusBar, StyleSheet, Switch, Text, TextInput,
   PanResponder, useColorScheme, useWindowDimensions, View,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { haptic, isHapticsSupported, setHapticsEnabled, withHaptic, type HapticKind } from './src/services/haptics';
 import { createNavigationContainerRef, NavigationContainer, useFocusEffect, useNavigation } from '@react-navigation/native';
 const KFGQPCUthmanicHafs = require('./assets/fonts/KFGQPCUthmanicHafs.ttf');
 const IBMPlexSansArabic_400Regular = require('./assets/fonts/IBMPlexSansArabic-Regular.ttf');
@@ -42,14 +44,13 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import CustomIcon, { iconTheme } from './src/components/CustomIcon';
 import { LinearGradient } from 'expo-linear-gradient';
-import Svg, { Defs, Ellipse, RadialGradient, Stop } from 'react-native-svg';
+import Svg, { Circle, Defs, Ellipse, Path, RadialGradient, Stop } from 'react-native-svg';
 import * as Location from 'expo-location';
-import * as Haptics from 'expo-haptics';
 import { StatusBar as ExpoStatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import {
   AudioEdition, Chapter, DailyAyah, DailyHadith, DivineName, getAyahEditions, getAyahOfDay, getChapters, getDailyHadith, getDuas, getQuranEditions,
-  getGregorianCalendar, getNameOfDay, getNames, getNearbyMosques, getPrayerCalendar, getPrayerSnapshot, getQibla, getRamadanCalendar,
+  getAyahForDate, getCalendarSpan, getGregorianCalendar, getNameOfDay, getNames, getNearbyMosques, getPrayerCalendar, getPrayerSnapshot, getQibla, getRamadanCalendar,
   getHizbVerses, getJuzVerses, getPageVerses, getVerses, searchQuran, CalendarDay, Prayer, PrayerSnapshot, QuranEdition, QuranSearchResult, SurahReciter, Verse,
   HajjCountdown, getHajjCountdown,
 } from './src/services/api';
@@ -339,6 +340,28 @@ function saveNavState(state: any) {
   if (state) AsyncStorage.setItem(NAV_KEY, JSON.stringify(state)).catch(() => undefined);
 }
 
+/**
+ * Every press in the app goes through this.
+ *
+ * The app has a couple of hundred Pressables. Rather than visit each one, the
+ * primitive itself is wrapped: a press buzzes, then does its work. Wrapping at
+ * this level also means a later screen gets haptics without anyone having to
+ * remember, and the one switch in Settings really does silence everything.
+ *
+ * `kind` lets a call site ask for something other than the default tap, and
+ * `hapticOff` opts a press out where a buzz would be noise - scrolling a list
+ * of rows you are only brushing past, for instance.
+ */
+type HapticPressableProps = React.ComponentProps<typeof BarePressable> & { hapticKind?: HapticKind; hapticOff?: boolean };
+const Pressable = React.forwardRef<React.ElementRef<typeof BarePressable>, HapticPressableProps>(function Pressable(props, ref) {
+  const { onPress, hapticKind = 'tap', hapticOff, ...rest } = props;
+  return <BarePressable
+    ref={ref}
+    {...rest}
+    onPress={hapticOff ? onPress : withHaptic(onPress, hapticKind as HapticKind)}
+  />;
+});
+
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 type QuranPreferencesState={preferences:QuranPreferences;hydrated:boolean;update:(patch:Partial<QuranPreferences>)=>Promise<void>};
@@ -348,7 +371,7 @@ function QuranPreferencesProvider({children}:{children:React.ReactNode}){const[p
 function useQuranPreferences(){return useContext(QuranPreferencesContext)}
 type WorshipSettingsState={settings:WorshipSettings;hydrated:boolean;update:(patch:Partial<WorshipSettings>)=>Promise<void>};
 const WorshipSettingsContext=createContext<WorshipSettingsState>({settings:DEFAULT_WORSHIP_SETTINGS,hydrated:false,update:async()=>{}});
-function WorshipSettingsProvider({children}:{children:React.ReactNode}){const[settings,setSettings]=useState(DEFAULT_WORSHIP_SETTINGS);const[hydrated,setHydrated]=useState(false);useEffect(()=>{loadWorshipSettings().then(value=>{setSettings(value);setHydrated(true)})},[]);const update=async(patch:Partial<WorshipSettings>)=>{const next={...settings,...patch};setSettings(next);await saveWorshipSettings(next)};return <WorshipSettingsContext.Provider value={{settings,hydrated,update}}>{children}</WorshipSettingsContext.Provider>}
+function WorshipSettingsProvider({children}:{children:React.ReactNode}){const[settings,setSettings]=useState(DEFAULT_WORSHIP_SETTINGS);const[hydrated,setHydrated]=useState(false);useEffect(()=>{loadWorshipSettings().then(value=>{setSettings(value);setHydrated(true)})},[]);const update=async(patch:Partial<WorshipSettings>)=>{const next={...settings,...patch};setSettings(next);await saveWorshipSettings(next)};useEffect(()=>{setHapticsEnabled(settings.hapticsEnabled)},[settings.hapticsEnabled]);return <WorshipSettingsContext.Provider value={{settings,hydrated,update}}>{children}</WorshipSettingsContext.Provider>}
 function useWorshipSettings(){return useContext(WorshipSettingsContext)}
 async function managedPrayerSnapshot(location:AppLocation,settings:WorshipSettings){try{const snapshot=await getPrayerSnapshot(location.latitude,location.longitude,{method:settings.calculationMethod,school:settings.madhab,timeFormat:settings.timeFormat});await savePrayerCache(location.latitude,location.longitude,settings.calculationMethod,settings.madhab,snapshot);return{snapshot,cached:false}}catch(error){const cached=await loadPrayerCache(location.latitude,location.longitude,settings.calculationMethod,settings.madhab);if(cached)return{snapshot:cached.snapshot,cached:true};throw error}}
 type AppLocation = { latitude: number; longitude: number; label: string };
@@ -441,6 +464,7 @@ const TOOL_IMAGES:Record<string,any>={
   'Morning Adhkar':require('./assets/tool-icons/morning-adhkar.png'),
   'Evening Adhkar':require('./assets/tool-icons/evening-adhkar.png'),
   Audio:require('./assets/tool-icons/audio.png'),
+  Downloads:require('./assets/tool-icons/downloads.png'),
   'Worship guides':require('./assets/tool-icons/worship-guides.png'),
   'Weekly Summary':require('./assets/tool-icons/weekly-summary.png'),
   'Wudu Guide':require('./assets/tool-icons/wudu-guide.png'),
@@ -533,6 +557,7 @@ const TOOL_IMAGES_DARK:Record<string,any>={
   'Morning Adhkar':require('./assets/tool-icons/morning-adhkar-dark.png'),
   'Evening Adhkar':require('./assets/tool-icons/evening-adhkar-dark.png'),
   Audio:require('./assets/tool-icons/audio-dark.png'),
+  Downloads:require('./assets/tool-icons/downloads-dark.png'),
   'Worship guides':require('./assets/tool-icons/worship-guides-dark.png'),
   'Weekly Summary':require('./assets/tool-icons/weekly-summary-dark.png'),
   'Wudu Guide':require('./assets/tool-icons/wudu-guide-dark.png'),
@@ -755,14 +780,71 @@ function SlidingCards<T>({label,items,cardWidth,renderItem}:{label:string;items:
 }
 
 type DailyContentCache={ayah:DailyAyah;hadith:DailyHadith;name:DivineName;dua:any};
+/**
+ * Home's daily content - the ayah, the Name and the hadith behind the
+ * reflections.
+ *
+ * Everything here is read off the device first and only then refreshed from
+ * the network. The reflection is the first thing you look at when you open the
+ * app, and a card that waits for a request is a card that is usually blank on
+ * a train, in a lift, or abroad with data off. So: paint what is stored, then
+ * quietly replace it if the network has something newer.
+ *
+ * Behind that, the week ahead is fetched while the phone is online and put
+ * away, so the card has something to show even if it is opened a week later
+ * with no connection at any point.
+ */
+const REFLECTION_AHEAD_DAYS = 7;
+
+const dayKeyOf = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+
+/** Fills the days after today, one at a time so a slow network is not hammered. */
+async function preloadReflectionsAhead() {
+  for (let ahead = 1; ahead <= REFLECTION_AHEAD_DAYS; ahead += 1) {
+    const date = new Date(); date.setDate(date.getDate() + ahead);
+    const key = dayKeyOf(date);
+    try {
+      const already = await loadDailyContent<DailyContentCache>(key);
+      if (already?.ayah) continue;
+      const [ayah, name, duas] = await Promise.all([
+        getAyahForDate(date), loadNameOfDay().catch(() => null), getDuas('morning').catch(() => []),
+      ]);
+      await saveDailyContent(key, { ayah, hadith: null as any, name: name as any, dua: duas?.[0] });
+    } catch {
+      return; // offline, or one day failed - the rest will fill in next time
+    }
+  }
+}
+
 function useHomeData() {
-  const {rtl}=useLanguage(); const {location}=useAppLocation(); const {settings}=useWorshipSettings(); const dateKey=new Date().toISOString().slice(0,10);
+  const {rtl}=useLanguage(); const {location}=useAppLocation(); const {settings}=useWorshipSettings(); const dateKey=dayKeyOf(new Date());
   const [snapshot,setSnapshot]=useState<PrayerSnapshot|null>(null); const[ayah,setAyah]=useState<DailyAyah|null>(null); const[hadith,setHadith]=useState<DailyHadith|null>(null); const[name,setName]=useState<DivineName|null>(null); const[dua,setDua]=useState<any>(null); const[cached,setCached]=useState(false); const[error,setError]=useState('');
   const applyDaily=(daily:DailyContentCache)=>{setAyah(daily.ayah);setHadith(daily.hadith);setName(daily.name);setDua(daily.dua)};
-  const load=async()=>{if(!location)return;setError('');try{const[p,a,h,n,duas]=await Promise.all([managedPrayerSnapshot(location,settings),getAyahOfDay(),getDailyHadith(),getNameOfDay(),getDuas('morning')]);const daily={ayah:a,hadith:h,name:n,dua:duas[0]};setSnapshot(p.snapshot);setCached(p.cached);applyDaily(daily);await saveDailyContent(dateKey,daily);}catch(e:any){const saved=await loadDailyContent<DailyContentCache>(dateKey);if(saved){applyDaily(saved);setCached(true)}else setError(tx(rtl,e.message||'Please check your connection.'))}}
-
-;
-  useEffect(()=>{loadDailyContent<DailyContentCache>(dateKey).then(saved=>saved&&applyDaily(saved));setSnapshot(null);if(location)load()},[location?.latitude,location?.longitude,settings.calculationMethod,settings.madhab,settings.timeFormat]);
+  const load=async()=>{
+    if(!location)return;
+    /* 1. what is already on the device */
+    const saved=await loadDailyContent<DailyContentCache>(dateKey).catch(()=>null);
+    if(saved){applyDaily(saved);setCached(true)}
+    /* 2. then the network, to freshen it - never to blank a card that is
+          already showing something */
+    setError('');
+    try{
+      const[p,a,h,n,duas]=await Promise.all([managedPrayerSnapshot(location,settings),getAyahOfDay(),getDailyHadith().catch(()=>null),loadNameOfDay().catch(()=>null),getDuas('morning').catch(()=>[])]);
+      const daily={ayah:a,hadith:h as any,name:n as any,dua:duas?.[0]};
+      setSnapshot(p.snapshot);setCached(p.cached);applyDaily(daily);
+      await saveDailyContent(dateKey,daily);
+      /* 3. and, once today is safe, the days after it */
+      void preloadReflectionsAhead();
+    }catch(e:any){
+      if(!saved){const older=await loadDailyContent<DailyContentCache>(dateKey).catch(()=>null);
+        if(older){applyDaily(older);setCached(true)}else setError(tx(rtl,e.message||'Please check your connection.'))}
+    }
+  };
+  useEffect(()=>{
+    loadDailyContent<DailyContentCache>(dateKey).then(saved=>saved&&applyDaily(saved)).catch(()=>undefined);
+    setSnapshot(null);
+    if(location)load();
+  },[location?.latitude,location?.longitude,settings.calculationMethod,settings.madhab,settings.timeFormat]);
   return{snapshot,ayah,hadith,name,dua,location,cached,error,load};
 }
 function getNext(prayers: Prayer[]) {
@@ -848,7 +930,7 @@ function HomeScreen() {
   const[afterPrayer,setAfterPrayer]=useState<Dua[]|null>(null);
   useEffect(()=>{loadDuas('after-prayer').then(r=>setAfterPrayer(r.duas||[])).catch(()=>setAfterPrayer([]))},[]);
     useEffect(()=>{const t=setInterval(()=>setHour(new Date().getHours()),60000);return()=>clearInterval(t)},[]);
-  const hydrateLocal=()=>Promise.all([loadPrayerCompletion(dateKey).then(setCompleted),loadPrayerHistory().then(setHistory),loadQuickTasbih().then(setQuickCount),loadReadingPosition().then(setQuranPosition)]);useEffect(()=>{hydrateLocal()},[dateKey]);useFocusEffect(useCallback(()=>{void hydrateLocal()},[]));const togglePrayer=(name:string)=>setCompleted(current=>{const next=current.includes(name)?current.filter(x=>x!==name):[...current,name];savePrayerCompletion(dateKey,next).then(()=>loadPrayerHistory().then(setHistory));return next});const addQuick=async()=>{await tapTasbih();if(Platform.OS!=='web')Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)};const onRefresh=async()=>{setRefreshing(true);await Promise.all([data.load(),hydrateLocal()]);setRefreshing(false)};const weekTotal=Object.entries(history).filter(([key])=>Date.now()-new Date(key).getTime()<7*86400000).reduce((sum,[,items])=>sum+items.length,0);let streak=0;for(let i=0;i<60;i++){const d=new Date();d.setDate(d.getDate()-i);const key=d.toISOString().slice(0,10);if((history[key]||[]).length>=5)streak++;else if(i>0||completed.length<5)break}
+  const hydrateLocal=()=>Promise.all([loadPrayerCompletion(dateKey).then(setCompleted),loadPrayerHistory().then(setHistory),loadQuickTasbih().then(setQuickCount),loadReadingPosition().then(setQuranPosition)]);useEffect(()=>{hydrateLocal()},[dateKey]);useFocusEffect(useCallback(()=>{void hydrateLocal()},[]));const togglePrayer=(name:string)=>setCompleted(current=>{const next=current.includes(name)?current.filter(x=>x!==name):[...current,name];savePrayerCompletion(dateKey,next).then(()=>loadPrayerHistory().then(setHistory));return next});const addQuick=async()=>{await tapTasbih();haptic('count')};const onRefresh=async()=>{setRefreshing(true);await Promise.all([data.load(),hydrateLocal()]);setRefreshing(false)};const weekTotal=Object.entries(history).filter(([key])=>Date.now()-new Date(key).getTime()<7*86400000).reduce((sum,[,items])=>sum+items.length,0);let streak=0;for(let i=0;i<60;i++){const d=new Date();d.setDate(d.getDate()-i);const key=d.toISOString().slice(0,10);if((history[key]||[]).length>=5)streak++;else if(i>0||completed.length<5)break}
   /* The adhkar sit in their own cards above, so "For your day" keeps the four
      things you reach for most, as round icons rather than a row of cards. */
   const dayTools = [
@@ -872,6 +954,22 @@ function HomeScreen() {
   const adhkarRef = useRef<any>(null);
   const adhkarOpen = afterPrayer && afterPrayer.length ? dayNumber % afterPrayer.length : 0;
   const [adhkarIndex, setAdhkarIndex] = useState(0);
+  /* The eight remembrances are not the same length, so left to themselves the
+     cards would be eight different heights and the strip would jump under your
+     thumb as you swiped. Every card is measured and they all settle at the
+     height of the tallest one. Long text is clamped to a few lines and opens
+     on a tap, which is the only time a card is allowed to grow. */
+  const adhkarHeights = useRef<Record<number, number>>({});
+  const [adhkarTallest, setAdhkarTallest] = useState(0);
+  const [adhkarExpanded, setAdhkarExpanded] = useState<Record<number, boolean>>({});
+  const measureAdhkar = (i: number) => (event: any) => {
+    const h = Math.round(event.nativeEvent.layout.height);
+    if (!h || adhkarHeights.current[i] === h) return;
+    adhkarHeights.current[i] = h;
+    const tallest = Math.max(...Object.values(adhkarHeights.current));
+    if (tallest && tallest !== adhkarTallest) setAdhkarTallest(tallest);
+  };
+  const adhkarAnyOpen = Object.values(adhkarExpanded).some(Boolean);
 
   const contentWidth=Math.min(Math.max(width-36,280),980);
 
@@ -912,12 +1010,14 @@ const reflectionCardWidth=wide?Math.min(310,(contentWidth-24)/3):Math.min(318,Ma
           const i = Math.min(afterPrayer.length - 1, Math.max(0, Math.round(x / contentWidth)));
           if (i !== adhkarIndex) setAdhkarIndex(i);
         }}
-        style={{ width: contentWidth }}
+        style={{ width: contentWidth, height: adhkarAnyOpen ? undefined : (adhkarTallest || undefined) }}
       >
         {afterPrayer.map((dua: any, i: number) => (
-          <DepthCard key={i} radius={RADIUS.xl} style={{ width: contentWidth }} cardStyle={{ width: contentWidth }}
+          <DepthCard key={i} radius={RADIUS.xl} style={{ width: contentWidth }}
+            cardStyle={{ width: contentWidth, minHeight: adhkarTallest || undefined }}
             bodyStyle={s.adhkarDuaPad}
             onPress={()=>nav.navigate('Library',{screen:'Adhkar',params:{initial:'after-prayer'},initial:false})}>
+            <View onLayout={measureAdhkar(i)}>
             <View style={s.adhkarDuaHead}>
               <ToolGraphic tool="Duas" size={46} />
               <View style={{ flex: 1 }}>
@@ -926,10 +1026,17 @@ const reflectionCardWidth=wide?Math.min(310,(contentWidth-24)/3):Math.min(318,Ma
               </View>
               <View style={s.adhkarCount}><Text style={s.adhkarCountText}>{i + 1}/{afterPrayer.length}</Text></View>
             </View>
-            <Text style={s.dailyArabic}>{dua.arabic}</Text>
-            {!!dua.translation && <Text style={s.adhkarTranslation}>{dua.translation}</Text>}
+            <Text style={s.dailyArabic} numberOfLines={adhkarExpanded[i] ? undefined : 4}>{dua.arabic}</Text>
+            {!!dua.translation && <Text style={s.adhkarTranslation} numberOfLines={adhkarExpanded[i] ? undefined : 3}>{dua.translation}</Text>}
             {!!dua.reference && <Text style={s.adhkarRef}>{dua.reference}</Text>}
+            <Pressable accessibilityRole="button" accessibilityLabel={T(adhkarExpanded[i] ? 'Show less' : 'Read more')}
+              hapticKind="select"
+              onPress={() => setAdhkarExpanded((open) => ({ ...open, [i]: !open[i] }))} style={s.adhkarMore}>
+              <Text style={s.adhkarMoreText}>{T(adhkarExpanded[i] ? 'Show less' : 'Read more')}</Text>
+              {ico(adhkarExpanded[i] ? 'chevron-up' : 'chevron-down', 14, C.green)}
+            </Pressable>
             <Text style={s.adhkarFoot}>{T('Swipe for the next one')} · {T('Tap to read them all')}</Text>
+            </View>
           </DepthCard>
         ))}
       </ScrollView>
@@ -1486,10 +1593,9 @@ const SurahRow = React.memo(function SurahRow({ chapter, onOpen }: { chapter: Ch
   return <MotionPress onPress={() => onOpen(chapter)} style={s.surahCard}>
     <View style={s.surahNum}><Text style={s.surahNumText}>{chapter.id}</Text></View>
     <View style={{ flex: 1 }}>
-      <Text style={s.surahName}>{chapter.name_simple}</Text>
-      <Text style={s.meta} numberOfLines={1}>{chapter.translated_name?.name}</Text>
+      <Text style={s.surahName} numberOfLines={1}>{chapter.name_simple}</Text>
+      <Text style={s.meta} numberOfLines={1}>{chapter.translated_name?.name} · {chapter.verses_count} {T('verses')}</Text>
       <View style={s.surahChips}>
-        <View style={s.surahChip}><Text style={s.surahChipText}>{chapter.verses_count} {T('verses')}</Text></View>
         <View style={[s.surahChip, makki ? s.surahChipMakki : s.surahChipMadani]}>
           <Text style={[s.surahChipText, makki ? s.surahChipTextMakki : s.surahChipTextMadani]}>{T(makki ? 'Makki' : 'Madani')}</Text>
         </View>
@@ -1505,7 +1611,7 @@ function QuranHome({navigation}:any){const{dark}=useTheme();
  const shown=chapters.filter(c=>`${c.id} ${c.name_simple} ${c.name_arabic} ${c.translated_name?.name}`.toLowerCase().includes(debounced.toLowerCase()));const visible=expanded||debounced.length>0?shown:shown.slice(0,30);const openSurah=useCallback((chapter:Chapter)=>navigation.navigate('Reader',{chapter,mode:'both'}),[navigation]);const open=(chapter:Chapter,mode='both',focusVerse?:string)=>navigation.navigate('Reader',{chapter,mode,focusVerse});const featured={id:55,name_simple:'Ar-Rahman',name_arabic:'الرحمن',translated_name:{name:'The Most Merciful'},verses_count:78};const submit=()=>{const ref=query.match(/^(\d{1,3}):(\d{1,3})$/);if(ref){const chapter=chapters.find(c=>c.id===Number(ref[1]));if(chapter)return open(chapter,'both',query)}navigation.navigate('Quran Search',{initialQuery:query})};
  const[audioReciter,setAudioReciter]=useState(T('Choose a reciter'));const memorized=Object.values(hifz).filter(value=>value==='memorized').length;const contentWidth=Math.min(Math.max(width-36,280),980);
 const gridGap=8;const gridCols=gridW>=640?10:4;const tileW=gridW?Math.floor((gridW-gridGap*(gridCols-1))/gridCols):0;
-const exploreTools=[{label:'Mushaf Pages',title:T('Mushaf'),screen:'Reader',params:{section:'page',page:position?.page||1,focusVerse:position?.verseKey}},{label:'Quran Search',title:T('Search'),screen:'Quran Search'},{label:'30 Juz',title:T('Juz'),screen:'Juz Directory'},{label:'60 Hizb',title:T('Hizb'),screen:'Hizb Directory'},{label:'Quran Topics',title:T('Topics'),screen:'Quran Topics'},{label:'Translation Compare',title:T('Tafsir'),screen:'Tafsir Compare'},{label:'Tajweed',title:T('Tajweed'),screen:'Tajweed Study',tab:'Library'},{label:'Quran Vocabulary',title:T('Vocab'),screen:'Quran Vocabulary',tab:'Library'},{label:'Recitations',title:T('Audio'),screen:'Quran Audio'},{label:'Downloads',title:T('Downloads'),screen:'Downloads'}];
+const exploreTools:{label:string;title:string;screen:string;tab?:string;params?:Record<string,any>}[]=[{label:'Quran Search',title:T('Search'),screen:'Quran Search'},{label:'30 Juz',title:T('Juz'),screen:'Juz Directory'},{label:'60 Hizb',title:T('Hizb'),screen:'Hizb Directory'},{label:'Quran Topics',title:T('Topics'),screen:'Quran Topics'},{label:'Translation Compare',title:T('Tafsir'),screen:'Tafsir Compare'},{label:'Tajweed',title:T('Tajweed'),screen:'Tajweed Study',tab:'Library'},{label:'Quran Vocabulary',title:T('Vocab'),screen:'Quran Vocabulary',tab:'Library'},{label:'Recitations',title:T('Audio'),screen:'Quran Audio'},{label:'Downloads',title:T('Downloads'),screen:'Downloads'}];
 const compactStats=[{label:'Bookmarks',title:T('Bookmarks'),value:String(bookmarkCount),screen:'Bookmarks',icon:'bookmark-outline'},{label:'Notes',title:T('Notes'),value:String(noteCount),screen:'Notes',icon:'create-outline'},{label:'Reading Plans',title:T('Plans'),value:plan?`${plan.days}d`:'—',screen:'Reading Plans',icon:'calendar-outline'},{label:'Hifz',title:T('Hifz'),value:String(memorized),screen:'Hifz',icon:'school-outline'},{label:'Offline Quran',title:T('Offline'),value:`${preload.cached}/114`,screen:'Quran Preload',icon:'download-outline'}];
  return <Page><ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}><AppHeader/>
  <View style={s.search}>{ico('search-outline',19,C.muted)}<TextInput accessibilityLabel={T('Search the Quran')} value={query} onChangeText={setQuery} onSubmitEditing={submit} returnKeyType="search" style={s.searchInput} placeholder={T('Search Surah, meaning, or 2:255')} placeholderTextColor="#929B96"/>{query.length>0&&<Pressable accessibilityLabel={T('Clear Quran search')} onPress={()=>setQuery('')}>{ico('close-circle',18,C.muted)}</Pressable>}</View>
@@ -1594,7 +1700,12 @@ function ReaderScreen({route,navigation}:any){
   {newJuz&&<View style={s.sectionMarker}><View style={s.sectionRule}/><Text style={s.sectionMarkerText}>{rtl?`الجزء ${v.juz}`:`JUZ ${v.juz}`}</Text><View style={s.sectionRule}/></View>}
   {newHizb&&<View style={s.sectionMarker}><View style={s.sectionRule}/><Text style={s.sectionMarkerText}>{rtl?`الحزب ${hizbOf(v)}`:`HIZB ${hizbOf(v)}`}</Text><View style={s.sectionRule}/></View>}
   <View onLayout={event=>{if(target===v.verse_key&&!didRestore.current){didRestore.current=true;const y=event.nativeEvent.layout.y;setTimeout(()=>scrollRef.current?.scrollTo({y:Math.max(0,y-88),animated:false}),40)}}} style={[s.ayah,preferences.readingMode==='continuous'&&s.ayahContinuous,focusVerse===v.verse_key&&s.ayahSelected]}>
-  <View style={s.ayahTop}><Text style={s.ayahNo}>{v.verse_key}</Text><View style={s.ayahActions}><Pressable accessibilityLabel={`${T('Play verse')} ${v.verse_key}`} onPress={()=>{void playFromReader(full,v,rtl)}} style={s.verseAction}>{ico('play-circle',24,C.green)}</Pressable><Pressable accessibilityLabel={`${saved?T('Remove bookmark from'):T('Bookmark')} ${T('verse')} ${v.verse_key}`} onPress={()=>bookmark(v)} style={s.verseAction}>{ico(saved?'bookmark':'bookmark-outline',20,C.green)}</Pressable><Pressable accessibilityLabel={`${T('More actions for verse')} ${v.verse_key}`} onPress={()=>navigation.navigate('Ayah Actions',{verse:v,chapter:full})} style={s.verseAction}>{ico('ellipsis-horizontal-circle-outline',21,C.green)}</Pressable></View></View>
+  <View style={s.ayahTop}><Text style={s.ayahNo}>{v.verse_key}</Text><View style={s.ayahActions}>
+    <VerseActionButton label={`${T('Play verse')} ${v.verse_key}`} name="play-circle" size={24} onPress={()=>{void playFromReader(full,v,rtl)}}/>
+    <VerseActionButton label={`${T('Mark position at')} ${v.verse_key}`} name="locate-outline" size={20} onPress={()=>mark(v)} haptic="success"/>
+    <VerseActionButton label={`${saved?T('Remove bookmark from'):T('Bookmark')} ${T('verse')} ${v.verse_key}`} name={saved?'bookmark':'bookmark-outline'} size={20} active={saved} onPress={()=>bookmark(v)}/>
+    <VerseActionButton label={`${T('More actions for verse')} ${v.verse_key}`} name="ellipsis-horizontal-circle-outline" size={21} onPress={()=>navigation.navigate('Ayah Actions',{verse:v,chapter:full})}/>
+  </View></View>
   {(section!=='surah'||showArabic)&&(preferences.scriptEdition==='quran-tajweed'?<TajweedText text={v.text_uthmani} style={[s.ayahAr,...arStyle]}/>:<Text style={[s.ayahAr,...arStyle]}>{v.text_uthmani}</Text>)}
   {(section!=='surah'||showEnglish)&&v.translation?<Text style={[s.ayahTranslation,(!showArabic||section!=='surah')&&{borderTopWidth:0,marginTop:8,paddingTop:0}]}>{v.translation}</Text>:null}
   {section!=='surah'&&<Text style={s.dataMeta}>{v.surah_name}</Text>}
@@ -1611,11 +1722,98 @@ function ReaderScreen({route,navigation}:any){
  * the surah heading where one begins. It is a way of drawing the same text, so
  * it lives inside the reader rather than on a screen of its own.
  */
+/**
+ * A printed page of the Madinah mushaf, not a list of verses.
+ *
+ * The frame is the point: a double rule with a medallion at each corner, an
+ * illuminated band over the surah name, a small ornament every few verses the
+ * way a printed mushaf groups them, and the page number in a roundel at the
+ * foot. Nothing else is on the page - no translation, no verse numbers in the
+ * margin - because the page is meant to be read, not annotated.
+ */
+/**
+ * One of the actions under a verse.
+ *
+ * They all press the same way: a quick squeeze under the finger and a spring
+ * back with a little overshoot, so a press is felt as well as seen. The
+ * haptic comes from the wrapped Pressable, so the buzz and the squeeze are
+ * the same event rather than two things that might drift apart.
+ */
+function VerseActionButton({ label, name, onPress, active, size = 21, haptic: hapticKind = 'tap' }: {
+  label: string; name: string; onPress: () => void; active?: boolean; size?: number; haptic?: HapticKind;
+}) {
+  const scale = useRef(new Animated.Value(1)).current;
+  const glow = useRef(new Animated.Value(0)).current;
+  const pressIn = () => {
+    Animated.spring(scale, { toValue: .8, friction: 7, tension: 240, useNativeDriver: true }).start();
+  };
+  const pressOut = () => {
+    Animated.spring(scale, { toValue: 1, friction: 4, tension: 170, useNativeDriver: true }).start();
+    /* a short wash behind the glyph on the way out, so the press leaves a
+       trace even where nothing visibly changed */
+    Animated.sequence([
+      Animated.timing(glow, { toValue: 1, duration: 110, useNativeDriver: true }),
+      Animated.timing(glow, { toValue: 0, duration: 320, useNativeDriver: true }),
+    ]).start();
+  };
+  return <Pressable accessibilityRole="button" accessibilityLabel={label} hapticKind={hapticKind}
+    onPressIn={pressIn} onPressOut={pressOut} onPress={onPress} style={s.verseAction}>
+    <Animated.View style={[s.verseActionGlow, { opacity: glow }]} />
+    {!!active && <View style={s.verseActionOn} />}
+    <Animated.View style={{ transform: [{ scale }] }}>
+      {ico(name, size, C.green)}
+    </Animated.View>
+  </Pressable>;
+}
+
+function MushafOrnament({ color = C.gold }: { color?: string }) {
+  return <View style={s.mushafOrnamentRow}>
+    <View style={[s.mushafOrnamentRule, { backgroundColor: color, opacity: .45 }]} />
+    <Svg width={30} height={12} viewBox="0 0 30 12">
+      <Path d="M15 0 L23 6 L15 12 L7 6 Z" fill={color} opacity={.9} />
+      <Circle cx="2.5" cy="6" r="1.7" fill={color} opacity={.7} />
+      <Circle cx="27.5" cy="6" r="1.7" fill={color} opacity={.7} />
+    </Svg>
+    <View style={[s.mushafOrnamentRule, { backgroundColor: color, opacity: .45 }]} />
+  </View>;
+}
+
+/** The four corner medallions, drawn rather than imported so they match exactly. */
+function MushafCorners({ color = C.gold }: { color?: string }) {
+  const corners: any[] = [[s.mushafCornerTL], [s.mushafCornerTR], [s.mushafCornerBL], [s.mushafCornerBR]];
+  return <>{corners.map(([pos], i) => <View key={i} pointerEvents="none" style={[s.mushafCorner, pos]}>
+    <View style={[s.mushafCornerDiamond, { borderColor: color }]} />
+    <View style={[s.mushafCornerDot, { backgroundColor: color }]} />
+  </View>)}</>;
+}
+
 function MushafPageView({page,verses,error,cached,retry,preferences,rtl,T,input,setInput,goPage,navigation,arStyle}:any){
+  /* Grouped every five verses, as a printed page breaks its lines - except
+     where a new surah starts, which always gets its own band. */
+  const lineStyle={fontSize:preferences.fontSize,lineHeight:preferences.fontSize*preferences.lineHeight,fontFamily:quranFont(preferences.arabicFont)};
   return <>
   <View style={s.mushafNav}><Pressable accessibilityLabel={T('Previous Mushaf page')} disabled={page===1} onPress={()=>goPage(page-1)} style={[s.stepButton,page===1&&{opacity:.3}]}>{ico('arrow-back',20,C.green)}</Pressable><View style={s.pageJump}><Text style={s.dataMeta}>{T(cached?'OFFLINE PAGE':'MADINAH MUSHAF · 604 PAGES')}</Text><TextInput accessibilityLabel={T('Mushaf page number')} keyboardType="number-pad" value={input} onChangeText={setInput} onSubmitEditing={()=>goPage(Number(input))} style={s.pageInput}/></View><Pressable accessibilityLabel={T('Next Mushaf page')} disabled={page===604} onPress={()=>goPage(page+1)} style={[s.stepButton,page===604&&{opacity:.3}]}>{ico('arrow-forward',20,C.green)}</Pressable></View>
   <View style={s.pageProgress}><View style={[s.preloadFill,{width:`${page/604*100}%`} as any]}/></View>
-  {error?<ErrorState message={error} retry={retry}/>:!verses.length?<Spinner/>:<View style={s.mushafSheet}>{verses.map((v:any,i:number)=><View key={v.verse_key}>{i===0&&<Text style={s.mushafSurah}>{v.surah_name}</Text>}{i>0&&verses[i-1].surah_name!==v.surah_name&&<Text style={s.mushafSurah}>{v.surah_name}</Text>}<Text style={[s.mushafPageLine,{fontSize:preferences.fontSize,lineHeight:preferences.fontSize*preferences.lineHeight,fontFamily:quranFont(preferences.arabicFont)}]}>{v.text_uthmani} <Text style={s.verseMarker}>۝{v.verse_key.split(':')[1]}</Text></Text></View>)}</View>}
+  {error?<ErrorState message={error} retry={retry}/>:!verses.length?<Spinner/>:
+   <View style={s.mushafFrame}>
+     <MushafCorners/>
+     <View style={s.mushafFrameInner}>
+       {verses.map((v:any,i:number)=>{
+         const newSurah=i===0||verses[i-1].surah_name!==v.surah_name;
+         const grouped=!newSurah&&i>0&&i%5===0;
+         return <View key={v.verse_key}>
+           {newSurah&&<View style={s.mushafSurahBand}>
+             <View style={s.mushafBandRule}/>
+             <Text style={s.mushafSurahName}>{v.surah_name}</Text>
+             <View style={s.mushafBandRule}/>
+           </View>}
+           {grouped&&<MushafOrnament/>}
+           <Text style={[s.mushafPageLine,lineStyle]}>{v.text_uthmani} <Text style={s.verseMarker}>۝{v.verse_key.split(':')[1]}</Text></Text>
+         </View>;
+       })}
+       <View style={s.mushafPageNoRow}><View style={s.mushafPageNo}><Text style={s.mushafPageNoText}>{page}</Text></View></View>
+     </View>
+   </View>}
   <View style={s.mushafNav}><Pressable onPress={()=>goPage(page-1)} disabled={page===1} style={s.secondary}><Text style={s.secondaryText}>{T('Previous')}</Text></Pressable><Text style={s.meta}>{rtl?`الجزء ${verses[0]?.juz||'—'} · صفحة ${page}`:`Juz ${verses[0]?.juz||'—'} · Page ${page}`}</Text><Pressable onPress={()=>goPage(page+1)} disabled={page===604} style={s.secondary}><Text style={s.secondaryText}>{T('Next')}</Text></Pressable></View>
   </>;
 }
@@ -1642,7 +1840,7 @@ function needsPayload(Inner: any, title: string) {
 
 function NoteEditorScreen({route,navigation}:any){const verse:Verse=route.params.verse;const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);const chapter:Chapter=route.params.chapter;const[text,setText]=useState(route.params.verse.note||'');const save=async()=>{if(!text.trim()){if(route.params.verse.note){await deleteNote(verse.verse_key)}navigation.goBack();return}await saveNote({verseKey:verse.verse_key,surahId:chapter.id,surahName:chapter.name_simple,arabic:verse.text_uthmani,translation:verse.translation,note:text.trim(),savedAt:route.params.verse.savedAt||Date.now(),updatedAt:Date.now()});navigation.goBack()};return <Page><ToolBar title={`Note · ${verse.verse_key}`} navigation={navigation}/><View style={s.dataPage}><Text style={s.dataArabic}>{verse.text_uthmani}</Text><TextInput multiline autoFocus value={text} onChangeText={setText} placeholder={T('Write a private reflection…')} style={s.noteInput}/><View style={s.actionRow}><Pressable onPress={save} style={s.primary}><Text style={s.primaryText}>{T('Save note')}</Text></Pressable>{route.params.verse.note&&<Pressable onPress={async()=>{await deleteNote(verse.verse_key);navigation.goBack()}} style={s.dangerButton}><Text style={s.dangerText}>{T('Delete')}</Text></Pressable>}</View></View></Page>}
 
-function ReaderSettingsScreen({navigation}:any){const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);const{preferences,update}=useQuranPreferences();const scripts=[['quran-uthmani','Uthmani'],['quran-simple','Imla’i Simple'],['quran-indopak','IndoPak'],['quran-tajweed','Tajweed colour'],['quran-mushaf','Mushaf page']];return <Page><ToolBar title={T('Reading settings')} navigation={navigation}/><ScrollView contentContainerStyle={s.dataPage}><ToolGraphic tool="Reader Settings" size={72}/><Section title={T('Arabic script')}/><View style={s.choiceGrid}>{scripts.map(([id,name])=><ChoicePill key={id} label={T(name)} selected={preferences.scriptEdition===id} onPress={()=>update({scriptEdition:id,scriptName:name})}/>)}</View><Section title={T('Arabic font')} action={`${preferences.fontSize}px`}/><View style={s.choiceGrid}>{QURAN_FONTS.map(font=><ChoicePill key={font.id} label={T(font.label)} selected={preferences.arabicFont===font.id} onPress={()=>{void ensureQuranFont(font.id);update({arabicFont:font.id})}}/>)}</View><Text style={[s.meta,{marginTop: 8}]}>{T(QURAN_FONTS.find(font=>font.id===preferences.arabicFont)?.detail || '')}</Text><View style={s.fontPreview}><Text style={[s.fontPreviewText,{fontFamily:quranFont(preferences.arabicFont),fontSize:Math.min(preferences.fontSize,30)}]}>بِسْمِ ٱللَّٰهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ</Text></View><Section title={T('Reading mode')}/><View style={s.choiceGrid}><ChoicePill label={T('Ayah cards')} selected={preferences.readingMode==='cards'} onPress={()=>update({readingMode:'cards'})}/><ChoicePill label={T('Continuous')} selected={preferences.readingMode==='continuous'} onPress={()=>update({readingMode:'continuous'})}/></View><Section title={T('Arabic size')} action={`${preferences.fontSize}px`}/><View style={s.stepper}><Pressable onPress={()=>update({fontSize:Math.max(18,preferences.fontSize-2)})} style={s.stepButton}>{ico('remove',20,C.green)}</Pressable><Text style={[s.previewArabic,{fontSize:preferences.fontSize}]}>ٱلْقُرْآنُ</Text><Pressable onPress={()=>update({fontSize:Math.min(40,preferences.fontSize+2)})} style={s.stepButton}>{ico('add',20,C.green)}</Pressable></View><Section title={T('Line spacing')} action={preferences.lineHeight.toFixed(1)}/><View style={s.stepper}><Pressable onPress={()=>update({lineHeight:Math.max(1.4,+(preferences.lineHeight-.1).toFixed(1))})} style={s.stepButton}>{ico('remove',20,C.green)}</Pressable><Text style={s.settingName}>{preferences.lineHeight.toFixed(1)}×</Text><Pressable onPress={()=>update({lineHeight:Math.min(3,+(preferences.lineHeight+.1).toFixed(1))})} style={s.stepButton}>{ico('add',20,C.green)}</Pressable></View><Pressable onPress={()=>navigation.navigate('Translations')} style={s.referenceRow}><View><Text style={s.settingName}>{T('Translation')}</Text><Text style={s.meta}>{T(rtl ? preferences.translationLanguage : preferences.translationName)}</Text></View>{ico('arrow-forward',18,C.green)}</Pressable></ScrollView></Page>}
+function ReaderSettingsScreen({navigation}:any){const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);const{preferences,update}=useQuranPreferences();const scripts=[['quran-uthmani','Uthmani'],['quran-simple','Imla’i Simple'],['quran-indopak','IndoPak'],['quran-tajweed','Tajweed colour'],['quran-mushaf','Mushaf page']];return <Page><ToolBar title={T('Reading settings')} navigation={navigation}/><ScrollView contentContainerStyle={s.dataPage}><ToolGraphic tool="Reader Settings" size={72}/><Section title={T('Arabic script')}/><View style={s.choiceGrid}>{scripts.map(([id,name])=><ChoicePill key={id} label={T(name)} selected={preferences.scriptEdition===id} onPress={()=>update({scriptEdition:id,scriptName:name})}/>)}</View><Text style={[s.meta,{marginTop: 8}]}>{T('Mushaf page lays the Quran out as printed pages, fifteen lines to a page, with no translation or verse numbers. Choose it here and the reader becomes a mushaf.')}</Text><Section title={T('Arabic font')} action={`${preferences.fontSize}px`}/><View style={s.choiceGrid}>{QURAN_FONTS.map(font=><ChoicePill key={font.id} label={T(font.label)} selected={preferences.arabicFont===font.id} onPress={()=>{void ensureQuranFont(font.id);update({arabicFont:font.id})}}/>)}</View><Text style={[s.meta,{marginTop: 8}]}>{T(QURAN_FONTS.find(font=>font.id===preferences.arabicFont)?.detail || '')}</Text><View style={s.fontPreview}><Text style={[s.fontPreviewText,{fontFamily:quranFont(preferences.arabicFont),fontSize:Math.min(preferences.fontSize,30)}]}>بِسْمِ ٱللَّٰهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ</Text></View><Section title={T('Reading mode')}/><View style={s.choiceGrid}><ChoicePill label={T('Ayah cards')} selected={preferences.readingMode==='cards'} onPress={()=>update({readingMode:'cards'})}/><ChoicePill label={T('Continuous')} selected={preferences.readingMode==='continuous'} onPress={()=>update({readingMode:'continuous'})}/></View><Section title={T('Arabic size')} action={`${preferences.fontSize}px`}/><View style={s.stepper}><Pressable onPress={()=>update({fontSize:Math.max(18,preferences.fontSize-2)})} style={s.stepButton}>{ico('remove',20,C.green)}</Pressable><Text style={[s.previewArabic,{fontSize:preferences.fontSize}]}>ٱلْقُرْآنُ</Text><Pressable onPress={()=>update({fontSize:Math.min(40,preferences.fontSize+2)})} style={s.stepButton}>{ico('add',20,C.green)}</Pressable></View><Section title={T('Line spacing')} action={preferences.lineHeight.toFixed(1)}/><View style={s.stepper}><Pressable onPress={()=>update({lineHeight:Math.max(1.4,+(preferences.lineHeight-.1).toFixed(1))})} style={s.stepButton}>{ico('remove',20,C.green)}</Pressable><Text style={s.settingName}>{preferences.lineHeight.toFixed(1)}×</Text><Pressable onPress={()=>update({lineHeight:Math.min(3,+(preferences.lineHeight+.1).toFixed(1))})} style={s.stepButton}>{ico('add',20,C.green)}</Pressable></View><Pressable onPress={()=>navigation.navigate('Translations')} style={s.referenceRow}><View><Text style={s.settingName}>{T('Translation')}</Text><Text style={s.meta}>{T(rtl ? preferences.translationLanguage : preferences.translationName)}</Text></View>{ico('arrow-forward',18,C.green)}</Pressable></ScrollView></Page>}
 
 function AyahActionsScreen({route,navigation}:any){const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);const verse:Verse=route.params.verse;const chapter:Chapter=route.params.chapter;const{preferences}=useQuranPreferences();
 const[bookmarked,setBookmarked]=useState(false);
@@ -1742,10 +1940,10 @@ function TasbihScreen({ navigation }: any) {const{rtl}=useLanguage();const T=(te
       Animated.timing(press, { toValue: 0.94, duration: 70, useNativeDriver: true }),
       Animated.spring(press, { toValue: 1, friction: 4, tension: 220, useNativeDriver: true }),
     ]).start();
-    if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    haptic('tap');
     const completed = await tapTasbih();
     if (completed) {
-      if (Platform.OS !== 'web') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      if (Platform.OS !== 'web') haptic('success');
       setCelebrated(true);
     }
   };
@@ -2524,17 +2722,209 @@ function GuideReferences({ guide, navigation }: { guide: WorshipGuide; navigatio
 
 function GuideDetailInner({route,navigation}:any){const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);const guide:WorshipGuide=localizeGuide(route.params.guide,rtl);return <Page><ToolBar title={guide.title} navigation={navigation}/><ScrollView contentContainerStyle={s.dataPage}><ToolGraphic tool={guide.id} size={82}/><Text style={s.dataTitle}>{guide.subtitle}</Text>{guide.arabic&&<Text style={s.guideArabic}>{guide.arabic}</Text>}<Text style={s.intro}>{guide.introduction}</Text><Section title={T('Step by step')}/><View style={s.settings}>{guide.steps.map((step,i)=><View key={step} style={s.guideStep}><View style={s.stepNo}><Text style={s.stepNoText}>{i+1}</Text></View><Text style={s.guideStepText}>{step}</Text></View>)}</View>{guide.note&&<View style={s.guideNote}><Text style={s.sourceTitle}>{T('Important note')}</Text><Text style={s.sourceBody}>{guide.note}</Text></View>}<GuideReferences guide={guide} navigation={navigation}/></ScrollView></Page>}
 
-function HijriCalendarScreen({navigation}:any){const{rtl,language}=useLanguage();const T=(text:string)=>tx(rtl,text);const{location}=useAppLocation();const[days,setDays]=useState<CalendarDay[]>([]);const[error,setError]=useState('');const now=new Date();const load=async()=>{if(!location)return;setError('');setDays([]);try{setDays(await getGregorianCalendar(location.latitude,location.longitude,now.getMonth()+1,now.getFullYear()))}catch(e:any){setError(T(e.message))}};useEffect(()=>{load()},[location?.latitude,location?.longitude]);const first=days[0]?.gregorian.split('-').map(Number);const offset=first?new Date(first[2],first[1]-1,first[0]).getDay():0;return <Page><ToolBar title={T('Hijri calendar')} navigation={navigation}/><ScrollView contentContainerStyle={s.dataPage}>{!location?<LocationPrompt compact/>:<><View style={s.calendarIntro}><Text style={s.calendarMonth}>{now.toLocaleDateString(language==='ar'?'ar-u-nu-latn':'en',{month:'long',year:'numeric'})}</Text><Text style={s.calendarHijri}>{days.length?(rtl?`${days[0].hijriMonthAr||days[0].hijriMonth} – ${days[days.length-1].hijriMonthAr||days[days.length-1].hijriMonth} ${days[0].hijriYear} هـ`:`${days[0].hijriMonth} – ${days[days.length-1].hijriMonth} ${days[0].hijriYear} AH`):''}</Text></View>{error?<ErrorState message={error} retry={load}/>:!days.length?<Spinner/>:<><View style={s.weekHead}>{['ح','ن','ث','ر','خ','ج','س'].map((d,i)=><Text key={i} style={s.weekLabel}>{rtl?d:['S','M','T','W','T','F','S'][i]}</Text>)}</View><View style={s.calendarGrid}>{Array.from({length:offset}).map((_,i)=><View key={`e${i}`} style={s.calendarCell}/>) }{days.map((d,i)=><View key={d.gregorian} style={[s.calendarCell,d.gregorian.startsWith(String(now.getDate()).padStart(2,'0'))&&s.calendarToday]}><Text style={s.gregorianDay}>{i+1}</Text><Text style={s.hijriDay}>{d.hijriDay}</Text></View>)}</View><View style={s.calendarLegend}><View style={s.legendDot}/><Text style={s.sourceBody}>{T('Large number: Gregorian · Small number: Hijri')}</Text></View></>}</>}</ScrollView></Page>}
+/**
+ * The fixed dates of the Islamic year.
+ *
+ * These are the days that are agreed on and widely kept. Two of them carry a
+ * note because they are not: the Mawlid and the middle of Sha'ban are observed
+ * by many and disputed by others, and an app that states them as flat fact is
+ * taking a side it has no business taking. The note is shown with the date.
+ *
+ * Laylat al-Qadr is dated to the 27th because that is the night most commonly
+ * kept, but the reports place it in the odd nights of the last ten, so the note
+ * says so rather than pretending the 27th is certain.
+ *
+ * Sourced from AlAdhan's Hijri calendar for the conversion; the dates
+ * themselves are fixed in the Hijri year and do not move.
+ */
+type IslamicEvent = {
+  month: number; day: number; title: string; titleAr: string;
+  kind: 'fast' | 'eid' | 'night' | 'hajj' | 'newyear';
+  note?: string; noteAr?: string;
+};
+
+const EVENT_COLOURS: Record<IslamicEvent['kind'], string> = {
+  fast: C.success, eid: C.gold, night: C.gold, hajj: C.teal, newyear: C.green,
+};
+
+const ISLAMIC_EVENTS: IslamicEvent[] = [
+  { month: 1, day: 1, title: 'Islamic New Year', titleAr: 'رأس السنة الهجرية', kind: 'newyear' },
+  { month: 1, day: 10, title: 'Ashura', titleAr: 'عاشوراء', kind: 'fast',
+    note: 'A recommended fast. The Prophet ﷺ fasted it and said it expiates the year before it.',
+    noteAr: 'صيام مستحب، صامه النبي ﷺ وقال إنه يكفر السنة التي قبله.' },
+  { month: 3, day: 12, title: 'Mawlid al-Nabi', titleAr: 'المولد النبوي', kind: 'night',
+    note: 'Observed by many Muslims; others do not mark it. Neither position is stated here as the only one.',
+    noteAr: 'يحتفل به كثير من المسلمين، ولا يراه آخرون. لا يُقدَّم هنا رأي على آخر.' },
+  { month: 7, day: 27, title: 'Isra and Mi’raj', titleAr: 'الإسراء والمعراج', kind: 'night' },
+  { month: 8, day: 15, title: 'Middle of Sha’ban', titleAr: 'ليلة النصف من شعبان', kind: 'night',
+    note: 'Commonly observed, and disputed. The reports about it are not all sound.',
+    noteAr: 'معمول به عند كثيرين، وفيه خلاف، وليست كل الأحاديث فيه صحيحة.' },
+  { month: 9, day: 1, title: 'Ramadan begins', titleAr: 'بداية رمضان', kind: 'fast' },
+  { month: 9, day: 27, title: 'Laylat al-Qadr', titleAr: 'ليلة القدر', kind: 'night',
+    note: 'Kept on the 27th by most, but the reports place it in the odd nights of the last ten.',
+    noteAr: 'الأكثر على السابع والعشرين، لكن الأحاديث تجعلها في الوتر من العشر الأواخر.' },
+  { month: 10, day: 1, title: 'Eid al-Fitr', titleAr: 'عيد الفطر', kind: 'eid' },
+  { month: 12, day: 8, title: 'Hajj begins', titleAr: 'بداية الحج', kind: 'hajj' },
+  { month: 12, day: 9, title: 'Day of Arafah', titleAr: 'يوم عرفة', kind: 'fast',
+    note: 'A fast that expiates two years for those not on Hajj.',
+    noteAr: 'صيامه يكفر سنتين لغير الحاج.' },
+  { month: 12, day: 10, title: 'Eid al-Adha', titleAr: 'عيد الأضحى', kind: 'eid' },
+];
+
+/** Hijri months are 29 or 30 days; a 30th that does not exist simply has no event. */
+const eventOn = (month: number, day: number) => ISLAMIC_EVENTS.filter((e) => e.month === month && e.day === day);
+
+/** "in 12 days", "tomorrow", "today" - day counts, not precise times. */
+function daysUntilText(days: number, rtl: boolean): string {
+  if (days <= 0) return rtl ? 'اليوم' : 'today';
+  if (days === 1) return rtl ? 'غدًا' : 'tomorrow';
+  return rtl ? `بعد ${days} ${arNoun(days, 'يوم', 'يومين', 'أيام', 'يومًا')}` : `in ${days} days`;
+}
+
+function HijriCalendarScreen({navigation}:any){
+  const {rtl,language}=useLanguage(); const T=(text:string)=>tx(rtl,text);
+  const {location}=useAppLocation(); const {settings}=useWorshipSettings();
+  const [days,setDays]=useState<CalendarDay[]>([]);
+  const [span,setSpan]=useState<CalendarDay[]>([]);
+  const [error,setError]=useState('');
+  const [selected,setSelected]=useState<CalendarDay|null>(null);
+  const now=new Date();
+  const load=async()=>{
+    if(!location)return; setError(''); setDays([]);
+    try{
+      setDays(await getGregorianCalendar(location.latitude,location.longitude,now.getMonth()+1,now.getFullYear()));
+    }catch(e:any){setError(T(e.message))}
+  };
+  useEffect(()=>{load()},[location?.latitude,location?.longitude]);
+  /* A year ahead, so a fixed Hijri date can be turned into a day you can count
+     down to. Fixed Hijri dates slide against the Gregorian year, so there is no
+     way to work this out without reading the mapping. */
+  useEffect(()=>{
+    if(!location)return; let alive=true;
+    getCalendarSpan(location.latitude,location.longitude,12,{
+      method:Number(settings.calculationMethod)||8, school:settings.madhab, timeFormat:settings.timeFormat,
+    }).then((next:CalendarDay[])=>{if(alive)setSpan(next)}).catch(()=>{if(alive)setSpan([])});
+    return()=>{alive=false};
+  },[location?.latitude,location?.longitude,settings.calculationMethod,settings.madhab,settings.timeFormat]);
+
+  const first=days[0]?.gregorian.split('-').map(Number);
+  const offset=first?new Date(first[2],first[1]-1,first[0]).getDay():0;
+  const todayKey=`${String(now.getDate()).padStart(2,'0')}-${String(now.getMonth()+1).padStart(2,'0')}-${now.getFullYear()}`;
+  const gregorianDate=(d:CalendarDay)=>{const[dd,mm,yy]=d.gregorian.split('-').map(Number);return new Date(yy,mm-1,dd)};
+  const midnight=new Date(now.getFullYear(),now.getMonth(),now.getDate()).getTime();
+
+  /* What is coming, from the mapping rather than from arithmetic. */
+  const upcoming=useMemo(()=>{
+    if(!span.length)return [] as {event:IslamicEvent;date:Date;days:number;day:CalendarDay}[];
+    const seen=new Set<string>(); const out:{event:IslamicEvent;date:Date;days:number;day:CalendarDay}[]=[];
+    for(const day of span){
+      const hits=eventOn(day.hijriMonthNumber,day.hijriDay);
+      if(!hits.length)continue;
+      const date=gregorianDate(day);
+      const diff=Math.round((date.getTime()-midnight)/86400000);
+      if(diff<0)continue;
+      for(const event of hits){
+        const key=`${event.title}-${day.hijriYear}`;
+        if(seen.has(key))continue;
+        seen.add(key);
+        out.push({event,date,days:diff,day});
+      }
+    }
+    return out.sort((a,b)=>a.days-b.days).slice(0,6);
+  },[span]);
+
+  const selectedEvents=selected?eventOn(selected.hijriMonthNumber,selected.hijriDay):[];
+
+  return <Page><ToolBar title={T('Hijri calendar')} navigation={navigation}/>
+  <ScrollView contentContainerStyle={s.dataPage}>
+    {!location?<LocationPrompt compact/>:<>
+      <View style={s.calendarIntro}>
+        <Text style={s.calendarMonth}>{now.toLocaleDateString(language==='ar'?'ar-u-nu-latn':'en',{month:'long',year:'numeric'})}</Text>
+        <Text style={s.calendarHijri}>{days.length?(rtl?`${days[0].hijriMonthAr||days[0].hijriMonth} – ${days[days.length-1].hijriMonthAr||days[days.length-1].hijriMonth} ${days[0].hijriYear} هـ`:`${days[0].hijriMonth} – ${days[days.length-1].hijriMonth} ${days[0].hijriYear} AH`):''}</Text>
+      </View>
+
+      {!!upcoming.length&&<>
+        <Section title={T('Coming up')} action={T('Next 12 months')}/>
+        <View style={s.settings}>
+          {upcoming.map(({event,date,days:away,day})=>(
+            <Pressable key={`${event.title}-${day.hijriYear}`} accessibilityRole="button"
+              accessibilityLabel={`${T(event.title)}, ${daysUntilText(away,rtl)}`}
+              onPress={()=>setSelected(day)} style={s.eventRow}>
+              <View style={[s.eventDot,{ backgroundColor: EVENT_COLOURS[event.kind] }]}/>
+              <View style={{flex:1}}>
+                <Text style={s.settingName}>{rtl?event.titleAr:T(event.title)}</Text>
+                <Text style={s.meta} numberOfLines={1}>
+                  {rtl
+                    ? `${day.hijriDay} ${day.hijriMonthAr||day.hijriMonth} ${day.hijriYear} هـ · ${date.toLocaleDateString('ar-u-nu-latn',{day:'numeric',month:'short'})}`
+                    : `${day.hijriDay} ${day.hijriMonth} ${day.hijriYear} AH · ${date.toLocaleDateString('en',{day:'numeric',month:'short'})}`}
+                </Text>
+              </View>
+              <View style={s.eventCountdown}><Text style={s.eventCountdownText}>{daysUntilText(away,rtl)}</Text></View>
+            </Pressable>
+          ))}
+        </View>
+      </>}
+
+      {error?<ErrorState message={error} retry={load}/>:!days.length?<Spinner/>:<>
+        <Section title={T('This month')}/>
+        <View style={s.weekHead}>{['ح','ن','ث','ر','خ','ج','س'].map((d,i)=><Text key={i} style={s.weekLabel}>{rtl?d:['S','M','T','W','T','F','S'][i]}</Text>)}</View>
+        <View style={s.calendarGrid}>
+          {Array.from({length:offset}).map((_,i)=><View key={`e${i}`} style={s.calendarCell}/>)}
+          {days.map((d,i)=>{
+            const hits=eventOn(d.hijriMonthNumber,d.hijriDay);
+            const isToday=d.gregorian===todayKey;
+            const isPicked=selected?.gregorian===d.gregorian;
+            return <Pressable key={d.gregorian} accessibilityRole="button"
+              accessibilityLabel={`${d.hijriDay} ${d.hijriMonth}${hits.length?', '+hits.map(h=>T(h.title)).join(', '):''}`}
+              onPress={()=>setSelected(d)} style={[s.calendarCell,isToday&&s.calendarToday,isPicked&&s.calendarPicked]}>
+              <Text style={s.gregorianDay}>{i+1}</Text>
+              <Text style={s.hijriDay}>{d.hijriDay}</Text>
+              {!!hits.length&&<View style={[s.calendarEvent,{ backgroundColor: EVENT_COLOURS[hits[0].kind] }]}/>}
+            </Pressable>;
+          })}
+        </View>
+        <View style={s.calendarLegend}>
+          <View style={s.legendDot}/><Text style={s.sourceBody}>{T('Large number: Gregorian · Small number: Hijri')}</Text>
+        </View>
+        <View style={s.calendarLegend}>
+          <View style={[s.legendDot,{backgroundColor:C.gold}]}/><Text style={s.sourceBody}>{T('A gold mark means a date kept in the Islamic year')}</Text>
+        </View>
+      </>}
+
+      {!!selected&&<>
+        <Section title={T('Selected day')}/>
+        <View style={s.dayDetail}>
+          <Text style={s.dayDetailHijri}>{rtl
+            ? `${selected.hijriDay} ${selected.hijriMonthAr||selected.hijriMonth} ${selected.hijriYear} هـ`
+            : `${selected.hijriDay} ${selected.hijriMonth} ${selected.hijriYear} AH`}</Text>
+          <Text style={s.meta}>
+            {rtl
+              ? `${selected.weekdayAr||selected.weekday} · ${gregorianDate(selected).toLocaleDateString('ar-u-nu-latn',{day:'numeric',month:'long',year:'numeric'})}`
+              : `${selected.weekday} · ${gregorianDate(selected).toLocaleDateString('en',{day:'numeric',month:'long',year:'numeric'})}`}
+          </Text>
+          {!!selectedEvents.length&&<View style={{marginTop:12,gap:10}}>
+            {selectedEvents.map(event=>(
+              <View key={event.title} style={s.dayDetailEvent}>
+                <Text style={s.dayDetailEventTitle}>{rtl?event.titleAr:T(event.title)}</Text>
+                {!!event.note&&<Text style={s.sourceBody}>{T(rtl&&event.noteAr?event.noteAr:event.note!)}</Text>}
+              </View>
+            ))}
+          </View>}
+          <View style={s.dayDetailPrayers}>
+            {selected.prayers.map(p=>(
+              <View key={p.name} style={s.dayDetailPrayer}>
+                <Text style={s.dayDetailPrayerName}>{prayerName(rtl,p.name)}</Text>
+                <Text style={s.dayDetailPrayerTime}>{clockTime(rtl,p.time)}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      </>}
+    </>}
+  </ScrollView></Page>
+}
 function RamadanScreen({navigation}:any){const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);const{location}=useAppLocation();const[days,setDays]=useState<CalendarDay[]>([]);const[year,setYear]=useState<number|null>(null);const[error,setError]=useState('');const load=async()=>{if(!location)return;setError('');setDays([]);try{const snap=await getPrayerSnapshot(location.latitude,location.longitude);const target=snap.hijriMonth>9?snap.hijriYear+1:snap.hijriYear;setYear(target);setDays(await getRamadanCalendar(location.latitude,location.longitude,target));}catch(e:any){setError(T(e.message))}};useEffect(()=>{load()},[location?.latitude,location?.longitude]);return <Page><ToolBar title={T('Ramadan')} navigation={navigation}/><ScrollView contentContainerStyle={s.dataPage}>{!location?<LocationPrompt compact/>:<><LinearGradient colors={[C.heroA,C.green]} style={s.ramadanHero}><Text style={s.ramadanArabic}>رَمَضَان</Text><Text style={s.ramadanTitle}>{T('Ramadan')} {year||''} {T('AH')}</Text><Text style={s.ramadanSub}>{T('A live 30-day Suhoor and Iftar timetable for')} {T(location.label)}.</Text></LinearGradient><Pressable onPress={()=>navigation.navigate('Tools',{screen:'Fasting',initial:false})} style={[s.sourceCard,{marginTop: 12}]}>{ico('create-outline',20,C.green)}<View style={{flex:1}}><Text style={s.sourceTitle}>{T('Fasting record')}</Text><Text style={s.sourceBody}>{T('Mark each day and keep your make-up ledger')}</Text></View>{ico('arrow-forward',18,C.green)}</Pressable>{error?<ErrorState message={error} retry={load}/>:!days.length?<Spinner/>:<><Section title={T('Fasting timetable')} action={rtl?`${days.length} يومًا`:`${days.length} days`}/><View style={s.ramadanList}>{days.map(d=>{const fajr=d.prayers.find(p=>p.name==='Fajr');const maghrib=d.prayers.find(p=>p.name==='Maghrib');return <View key={d.gregorian} style={s.ramadanRow}><View style={s.ramadanDay}><Text style={s.ramadanDayNo}>{d.hijriDay}</Text><Text style={s.ramadanDayLabel}>{T('RAM')}</Text></View><View style={{flex:1}}><Text style={s.ramadanDate}>{rtl ? d.weekdayAr || d.weekday : d.weekday} · {d.gregorian}</Text><Text style={s.meta}>{T(location.label)}</Text></View><View style={s.fastTime}><Text style={s.fastLabel}>{T('SUHOOR')}</Text><Text style={s.fastValue}>{clockTime(rtl, fajr?.time || '')}</Text></View><View style={s.fastTime}><Text style={s.fastLabel}>{T('IFTAR')}</Text><Text style={s.fastValue}>{maghrib?.time}</Text></View></View>})}</View></>}</>}</ScrollView></Page>}
 /* ==================== Phase 4 · women's area ==================== */
-function haptic(kind: 'tap' | 'error' = 'tap') {
-  try {
-    if (kind === 'error') void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-    else void Haptics.selectionAsync();
-  } catch (error) {
-    /* haptics are unavailable on some devices and on the web */
-  }
-}
 
 // `title` is what is shown, so it is translated; `label` is what a screen reader
 // and the QA scripts read, and it stays in English in both languages.
@@ -3388,6 +3778,32 @@ function SettingsScreen({navigation}:any){
         </View>
       </View>
 
+      <Section title={T('Touch')} />
+      <View style={s.preferencePanel}>
+        <PanelHead glyph="pulse-outline" title={T('Haptics')} note={T('Whether the app is felt as well as seen')} />
+        <View style={s.setting}>
+          <View style={{ flex: 1 }}>
+            <Text style={s.settingName}>{T('Vibrate on press')}</Text>
+            <Text style={s.meta}>{isHapticsSupported()
+              ? T('Every tap, toggle and counter answers with a small vibration')
+              : T('This device cannot vibrate, so this switch changes nothing')}</Text>
+          </View>
+          <View style={{ direction: 'ltr' } as any}>
+            <Switch
+              accessibilityLabel={T('Vibrate on press')}
+              value={settings.hapticsEnabled !== false}
+              trackColor={{ true: C.green }}
+              onValueChange={(value) => {
+                /* turning it on buzzes once, so the switch explains itself
+                   in the same language it is describing */
+                if (value) haptic('toggle');
+                void update({ hapticsEnabled: value });
+              }}
+            />
+          </View>
+        </View>
+      </View>
+
       <Section title={rtl ? 'التفضيلات' : 'Preferences'} />
       <View style={s.settings}>
         <View style={s.setting}>
@@ -3723,49 +4139,93 @@ function AudioPlayerScreen({ navigation }: any) {
   const audio = useAudio();
   const { rtl } = useLanguage();
   const T = (text: string) => tx(rtl, text);
+  const { preferences, update } = useQuranPreferences();
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [name, setName] = useState('');
+  const [editions, setEditions] = useState<QuranEdition[]>([]);
+  const [pickingTranslation, setPickingTranslation] = useState(false);
   useEffect(() => { void loadPlaylists().then(setPlaylists); }, []);
+  useEffect(() => { getQuranEditions().then(setEditions).catch(() => undefined); }, []);
   const track = audio.track;
+  /* The player carries the translation switch because that is where you notice
+     you want a different one - mid-verse, when a wording does not land. It is
+     the same preference the reader uses, so changing it here changes it there
+     rather than being a second, separate setting. */
+  const shownEditions = editions.filter((e) => e.language === 'en').slice(0, 6);
+
   if (!track) return <Page><ToolBar title={T('Audio player')} navigation={navigation} /><View style={s.dataPage}>
     <ToolGraphic tool="Recitations" size={78} />
     <Text style={s.dataTitle}>{T('Nothing is playing')}</Text>
     <Text style={s.intro}>{T('Choose a reciter and a Surah from the audio center to start listening.')}</Text>
     <Pressable onPress={() => navigation.goBack()} style={s.primary}><Text style={s.primaryText}>{T('Open audio center')}</Text></Pressable>
   </View></Page>;
-  const upcoming = audio.queue.slice(audio.index + 1, audio.index + 6);
+
   return <Page><ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
     <ToolBar title={T('Now playing')} navigation={navigation} />
-    <View style={s.playerArt}>
-      <ToolGraphic tool="Recitations" size={92} />
+
+    <LinearGradient colors={[C.heroA, C.green]} style={s.playerHero}>
+      <PlayerAura />
+      <View style={s.playerArtRing}><ToolGraphic tool="Recitations" size={98} /></View>
       <Text style={s.playerTitle}>{track.title}</Text>
       <Text style={s.playerPerformer}>{track.performer}</Text>
       <View style={s.trackBadge}><Text style={s.trackBadgeText}>{track.kind === 'translation' ? 'TRANSLATION' : 'ARABIC RECITATION'}</Text></View>
-    </View>
+    </LinearGradient>
+
     {!!track.text && <Text style={s.playerArabic}>{track.text}</Text>}
+
+    <Pressable accessibilityRole="button" accessibilityState={{ expanded: pickingTranslation }}
+      accessibilityLabel={`${T('Translation')}: ${preferences.translationName}`}
+      onPress={() => setPickingTranslation((v) => !v)} style={s.playerTranslationRow}>
+      {ico('language-outline', 20, C.green)}
+      <View style={{ flex: 1 }}>
+        <Text style={s.settingName}>{T('Translation')}</Text>
+        <Text style={s.meta} numberOfLines={1}>{preferences.translationName}</Text>
+      </View>
+      {ico(pickingTranslation ? 'chevron-up' : 'chevron-down', 18, C.green)}
+    </Pressable>
+    {!!pickingTranslation && <View style={s.playerTranslationList}>
+      {shownEditions.map((e) => <Pressable key={e.identifier}
+        accessibilityRole="radio" accessibilityState={{ checked: preferences.translationEdition === e.identifier }}
+        onPress={() => { void update({ translationEdition: e.identifier, translationName: e.englishName, translationLanguage: 'English' }); setPickingTranslation(false); }}
+        style={[s.playerTranslationOption, preferences.translationEdition === e.identifier && s.playerTranslationOptionOn]}>
+        <Text style={[s.settingName, { flex: 1 }]} numberOfLines={1}>{e.englishName}</Text>
+        {preferences.translationEdition === e.identifier && ico('checkmark-circle', 18, C.green)}
+      </Pressable>)}
+      <Pressable accessibilityRole="button" accessibilityLabel={T('All translations')}
+        onPress={() => navigation.navigate('Translations')} style={s.playerTranslationOption}>
+        <Text style={[s.settingName, { flex: 1, color: C.green }]}>{T('All translations')}</Text>
+        {ico('arrow-forward', 18, C.green)}
+      </Pressable>
+    </View>}
+
     <View style={s.audioTimes}>
       <Text style={s.meta}>{formatClock(audio.position)}</Text>
       <Text style={s.meta}>{audio.buffering ? 'Buffering…' : formatClock(audio.duration)}</Text>
     </View>
     <SeekBar position={audio.position} duration={audio.duration} onSeek={(value) => { void seekTo(value); }} />
+
     <View style={s.audioControls}>
       <Pressable accessibilityLabel={T('Previous verse')} onPress={() => { void previousTrack(); }} style={s.audioControlBtn}>{ico('play-skip-back', 20, C.green)}</Pressable>
-      <Pressable accessibilityLabel={audio.playing ? 'Pause' : 'Play'} onPress={() => { void togglePlayback(); }} style={s.audioControlMain}>{audio.playing ? ico('pause', 26, C.white) : ico('play', 26, C.white)}</Pressable>
+      <Pressable accessibilityLabel={audio.playing ? 'Pause' : 'Play'} onPress={() => { void togglePlayback(); }} style={s.audioControlMain}>{audio.playing ? ico('pause', 28, C.white) : ico('play', 28, C.white)}</Pressable>
       <Pressable accessibilityLabel={T('Next verse')} onPress={() => { void nextTrack(); }} style={s.audioControlBtn}>{ico('play-skip-forward', 20, C.green)}</Pressable>
       <Pressable accessibilityLabel={`${T('Repeat mode')}: ${T(audio.repeat === 'one' ? 'Repeat one' : audio.repeat === 'all' ? 'Repeat all' : 'Repeat off')}`} onPress={() => setRepeatMode(audio.repeat === 'none' ? 'all' : audio.repeat === 'all' ? 'one' : 'none')} style={s.audioControlBtn}>{ico('repeat', 19, audio.repeat === 'none' ? C.muted : C.green)}<Text style={s.rateText}>{audio.repeat === 'one' ? '1' : audio.repeat === 'all' ? '∞' : '—'}</Text></Pressable>
     </View>
+
     <View style={s.row}>
       <Pressable accessibilityLabel={T('Stop playback')} onPress={() => { void stopPlayback(); }} style={s.secondary}>{ico('stop', 17, C.green)}<Text style={s.secondaryText}>{T('Stop')}</Text></Pressable>
       <Pressable accessibilityLabel={T('Clear the queue')} onPress={() => { void clearQueue(); }} style={s.secondary}>{ico('trash', 17, C.green)}<Text style={s.secondaryText}>{T('Clear queue')}</Text></Pressable>
     </View>
+
     <Text style={s.preferenceLabel}>{T('SPEED')}</Text>
     <View style={s.choiceRow}>{AUDIO_RATES.map((rate) => <ChoicePill key={rate} label={`${rate}×`} selected={audio.rate === rate} onPress={() => { void setPlaybackRate(rate); }} />)}</View>
+
     <Section title={`Queue · ${audio.queue.length} tracks`} />
     {audio.queue.map((item, index) => <Pressable key={`${item.id}-${index}`} onPress={() => { void selectQueueItem(index); }} style={[s.queueRow, index === audio.index && s.queueRowActive]}>
       <Text style={s.queueIndex}>{index + 1}</Text>
       <View style={{ flex: 1 }}><Text numberOfLines={1} style={s.settingName}>{item.title}</Text><Text style={s.meta}>{item.performer}</Text></View>
       <Pressable accessibilityLabel={`${T('Remove from the queue')} ${item.title}`} onPress={() => removeFromQueue(index)} style={s.audioRowAction}>{ico('close', 16, C.muted)}</Pressable>
     </Pressable>)}
+
     <View style={s.formCard}>
       <Text style={s.preferenceLabel}>{T('SAVE QUEUE AS PLAYLIST')}</Text>
       <View style={s.fieldRow}>
@@ -3774,9 +4234,24 @@ function AudioPlayerScreen({ navigation }: any) {
       </View>
       {!!playlists.length && <Text style={s.meta}>{rtl?`${playlists.length} ${arNoun(playlists.length, 'قائمة', 'قائمتان', 'قوائم', 'قائمة')} محفوظة على هذا الجهاز.`:`${playlists.length} playlist${playlists.length > 1 ? 's' : ''} stored on this device.`}</Text>}
     </View>
+
     <View style={s.sourceCard}>{ico('server', 21, C.green)}<View style={{ flex: 1 }}><Text style={s.sourceTitle}>{T('Now playing')}</Text><Text style={s.sourceBody}>{track.performer}</Text></View></View>
     <View style={{ height: 40 }} />
   </ScrollView></Page>;
+}
+
+/** A slow glow behind the artwork, so the hero is not a flat rectangle. */
+function PlayerAura() {
+  const spin = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const loop = Animated.loop(Animated.timing(spin, { toValue: 1, duration: 14000, useNativeDriver: true }));
+    loop.start();
+    return () => loop.stop();
+  }, [spin]);
+  const rotate = spin.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
+  return <Animated.View pointerEvents="none" style={[s.playerAura, { transform: [{ rotate }] }]}>
+    <LinearGradient colors={['rgba(255,255,255,.20)', 'rgba(255,255,255,0)']} style={StyleSheet.absoluteFill} />
+  </Animated.View>;
 }
 
 const TAB_ITEMS = [
@@ -4237,6 +4712,8 @@ adhkarDuaCard:{marginHorizontal:8},
 adhkarCount:{minWidth:38,paddingVertical:4,paddingHorizontal:9,borderRadius:11,backgroundColor:C.soft,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line},
 adhkarCountText:{color:C.muted,fontFamily:'DMSans_600SemiBold',fontSize:11},
 adhkarDots:{flexDirection:'row',justifyContent:'center',alignItems:'center',gap:6,marginTop:12,marginBottom:2},
+adhkarMore:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:4,alignSelf:'center',marginTop:10,paddingVertical:5,paddingHorizontal:12,borderRadius:13,backgroundColor:C.mint,borderWidth:1,borderColor:'#DDD6FF'},
+adhkarMoreText:{color:C.green,fontFamily:'DMSans_600SemiBold',fontSize:11},
 adhkarDot:{width:6,height:6,borderRadius:3,backgroundColor:C.line},
 adhkarDotOn:{width:18,backgroundColor:C.green},
 adhkarDuaPad:{padding:16},
@@ -4261,7 +4738,7 @@ weekBody:{padding:16,flexDirection:'row',alignItems:'center',justifyContent:'spa
 readSurface:{borderColor:'transparent'},
 readPad:{padding:20,overflow:'hidden',borderRadius:28},readKicker:{color:'#CCEBDE',fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.5},readArabic:{color:C.onAccent,fontSize:29,marginTop:8},readTitle:{color:C.onAccent,fontSize:20,fontFamily:'DMSans_700Bold'},readMeta:{color:'#CAE4DB',fontSize:10,marginTop:4},whiteButton:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:8,minHeight:44,alignSelf:'flex-start',backgroundColor:C.white,paddingHorizontal:12,paddingVertical:8,borderRadius:16,marginTop:12},whiteButtonText:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold'},twoCol:{flexDirection:'row',gap:12,marginTop:12},liveBadge:{flexDirection:'row',alignItems:'center',gap:4,alignSelf:'flex-start',backgroundColor:'rgba(73,58,146,.90)',paddingHorizontal:8,paddingVertical:4,borderRadius:8} as any,liveDot:{width:5,height:5,borderRadius:4,backgroundColor:'#FF9A72'},liveText:{color:C.onAccent,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:.5},hadithSurface:{padding:16},quote:{position:'absolute',right:18,top:2,color:'#E2EEE8',fontSize:72,fontFamily:'DMSans_700Bold'},hadithText:{color:C.ink,fontFamily:'DMSans_400Regular',fontSize:14,lineHeight:22,marginTop:16},hadithFoot:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginTop:16,paddingTop:12,borderTopWidth:1,borderColor:C.line},meta:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:11,lineHeight:16},
  dayStripScroll:{paddingHorizontal:20,marginHorizontal:-20},dayStrip:{flexDirection:'row',gap:4,backgroundColor:C.card,padding:8,borderRadius:24,borderWidth:1,borderColor:C.line,...soft},dayChosen:{color:C.muted,fontSize:11,fontFamily:'DMSans_600SemiBold',textAlign:'center',marginTop:10},dayDot:{width:4,height:4,borderRadius:2,backgroundColor:C.line,marginTop:3},day:{width:47,alignItems:'center',paddingVertical:8,borderRadius:16},dayActive:{backgroundColor:C.accent},dayName:{color:C.muted,fontSize:10,fontFamily:'DMSans_600SemiBold'},dayNum:{color:C.ink,fontSize:14,fontFamily:'DMSans_700Bold',marginTop:4},dayText:{color:C.onAccent},nextCard:{height:190,borderRadius:28,padding:20,marginTop:16,overflow:'hidden',...shadow},nextCardLabel:{color:'#E1DCF7',fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.5,marginTop:20},nextCardName:{color:C.onAccent,fontSize:29,fontFamily:'DMSans_700Bold',marginTop:4},nextCardTime:{color:C.onAccent,fontSize:17,fontFamily:'DMSans_600SemiBold',marginBottom:12},moonOrb:{position:'absolute',right:24,top:43,width:96,height:96,borderRadius:48,backgroundColor:'rgba(255,255,255,.13)',alignItems:'center',justifyContent:'center'},prayerList:{backgroundColor:C.card,borderRadius:24,overflow:'hidden',borderWidth:1,borderColor:C.line,...surface},prayerRow:{flexDirection:'row',alignItems:'center',gap:12,paddingHorizontal:12,minHeight:68,borderBottomWidth:1,borderColor:C.line},prayerRowLive:{backgroundColor:'#F2EFFF'},prayerSymbol:{width:41,height:41,borderRadius:16,backgroundColor:C.mint,borderWidth:1,borderColor:'#DDD6FF',alignItems:'center',justifyContent:'center'},prayerName:{color:C.ink,fontSize:13,fontFamily:'DMSans_700Bold'},prayerValue:{color:C.ink,fontSize:13,fontFamily:'DMSans_700Bold',marginRight:8},prayerProgress:{flexDirection:'row',alignItems:'center',gap:12,backgroundColor:C.card,borderRadius:20,padding:16,marginTop:12,borderWidth:1,borderColor:C.line,...surface},progressTrack:{width:86,height:7,borderRadius:4,backgroundColor:'#EAE7F1',overflow:'hidden'},progressFill:{height:'100%',borderRadius:4,backgroundColor:C.green},progressCount:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:12},prayerSymbolDone:{backgroundColor:C.accent,borderColor:C.green},sourceCard:{flexDirection:'row',gap:12,alignItems:'center',backgroundColor:C.mint,borderRadius:20,padding:16,marginTop:16},sourceTitle:{color:C.ink,fontSize:13,fontFamily:'DMSans_700Bold'},sourceBody:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:11,marginTop:2},
- search:{height:48,flexDirection:'row',alignItems:'center',gap:8,backgroundColor:C.white,borderRadius:16,paddingHorizontal:16,borderWidth:1,borderColor:C.line,marginBottom:12,...soft},searchInput:{flex:1,color:C.ink,fontSize:12,outlineStyle:'none'} as any,quranHero:{height:225,borderRadius:28,overflow:'hidden',padding:20,...shadow},quranArabic:{color:C.onAccent,fontSize:28,marginTop:16},quranHeroTitle:{color:C.onAccent,fontSize:21,fontFamily:'DMSans_700Bold'},quranHeroMeta:{color:'#D8D4EA',fontFamily:'DMSans_400Regular',fontSize:11,marginTop:4},continueBar:{backgroundColor:C.card,borderRadius:20,padding:12,flexDirection:'row',alignItems:'center',gap:12,marginBottom:12,borderWidth:1,borderColor:C.line,...surface},quranHeroWide:{height:245},quranActionGrid:{flexDirection:'row',flexWrap:'wrap',gap:12},quranPrimaryWrap:{flexGrow:1,flexBasis:'40%',minWidth:280},quranPrimaryAction:{height:142,borderRadius:24,padding:16,flexDirection:'row',alignItems:'center',overflow:'hidden',...soft},quranPrimaryTitle:{color:C.onAccent,fontFamily:'Newsreader_600SemiBold',fontSize:24,marginTop:8},quranPrimaryBody:{color:'#D9D5EC',fontFamily:'DMSans_400Regular',fontSize:10,lineHeight:15,marginTop:4},quranNavWrap:{flexGrow:1,flexBasis:'14%',minWidth:98},quranNavCard:{height:142,backgroundColor:C.card,borderRadius:20,padding:12,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,...surface},quranNavTitle:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:11,marginTop:4},quranNavCaption:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:10,lineHeight:14,marginTop:2,textAlign:'center'},quranStudyCard:{height:190,backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},quranStudyTop:{flexDirection:'row',alignItems:'flex-start',justifyContent:'space-between'},studyNumber:{width:34,height:34,borderRadius:17,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},quranStudyTitle:{color:C.ink,fontFamily:'Newsreader_600SemiBold',fontSize:20,marginTop:8},quranStudyCaption:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:11,lineHeight:16,marginTop:4},quranPreferenceRow:{flexDirection:'row',flexWrap:'wrap',gap:12},qTileGrid:{flexDirection:'row',flexWrap:'wrap',gap:8},qTile:{alignItems:'center',justifyContent:'center',backgroundColor:C.card,borderRadius:16,borderWidth:1,borderColor:C.line,paddingVertical:12,paddingHorizontal:4,...soft},qTileLabel:{marginTop:6,fontSize:11,fontFamily:'DMSans_600SemiBold',color:C.ink,textAlign:'center',lineHeight:14},qStatRow:{flexDirection:'row',gap:8},qStat:{flex:1,alignItems:'center',backgroundColor:C.card,borderRadius:16,borderWidth:1,borderColor:C.line,paddingVertical:12,paddingHorizontal:4,...soft},qStatIcon:{width:32,height:32,borderRadius:16,backgroundColor:C.mint,borderWidth:1,borderColor:'#DDD6FF',alignItems:'center',justifyContent:'center',marginBottom:7},qStatValue:{fontSize:16,fontFamily:'DMSans_700Bold',color:C.ink,marginTop:1},qStatLabel:{marginTop:2,fontSize:10,color:C.muted,fontFamily:'DMSans_600SemiBold'},quranPreferenceCard:{flex:1,minWidth:260,minHeight:76,backgroundColor:C.card,borderRadius:20,padding:12,flexDirection:'row',alignItems:'center',gap:12,borderWidth:1,borderColor:C.line,...surface},quranPersonalGrid:{flexDirection:'row',flexWrap:'wrap',gap:8},quranPersonalWrap:{flexGrow:1,flexBasis:'18%',minWidth:130},quranPersonalCard:{minHeight:132,backgroundColor:C.card,borderRadius:20,padding:12,borderWidth:1,borderColor:C.line,...surface},quranPersonalHead:{flexDirection:'row',alignItems:'flex-start',justifyContent:'space-between'},quranPersonalValue:{color:C.green,fontFamily:'Newsreader_600SemiBold',fontSize:22},quranPersonalTitle:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:11,marginTop:8},quranPersonalCaption:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:10,marginTop:4},recentChip:{minWidth:128,backgroundColor:C.white,borderRadius:16,padding:12,borderWidth:1,borderColor:C.line},surahList:{flexDirection:'row',flexWrap:'wrap',gap:CARD_GAP},surahMore:{width:'100%',alignItems:'center',justifyContent:'center',paddingVertical:16,borderRadius:RADIUS.lg,borderWidth:1,borderColor:C.line,borderStyle:'dashed'},surahMoreText:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:13},surahChips:{flexDirection:'row',flexWrap:'wrap',gap:5,marginTop:7},
+ search:{height:48,flexDirection:'row',alignItems:'center',gap:8,backgroundColor:C.white,borderRadius:16,paddingHorizontal:16,borderWidth:1,borderColor:C.line,marginBottom:12,...soft},searchInput:{flex:1,color:C.ink,fontSize:12,outlineStyle:'none'} as any,quranHero:{height:225,borderRadius:28,overflow:'hidden',padding:20,...shadow},quranArabic:{color:C.onAccent,fontSize:28,marginTop:16},quranHeroTitle:{color:C.onAccent,fontSize:21,fontFamily:'DMSans_700Bold'},quranHeroMeta:{color:'#D8D4EA',fontFamily:'DMSans_400Regular',fontSize:11,marginTop:4},continueBar:{backgroundColor:C.card,borderRadius:20,padding:12,flexDirection:'row',alignItems:'center',gap:12,marginBottom:12,borderWidth:1,borderColor:C.line,...surface},quranHeroWide:{height:245},quranActionGrid:{flexDirection:'row',flexWrap:'wrap',gap:12},quranPrimaryWrap:{flexGrow:1,flexBasis:'40%',minWidth:280},quranPrimaryAction:{height:142,borderRadius:24,padding:16,flexDirection:'row',alignItems:'center',overflow:'hidden',...soft},quranPrimaryTitle:{color:C.onAccent,fontFamily:'Newsreader_600SemiBold',fontSize:24,marginTop:8},quranPrimaryBody:{color:'#D9D5EC',fontFamily:'DMSans_400Regular',fontSize:10,lineHeight:15,marginTop:4},quranNavWrap:{flexGrow:1,flexBasis:'14%',minWidth:98},quranNavCard:{height:142,backgroundColor:C.card,borderRadius:20,padding:12,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,...surface},quranNavTitle:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:11,marginTop:4},quranNavCaption:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:10,lineHeight:14,marginTop:2,textAlign:'center'},quranStudyCard:{height:190,backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},quranStudyTop:{flexDirection:'row',alignItems:'flex-start',justifyContent:'space-between'},studyNumber:{width:34,height:34,borderRadius:17,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},quranStudyTitle:{color:C.ink,fontFamily:'Newsreader_600SemiBold',fontSize:20,marginTop:8},quranStudyCaption:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:11,lineHeight:16,marginTop:4},quranPreferenceRow:{flexDirection:'row',flexWrap:'wrap',gap:12},qTileGrid:{flexDirection:'row',flexWrap:'wrap',gap:8},qTile:{alignItems:'center',justifyContent:'center',backgroundColor:C.card,borderRadius:16,borderWidth:1,borderColor:C.line,paddingVertical:12,paddingHorizontal:4,...soft},qTileLabel:{marginTop:6,fontSize:11,fontFamily:'DMSans_600SemiBold',color:C.ink,textAlign:'center',lineHeight:14},qStatRow:{flexDirection:'row',gap:8},qStat:{flex:1,alignItems:'center',backgroundColor:C.card,borderRadius:16,borderWidth:1,borderColor:C.line,paddingVertical:12,paddingHorizontal:4,...soft},qStatIcon:{width:32,height:32,borderRadius:16,backgroundColor:C.mint,borderWidth:1,borderColor:'#DDD6FF',alignItems:'center',justifyContent:'center',marginBottom:7},qStatValue:{fontSize:16,fontFamily:'DMSans_700Bold',color:C.ink,marginTop:1,textAlign:'center'},qStatLabel:{marginTop:2,fontSize:10,color:C.muted,fontFamily:'DMSans_600SemiBold',textAlign:'center',alignSelf:'stretch'},quranPreferenceCard:{flex:1,minWidth:260,minHeight:76,backgroundColor:C.card,borderRadius:20,padding:12,flexDirection:'row',alignItems:'center',gap:12,borderWidth:1,borderColor:C.line,...surface},quranPersonalGrid:{flexDirection:'row',flexWrap:'wrap',gap:8},quranPersonalWrap:{flexGrow:1,flexBasis:'18%',minWidth:130},quranPersonalCard:{minHeight:132,backgroundColor:C.card,borderRadius:20,padding:12,borderWidth:1,borderColor:C.line,...surface},quranPersonalHead:{flexDirection:'row',alignItems:'flex-start',justifyContent:'space-between'},quranPersonalValue:{color:C.green,fontFamily:'Newsreader_600SemiBold',fontSize:22},quranPersonalTitle:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:11,marginTop:8},quranPersonalCaption:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:10,marginTop:4},recentChip:{minWidth:128,backgroundColor:C.white,borderRadius:16,padding:12,borderWidth:1,borderColor:C.line},surahList:{gap:CARD_GAP},surahMore:{width:'100%',alignItems:'center',justifyContent:'center',paddingVertical:16,borderRadius:RADIUS.lg,borderWidth:1,borderColor:C.line,borderStyle:'dashed'},surahMoreText:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:13},surahChips:{flexDirection:'row',flexWrap:'wrap',gap:5,marginTop:7},
 surahChip:{paddingVertical:3,paddingHorizontal:8,borderRadius:9,backgroundColor:C.soft,borderWidth:1,borderColor:C.line},
 surahChipText:{color:C.muted,fontSize:10,fontFamily:'DMSans_600SemiBold'},
 surahChipMakki:{backgroundColor:C.mint,borderColor:'#DDD6FF'},
@@ -4269,16 +4746,55 @@ surahChipMadani:{backgroundColor:'#FFF4E5',borderColor:'#F6E2C4'},
 surahChipTextMakki:{color:C.green},
 surahChipTextMadani:{color:'#A56A1C'},
 surahArWrap:{alignItems:'flex-end',justifyContent:'center',paddingStart:4},
-surahCard:{flexGrow:1,flexBasis:'31%',minWidth:250,flexDirection:'row',alignItems:'center',gap:CARD.gap,backgroundColor:C.card,borderRadius:RADIUS.xl,borderWidth:1,borderColor:C.line,padding:CARD.padding,...surface},surahPlace:{color:C.muted,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.2,textTransform:'uppercase',marginTop:SPACE.xs},surahNum:{width:46,height:46,borderRadius:23,backgroundColor:C.mint,borderWidth:1,borderColor:'#DDD6FF',alignItems:'center',justifyContent:'center'},surahNumText:{color:C.green,fontSize:14,fontFamily:'Newsreader_700Bold'},surahName:{color:C.ink,fontSize:15,fontFamily:'DMSans_700Bold',marginBottom:SPACE.xs},surahAr:{color:C.green,fontSize:22,fontFamily:'KFGQPCUthmanicHafs'},
+surahCard:{width:'100%',flexDirection:'row',alignItems:'center',gap:CARD.gap,backgroundColor:C.card,borderRadius:RADIUS.xl,borderWidth:1,borderColor:C.line,padding:CARD.padding,...surface},surahPlace:{color:C.muted,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.2,textTransform:'uppercase',marginTop:SPACE.xs},surahNum:{width:46,height:46,borderRadius:23,backgroundColor:C.mint,borderWidth:1,borderColor:'#DDD6FF',alignItems:'center',justifyContent:'center'},surahNumText:{color:C.green,fontSize:14,fontFamily:'Newsreader_700Bold'},surahName:{color:C.ink,fontSize:15,fontFamily:'DMSans_700Bold',marginBottom:SPACE.xs},surahAr:{color:C.green,fontSize:22,fontFamily:'KFGQPCUthmanicHafs'},
  readerModes:{flexDirection:'row',gap:12,marginTop:12},readerMode:{flex:1,minHeight:56,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:8,backgroundColor:C.white,borderRadius:20,borderWidth:1,borderColor:C.line},readerModeActive:{backgroundColor:C.mint,borderColor:'#CFC7EE'},readerModeText:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:11},readerBar:{height:72,flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingHorizontal:16,borderBottomWidth:1,borderColor:C.line},surahStep:{width:32,height:32,alignItems:'center',justifyContent:'center',marginHorizontal:2},offscreenCard:{position:'absolute',top:-100000,left:0,opacity:0},readerName:{color:C.ink,fontSize:16,fontFamily:'DMSans_700Bold'},readerProgress:{height:4,backgroundColor:'#E6E2EB',overflow:'hidden'},readerScroll:{width:'100%',maxWidth:860,alignSelf:'center',padding:16,paddingBottom:BOTTOM_RESERVE},surahHead:{borderRadius:28,padding:24,alignItems:'center',...shadow},surahHeadAr:{color:C.onAccent,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:38,marginTop:16},surahHeadEn:{color:'#C9E5DB',fontSize:10,marginTop:4},bismillah:{color:C.onAccent,fontFamily:'KFGQPCUthmanicHafs',fontSize:22,marginTop:24},ayahContinuous:{marginTop:4,borderRadius:4,borderBottomWidth:1,shadowOpacity:0,elevation:0},ayahSelected:{borderColor:C.gold,borderWidth:2,backgroundColor:'#FFFDF5'},ayahActions:{flexDirection:'row',alignItems:'center',gap:16},ayahFooter:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginTop:12},ayah:{backgroundColor:C.white,borderRadius:24,padding:20,marginTop:12,borderWidth:1,borderColor:C.line,...soft},ayahTop:{flexDirection:'row',alignItems:'center',justifyContent:'space-between'},ayahNo:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold',backgroundColor:C.mint,paddingHorizontal:8,paddingVertical:8,borderRadius:12},ayahAr:{color:C.ink,textAlign:'right',fontFamily:'KFGQPCUthmanicHafs',fontSize:30,lineHeight:58,marginTop:16},ayahTranslation:{color:'#474653',fontFamily:'DMSans_400Regular',fontSize:14,lineHeight:20,marginTop:16,paddingTop:16,borderTopWidth:1,borderColor:C.line},ayahMeta:{color:C.muted,fontSize:10,marginTop:12},
- translationRow:{minHeight:67,flexDirection:'row',alignItems:'center',gap:12,paddingHorizontal:12,borderBottomWidth:1,borderColor:C.line},languageBadge:{width:52,height:34,borderRadius:12,backgroundColor:C.mint,alignItems:'center',justifyContent:'center',flexDirection:'row',gap:4},languageFlag:{fontSize:12},languageBadgeText:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10},historyHead:{flexDirection:'row',alignItems:'center',justifyContent:'space-between'},historyWrap:{flexDirection:'row',flexWrap:'wrap',gap:8,marginBottom:12},historyChip:{backgroundColor:C.mint,borderRadius:16,paddingHorizontal:12,paddingVertical:8},searchResult:{backgroundColor:C.white,borderRadius:20,padding:16,marginBottom:8,borderWidth:1,borderColor:C.line},noteText:{color:C.ink,fontFamily:'Newsreader_600SemiBold',fontSize:17,lineHeight:24,marginVertical:8},noteInput:{minHeight:180,backgroundColor:C.white,borderRadius:20,padding:16,textAlignVertical:'top',fontFamily:'DMSans_400Regular',fontSize:14,color:C.ink,borderWidth:1,borderColor:C.line,outlineStyle:'none'} as any,stepper:{backgroundColor:C.white,borderRadius:20,padding:12,flexDirection:'row',alignItems:'center',justifyContent:'space-between',borderWidth:1,borderColor:C.line},stepButton:{width:44,height:44,borderRadius:16,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},fontPreview:{backgroundColor:C.mint,borderRadius:20,padding:16,marginTop:12,borderWidth:1,borderColor:C.line},fontPreviewText:{color:C.ink,textAlign:'right',lineHeight:52,includeFontPadding:false},previewArabic:{color:C.ink,fontFamily:'KFGQPCUthmanicHafs'},referenceNavigator:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:12,marginBottom:12},referenceInput:{width:100,textAlign:'center',backgroundColor:C.white,borderWidth:1,borderColor:C.line,borderRadius:16,padding:12,color:C.ink,fontFamily:'DMSans_700Bold',outlineStyle:'none'} as any,comparisonHelp:{color:C.muted,fontSize:10,lineHeight:15,marginTop:8},editionPicker:{gap:8,marginTop:12},editionChip:{minHeight:58,backgroundColor:C.white,borderRadius:16,paddingHorizontal:12,flexDirection:'row',alignItems:'center',gap:12,borderWidth:1,borderColor:C.line},editionChipActive:{borderColor:C.green,backgroundColor:C.mint},editionFlag:{fontSize:20},arabicReference:{backgroundColor:C.yellow,borderRadius:24,padding:20,marginTop:16,borderWidth:1,borderColor:'#E5D4A6'},comparisonColumns:{gap:12,paddingVertical:12,paddingRight:20},comparisonText:{color:'#474653',fontFamily:'DMSans_400Regular',fontSize:13,lineHeight:20,marginTop:12},mushafPage:{width:'100%',maxWidth:900,alignSelf:'center',padding:20,paddingBottom:BOTTOM_RESERVE},mushafNav:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:12},pageJump:{flex:1,minWidth:0,alignItems:'center'},pageInput:{minWidth:74,textAlign:'center',color:C.ink,fontFamily:'Newsreader_600SemiBold',fontSize:28,borderBottomWidth:1,borderColor:C.line,paddingVertical:4,outlineStyle:'none'} as any,pageProgress:{height:5,borderRadius:4,backgroundColor:'#E6E2EB',overflow:'hidden',marginVertical:16},mushafSheet:{backgroundColor:'#FFFDF8',borderRadius:24,padding:20,borderWidth:1,borderColor:'#DED7C9',...soft},mushafAyah:{paddingVertical:12,borderBottomWidth:1,borderColor:'#E9E1D5'},mushafSurah:{textAlign:'center',color:C.green,fontFamily:'Newsreader_600SemiBold',fontSize:20,backgroundColor:C.mint,borderRadius:16,paddingVertical:8,marginBottom:12},verseMarker:{color:C.gold,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:17},mushafTranslation:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:12,lineHeight:18,marginTop:8},sectionMarker:{flexDirection:'row',alignItems:'center',gap:10,marginTop:18,marginBottom:6},sectionRule:{flex:1,height:1,backgroundColor:C.line},sectionMarkerText:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10,textTransform:'uppercase',letterSpacing:1},mushafPageLine:{color:C.ink,textAlign:'center',writingDirection:'rtl'},topicGrid:{flexDirection:'row',flexWrap:'wrap',gap:12},topicWrap:{width:'48%'},topicCard:{minHeight:190,backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},vocabStats:{backgroundColor:C.mint,borderRadius:20,padding:16,marginBottom:12,flexDirection:'row',justifyContent:'space-between',alignItems:'center'},flashcard:{minHeight:330,backgroundColor:C.white,borderRadius:28,padding:24,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,...shadow},flashIndex:{position:'absolute',top:18,right:18,color:C.muted,fontFamily:'DMSans_600SemiBold',fontSize:10},flashArabic:{color:C.ink,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:58,lineHeight:86,textAlign:'center'},flashTransliteration:{color:C.green,fontFamily:'Newsreader_600SemiBold',fontSize:28,marginTop:12},flashMeaning:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:18,marginVertical:8,textAlign:'center'},flashHint:{color:C.muted,fontFamily:'DMSans_600SemiBold',fontSize:11,marginTop:16},tajweedPractice:{backgroundColor:C.card,borderRadius:24,padding:20,marginTop:16,borderWidth:1,borderColor:C.line,...surface},tajweedRule:{minHeight:72,flexDirection:'row',alignItems:'center',gap:12,padding:12,borderBottomWidth:1,borderColor:C.line},tajweedSwatch:{width:18,height:44,borderRadius:9},compareCard:{backgroundColor:C.card,borderRadius:20,padding:16,marginBottom:12,borderWidth:1,borderColor:C.line,...surface},juzGrid:{flexDirection:'row',flexWrap:'wrap',gap:8},juzCard:{width:'22.8%',aspectRatio:1,backgroundColor:C.card,borderRadius:16,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,...surface},juzNo:{color:C.green,fontFamily:'Newsreader_600SemiBold',fontSize:23},preloadScore:{backgroundColor:C.white,borderRadius:24,padding:20,borderWidth:1,borderColor:C.line},cacheUsage:{color:C.green,fontFamily:'DMSans_600SemiBold',fontSize:10,marginTop:8},preloadTrack:{height:9,borderRadius:4,backgroundColor:'#E6E2EB',overflow:'hidden',marginVertical:12},preloadFill:{height:'100%',backgroundColor:C.green,borderRadius:4},planGrid:{flexDirection:'row',flexWrap:'wrap',gap:12},planCard:{width:'48%',minHeight:130,backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},planDays:{color:C.green,fontFamily:'Newsreader_600SemiBold',fontSize:36},planToday:{backgroundColor:C.white,borderRadius:20,padding:16,marginTop:16,flexDirection:'row',alignItems:'center',justifyContent:'space-between',borderWidth:1,borderColor:C.line},practiceLaunch:{backgroundColor:C.mint,borderRadius:20,padding:16,marginBottom:16,flexDirection:'row',alignItems:'center',justifyContent:'space-between',borderWidth:1,borderColor:'#CFC7EE'},recallCard:{minHeight:340,backgroundColor:C.white,borderRadius:28,padding:20,borderWidth:1,borderColor:C.line,...shadow},recallPrompt:{color:C.ink,fontFamily:'Newsreader_600SemiBold',fontSize:21,lineHeight:29,marginTop:28,textAlign:'center'},recallArabic:{color:C.green,fontFamily:'KFGQPCUthmanicHafs',fontSize:32,lineHeight:58,textAlign:'right',marginTop:24,paddingTop:20,borderTopWidth:1,borderColor:C.line},revealArea:{flex:1,minHeight:110,alignItems:'center',justifyContent:'center',gap:8,marginTop:20,borderTopWidth:1,borderColor:C.line},hifzStatus:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10,textTransform:'uppercase'},intro:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:14,lineHeight:19,marginTop:0,marginBottom:20},exploreGrid:{flexDirection:'row',flexWrap:'wrap',gap:12},exploreCard:{flexGrow:1,flexBasis:'31%',minWidth:150},exploreCardInner:{minHeight:164,backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},exploreTitle:{color:C.ink,fontSize:16,fontFamily:'DMSans_700Bold',marginTop:12},exploreBody:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:11,lineHeight:15,marginTop:4,flex:1},exploreArrow:{width:29,height:29,borderRadius:16,backgroundColor:C.mint,alignItems:'center',justifyContent:'center',alignSelf:'flex-end'},apiPanel:{backgroundColor:C.deep,borderRadius:24,padding:20,marginTop:12},apiTitle:{color:C.onAccent,fontSize:14,fontFamily:'DMSans_700Bold',marginTop:16},apiText:{color:'#D9D3F3',fontSize:10,marginTop:4},
+ translationRow:{minHeight:67,flexDirection:'row',alignItems:'center',gap:12,paddingHorizontal:12,borderBottomWidth:1,borderColor:C.line},languageBadge:{width:52,height:34,borderRadius:12,backgroundColor:C.mint,alignItems:'center',justifyContent:'center',flexDirection:'row',gap:4},languageFlag:{fontSize:12},languageBadgeText:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10},historyHead:{flexDirection:'row',alignItems:'center',justifyContent:'space-between'},historyWrap:{flexDirection:'row',flexWrap:'wrap',gap:8,marginBottom:12},historyChip:{backgroundColor:C.mint,borderRadius:16,paddingHorizontal:12,paddingVertical:8},searchResult:{backgroundColor:C.white,borderRadius:20,padding:16,marginBottom:8,borderWidth:1,borderColor:C.line},noteText:{color:C.ink,fontFamily:'Newsreader_600SemiBold',fontSize:17,lineHeight:24,marginVertical:8},noteInput:{minHeight:180,backgroundColor:C.white,borderRadius:20,padding:16,textAlignVertical:'top',fontFamily:'DMSans_400Regular',fontSize:14,color:C.ink,borderWidth:1,borderColor:C.line,outlineStyle:'none'} as any,stepper:{backgroundColor:C.white,borderRadius:20,padding:12,flexDirection:'row',alignItems:'center',justifyContent:'space-between',borderWidth:1,borderColor:C.line},stepButton:{width:44,height:44,borderRadius:16,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},fontPreview:{backgroundColor:C.mint,borderRadius:20,padding:16,marginTop:12,borderWidth:1,borderColor:C.line},fontPreviewText:{color:C.ink,textAlign:'right',lineHeight:52,includeFontPadding:false},previewArabic:{color:C.ink,fontFamily:'KFGQPCUthmanicHafs'},referenceNavigator:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:12,marginBottom:12},referenceInput:{width:100,textAlign:'center',backgroundColor:C.white,borderWidth:1,borderColor:C.line,borderRadius:16,padding:12,color:C.ink,fontFamily:'DMSans_700Bold',outlineStyle:'none'} as any,comparisonHelp:{color:C.muted,fontSize:10,lineHeight:15,marginTop:8},editionPicker:{gap:8,marginTop:12},editionChip:{minHeight:58,backgroundColor:C.white,borderRadius:16,paddingHorizontal:12,flexDirection:'row',alignItems:'center',gap:12,borderWidth:1,borderColor:C.line},editionChipActive:{borderColor:C.green,backgroundColor:C.mint},editionFlag:{fontSize:20},arabicReference:{backgroundColor:C.yellow,borderRadius:24,padding:20,marginTop:16,borderWidth:1,borderColor:'#E5D4A6'},comparisonColumns:{gap:12,paddingVertical:12,paddingRight:20},comparisonText:{color:'#474653',fontFamily:'DMSans_400Regular',fontSize:13,lineHeight:20,marginTop:12},mushafPage:{width:'100%',maxWidth:900,alignSelf:'center',padding:20,paddingBottom:BOTTOM_RESERVE},mushafNav:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:12},pageJump:{flex:1,minWidth:0,alignItems:'center'},pageInput:{minWidth:74,textAlign:'center',color:C.ink,fontFamily:'Newsreader_600SemiBold',fontSize:28,borderBottomWidth:1,borderColor:C.line,paddingVertical:4,outlineStyle:'none'} as any,pageProgress:{height:5,borderRadius:4,backgroundColor:'#E6E2EB',overflow:'hidden',marginVertical:16},mushafSheet:{backgroundColor:'#FFFDF8',borderRadius:24,padding:20,borderWidth:1,borderColor:'#DED7C9',...soft},
+mushafFrame:{backgroundColor:C.dark?'#211C2C':'#FFFDF8',borderRadius:8,borderWidth:1.6,borderColor:C.gold,padding:9,...soft},
+mushafFrameInner:{borderRadius:4,borderWidth:.8,borderColor:C.gold,borderStyle:'solid',opacity:.999,paddingHorizontal:14,paddingVertical:18},
+mushafCorner:{position:'absolute',width:16,height:16,alignItems:'center',justifyContent:'center'},
+mushafCornerTL:{top:-9,left:-9},mushafCornerTR:{top:-9,right:-9},mushafCornerBL:{bottom:-9,left:-9},mushafCornerBR:{bottom:-9,right:-9},
+mushafCornerDiamond:{width:11,height:11,borderWidth:1.2,borderColor:C.gold,transform:[{rotate:'45deg'}]},
+mushafCornerDot:{position:'absolute',width:3.5,height:3.5,borderRadius:2,backgroundColor:C.gold},
+mushafSurahBand:{alignItems:'center',marginBottom:16,marginTop:2},
+mushafBandRule:{height:1,width:'62%',backgroundColor:C.gold,opacity:.5},
+mushafSurahName:{color:C.green,fontFamily:'Newsreader_700Bold',fontSize:20,textAlign:'center',paddingVertical:9,paddingHorizontal:18,letterSpacing:.3},
+mushafOrnamentRow:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:8,marginVertical:12},
+mushafOrnamentRule:{height:1,flex:1,maxWidth:96},
+mushafPageNoRow:{alignItems:'center',marginTop:18},
+mushafPageNo:{width:42,height:42,borderRadius:21,borderWidth:1.4,borderColor:C.gold,alignItems:'center',justifyContent:'center',backgroundColor:C.mint},
+mushafPageNoText:{color:C.green,fontFamily:'Newsreader_700Bold',fontSize:16},mushafAyah:{paddingVertical:12,borderBottomWidth:1,borderColor:'#E9E1D5'},mushafSurah:{textAlign:'center',color:C.green,fontFamily:'Newsreader_600SemiBold',fontSize:20,backgroundColor:C.mint,borderRadius:16,paddingVertical:8,marginBottom:12},verseMarker:{color:C.gold,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:17},mushafTranslation:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:12,lineHeight:18,marginTop:8},sectionMarker:{flexDirection:'row',alignItems:'center',gap:10,marginTop:18,marginBottom:6},sectionRule:{flex:1,height:1,backgroundColor:C.line},sectionMarkerText:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10,textTransform:'uppercase',letterSpacing:1},mushafPageLine:{color:C.ink,textAlign:'center',writingDirection:'rtl'},topicGrid:{flexDirection:'row',flexWrap:'wrap',gap:12},topicWrap:{width:'48%'},topicCard:{minHeight:190,backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},vocabStats:{backgroundColor:C.mint,borderRadius:20,padding:16,marginBottom:12,flexDirection:'row',justifyContent:'space-between',alignItems:'center'},flashcard:{minHeight:330,backgroundColor:C.white,borderRadius:28,padding:24,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,...shadow},flashIndex:{position:'absolute',top:18,right:18,color:C.muted,fontFamily:'DMSans_600SemiBold',fontSize:10},flashArabic:{color:C.ink,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:58,lineHeight:86,textAlign:'center'},flashTransliteration:{color:C.green,fontFamily:'Newsreader_600SemiBold',fontSize:28,marginTop:12},flashMeaning:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:18,marginVertical:8,textAlign:'center'},flashHint:{color:C.muted,fontFamily:'DMSans_600SemiBold',fontSize:11,marginTop:16},tajweedPractice:{backgroundColor:C.card,borderRadius:24,padding:20,marginTop:16,borderWidth:1,borderColor:C.line,...surface},tajweedRule:{minHeight:72,flexDirection:'row',alignItems:'center',gap:12,padding:12,borderBottomWidth:1,borderColor:C.line},tajweedSwatch:{width:18,height:44,borderRadius:9},compareCard:{backgroundColor:C.card,borderRadius:20,padding:16,marginBottom:12,borderWidth:1,borderColor:C.line,...surface},juzGrid:{flexDirection:'row',flexWrap:'wrap',gap:8},juzCard:{width:'22.8%',aspectRatio:1,backgroundColor:C.card,borderRadius:16,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,...surface},juzNo:{color:C.green,fontFamily:'Newsreader_600SemiBold',fontSize:23},preloadScore:{backgroundColor:C.white,borderRadius:24,padding:20,borderWidth:1,borderColor:C.line},cacheUsage:{color:C.green,fontFamily:'DMSans_600SemiBold',fontSize:10,marginTop:8},preloadTrack:{height:9,borderRadius:4,backgroundColor:'#E6E2EB',overflow:'hidden',marginVertical:12},preloadFill:{height:'100%',backgroundColor:C.green,borderRadius:4},planGrid:{flexDirection:'row',flexWrap:'wrap',gap:12},planCard:{width:'48%',minHeight:130,backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},planDays:{color:C.green,fontFamily:'Newsreader_600SemiBold',fontSize:36},planToday:{backgroundColor:C.white,borderRadius:20,padding:16,marginTop:16,flexDirection:'row',alignItems:'center',justifyContent:'space-between',borderWidth:1,borderColor:C.line},practiceLaunch:{backgroundColor:C.mint,borderRadius:20,padding:16,marginBottom:16,flexDirection:'row',alignItems:'center',justifyContent:'space-between',borderWidth:1,borderColor:'#CFC7EE'},recallCard:{minHeight:340,backgroundColor:C.white,borderRadius:28,padding:20,borderWidth:1,borderColor:C.line,...shadow},recallPrompt:{color:C.ink,fontFamily:'Newsreader_600SemiBold',fontSize:21,lineHeight:29,marginTop:28,textAlign:'center'},recallArabic:{color:C.green,fontFamily:'KFGQPCUthmanicHafs',fontSize:32,lineHeight:58,textAlign:'right',marginTop:24,paddingTop:20,borderTopWidth:1,borderColor:C.line},revealArea:{flex:1,minHeight:110,alignItems:'center',justifyContent:'center',gap:8,marginTop:20,borderTopWidth:1,borderColor:C.line},hifzStatus:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10,textTransform:'uppercase'},intro:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:14,lineHeight:19,marginTop:0,marginBottom:20},exploreGrid:{flexDirection:'row',flexWrap:'wrap',gap:12},exploreCard:{flexGrow:1,flexBasis:'31%',minWidth:150},exploreCardInner:{minHeight:164,backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},exploreTitle:{color:C.ink,fontSize:16,fontFamily:'DMSans_700Bold',marginTop:12},exploreBody:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:11,lineHeight:15,marginTop:4,flex:1},exploreArrow:{width:29,height:29,borderRadius:16,backgroundColor:C.mint,alignItems:'center',justifyContent:'center',alignSelf:'flex-end'},apiPanel:{backgroundColor:C.deep,borderRadius:24,padding:20,marginTop:12},apiTitle:{color:C.onAccent,fontSize:14,fontFamily:'DMSans_700Bold',marginTop:16},apiText:{color:'#D9D3F3',fontSize:10,marginTop:4},
  toolPage:{flex:1,width:'100%',maxWidth:780,alignSelf:'center',alignItems:'center',padding:24,paddingTop:32},toolEyebrow:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.2,marginTop:20},compass:{width:260,height:260,borderRadius:130,backgroundColor:C.white,borderWidth:12,borderColor:'#E4DFFA',alignItems:'center',justifyContent:'center',marginTop:32,...shadow},north:{position:'absolute',top:12,color:C.coral,fontSize:10,fontFamily:'DMSans_700Bold'},compassArrow:{alignItems:'center',justifyContent:'center'},kaaba:{position:'absolute',right:43,bottom:47,width:31,height:31,backgroundColor:'#111C18',borderRadius:4},kaabaGold:{height:5,backgroundColor:C.gold,marginTop:8},direction:{color:C.ink,fontSize:31,fontFamily:'DMSans_700Bold',marginTop:24},directionText:{color:C.muted,fontSize:11,marginTop:4},primary:{backgroundColor:C.accent,paddingHorizontal:20,paddingVertical:12,minHeight:48,alignItems:'center',justifyContent:'center',borderRadius:16,marginTop:20},primaryText:{color:C.onAccent,fontSize:11,fontFamily:'DMSans_700Bold'},tasbihAr:{color:C.ink,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:32,marginTop:16},counter:{width:205,height:205,borderRadius:103,backgroundColor:C.accent,alignItems:'center',justifyContent:'center',borderWidth:12,borderColor:'#E4DEFA',marginVertical:32,...shadow},counterNo:{color:C.onAccent,fontSize:58,fontFamily:'DMSans_700Bold'},counterGoal:{color:'#DDD6FF',fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.3},secondary:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:8,minHeight:44,backgroundColor:C.white,paddingHorizontal:16,paddingVertical:12,borderRadius:16,borderWidth:1,borderColor:C.line,marginHorizontal:4},secondaryText:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold'},
  summaryScore:{backgroundColor:C.deep,borderRadius:24,padding:20,flexDirection:'row',justifyContent:'space-between',...shadow,borderTopColor:depth.edge},summaryDay:{minHeight:66,flexDirection:'row',alignItems:'center',gap:12,paddingHorizontal:16,borderBottomWidth:1,borderColor:C.line},summaryDots:{flexDirection:'row',gap:4},summaryDot:{width:8,height:8,borderRadius:4,backgroundColor:'#E2DEE8'},summaryDotDone:{backgroundColor:C.green},cityGrid:{flexDirection:'row',flexWrap:'wrap',gap:8},cityCard:{width:'48.5%',minHeight:76,backgroundColor:C.card,borderRadius:16,padding:12,borderWidth:1,borderColor:C.line,...surface},cityCardActive:{backgroundColor:C.mint,borderColor:'#CFC7EE'},cityName:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:12},formCard:{backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},fieldRow:{flexDirection:'row',gap:12},textField:{backgroundColor:C.bg,borderWidth:1,borderColor:C.line,borderRadius:16,padding:12,fontSize:13,color:C.ink,marginTop:8,outlineStyle:'none'} as any,dangerButton:{padding:16,alignItems:'center',marginTop:12},dangerText:{color:C.coral,fontFamily:'DMSans_700Bold',fontSize:11},healthCard:{flexDirection:'row',alignItems:'center',gap:12,backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,marginBottom:16,...surface},healthDot:{width:10,height:10,borderRadius:5},actionRow:{flexDirection:'row',alignItems:'center',flexWrap:'wrap',gap:8,marginTop:4},audioPreview:{backgroundColor:C.deep,borderRadius:24,padding:16,flexDirection:'row',alignItems:'center',gap:12},audioPlay:{width:48,height:48,borderRadius:24,backgroundColor:C.accent,alignItems:'center',justifyContent:'center'},guideGrid:{flexDirection:'row',flexWrap:'wrap',gap:12},guideCard:{flexGrow:1,flexBasis:'30%',minWidth:150},guideCardInner:{minHeight:180,backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},guideArabic:{color:C.green,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:27,lineHeight:47,textAlign:'right',backgroundColor:C.white,borderRadius:20,padding:16,marginBottom:16},guideStep:{flexDirection:'row',gap:12,padding:16,borderBottomWidth:1,borderColor:C.line,alignItems:'flex-start'},stepNo:{width:28,height:28,borderRadius:14,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},stepNoText:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10},guideStepText:{flex:1,color:C.ink,fontFamily:'DMSans_400Regular',fontSize:13,lineHeight:19},guideNote:{backgroundColor:C.yellow,borderRadius:20,padding:16,marginTop:16},referenceRow:{minHeight:54,backgroundColor:C.white,borderRadius:16,paddingHorizontal:16,marginBottom:8,flexDirection:'row',alignItems:'center',justifyContent:'space-between',borderWidth:1,borderColor:C.line},evidenceCard:{backgroundColor:C.card,borderRadius:18,padding:15,marginBottom:11,borderWidth:1,borderColor:C.line},evidenceLabel:{color:C.green,fontSize:11,fontFamily:'DMSans_700Bold',letterSpacing:.4,marginBottom:9},evidenceArabic:{color:C.ink,fontSize:17,fontFamily:'NotoNaskhArabic_400Regular',lineHeight:31,marginBottom:8,writingDirection:'rtl',textAlign:'right'},evidenceBody:{color:C.body,fontSize:13,fontFamily:'DMSans_400Regular',lineHeight:20},evidenceVerse:{marginBottom:11},evidenceFoot:{flexDirection:'row',alignItems:'center',marginTop:10,paddingTop:10,borderTopWidth:1,borderTopColor:C.line},evidenceLink:{flex:1,color:C.green,fontSize:12,fontFamily:'DMSans_600SemiBold'},emptyWrap:{alignItems:'center',justifyContent:'center',paddingVertical:60,gap:10,paddingHorizontal:24},emptyTitle:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:16,textAlign:'center'},emptyBody:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:13,lineHeight:20,textAlign:'center'},dataPage:{width:'100%',maxWidth:860,alignSelf:'center',padding:20,paddingBottom:156},empty:{backgroundColor:C.white,borderRadius:24,padding:24,alignItems:'center',borderWidth:1,borderColor:C.line},dataTitle:{color:C.ink,fontSize:29,fontFamily:'Newsreader_600SemiBold',letterSpacing:-.5,marginTop:16,marginBottom:8},dataCard:{backgroundColor:C.card,borderRadius:20,padding:16,marginBottom:12,borderWidth:1,borderColor:C.line,...surface},bookmarkMain:{flex:1},bookmarkRemove:{paddingStart:10,paddingVertical:4,justifyContent:'center'},dataArabic:{color:C.green,fontFamily:'KFGQPCUthmanicHafs',fontSize:27,lineHeight:48,textAlign:'right'},dataName:{color:C.ink,fontSize:14,fontFamily:'DMSans_700Bold',marginTop:4},dataBody:{color:'#474653',fontFamily:'DMSans_400Regular',fontSize:13,lineHeight:18,marginTop:4},dataMeta:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold',marginTop:12,textTransform:'uppercase'},inputLabel:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.2,marginTop:12},moneyInput:{backgroundColor:C.white,borderWidth:1,borderColor:C.line,borderRadius:20,padding:16,fontSize:24,fontFamily:'DMSans_700Bold',color:C.ink,marginTop:8,outlineStyle:'none'} as any,zakatResult:{borderRadius:24,padding:20,marginTop:12},zakatNo:{color:C.onAccent,fontSize:34,fontFamily:'DMSans_700Bold',marginTop:8},
  profileName:{color:C.onAccent,fontSize:18,fontFamily:'DMSans_700Bold'},profileSub:{color:'#C2DED3',fontSize:10,marginTop:4},privacyHero:{borderRadius:24,padding:20,flexDirection:'row',alignItems:'center',gap:12,...shadow},privacyPoints:{flexDirection:'row',gap:8,marginTop:12},privacyPoint:{flex:1,backgroundColor:C.card,borderRadius:16,paddingVertical:12,alignItems:'center',gap:4,borderWidth:1,borderColor:C.line},privacyPointText:{color:C.ink,fontSize:10,fontFamily:'DMSans_700Bold',textAlign:'center'},preferencePanel:{backgroundColor:C.card,borderRadius:24,padding:16,borderWidth:1,borderColor:C.line,...surface},preferenceHead:{flexDirection:'row',alignItems:'center',gap:12,marginBottom:16},prefIconTile:{width:54,height:54,borderRadius:18,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},choiceGrid:{flexDirection:'row',flexWrap:'wrap',gap:8},choiceRow:{flexDirection:'row',gap:8},choicePill:{minHeight:44,justifyContent:'center',minWidth:44,alignItems:'center',paddingHorizontal:12,paddingVertical:8,borderRadius:12,backgroundColor:C.bg,borderWidth:1,borderColor:C.line},choicePillActive:{backgroundColor:C.accent,borderColor:C.green},choiceText:{color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:10},choiceTextActive:{color:C.onAccent},preferenceLabel:{color:C.muted,fontFamily:'DMSans_700Bold',fontSize:10,letterSpacing:1.1,marginTop:16,marginBottom:8},settings:{backgroundColor:C.card,borderRadius:24,overflow:'hidden',borderWidth:1,borderColor:C.line,...surface},setting:{minHeight:69,flexDirection:'row',alignItems:'center',gap:12,paddingHorizontal:12,borderBottomWidth:1,borderColor:C.line},settingName:{color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:13},
  locationGate:{flexDirection:'row',gap:16,alignItems:'flex-start',backgroundColor:C.card,borderRadius:24,padding:20,borderWidth:1,borderColor:C.line,...soft},locationGateNarrow:{flexDirection:'column',alignItems:'stretch'},locationGateTitle:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:16},locationGateBody:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:12,lineHeight:18,marginTop:4},locationActions:{flexDirection:'row',flexWrap:'wrap',gap:8,marginTop:16},locationActionsNarrow:{flexDirection:'column',alignItems:'stretch'},primarySmall:{backgroundColor:C.accent,paddingHorizontal:16,paddingVertical:12,borderRadius:12,minHeight:44,justifyContent:'center'},ghostSmall:{backgroundColor:C.mint,paddingHorizontal:16,paddingVertical:12,borderRadius:12,minHeight:44,justifyContent:'center'},ghostText:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:11},
  prayerTools:{flexDirection:'row',flexWrap:'wrap',gap:8},prayerToolsTwo:{flexDirection:'row',gap:12,marginBottom:8},prayerToolTwo:{flex:1},prayerTool:{flexGrow:1,flexBasis:'30%',minWidth:220},prayerToolInner:{minHeight:86,flexDirection:'row',alignItems:'center',gap:12,backgroundColor:C.white,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line},prayerToolText:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:12,flex:1},
  libraryKicker:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10,letterSpacing:1.7,marginTop:24},libraryHeading:{color:C.ink,fontFamily:'Newsreader_600SemiBold',fontSize:23,marginTop:4,marginBottom:12},
- calendarIntro:{backgroundColor:C.deep,borderRadius:24,padding:20},calendarMonth:{color:C.onAccent,fontFamily:'Newsreader_600SemiBold',fontSize:29,marginTop:16},calendarHijri:{color:'#D9D3F3',fontFamily:'DMSans_400Regular',fontSize:12,marginTop:4},weekHead:{flexDirection:'row',marginTop:16},weekLabel:{width:'14.285%',textAlign:'center',color:C.muted,fontFamily:'DMSans_700Bold',fontSize:11},calendarGrid:{flexDirection:'row',flexWrap:'wrap',marginTop:8,backgroundColor:C.white,borderRadius:24,padding:8,borderWidth:1,borderColor:C.line},calendarCell:{width:'14.285%',aspectRatio:1,alignItems:'center',justifyContent:'center',borderRadius:12},calendarToday:{backgroundColor:C.mint,borderWidth:1,borderColor:'#D7CFFF'},gregorianDay:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:15},hijriDay:{color:C.green,fontFamily:'DMSans_600SemiBold',fontSize:10,marginTop:2},calendarLegend:{flexDirection:'row',alignItems:'center',gap:8,marginTop:12},legendDot:{width:8,height:8,borderRadius:4,backgroundColor:C.green},
+ calendarIntro:{backgroundColor:C.deep,borderRadius:24,padding:20},calendarMonth:{color:C.onAccent,fontFamily:'Newsreader_600SemiBold',fontSize:29,marginTop:16},calendarHijri:{color:'#D9D3F3',fontFamily:'DMSans_400Regular',fontSize:12,marginTop:4},weekHead:{flexDirection:'row',marginTop:16},weekLabel:{width:'14.285%',textAlign:'center',color:C.muted,fontFamily:'DMSans_700Bold',fontSize:11},calendarGrid:{flexDirection:'row',flexWrap:'wrap',marginTop:8,backgroundColor:C.white,borderRadius:24,padding:8,borderWidth:1,borderColor:C.line},calendarCell:{width:'14.285%',aspectRatio:1,alignItems:'center',justifyContent:'center',borderRadius:12},calendarToday:{backgroundColor:C.mint,borderWidth:1,borderColor:'#D7CFFF'},gregorianDay:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:15},hijriDay:{color:C.green,fontFamily:'DMSans_600SemiBold',fontSize:10,marginTop:2},calendarLegend:{flexDirection:'row',alignItems:'center',gap:8,marginTop:12},
+calendarPicked:{borderColor:C.green,borderWidth:1.5},
+calendarEvent:{position:'absolute',bottom:3,width:5,height:5,borderRadius:3},
+calendarEventFast:{backgroundColor:C.success},
+calendarEventEid:{backgroundColor:C.gold},
+calendarEventNight:{backgroundColor:C.gold},
+calendarEventHajj:{backgroundColor:C.teal},
+calendarEventNewyear:{backgroundColor:C.green},
+eventRow:{flexDirection:'row',alignItems:'center',gap:11,paddingVertical:12,paddingHorizontal:12,borderBottomWidth:1,borderColor:C.line},
+eventDot:{width:9,height:9,borderRadius:5},
+eventDotFast:{backgroundColor:C.success},
+eventDotEid:{backgroundColor:C.gold},
+eventDotNight:{backgroundColor:C.gold},
+eventDotHajj:{backgroundColor:C.teal},
+eventDotNewyear:{backgroundColor:C.green},
+eventCountdown:{backgroundColor:C.mint,borderRadius:11,paddingVertical:4,paddingHorizontal:10,borderWidth:1,borderColor:'#DDD6FF'},
+eventCountdownText:{color:C.green,fontFamily:'DMSans_600SemiBold',fontSize:11},
+dayDetail:{backgroundColor:C.card,borderRadius:20,borderWidth:1,borderColor:C.line,padding:16,...soft},
+dayDetailHijri:{color:C.ink,fontFamily:'Newsreader_600SemiBold',fontSize:19,textAlign:'center'},
+dayDetailEvent:{backgroundColor:C.mint,borderRadius:14,padding:12,gap:4},
+dayDetailEventTitle:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:14},
+dayDetailPrayers:{marginTop:14,gap:7},
+dayDetailPrayer:{flexDirection:'row',alignItems:'center',justifyContent:'space-between'},
+dayDetailPrayerName:{color:C.muted,fontFamily:'DMSans_500Medium',fontSize:12},
+dayDetailPrayerTime:{color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:13},
+legendDot:{width:8,height:8,borderRadius:4,backgroundColor:C.green},
  ramadanHero:{borderRadius:28,padding:20,...shadow},ramadanArabic:{color:'#FFE3A4',fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:36,marginTop:16},ramadanTitle:{color:C.onAccent,fontFamily:'Newsreader_600SemiBold',fontSize:27},ramadanSub:{color:'#E3DEF7',fontFamily:'DMSans_400Regular',fontSize:12,lineHeight:18,marginTop:8,maxWidth:390},ramadanList:{backgroundColor:C.white,borderRadius:24,overflow:'hidden',borderWidth:1,borderColor:C.line},ramadanRow:{minHeight:78,flexDirection:'row',alignItems:'center',gap:12,paddingHorizontal:12,borderBottomWidth:1,borderColor:C.line},ramadanDay:{width:43,height:48,borderRadius:16,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},ramadanDayNo:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:17},ramadanDayLabel:{color:C.muted,fontFamily:'DMSans_700Bold',fontSize:9},ramadanDate:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:11},fastTime:{alignItems:'flex-end',minWidth:58},fastLabel:{color:C.muted,fontFamily:'DMSans_700Bold',fontSize:9,letterSpacing:.7},fastValue:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:10,marginTop:4},
  
  seekTrack:{height:26,justifyContent:'center',marginTop:8},
@@ -4300,6 +4816,13 @@ surahCard:{flexGrow:1,flexBasis:'31%',minWidth:250,flexDirection:'row',alignItem
  audioHeroTitle:{color:C.onAccent,fontFamily:'DMSans_700Bold',fontSize:13,marginTop:4},
  audioHeroMeta:{color:'#C7C2E4',fontSize:10,marginTop:2},
  playerArt:{backgroundColor:C.deep,borderRadius:28,padding:24,alignItems:'center',...shadow},
+playerHero:{borderRadius:30,padding:26,alignItems:'center',overflow:'hidden',marginBottom:18,...shadow},
+playerAura:{position:'absolute',width:300,height:300,top:-90,borderRadius:150,opacity:.5},
+playerArtRing:{width:150,height:150,borderRadius:75,alignItems:'center',justifyContent:'center',backgroundColor:'rgba(255,255,255,.13)',borderWidth:1,borderColor:'rgba(255,255,255,.28)'},
+playerTranslationRow:{flexDirection:'row',alignItems:'center',gap:12,backgroundColor:C.card,borderRadius:16,borderWidth:1,borderColor:C.line,padding:12,...soft},
+playerTranslationList:{backgroundColor:C.card,borderRadius:16,borderWidth:1,borderColor:C.line,marginTop:8,overflow:'hidden'},
+playerTranslationOption:{flexDirection:'row',alignItems:'center',gap:10,paddingVertical:12,paddingHorizontal:14,borderBottomWidth:1,borderColor:C.line},
+playerTranslationOptionOn:{backgroundColor:C.mint},
  playerTitle:{color:C.onAccent,fontFamily:'Newsreader_600SemiBold',fontSize:23,marginTop:12,textAlign:'center'},
  playerPerformer:{color:'#C7C2E4',fontSize:11,marginTop:4},
  trackBadge:{marginTop:12,backgroundColor:'rgba(255,255,255,.14)',borderRadius:12,paddingHorizontal:12,paddingVertical:8},
@@ -4361,7 +4884,7 @@ surahCard:{flexGrow:1,flexBasis:'31%',minWidth:250,flexDirection:'row',alignItem
   nameRow:{flexDirection:'row',alignItems:'flex-start',gap:12,paddingVertical:12,borderBottomWidth:1,borderColor:C.line},
   nameNumber:{width:56,alignItems:'flex-end'},
 backRow:{marginBottom:4,flexDirection:'row'},
-  sectionLink:{paddingVertical: 16,marginVertical:-15,paddingHorizontal:12,marginHorizontal:-12},stopButton:{width:44,height:44,alignItems:'center',justifyContent:'center'},verseAction:{width:36,height:36,alignItems:'center',justifyContent:'center'},searchGo:{width:44,height:44,alignItems:'center',justifyContent:'center'},
+  sectionLink:{paddingVertical: 16,marginVertical:-15,paddingHorizontal:12,marginHorizontal:-12},stopButton:{width:44,height:44,alignItems:'center',justifyContent:'center'},verseAction:{width:36,height:36,alignItems:'center',justifyContent:'center'},verseActionGlow:{position:'absolute',width:30,height:30,borderRadius:15,backgroundColor:C.mint},verseActionOn:{position:'absolute',width:28,height:28,borderRadius:14,backgroundColor:C.mint,borderWidth:1,borderColor:'#DDD6FF'},searchGo:{width:44,height:44,alignItems:'center',justifyContent:'center'},
 pinPage:{flex:1,alignItems:'center',paddingHorizontal:24,paddingTop:4,paddingBottom:24},
 pinDots:{flexDirection:'row',gap: 12,marginTop:24},
 pinDot:{width:14,height:14,borderRadius:7,borderWidth:1.5,borderColor:C.line},

@@ -15,6 +15,8 @@ export type WorshipSettings = {
   quranReminderTime: string;
   adhanReciter: string;
   adhanEnabled: Record<string, boolean>;
+  /** Buzz on every press. Off means silent everywhere, not per-screen. */
+  hapticsEnabled: boolean;
 };
 export type StoredLocation = { latitude: number; longitude: number; label: string };
 
@@ -30,6 +32,7 @@ export const DEFAULT_WORSHIP_SETTINGS: WorshipSettings = {
   quranReminderTime: '20:00',
   adhanReciter: 'Makkah',
   adhanEnabled: { Fajr: true, Dhuhr: true, Asr: true, Maghrib: true, Isha: true },
+  hapticsEnabled: true,
 };
 
 const KEYS = {
