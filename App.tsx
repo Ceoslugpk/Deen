@@ -1075,17 +1075,123 @@ function ToolsHomeScreen({ navigation }: any) {
   </Page>;
 }
 
+/**
+ * The five that count toward a day being "complete". Sunrise is in the
+ * timetable but is a solar event, not a prayer, so it is deliberately left
+ * out — otherwise a day would look complete while Fajr was still missed.
+ */
+const PRAYER_FIVE = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
+
+/** Keys are stored as UTC days elsewhere in the app, so we key them the same way. */
+function prayerDayKey(d: Date) { return d.toISOString().slice(0, 10); }
+
+/** Consecutive days on which all five were marked. Today does not break it. */
+function prayerStreak(history: Record<string, string[]>): number {
+  const full = (key: string) => PRAYER_FIVE.every((p) => (history[key] || []).includes(p));
+  const cursor = new Date();
+  if (!full(prayerDayKey(cursor))) cursor.setDate(cursor.getDate() - 1);
+  let run = 0;
+  while (full(prayerDayKey(cursor)) && run < 3650) { run += 1; cursor.setDate(cursor.getDate() - 1); }
+  return run;
+}
+
+/**
+ * Counts down in real time. It holds its own ticking state so that the
+ * seconds do not redraw the whole prayer screen once a second — only this
+ * little component re-renders.
+ */
+function PrayerCountdown({ raw }: { raw: string }) {
+  const [, tick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => tick((v) => v + 1), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const [h, m] = raw.split(':').map(Number);
+  const target = new Date();
+  target.setHours(h, m, 0, 0);
+  if (target.getTime() <= Date.now()) target.setDate(target.getDate() + 1);
+  const left = Math.max(0, Math.floor((target.getTime() - Date.now()) / 1000));
+  const hh = Math.floor(left / 3600);
+  const mm = Math.floor((left - hh * 3600) / 60);
+  const ss = left - hh * 3600 - mm * 60;
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return <>{pad(hh)}:{pad(mm)}:{pad(ss)}</>;
+}
+
+const consistency = StyleSheet.create({
+  card: { backgroundColor: C.card, borderRadius: 20, padding: 16, marginBottom: 8, borderWidth: 1, borderColor: C.line },
+  top: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
+  streak: { fontFamily: 'Newsreader_600SemiBold', fontSize: 30, color: C.ink, letterSpacing: -1 },
+  unit: { fontFamily: 'DMSans_600SemiBold', fontSize: 14, color: C.green },
+  label: { fontFamily: 'DMSans_400Regular', fontSize: 12, color: C.muted, marginTop: 2 },
+  pctBox: { alignItems: 'flex-end' },
+  pct: { fontFamily: 'Newsreader_600SemiBold', fontSize: 26, color: C.green, letterSpacing: -.8 },
+  pctLabel: { fontFamily: 'DMSans_600SemiBold', fontSize: 10.5, color: C.muted, letterSpacing: .3 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 12 },
+  cell: { width: '8.6%', aspectRatio: 1, borderRadius: 4, margin: '0.7%' },
+  note: { fontFamily: 'DMSans_400Regular', fontSize: 11.5, color: C.muted, lineHeight: 17 },
+});
+
+/**
+ * Thirty days of the user's own history. Nothing here is estimated or filled
+ * in — a square is only as full as the prayers that were actually marked.
+ */
+function PrayerConsistency({ history, T }: { history: Record<string, string[]>; T: (s: string) => string }) {
+  const streak = useMemo(() => prayerStreak(history), [history]);
+  const cells = useMemo(() => {
+    const out: { key: string; done: number }[] = [];
+    const today = new Date();
+    for (let back = 29; back >= 0; back -= 1) {
+      const day = new Date(today);
+      day.setDate(day.getDate() - back);
+      const key = prayerDayKey(day);
+      out.push({ key, done: PRAYER_FIVE.filter((p) => (history[key] || []).includes(p)).length });
+    }
+    return out;
+  }, [history]);
+  const marked = cells.reduce((sum, cell) => sum + cell.done, 0);
+  const pct = Math.round((marked / (30 * 5)) * 100);
+  const st = consistency;
+
+  return (
+    <View style={st.card}>
+      <View style={st.top}>
+        <View style={{ flex: 1 }}>
+          <Text style={st.streak}>{streak} <Text style={st.unit}>{streak === 1 ? T('day') : T('days')}</Text></Text>
+          <Text style={st.label}>{T('in a row with all five marked')}</Text>
+        </View>
+        <View style={st.pctBox}>
+          <Text style={st.pct}>{pct}%</Text>
+          <Text style={st.pctLabel}>{T('LAST 30 DAYS').toUpperCase()}</Text>
+        </View>
+      </View>
+      <View style={st.grid}>
+        {cells.map((cell) => (
+          <View
+            key={cell.key}
+            style={[st.cell, { backgroundColor: cell.done ? C.green : C.line, opacity: cell.done ? 0.28 + (cell.done / 5) * 0.72 : 1 }]}
+          />
+        ))}
+      </View>
+      <Text style={st.note}>{T('Each square is one day, oldest first. The fuller the square, the more of the five you marked.')}</Text>
+    </View>
+  );
+}
+
 function PrayerScreen({navigation}:any) {
   const {rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);
   const {location}=useAppLocation(); const {settings}=useWorshipSettings(); const [snap,setSnap]=useState<PrayerSnapshot|null>(null); const [cached,setCached]=useState(false); const [error,setError]=useState(''); const [completed,setCompleted]=useState<string[]>([]);
   const dateKey=new Date().toISOString().slice(0,10); useEffect(()=>{loadPrayerCompletion(dateKey).then(setCompleted)},[dateKey]);
+  const [history,setHistory]=useState<Record<string,string[]>>({}); useEffect(()=>{loadPrayerHistory().then(h=>setHistory(h||{}))},[completed]);
   const togglePrayer=(name:string)=>{if(name==='Sunrise')return;setCompleted(current=>{const next=current.includes(name)?current.filter(x=>x!==name):[...current,name];savePrayerCompletion(dateKey,next).catch(()=>{});return next})};
   const load=async()=>{if(!location)return;setError('');try{const value=await managedPrayerSnapshot(location,settings);setSnap(value.snapshot);setCached(value.cached);if(settings.remindersEnabled)schedulePrayerNotifications(value.snapshot,settings,rtl).catch(()=>{})}catch(e:any){setError(T(e.message))}}; useEffect(()=>{setSnap(null);load()},[location?.latitude,location?.longitude,settings.calculationMethod,settings.madhab,settings.timeFormat]);
   const next=snap?getNext(snap.prayers):undefined; const days=Array.from({length:7},(_,i)=>{const d=new Date();d.setDate(d.getDate()+i);return d;}); const done=completed.length;
   return <Page><ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}><AppHeader/><View style={s.prayerHeader}><View><Text style={s.prayerOverline}>{cached?T('SAVED ON DEVICE'):T('TODAY')}</Text><Text style={s.prayerTitle}>{T('Prayer times')}</Text></View><ToolGraphic tool="Qibla" size={46}/></View>
     <View style={s.dayStrip}>{days.map((d,i)=><View key={i} style={[s.day,i===0&&s.dayActive]}><Text style={[s.dayName,i===0&&s.dayText]}>{d.toLocaleDateString(rtl?'ar-u-nu-latn':'en',{weekday:'short'})}</Text><Text style={[s.dayNum,i===0&&s.dayText]}>{d.getDate()}</Text></View>)}</View>
-    {!location?<LocationPrompt compact/>:error?<ErrorState message={error} retry={load}/>:!snap?<Spinner/>:<><LinearGradient colors={[C.heroA,C.green]} style={s.nextCard}><View>{!!cached && <LiveBadge source="SAVED ON DEVICE"/>}<Text style={s.nextCardLabel}>{T('NEXT PRAYER')}</Text><Text style={s.nextCardName}>{next ? prayerName(rtl, next.name) : ''}</Text><Text style={s.nextCardTime}>{clockTime(rtl, next?.time || '')}</Text><View style={s.countPill}><Text style={s.countText}>{T('Begins in')} {untilPrayer(next, rtl)}</Text></View></View><View style={s.moonOrb}>{ico('moon',42,C.onHero)}</View></LinearGradient>
+    {!location?<LocationPrompt compact/>:error?<ErrorState message={error} retry={load}/>:!snap?<Spinner/>:<><LinearGradient colors={[C.heroA,C.green]} style={s.nextCard}><View>{!!cached && <LiveBadge source="SAVED ON DEVICE"/>}<Text style={s.nextCardLabel}>{T('NEXT PRAYER')}</Text><Text style={s.nextCardName}>{next ? prayerName(rtl, next.name) : ''}</Text><Text style={s.nextCardTime}>{clockTime(rtl, next?.time || '')}</Text><View style={s.countPill}><Text style={s.countText}>{T('Begins in')} {next ? <PrayerCountdown raw={next.raw}/> : ''}</Text></View></View><View style={s.moonOrb}>{ico('moon',42,C.onHero)}</View></LinearGradient>
       <View style={s.prayerProgress}><View style={{flex:1}}><Text style={s.sourceTitle}>{T('Today’s Salah')}</Text><Text style={s.sourceBody}>{rtl?`${done} من 5 صلوات مؤداة`:`${done} of 5 prayers marked complete`}</Text></View><View style={s.progressTrack}><View style={[s.progressFill,{width:`${done*20}%`} as any]}/></View><Text style={s.progressCount}>{done}/5</Text></View>
+      <Section title={T('Your consistency')}/>
+      <PrayerConsistency history={history} T={T}/>
       <Section title={T('Today’s schedule')} action={rtl?`${PRAYER_METHODS.find(m=>m.id===settings.calculationMethod)?.ar||settings.calculationMethodName} · ${settings.madhab==='hanafi'?'الحنفي':'الشافعي'}`:`${settings.calculationMethodName} · ${T(settings.madhab==='hanafi'?'Hanafi':'Shafi')}`} onPress={()=>navigation.navigate('Settings')} />
       <View style={s.prayerList}>{snap.prayers.map((p,i)=>{const checked=completed.includes(p.name);return <Pressable accessibilityRole={p.name==='Sunrise'?undefined:'checkbox'} accessibilityState={p.name==='Sunrise'?undefined:{checked}} onPress={()=>togglePrayer(p.name)} key={p.name} style={[s.prayerRow,p.name===next?.name&&s.prayerRowLive]}><View style={[s.prayerSymbol,checked&&s.prayerSymbolDone]}>{ico(checked?'checkmark':'moon-outline',21,checked?C.white:C.green)}</View><View style={{flex:1}}><Text style={s.prayerName}>{prayerName(rtl, p.name)}</Text><Text style={s.meta}>{T(p.name==='Sunrise'?'Solar event':checked?'Completed':p.name===next?.name?'Up next':'Tap to mark complete')}</Text></View><Text style={s.prayerValue}>{clockTime(rtl, p.time)}</Text>{p.name!=='Sunrise'&&ico(checked?'checkmark-circle':'ellipse-outline',18,checked?C.green:C.muted)}</Pressable>})}</View>
       <View style={s.sourceCard}>{ico('shield-checkmark-outline',21,C.green)}<View style={{flex:1}}><Text style={s.sourceTitle}>{T(cached?'Saved prayer schedule':'Live calculation')}</Text><Text style={s.sourceBody}>{rtl?`${PRAYER_METHODS.find(m=>m.id===settings.calculationMethod)?.ar||snap.method} · ${snap.timezone} · ${settings.timeFormat} ساعة`:`${snap.method} · ${snap.timezone} · ${settings.timeFormat}-hour`}</Text></View></View><Section title={T('Prayer tools')}/><View style={s.prayerTools}>{[['compass-outline','Qibla','Qibla'],['location-outline','Location','Location Setup'],['notifications-outline','Notifications','Notifications'],['volume-high-outline','Adhan','Adhan'],['calendar-outline','Hijri calendar','Hijri Calendar'],['moon-outline','Fasting','Fasting'],['moon-outline','Ramadan','Ramadan'],['stats-chart-outline','Weekly Summary','Weekly Summary']].map(([icon,label,screen]:any,i)=><MotionPress key={label} onPress={()=>navigation.navigate(screen)} style={s.prayerTool}><View style={s.prayerToolInner}><ToolGraphic tool={label} size={54}/><Text style={s.prayerToolText}>{T(label)}</Text></View></MotionPress>)}</View></>}
