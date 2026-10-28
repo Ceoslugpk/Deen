@@ -841,6 +841,10 @@ function HomeScreen() {
   const { rtl } = useLanguage(); const T = (text: string) => tx(rtl, text);
   const { dark } = useTheme();
   const [hour,setHour]=useState(new Date().getHours());const still=useCalmMotion();const scrollY=useRef(new Animated.Value(0)).current;const heroShift=scrollY.interpolate({inputRange:[0,300],outputRange:[0,54],extrapolate:'clamp'});const heroZoom=useDrift(30000,1,1.07,still);const sheenShift=useDrift(20000,-0.85,0.85,still);const greeting=T(hour<12?'A purposeful morning':hour<18?'A purposeful afternoon':'A peaceful evening'); const nav = useNavigation<any>(); const locationState=useAppLocation(); const { width } = useWindowDimensions(); const wide = width >= 760; const data = useHomeData(); const next = data.snapshot ? getNext(data.snapshot.prayers) : undefined; const dateKey=new Date().toISOString().slice(0,10); const[completed,setCompleted]=useState<string[]>([]);const[history,setHistory]=useState<Record<string,string[]>>({});const[quickCount,setQuickCount]=useState(0);const tasbih=useTasbih();const[quranPosition,setQuranPosition]=useState<any>(null);const[refreshing,setRefreshing]=useState(false);
+  /* null while it is still arriving, empty if it never did. The card only
+     appears once there is a real remembrance to put in it. */
+  const[afterPrayer,setAfterPrayer]=useState<Dua[]|null>(null);
+  useEffect(()=>{loadDuas('after-prayer').then(r=>setAfterPrayer(r.duas||[])).catch(()=>setAfterPrayer([]))},[]);
     useEffect(()=>{const t=setInterval(()=>setHour(new Date().getHours()),60000);return()=>clearInterval(t)},[]);
   const hydrateLocal=()=>Promise.all([loadPrayerCompletion(dateKey).then(setCompleted),loadPrayerHistory().then(setHistory),loadQuickTasbih().then(setQuickCount),loadReadingPosition().then(setQuranPosition)]);useEffect(()=>{hydrateLocal()},[dateKey]);useFocusEffect(useCallback(()=>{void hydrateLocal()},[]));const togglePrayer=(name:string)=>setCompleted(current=>{const next=current.includes(name)?current.filter(x=>x!==name):[...current,name];savePrayerCompletion(dateKey,next).then(()=>loadPrayerHistory().then(setHistory));return next});const addQuick=async()=>{await tapTasbih();if(Platform.OS!=='web')Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)};const onRefresh=async()=>{setRefreshing(true);await Promise.all([data.load(),hydrateLocal()]);setRefreshing(false)};const weekTotal=Object.entries(history).filter(([key])=>Date.now()-new Date(key).getTime()<7*86400000).reduce((sum,[,items])=>sum+items.length,0);let streak=0;for(let i=0;i<60;i++){const d=new Date();d.setDate(d.getDate()-i);const key=d.toISOString().slice(0,10);if((history[key]||[]).length>=5)streak++;else if(i>0||completed.length<5)break}
   /* The adhkar sit in their own cards above, so "For your day" keeps the four
@@ -854,17 +858,13 @@ function HomeScreen() {
   /* Morning gives way to evening as the day does. The hour is re-read every
      minute so the card turns over by itself rather than on the next render. */
   const morningTime = hour < 13;
-  const adhkarCards = [
-    {label:morningTime?'Morning Adhkar':'Evening Adhkar',
-     kicker:T('Right now'),
-     title:T(morningTime?'Morning Adhkar':'Evening Adhkar'),
-     body:T(morningTime?'Begin the day with authentic remembrance':'Close the day with authentic remembrance'),
-     initial:morningTime?'morning':'evening'},
-    {label:'Duas',kicker:T('After every prayer'),
-     title:T('After Prayer'),
-     body:T('The remembrance recited once the salam is given'),
-     initial:'after-prayer'},
-  ];
+  /* One of the eight remembrances said once the salam is given, chosen by the
+     day so it turns over on its own instead of showing the same line forever.
+     The local date is used rather than the UTC one so it changes at midnight
+     where the person is, not eight hours either side of it. */
+  const today = new Date();
+  const dayNumber = Math.floor(new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime() / 86400000);
+  const afterPrayerDua = afterPrayer && afterPrayer.length ? afterPrayer[dayNumber % afterPrayer.length] : null;
   const contentWidth=Math.min(Math.max(width-36,280),980);const reflectionCardWidth=wide?Math.min(310,(contentWidth-24)/3):Math.min(318,Math.max(260,width-66));
   const reflections=[{id:'ayah'},{id:'name'},{id:'dua'},{id:'tasbih'}];
   return <Page><Animated.ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false} scrollEventThrottle={16} onScroll={Animated.event([{nativeEvent:{contentOffset:{y:scrollY}}}],{useNativeDriver:false})} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.green}/>}>
@@ -881,15 +881,22 @@ function HomeScreen() {
       <View style={s.prayerRail}>{data.snapshot?.prayers.filter(p=>p.name!=='Sunrise').map((p,i)=>{const checked=completed.includes(p.name);return <Pressable accessibilityRole="checkbox" accessibilityState={{checked}} onPress={()=>togglePrayer(p.name)} key={p.name} style={[s.railItem,p.name===next?.name&&s.railItemActive]}><View style={[s.railIcon,checked&&s.railIconDone]}><Image source={PRAYER_ICONS[p.name] || PRAYER_ICONS.Fajr} resizeMode="contain" style={{width:26,height:26,opacity:checked?1:.7}}/>{!!checked && <View style={s.railCheck}>{ico('checkmark',10,C.white)}</View>}</View><Text style={s.railName}>{prayerName(rtl, p.name)}</Text><Text style={s.railTime}>{p.time.replace(' ','\n')}</Text></Pressable>})}</View><View style={s.homeProgress}><View><Text style={s.sourceTitle}>{completed.length}/5 {rtl ? 'صلاة اليوم' : 'prayers today'}</Text><Text style={s.sourceBody}>{rtl ? `${streak} ${arNoun(streak,'يوم متتابع','يومان متتابعان','أيام متتابعة','يومًا متتابعًا')} · ${weekTotal}/35 هذا الأسبوع` : `${streak} day streak · ${weekTotal}/35 this week`}</Text></View><View style={s.homeProgressRing}><Text style={s.progressCount}>{completed.length*20}%</Text></View></View>
     </>}
     <Section title={T('Adhkar')} action={T('All duas')} onPress={()=>nav.navigate('Library',{screen:'Duas'})} />
-    <View style={s.adhkarRow}>{adhkarCards.map((card,i)=>(
-      <DepthCard key={card.initial} index={i} radius={RADIUS.xl} style={s.adhkarCard} bodyStyle={s.adhkarPad}
-        onPress={()=>nav.navigate('Library',{screen:'Adhkar',params:{initial:card.initial}})}>
-        <ToolGraphic tool={card.label} size={52}/>
-        <Text style={s.adhkarKicker}>{card.kicker}</Text>
-        <Text style={s.adhkarTitle}>{card.title}</Text>
-        <Text style={s.adhkarBody}>{card.body}</Text>
-      </DepthCard>
-    ))}</View>
+    {afterPrayer === null && <View style={[s.adhkarDuaCard, s.adhkarDuaPad]}><Spinner /></View>}
+    {!!afterPrayerDua && <DepthCard radius={RADIUS.xl} style={s.adhkarDuaCard} bodyStyle={s.adhkarDuaPad}
+      onPress={()=>nav.navigate('Library',{screen:'Adhkar',params:{initial:'after-prayer'}})}>
+      <View style={s.adhkarDuaHead}>
+        <ToolGraphic tool="Duas" size={46} />
+        <View style={{ flex: 1 }}>
+          <Text style={s.adhkarKicker}>{T('After every prayer')}</Text>
+          <Text style={s.adhkarTitle}>{T('After the salam')}</Text>
+        </View>
+        {ico(rtl ? 'arrow-back' : 'arrow-forward', 17, C.chevron)}
+      </View>
+      <Text style={s.dailyArabic}>{afterPrayerDua.arabic}</Text>
+      {!!afterPrayerDua.translation && <Text style={s.adhkarTranslation}>{afterPrayerDua.translation}</Text>}
+      {!!afterPrayerDua.reference && <Text style={s.adhkarRef}>{afterPrayerDua.reference}</Text>}
+      <Text style={s.adhkarFoot}>{afterPrayer?.length} {T('remembrances')} · {T('Tap to read them all')}</Text>
+    </DepthCard>}
     <Section title={T('For your day')} action={T('All tools')} onPress={()=>nav.navigate('Library')} />
     <View style={s.roundRow}>{dayTools.map(tool=>(
       <MotionPress key={tool.label} onPress={tool.onPress} style={s.roundItem}>
@@ -1244,8 +1251,12 @@ function ToolsHomeScreen({ navigation }: any) {
   const womens = useWomens();
   // The women's area stays hidden until it is opted into.
   const shown = (group: typeof TOOL_GROUPS[number]) => group.items.filter((item) => item.route !== 'Women' || womens.optedIn);
-  return <Page><AppHeader/>
-    <ScrollView contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
+  /* The header belongs inside the scroller, as it is on the other four tabs.
+     Left outside it sits flush to the screen edge with no padding, so Tools
+     looked like a different app from Home, Prayer, Quran and Library. */
+  return <Page>
+    <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
+      <AppHeader/>
       <Text style={s.dataTitle}>{T('Tools')}</Text>
       <Text style={s.dataArabic}>أَدَوَاتٌ لِلْعِبَادَةِ</Text>
       <Text style={s.dataBody}>{T('What you work out, look up, keep track of, or watch — apart from the flow of the day.')}</Text>
@@ -4116,12 +4127,15 @@ function makeStyles() {
  graphicFrame:{alignItems:'center',justifyContent:'center',overflow:'hidden'},motionGlyph:{width:49,height:49,borderRadius:16,backgroundColor:C.mint,borderWidth:1,borderColor:'#DDD6FF',alignItems:'center',justifyContent:'center'},motionGlyphInverse:{backgroundColor:'rgba(255,255,255,.14)',borderColor:'rgba(255,255,255,.22)'},glyphDot:{position:'absolute',right:6,top:6,width:5,height:5,borderRadius:4,backgroundColor:C.gold},greeting:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginBottom:16},salam:{color:C.green,fontSize:10,fontFamily:'DMSans_600SemiBold',letterSpacing:1.2,marginBottom:4},greetingTitle:{color:C.ink,fontSize:29,fontFamily:'Newsreader_600SemiBold',letterSpacing:-.6},prayerHeader:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginTop:6,marginBottom:16},prayerOverline:{color:C.muted,fontSize:10,fontFamily:'DMSans_600SemiBold',letterSpacing:1.2,marginBottom:5},prayerTitle:{color:C.ink,fontSize:27,fontFamily:'Newsreader_600SemiBold',letterSpacing:-.6},
  aura:{position:'absolute',top:'-30%',left:'-20%',right:'-20%',height:'160%'},auraAlt:{position:'absolute',top:'-20%',left:'10%',right:'-25%',height:'140%',opacity:.8},heroSheen:{position:'absolute',top:'-20%',bottom:'-20%',width:'38%',left:'31%',opacity:.5},hero:{height:285,borderRadius:28,overflow:'hidden',padding:20,...shadow},heroWide:{height:310},heroBg:{position:'absolute',left:0,right:0,top:0,bottom:0,width:'100%',height:'100%'},locationPill:{flexDirection:'row',alignItems:'center',gap:4,alignSelf:'flex-start',maxWidth:'72%',backgroundColor:'rgba(2,28,30,.62)',paddingHorizontal:12,paddingVertical:8,borderRadius:16},locationText:{color:C.onAccent,fontFamily:'DMSans_600SemiBold',fontSize:11,flexShrink:1},hijri:{color:'#D8D5E9',fontSize:11,marginTop:12},nextLabel:{color:'#FFE2A1',fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.8,marginTop:36},heroTime:{color:C.onAccent,fontSize:42,fontFamily:'DMSans_700Bold',letterSpacing:-1.2,marginTop:2},heroFooter:{position:'absolute',left:20,right:20,bottom:18,flexDirection:'row',alignItems:'center',justifyContent:'space-between'},countPill:{flexDirection:'row',alignItems:'center',gap:4,backgroundColor:'rgba(255,255,255,.16)',paddingHorizontal:12,paddingVertical:8,borderRadius:16,borderWidth:1,borderColor:'rgba(255,255,255,.18)'},countText:{color:C.onAccent,fontSize:10,fontFamily:'DMSans_600SemiBold'},heroCta:{flexDirection:'row',alignItems:'center',gap:8},heroCtaText:{color:C.onAccent,fontSize:10,fontFamily:'DMSans_700Bold'},
  prayerRail:{marginHorizontal:8,marginTop:-1,backgroundColor:C.white,borderBottomLeftRadius:24,borderBottomRightRadius:24,flexDirection:'row',paddingHorizontal:8,paddingVertical:12,borderWidth:1,borderTopWidth:0,borderColor:C.line,...soft},railItem:{flex:1,alignItems:'center',paddingVertical:4,borderRadius:16},railItemActive:{backgroundColor:'#F0EDFF'},railIcon:{width:40,height:40,borderRadius:20,backgroundColor:'rgba(255,255,255,.94)',borderWidth:1,borderColor:'#DDD6FF',alignItems:'center',justifyContent:'center',marginBottom:8},railIconDone:{backgroundColor:'#E4F2EC',borderColor:C.green},
-adhkarRow:{flexDirection:'row',gap:12,marginHorizontal:8},
-adhkarCard:{flex:1},
-adhkarPad:{padding:14},
+adhkarDuaCard:{marginHorizontal:8},
+adhkarDuaPad:{padding:16},
+adhkarDuaHead:{flexDirection:'row',alignItems:'center',gap:12,marginBottom:14},
+adhkarTranslation:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:12,lineHeight:19,marginTop:10},
+adhkarRef:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:9.5,letterSpacing:.6,marginTop:10,textTransform:'uppercase'},
+adhkarFoot:{color:C.muted,fontFamily:'DMSans_600SemiBold',fontSize:10.5,marginTop:14},
 adhkarKicker:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:9,textTransform:'uppercase',letterSpacing:.6,marginTop:10},
 adhkarTitle:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:14,marginTop:4},
-adhkarBody:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:10,lineHeight:14,marginTop:4},
+
 roundRow:{flexDirection:'row',marginHorizontal:8,backgroundColor:C.card,borderRadius:24,paddingVertical:16,borderWidth:1,borderColor:C.line,borderTopColor:depth.edge,...depth.ambient},
 roundItem:{flex:1,alignItems:'center',paddingHorizontal:4},
 roundIcon:{width:58,height:58,borderRadius:29,backgroundColor:C.mint,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:'#DDD6FF'},
