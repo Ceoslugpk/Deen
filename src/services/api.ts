@@ -65,7 +65,7 @@ function gregorianWeekday(date: string): string | undefined {
   return new Date(year, month - 1, day).toLocaleDateString('ar-u-nu-latn', { weekday: 'long' });
 }
 
-function calendarDay(row: any): CalendarDay {
+function calendarDay(row: any, timeFormat: '12' | '24' = '12'): CalendarDay {
   const names = ['Fajr', 'Sunrise', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
   return {
     gregorian: row.date.gregorian.date,
@@ -76,13 +76,38 @@ function calendarDay(row: any): CalendarDay {
     hijriMonth: row.date.hijri.month.en,
     hijriMonthAr: row.date.hijri.month.ar,
     hijriYear: Number(row.date.hijri.year),
-    prayers: names.map(name => ({ name, raw: cleanTime(row.timings[name]), time: displayTime(row.timings[name]) })),
+    prayers: names.map(name => ({ name, raw: cleanTime(row.timings[name]), time: displayTime(row.timings[name], timeFormat) })),
   };
 }
 
 export async function getGregorianCalendar(latitude: number, longitude: number, month: number, year: number): Promise<CalendarDay[]> {
   const data = await json(`https://api.aladhan.com/v1/calendar/${year}/${month}?latitude=${latitude}&longitude=${longitude}&method=8`);
   return data.map(calendarDay);
+}
+
+/**
+ * A month of prayer times, from AlAdhan's calendar endpoint - the same source
+ * today's card uses, so the two cannot disagree.
+ *
+ * The method and the Asr school are the ones chosen in Settings rather than
+ * the API's defaults. A week that applied a different rule from the day above
+ * it would be worse than showing nothing.
+ */
+export async function getPrayerCalendar(
+  latitude: number,
+  longitude: number,
+  month: number,
+  year: number,
+  options: PrayerRequestOptions = {},
+): Promise<CalendarDay[]> {
+  const method = options.method ?? 8;
+  const school = options.school === 'hanafi' ? 1 : 0;
+  const timeFormat = options.timeFormat ?? '12';
+  const data = await json(
+    `https://api.aladhan.com/v1/calendar/${year}/${month}` +
+    `?latitude=${latitude}&longitude=${longitude}&method=${method}&school=${school}`,
+  );
+  return data.map((row: any) => calendarDay(row, timeFormat));
 }
 
 export async function getRamadanCalendar(latitude: number, longitude: number, hijriYear: number): Promise<CalendarDay[]> {
