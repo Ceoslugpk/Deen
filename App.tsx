@@ -11,7 +11,7 @@ function ToolsStack(){return <Stack.Navigator screenOptions={{headerShown:false}
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  AccessibilityInfo, ActivityIndicator, Alert, Animated, Easing, Image, ImageBackground, Linking, Platform, Pressable,
+  AccessibilityInfo, ActivityIndicator, Alert, Animated, BackHandler, Easing, Image, ImageBackground, Linking, Platform, Pressable,
   I18nManager, RefreshControl, SafeAreaView, ScrollView, Share, StatusBar, StyleSheet, Switch, Text, TextInput,
   PanResponder, useColorScheme, useWindowDimensions, View,
 } from 'react-native';
@@ -650,16 +650,58 @@ const HEADER_DARK = {
   settings: require('./assets/tool-icons/tab-settings-dark.png'),
 };
 
+/**
+ * Whether there is somewhere to go back to from here.
+ *
+ * Deliberately narrower than the navigator's own canGoBack, which is also
+ * true when the last thing that happened was a change of tab. A tab is not
+ * somewhere you came *from* - the tab bar is how you leave one - so only the
+ * stacks count. Without that, every root screen grew a back arrow the moment
+ * you visited another tab.
+ *
+ * Read on focus rather than once, because a screen can be pushed onto a stack
+ * that was already on screen and the answer changes underneath the header.
+ */
+function useCanGoBack() {
+  const navigation = useNavigation<any>();
+  const [can, setCan] = useState(false);
+  useFocusEffect(useCallback(() => {
+    let alive = true;
+    const read = () => {
+      let found = false;
+      try {
+        const walk = (state: any) => {
+          if (!state || !state.routes) return;
+          if (state.type === 'stack' && (state.index || 0) > 0) found = true;
+          const focused = state.routes[state.index || 0];
+          if (focused && focused.state) walk(focused.state);
+        };
+        walk((navigationRef as any).getRootState?.() ?? navigation.getState?.());
+      } catch { /* the navigator is not ready yet */ }
+      if (alive) setCan(found);
+    };
+    read();
+    const settle = setTimeout(read, 60); /* after the push has settled */
+    return () => { alive = false; clearTimeout(settle); };
+  }, [navigation]));
+  return can;
+}
+
 function AppHeader() {
   const { rtl } = useLanguage();
   const { dark, setMode } = useTheme();
   const navigation = useNavigation<any>();
   const T = (text: string) => tx(rtl, text);
+  /* Six screens wear this header, and some of them are reached by pushing
+     onto a stack. Without this the only way out of those was the tab bar. */
+  const canGoBack = useCanGoBack();
   return <View style={s.appHeader}>
-    <View style={s.appHeaderBrand}>
-      <Image source={dark ? LOGO_MARK_DARK : LOGO_MARK} resizeMode="contain" style={s.appLogo} />
-      <Text style={s.appName} numberOfLines={1}>{T('Deen Companion')}</Text>
-    </View>
+    {canGoBack
+      ? <IconButton name={rtl ? 'arrow-forward' : 'arrow-back'} onPress={() => navigation.goBack()} />
+      : <View style={s.appHeaderBrand}>
+        <Image source={dark ? LOGO_MARK_DARK : LOGO_MARK} resizeMode="contain" style={s.appLogo} />
+        <Text style={s.appName} numberOfLines={1}>{T('Deen Companion')}</Text>
+      </View>}
     <View style={s.appHeaderActions}>
       <Pressable accessibilityRole="button" accessibilityLabel={T('Notifications')}
         onPress={() => navigation.navigate('Prayer', { screen: 'Notifications' })}
@@ -3145,11 +3187,144 @@ function DataSourcesScreen({ navigation }: any) {
   </Page>;
 }
 
-function SettingsStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="Settings" component={SettingsScreen}/><Stack.Screen name="Data sources" component={DataSourcesScreen}/></Stack.Navigator>}
+/**
+ * Settings owns the two screens it links to. Reading preferences and the
+ * lock live in the Quran and Tools stacks too, but reaching across to those
+ * from here finds no route - the navigator only looks at its own stack and
+ * its ancestors, and Settings is not inside either. Registering them here
+ * keeps the journey honest: open reading settings, press back, land in
+ * Settings where you started.
+ */
+function SettingsStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="Settings" component={SettingsScreen}/><Stack.Screen name="Data sources" component={DataSourcesScreen}/><Stack.Screen name="Reader Settings" component={ReaderSettingsScreen}/><Stack.Screen name="Privacy Lock" component={PrivacyLockScreen}/></Stack.Navigator>}
 
-function SettingsScreen({navigation}:any){const{language,rtl,setLanguage}=useLanguage();const T=(text:string)=>tx(rtl,text);const{mode:themeMode,setMode}=useTheme();const{settings,update}=useWorshipSettings();const womens=useWomens();const lock=useLockConfig();return <Page><ScrollView contentContainerStyle={s.scroll}><View style={s.backRow}><IconButton name={rtl?'arrow-forward':'arrow-back'} onPress={()=>navigation.goBack()}/></View><TopBar overline={rtl?'خصوصية بلا حساب':'PRIVATE BY DESIGN'} title={rtl?'الإعدادات':'Settings'} right={<MotionGlyph name="shield-checkmark-outline" size={20}/>}/><LinearGradient colors={[C.heroA,C.green]} style={s.privacyHero}><MotionGlyph name="shield-checkmark-outline" size={25} inverse/><View style={{flex:1}}><Text style={s.profileName}>{rtl?'لا حساب. لا تتبع.':'No account. No tracking.'}</Text><Text style={s.profileSub}>{rtl?'تبقى عبادتك خاصة وتظل تفضيلاتك على هذا الجهاز.':'Your worship stays private and your preferences remain on this device.'}</Text></View></LinearGradient><View style={s.privacyPoints}><View style={s.privacyPoint}>{ico('person-remove-outline',19,C.green)}<Text style={s.privacyPointText}>{rtl?'دون تسجيل':'No sign-up'}</Text></View><View style={s.privacyPoint}>{ico('cloud-offline-outline',19,C.green)}<Text style={s.privacyPointText}>{rtl?'دون ملف سحابي':'No cloud profile'}</Text></View><View style={s.privacyPoint}>{ico('analytics-outline',19,C.green)}<Text style={s.privacyPointText}>{rtl?'دون تتبع إعلاني':'No ad tracking'}</Text></View></View>
-<Section title={rtl?'حساب أوقات الصلاة':'Prayer calculation'}/><View style={s.preferencePanel}><View style={s.preferenceHead}><ToolGraphic tool="Qibla" size={54}/><View style={{flex:1}}><Text style={s.settingName}>{rtl?'طريقة الحساب':'Calculation method'}</Text><Text style={s.meta}>{rtl?'تُحفظ على هذا الجهاز وتُطبق على جميع مواقيت الصلاة.':'Saved on this device and applied throughout the app.'}</Text></View></View><View style={s.choiceGrid}>{PRAYER_METHODS.map(method=><ChoicePill key={method.id} label={rtl?method.ar:method.name} selected={settings.calculationMethod===method.id} onPress={()=>update({calculationMethod:method.id,calculationMethodName:method.name})}/>)}</View><Text style={s.preferenceLabel}>{rtl?'المذهب لحساب العصر':'ASR MADHAB'}</Text><View style={s.choiceRow}><ChoicePill label={rtl?'الشافعي':'Shafi'} selected={settings.madhab==='shafi'} onPress={()=>update({madhab:'shafi'})}/><ChoicePill label={rtl?'الحنفي':'Hanafi'} selected={settings.madhab==='hanafi'} onPress={()=>update({madhab:'hanafi'})}/></View><Text style={s.preferenceLabel}>{rtl?'تنسيق الوقت':'TIME FORMAT'}</Text><View style={s.choiceRow}><ChoicePill label={rtl?'12 ساعة':'12 hour'} selected={settings.timeFormat==='12'} onPress={()=>update({timeFormat:'12'})}/><ChoicePill label={rtl?'24 ساعة':'24 hour'} selected={settings.timeFormat==='24'} onPress={()=>update({timeFormat:'24'})}/></View></View>
-<Section title={T('Appearance')}/><View style={s.settings}><View style={s.setting}><MotionGlyph name="moon-outline" size={19}/><View style={{flex:1}}><Text style={s.settingName}>{T('Appearance')}</Text><Text style={s.meta}>{T('Light, dark, or whatever the device is set to')}</Text></View></View><View style={s.choiceRow}><ChoicePill label={T('System')} selected={themeMode==='system'} onPress={()=>setMode('system')}/><ChoicePill label={T('Light')} selected={themeMode==='light'} onPress={()=>setMode('light')}/><ChoicePill label={T('Dark')} selected={themeMode==='dark'} onPress={()=>setMode('dark')}/></View></View><Section title={rtl?'التفضيلات':'Preferences'}/><View style={s.settings}><View style={s.setting}><MotionGlyph name="language-outline" size={19}/><View style={{flex:1}}><Text style={s.settingName}>{rtl?'واجهة عربية':'English interface'}</Text><Text style={s.meta}>{rtl?'تخطيط من اليمين إلى اليسار':'Left-to-right layout'}</Text></View><View style={{direction:'ltr'} as any}><Switch accessibilityLabel={rtl?'Arabic interface':'Arabic interface'} value={language==='ar'} onValueChange={v=>setLanguage(v?'ar':'en')} trackColor={{true:C.green}}/></View></View><View style={s.setting}><ToolGraphic tool="Arabic Quran" size={44}/><View style={{flex:1}}><Text style={s.settingName}>{rtl?'قراءة القرآن':'Quran reading'}</Text><Text style={s.meta}>{rtl?'النص العثماني · صحيح إنترناشيونال':'Uthmani Arabic · Sahih International English'}</Text></View></View><View style={s.setting}><ToolGraphic tool="Women’s worship" size={44}/><View style={{flex:1,marginHorizontal: 12}}><Text style={s.settingName}>{rtl?'عبادة النساء':'Women’s worship'}</Text><Text style={s.meta}>{rtl?(womens.optedIn?'الدورة والطهارة والقضاء · على هذا الجهاز فقط':'مساحة خاصة للدورة والطهارة والقضاء'):(womens.optedIn?'Cycle, purity and Qada records · on this device only':'A private area for the cycle, purity and Qada records')}</Text></View><View style={{direction:'ltr'} as any}><Switch accessibilityLabel={T('Women’s worship')} value={womens.optedIn} onValueChange={(value)=>void setOptedIn(value)} trackColor={{true:C.green}}/></View></View>{womens.optedIn&&<Pressable accessibilityRole="button" accessibilityLabel={T('Lock and PIN')} onPress={()=>navigation.navigate('Tools',{screen:'Privacy Lock'})} style={s.setting}><ToolGraphic tool="Privacy lock" size={44}/><View style={{flex:1,marginHorizontal: 12}}><Text style={s.settingName}>{rtl?'القفل والرمز':'Lock and PIN'}</Text><Text style={s.meta}>{rtl?(lock.pinSet?(lock.required?'مقفل':'الرمز محفوظ'):'لا رمز بعد'):(lock.pinSet?(lock.required?'Locked':'PIN saved, lock is off'):'No PIN yet')}</Text></View>{ico(rtl?'arrow-back':'arrow-forward',17,C.chevron)}</Pressable>}</View><Pressable onPress={()=>navigation.navigate('Data sources')} style={[s.settings,s.dataSourceRow]} accessibilityRole="button" accessibilityLabel={T('Data sources')}><ToolGraphic tool="Quran" size={40}/><View style={{flex:1,marginHorizontal: 12}}><Text style={s.settingName}>{rtl?'مصادر البيانات':'Data sources'}</Text><Text style={s.meta}>{rtl?'من أين يأتي نص القرآن والمواقيت والحديث والصوت':'Where the Quran text, prayer times, hadith and audio come from'}</Text></View>{ico('arrow-forward',17,C.chevron)}</Pressable></ScrollView></Page>}
+/**
+ * The header of a settings card: a tile, a name, and what the choice does.
+ *
+ * Settings is a list of cards that do not otherwise resemble each other -
+ * one holds pills, one holds switches, one is a single link. Giving them all
+ * the same head is what makes the screen read as one page rather than five.
+ */
+function PanelHead({ tool, glyph, title, note }: { tool?: string; glyph?: string; title: string; note: string }) {
+  return <View style={s.preferenceHead}>
+    {tool
+      ? <ToolGraphic tool={tool} size={54} />
+      : <View style={s.prefIconTile}>{glyph ? <MotionGlyph name={glyph} size={22} /> : null}</View>}
+    <View style={{ flex: 1 }}>
+      <Text style={s.settingName}>{title}</Text>
+      <Text style={s.meta}>{note}</Text>
+    </View>
+  </View>;
+}
+
+function SettingsScreen({navigation}:any){
+  const { language, rtl, setLanguage } = useLanguage();
+  const T = (text: string) => tx(rtl, text);
+  const { mode: themeMode, setMode } = useTheme();
+  const { settings, update } = useWorshipSettings();
+  const { preferences } = useQuranPreferences();
+  const womens = useWomens();
+  const lock = useLockConfig();
+  /* Shown under "Quran reading" so the row describes what is actually in
+     force rather than a guess that drifts out of step with the reader. */
+  const scriptLabel = preferences.scriptName || T('Uthmani');
+  const translationLabel = preferences.translationName || T('Sahih International');
+  return <Page>
+    <ScrollView contentContainerStyle={s.scroll}>
+      <View style={s.backRow}><IconButton name={rtl ? 'arrow-forward' : 'arrow-back'} onPress={() => navigation.goBack()} /></View>
+      <TopBar overline={rtl ? 'خصوصية بلا حساب' : 'PRIVATE BY DESIGN'} title={rtl ? 'الإعدادات' : 'Settings'} right={<MotionGlyph name="shield-checkmark-outline" size={20} />} />
+      <LinearGradient colors={[C.heroA, C.green]} style={s.privacyHero}>
+        <MotionGlyph name="shield-checkmark-outline" size={25} inverse />
+        <View style={{ flex: 1 }}>
+          <Text style={s.profileName}>{rtl ? 'لا حساب. لا تتبع.' : 'No account. No tracking.'}</Text>
+          <Text style={s.profileSub}>{rtl ? 'تبقى عبادتك خاصة وتظل تفضيلاتك على هذا الجهاز.' : 'Your worship stays private and your preferences remain on this device.'}</Text>
+        </View>
+      </LinearGradient>
+      <View style={s.privacyPoints}>
+        <View style={s.privacyPoint}>{ico('person-remove-outline', 19, C.green)}<Text style={s.privacyPointText}>{rtl ? 'دون تسجيل' : 'No sign-up'}</Text></View>
+        <View style={s.privacyPoint}>{ico('cloud-offline-outline', 19, C.green)}<Text style={s.privacyPointText}>{rtl ? 'دون ملف سحابي' : 'No cloud profile'}</Text></View>
+        <View style={s.privacyPoint}>{ico('analytics-outline', 19, C.green)}<Text style={s.privacyPointText}>{rtl ? 'دون تتبع إعلاني' : 'No ad tracking'}</Text></View>
+      </View>
+
+      <Section title={rtl ? 'أوقات الصلاة' : 'Prayer times'} />
+      <View style={s.preferencePanel}>
+        <PanelHead tool="Prayer" title={rtl ? 'طريقة الحساب' : 'Calculation method'} note={rtl ? 'تُحفظ على هذا الجهاز وتُطبق على جميع مواقيت الصلاة.' : 'Saved on this device and applied to every prayer time.'} />
+        <View style={s.choiceGrid}>{PRAYER_METHODS.map(method => <ChoicePill key={method.id} label={rtl ? method.ar : method.name} selected={settings.calculationMethod === method.id} onPress={() => update({ calculationMethod: method.id, calculationMethodName: method.name })} />)}</View>
+        <Text style={s.preferenceLabel}>{rtl ? 'المذهب لحساب العصر' : 'ASR MADHAB'}</Text>
+        <View style={s.choiceRow}>
+          <ChoicePill label={rtl ? 'الشافعي' : 'Shafi'} selected={settings.madhab === 'shafi'} onPress={() => update({ madhab: 'shafi' })} />
+          <ChoicePill label={rtl ? 'الحنفي' : 'Hanafi'} selected={settings.madhab === 'hanafi'} onPress={() => update({ madhab: 'hanafi' })} />
+        </View>
+        <Text style={s.preferenceLabel}>{rtl ? 'تنسيق الوقت' : 'TIME FORMAT'}</Text>
+        <View style={s.choiceRow}>
+          <ChoicePill label={rtl ? '12 ساعة' : '12 hour'} selected={settings.timeFormat === '12'} onPress={() => update({ timeFormat: '12' })} />
+          <ChoicePill label={rtl ? '24 ساعة' : '24 hour'} selected={settings.timeFormat === '24'} onPress={() => update({ timeFormat: '24' })} />
+        </View>
+      </View>
+
+      <Section title={T('Appearance')} />
+      <View style={s.preferencePanel}>
+        <PanelHead glyph={themeMode === 'dark' ? 'moon-outline' : themeMode === 'light' ? 'sunny-outline' : 'contrast-outline'} title={T('Appearance')} note={T('Light, dark, or whatever the device is set to')} />
+        <View style={s.choiceRow}>
+          <ChoicePill label={T('System')} selected={themeMode === 'system'} onPress={() => setMode('system')} />
+          <ChoicePill label={T('Light')} selected={themeMode === 'light'} onPress={() => setMode('light')} />
+          <ChoicePill label={T('Dark')} selected={themeMode === 'dark'} onPress={() => setMode('dark')} />
+        </View>
+      </View>
+
+      <Section title={rtl ? 'التفضيلات' : 'Preferences'} />
+      <View style={s.settings}>
+        <View style={s.setting}>
+          <View style={s.prefIconTile}><MotionGlyph name="language-outline" size={22} /></View>
+          <View style={{ flex: 1 }}>
+            <Text style={s.settingName}>{rtl ? 'واجهة عربية' : 'Arabic interface'}</Text>
+            <Text style={s.meta}>{rtl ? 'تخطيط من اليمين إلى اليسار' : 'Right-to-left layout throughout the app'}</Text>
+          </View>
+          <View style={{ direction: 'ltr' } as any}>
+            <Switch accessibilityLabel={T('Arabic interface')} value={language === 'ar'} onValueChange={v => setLanguage(v ? 'ar' : 'en')} trackColor={{ true: C.green }} />
+          </View>
+        </View>
+        <Pressable accessibilityRole="button" accessibilityLabel={T('Quran reading')}
+          onPress={() => navigation.navigate('Reader Settings')} style={s.setting}>
+          <ToolGraphic tool="Arabic Quran" size={44} />
+          <View style={{ flex: 1, marginHorizontal: 12 }}>
+            <Text style={s.settingName}>{rtl ? 'قراءة القرآن' : 'Quran reading'}</Text>
+            <Text style={s.meta}>{scriptLabel} · {translationLabel}</Text>
+          </View>
+          {ico(rtl ? 'arrow-back' : 'arrow-forward', 17, C.chevron)}
+        </Pressable>
+        <View style={s.setting}>
+          <ToolGraphic tool="Women’s worship" size={44} />
+          <View style={{ flex: 1, marginHorizontal: 12 }}>
+            <Text style={s.settingName}>{rtl ? 'عبادة النساء' : 'Women’s worship'}</Text>
+            <Text style={s.meta}>{rtl ? (womens.optedIn ? 'الدورة والطهارة والقضاء · على هذا الجهاز فقط' : 'مساحة خاصة للدورة والطهارة والقضاء') : (womens.optedIn ? 'Cycle, purity and Qada records · on this device only' : 'A private area for the cycle, purity and Qada records')}</Text>
+          </View>
+          <View style={{ direction: 'ltr' } as any}>
+            <Switch accessibilityLabel={T('Women’s worship')} value={womens.optedIn} onValueChange={(value) => void setOptedIn(value)} trackColor={{ true: C.green }} />
+          </View>
+        </View>
+        {womens.optedIn && <Pressable accessibilityRole="button" accessibilityLabel={T('Lock and PIN')} onPress={() => navigation.navigate('Privacy Lock')} style={s.setting}>
+          <ToolGraphic tool="Privacy lock" size={44} />
+          <View style={{ flex: 1, marginHorizontal: 12 }}>
+            <Text style={s.settingName}>{rtl ? 'القفل والرمز' : 'Lock and PIN'}</Text>
+            <Text style={s.meta}>{rtl ? (lock.pinSet ? (lock.required ? 'مقفل' : 'الرمز محفوظ') : 'لا رمز بعد') : (lock.pinSet ? (lock.required ? 'Locked' : 'PIN saved, lock is off') : 'No PIN yet')}</Text>
+          </View>
+          {ico(rtl ? 'arrow-back' : 'arrow-forward', 17, C.chevron)}
+        </Pressable>}
+      </View>
+
+      <Section title={rtl ? 'عن التطبيق' : 'About'} />
+      <Pressable onPress={() => navigation.navigate('Data sources')} style={s.settings} accessibilityRole="button" accessibilityLabel={T('Data sources')}>
+        <View style={s.setting}>
+          <ToolGraphic tool="Quran" size={44} />
+          <View style={{ flex: 1, marginHorizontal: 12 }}>
+            <Text style={s.settingName}>{rtl ? 'مصادر البيانات' : 'Data sources'}</Text>
+            <Text style={s.meta}>{rtl ? 'من أين يأتي نص القرآن والمواقيت والحديث والصوت' : 'Where the Quran text, prayer times, hadith and audio come from'}</Text>
+          </View>
+          {ico(rtl ? 'arrow-back' : 'arrow-forward', 17, C.chevron)}
+        </View>
+      </Pressable>
+    </ScrollView>
+  </Page>}
 import { DEFAULT_RECITER, LANGUAGES, Language, LanguageCode, languageByCode, isRtl } from './src/services/languages';
 
 const navigationRef = createNavigationContainerRef<any>();
@@ -3537,6 +3712,54 @@ function FloatingTabBar({ state, navigation }: any) {
 function Tabs(){return <Tab.Navigator screenOptions={{headerShown:false,tabBarHideOnKeyboard:true}} tabBar={(props:any)=><FloatingTabBar {...props}/>}><Tab.Screen name="Home" component={HomeScreen}/><Tab.Screen name="Prayer" component={PrayerStack}/><Tab.Screen name="Quran" component={QuranStack}/><Tab.Screen name="Library" component={ExploreStack}/><Tab.Screen name="Tools" component={ToolsStack}/></Tab.Navigator>}
 /**
  * The navigation tree. It is rebuilt when the theme changes, so the palette
+/* ==================== Back ==================== */
+/**
+ * Back, from every direction a person means it.
+ *
+ * The navigator held the stack but nothing outside the app could reach it, so
+ * the gestures that live outside - the Android back key, the browser's back
+ * button, a swipe in from the edge - stepped straight out of the app. Leaving
+ * a reader or a settings page closed it instead of returning to where the
+ * person came from.
+ *
+ * On Android the key is offered to the navigator first and only closes the
+ * app once there is nowhere left to go.
+ *
+ * On the web a sentinel entry is kept in the browser's history. Pressing back
+ * pops that sentinel, which tells the navigator to go back one screen, and a
+ * fresh sentinel is left behind so the next press works too. Forward moves
+ * inside the app deliberately add nothing: one press of back should mean one
+ * screen back, however many screens deep the person went.
+ */
+function useBackIntegration(ref: any) {
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (!ref.isReady() || !ref.canGoBack()) return false; /* nothing to pop: let it close */
+      ref.goBack();
+      return true;
+    });
+    return () => sub.remove();
+  }, [ref]);
+
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined' || !window.history) return;
+    const history = window.history;
+    history.pushState({ deen: 'sentinel' }, '');
+    const onPop = () => {
+      if (ref.isReady() && ref.canGoBack()) {
+        ref.goBack();
+        history.pushState({ deen: 'sentinel' }, ''); /* leave one behind for the next press */
+      }
+      /* At the root there is nothing to go back to, so the press is allowed
+         to leave the app rather than being swallowed. */
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, [ref]);
+}
+
+/*
  * reaches every screen; the navigation state is carried across that rebuild.
  */
 function Root() {
@@ -3550,6 +3773,7 @@ function Root() {
      had built. Keeping the newest state in a ref means the remount restores
      exactly where they were, back stack and all. */
   const liveState = useRef<any>(undefined);
+  useBackIntegration(navigationRef);
   useEffect(() => { void loadNavState().then((state) => { setInitial(state); setReady(true); }); }, []);
   if (!ready) return <SafeAreaView style={s.safe}><Spinner /></SafeAreaView>;
   return <NavigationContainer ref={navigationRef} key={(dark ? 'dark' : 'light') + ':' + tick} initialState={liveState.current ?? initial} onStateChange={(state: any) => { liveState.current = state; saveNavState(state); (globalThis as any).__DBG=(globalThis as any).__DBG||[]; (globalThis as any).__DBG.push('state:'+JSON.stringify(state?.routes?.[state?.index||0]?.name)); }}>
@@ -3917,7 +4141,7 @@ readPad:{padding:20,overflow:'hidden',borderRadius:28},readKicker:{color:'#CCEBD
  translationRow:{minHeight:67,flexDirection:'row',alignItems:'center',gap:12,paddingHorizontal:12,borderBottomWidth:1,borderColor:C.line},languageBadge:{width:52,height:34,borderRadius:12,backgroundColor:C.mint,alignItems:'center',justifyContent:'center',flexDirection:'row',gap:4},languageFlag:{fontSize:12},languageBadgeText:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10},historyHead:{flexDirection:'row',alignItems:'center',justifyContent:'space-between'},historyWrap:{flexDirection:'row',flexWrap:'wrap',gap:8,marginBottom:12},historyChip:{backgroundColor:C.mint,borderRadius:16,paddingHorizontal:12,paddingVertical:8},searchResult:{backgroundColor:C.white,borderRadius:20,padding:16,marginBottom:8,borderWidth:1,borderColor:C.line},noteText:{color:C.ink,fontFamily:'Newsreader_600SemiBold',fontSize:17,lineHeight:24,marginVertical:8},noteInput:{minHeight:180,backgroundColor:C.white,borderRadius:20,padding:16,textAlignVertical:'top',fontFamily:'DMSans_400Regular',fontSize:14,color:C.ink,borderWidth:1,borderColor:C.line,outlineStyle:'none'} as any,stepper:{backgroundColor:C.white,borderRadius:20,padding:12,flexDirection:'row',alignItems:'center',justifyContent:'space-between',borderWidth:1,borderColor:C.line},stepButton:{width:44,height:44,borderRadius:16,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},fontPreview:{backgroundColor:C.mint,borderRadius:20,padding:16,marginTop:12,borderWidth:1,borderColor:C.line},fontPreviewText:{color:C.ink,textAlign:'right',lineHeight:52,includeFontPadding:false},previewArabic:{color:C.ink,fontFamily:'KFGQPCUthmanicHafs'},referenceNavigator:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:12,marginBottom:12},referenceInput:{width:100,textAlign:'center',backgroundColor:C.white,borderWidth:1,borderColor:C.line,borderRadius:16,padding:12,color:C.ink,fontFamily:'DMSans_700Bold',outlineStyle:'none'} as any,comparisonHelp:{color:C.muted,fontSize:10,lineHeight:15,marginTop:8},editionPicker:{gap:8,marginTop:12},editionChip:{minHeight:58,backgroundColor:C.white,borderRadius:16,paddingHorizontal:12,flexDirection:'row',alignItems:'center',gap:12,borderWidth:1,borderColor:C.line},editionChipActive:{borderColor:C.green,backgroundColor:C.mint},editionFlag:{fontSize:20},arabicReference:{backgroundColor:C.yellow,borderRadius:24,padding:20,marginTop:16,borderWidth:1,borderColor:'#E5D4A6'},comparisonColumns:{gap:12,paddingVertical:12,paddingRight:20},comparisonText:{color:'#474653',fontFamily:'DMSans_400Regular',fontSize:13,lineHeight:20,marginTop:12},mushafPage:{width:'100%',maxWidth:900,alignSelf:'center',padding:20,paddingBottom:BOTTOM_RESERVE},mushafNav:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:12},pageJump:{flex:1,minWidth:0,alignItems:'center'},pageInput:{minWidth:74,textAlign:'center',color:C.ink,fontFamily:'Newsreader_600SemiBold',fontSize:28,borderBottomWidth:1,borderColor:C.line,paddingVertical:4,outlineStyle:'none'} as any,pageProgress:{height:5,borderRadius:4,backgroundColor:'#E6E2EB',overflow:'hidden',marginVertical:16},mushafSheet:{backgroundColor:'#FFFDF8',borderRadius:24,padding:20,borderWidth:1,borderColor:'#DED7C9',...soft},mushafAyah:{paddingVertical:12,borderBottomWidth:1,borderColor:'#E9E1D5'},mushafSurah:{textAlign:'center',color:C.green,fontFamily:'Newsreader_600SemiBold',fontSize:20,backgroundColor:C.mint,borderRadius:16,paddingVertical:8,marginBottom:12},verseMarker:{color:C.gold,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:17},mushafTranslation:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:12,lineHeight:18,marginTop:8},sectionMarker:{flexDirection:'row',alignItems:'center',gap:10,marginTop:18,marginBottom:6},sectionRule:{flex:1,height:1,backgroundColor:C.line},sectionMarkerText:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10,textTransform:'uppercase',letterSpacing:1},mushafPageLine:{color:C.ink,textAlign:'center',writingDirection:'rtl'},topicGrid:{flexDirection:'row',flexWrap:'wrap',gap:12},topicWrap:{width:'48%'},topicCard:{minHeight:190,backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},vocabStats:{backgroundColor:C.mint,borderRadius:20,padding:16,marginBottom:12,flexDirection:'row',justifyContent:'space-between',alignItems:'center'},flashcard:{minHeight:330,backgroundColor:C.white,borderRadius:28,padding:24,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,...shadow},flashIndex:{position:'absolute',top:18,right:18,color:C.muted,fontFamily:'DMSans_600SemiBold',fontSize:10},flashArabic:{color:C.ink,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:58,lineHeight:86,textAlign:'center'},flashTransliteration:{color:C.green,fontFamily:'Newsreader_600SemiBold',fontSize:28,marginTop:12},flashMeaning:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:18,marginVertical:8,textAlign:'center'},flashHint:{color:C.muted,fontFamily:'DMSans_600SemiBold',fontSize:11,marginTop:16},tajweedPractice:{backgroundColor:C.card,borderRadius:24,padding:20,marginTop:16,borderWidth:1,borderColor:C.line,...surface},tajweedRule:{minHeight:72,flexDirection:'row',alignItems:'center',gap:12,padding:12,borderBottomWidth:1,borderColor:C.line},tajweedSwatch:{width:18,height:44,borderRadius:9},compareCard:{backgroundColor:C.card,borderRadius:20,padding:16,marginBottom:12,borderWidth:1,borderColor:C.line,...surface},juzGrid:{flexDirection:'row',flexWrap:'wrap',gap:8},juzCard:{width:'22.8%',aspectRatio:1,backgroundColor:C.card,borderRadius:16,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,...surface},juzNo:{color:C.green,fontFamily:'Newsreader_600SemiBold',fontSize:23},preloadScore:{backgroundColor:C.white,borderRadius:24,padding:20,borderWidth:1,borderColor:C.line},cacheUsage:{color:C.green,fontFamily:'DMSans_600SemiBold',fontSize:10,marginTop:8},preloadTrack:{height:9,borderRadius:4,backgroundColor:'#E6E2EB',overflow:'hidden',marginVertical:12},preloadFill:{height:'100%',backgroundColor:C.green,borderRadius:4},planGrid:{flexDirection:'row',flexWrap:'wrap',gap:12},planCard:{width:'48%',minHeight:130,backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},planDays:{color:C.green,fontFamily:'Newsreader_600SemiBold',fontSize:36},planToday:{backgroundColor:C.white,borderRadius:20,padding:16,marginTop:16,flexDirection:'row',alignItems:'center',justifyContent:'space-between',borderWidth:1,borderColor:C.line},practiceLaunch:{backgroundColor:C.mint,borderRadius:20,padding:16,marginBottom:16,flexDirection:'row',alignItems:'center',justifyContent:'space-between',borderWidth:1,borderColor:'#CFC7EE'},recallCard:{minHeight:340,backgroundColor:C.white,borderRadius:28,padding:20,borderWidth:1,borderColor:C.line,...shadow},recallPrompt:{color:C.ink,fontFamily:'Newsreader_600SemiBold',fontSize:21,lineHeight:29,marginTop:28,textAlign:'center'},recallArabic:{color:C.green,fontFamily:'KFGQPCUthmanicHafs',fontSize:32,lineHeight:58,textAlign:'right',marginTop:24,paddingTop:20,borderTopWidth:1,borderColor:C.line},revealArea:{flex:1,minHeight:110,alignItems:'center',justifyContent:'center',gap:8,marginTop:20,borderTopWidth:1,borderColor:C.line},hifzStatus:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10,textTransform:'uppercase'},intro:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:14,lineHeight:19,marginTop:0,marginBottom:20},exploreGrid:{flexDirection:'row',flexWrap:'wrap',gap:12},exploreCard:{flexGrow:1,flexBasis:'31%',minWidth:150},exploreCardInner:{minHeight:164,backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},exploreTitle:{color:C.ink,fontSize:16,fontFamily:'DMSans_700Bold',marginTop:12},exploreBody:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:11,lineHeight:15,marginTop:4,flex:1},exploreArrow:{width:29,height:29,borderRadius:16,backgroundColor:C.mint,alignItems:'center',justifyContent:'center',alignSelf:'flex-end'},apiPanel:{backgroundColor:C.deep,borderRadius:24,padding:20,marginTop:12},apiTitle:{color:C.onAccent,fontSize:14,fontFamily:'DMSans_700Bold',marginTop:16},apiText:{color:'#D9D3F3',fontSize:10,marginTop:4},
  toolPage:{flex:1,width:'100%',maxWidth:780,alignSelf:'center',alignItems:'center',padding:24,paddingTop:32},toolEyebrow:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.2,marginTop:20},compass:{width:260,height:260,borderRadius:130,backgroundColor:C.white,borderWidth:12,borderColor:'#E4DFFA',alignItems:'center',justifyContent:'center',marginTop:32,...shadow},north:{position:'absolute',top:12,color:C.coral,fontSize:10,fontFamily:'DMSans_700Bold'},compassArrow:{alignItems:'center',justifyContent:'center'},kaaba:{position:'absolute',right:43,bottom:47,width:31,height:31,backgroundColor:'#111C18',borderRadius:4},kaabaGold:{height:5,backgroundColor:C.gold,marginTop:8},direction:{color:C.ink,fontSize:31,fontFamily:'DMSans_700Bold',marginTop:24},directionText:{color:C.muted,fontSize:11,marginTop:4},primary:{backgroundColor:C.accent,paddingHorizontal:20,paddingVertical:12,minHeight:48,alignItems:'center',justifyContent:'center',borderRadius:16,marginTop:20},primaryText:{color:C.onAccent,fontSize:11,fontFamily:'DMSans_700Bold'},tasbihAr:{color:C.ink,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:32,marginTop:16},counter:{width:205,height:205,borderRadius:103,backgroundColor:C.accent,alignItems:'center',justifyContent:'center',borderWidth:12,borderColor:'#E4DEFA',marginVertical:32,...shadow},counterNo:{color:C.onAccent,fontSize:58,fontFamily:'DMSans_700Bold'},counterGoal:{color:'#DDD6FF',fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.3},secondary:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:8,minHeight:44,backgroundColor:C.white,paddingHorizontal:16,paddingVertical:12,borderRadius:16,borderWidth:1,borderColor:C.line,marginHorizontal:4},secondaryText:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold'},
  summaryScore:{backgroundColor:C.deep,borderRadius:24,padding:20,flexDirection:'row',justifyContent:'space-between',...shadow,borderTopColor:depth.edge},summaryDay:{minHeight:66,flexDirection:'row',alignItems:'center',gap:12,paddingHorizontal:16,borderBottomWidth:1,borderColor:C.line},summaryDots:{flexDirection:'row',gap:4},summaryDot:{width:8,height:8,borderRadius:4,backgroundColor:'#E2DEE8'},summaryDotDone:{backgroundColor:C.green},cityGrid:{flexDirection:'row',flexWrap:'wrap',gap:8},cityCard:{width:'48.5%',minHeight:76,backgroundColor:C.card,borderRadius:16,padding:12,borderWidth:1,borderColor:C.line,...surface},cityCardActive:{backgroundColor:C.mint,borderColor:'#CFC7EE'},cityName:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:12},formCard:{backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},fieldRow:{flexDirection:'row',gap:12},textField:{backgroundColor:C.bg,borderWidth:1,borderColor:C.line,borderRadius:16,padding:12,fontSize:13,color:C.ink,marginTop:8,outlineStyle:'none'} as any,dangerButton:{padding:16,alignItems:'center',marginTop:12},dangerText:{color:C.coral,fontFamily:'DMSans_700Bold',fontSize:11},healthCard:{flexDirection:'row',alignItems:'center',gap:12,backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,marginBottom:16,...surface},healthDot:{width:10,height:10,borderRadius:5},actionRow:{flexDirection:'row',alignItems:'center',flexWrap:'wrap',gap:8,marginTop:4},audioPreview:{backgroundColor:C.deep,borderRadius:24,padding:16,flexDirection:'row',alignItems:'center',gap:12},audioPlay:{width:48,height:48,borderRadius:24,backgroundColor:C.accent,alignItems:'center',justifyContent:'center'},guideGrid:{flexDirection:'row',flexWrap:'wrap',gap:12},guideCard:{flexGrow:1,flexBasis:'30%',minWidth:150},guideCardInner:{minHeight:180,backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},guideArabic:{color:C.green,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:27,lineHeight:47,textAlign:'right',backgroundColor:C.white,borderRadius:20,padding:16,marginBottom:16},guideStep:{flexDirection:'row',gap:12,padding:16,borderBottomWidth:1,borderColor:C.line,alignItems:'flex-start'},stepNo:{width:28,height:28,borderRadius:14,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},stepNoText:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10},guideStepText:{flex:1,color:C.ink,fontFamily:'DMSans_400Regular',fontSize:13,lineHeight:19},guideNote:{backgroundColor:C.yellow,borderRadius:20,padding:16,marginTop:16},referenceRow:{minHeight:54,backgroundColor:C.white,borderRadius:16,paddingHorizontal:16,marginBottom:8,flexDirection:'row',alignItems:'center',justifyContent:'space-between',borderWidth:1,borderColor:C.line},evidenceCard:{backgroundColor:C.card,borderRadius:18,padding:15,marginBottom:11,borderWidth:1,borderColor:C.line},evidenceLabel:{color:C.green,fontSize:11,fontFamily:'DMSans_700Bold',letterSpacing:.4,marginBottom:9},evidenceArabic:{color:C.ink,fontSize:17,fontFamily:'NotoNaskhArabic_400Regular',lineHeight:31,marginBottom:8,writingDirection:'rtl',textAlign:'right'},evidenceBody:{color:C.body,fontSize:13,fontFamily:'DMSans_400Regular',lineHeight:20},evidenceVerse:{marginBottom:11},evidenceFoot:{flexDirection:'row',alignItems:'center',marginTop:10,paddingTop:10,borderTopWidth:1,borderTopColor:C.line},evidenceLink:{flex:1,color:C.green,fontSize:12,fontFamily:'DMSans_600SemiBold'},dataPage:{width:'100%',maxWidth:860,alignSelf:'center',padding:20,paddingBottom:156},empty:{backgroundColor:C.white,borderRadius:24,padding:24,alignItems:'center',borderWidth:1,borderColor:C.line},dataTitle:{color:C.ink,fontSize:29,fontFamily:'Newsreader_600SemiBold',letterSpacing:-.5,marginTop:16,marginBottom:8},dataCard:{backgroundColor:C.card,borderRadius:20,padding:16,marginBottom:12,borderWidth:1,borderColor:C.line,...surface},bookmarkMain:{flex:1},bookmarkRemove:{paddingStart:10,paddingVertical:4,justifyContent:'center'},dataArabic:{color:C.green,fontFamily:'KFGQPCUthmanicHafs',fontSize:27,lineHeight:48,textAlign:'right'},dataName:{color:C.ink,fontSize:14,fontFamily:'DMSans_700Bold',marginTop:4},dataBody:{color:'#474653',fontFamily:'DMSans_400Regular',fontSize:13,lineHeight:18,marginTop:4},dataMeta:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold',marginTop:12,textTransform:'uppercase'},inputLabel:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.2,marginTop:12},moneyInput:{backgroundColor:C.white,borderWidth:1,borderColor:C.line,borderRadius:20,padding:16,fontSize:24,fontFamily:'DMSans_700Bold',color:C.ink,marginTop:8,outlineStyle:'none'} as any,zakatResult:{borderRadius:24,padding:20,marginTop:12},zakatNo:{color:C.onAccent,fontSize:34,fontFamily:'DMSans_700Bold',marginTop:8},
- profileName:{color:C.onAccent,fontSize:18,fontFamily:'DMSans_700Bold'},profileSub:{color:'#C2DED3',fontSize:10,marginTop:4},privacyHero:{borderRadius:24,padding:20,flexDirection:'row',alignItems:'center',gap:12,...shadow},privacyPoints:{flexDirection:'row',gap:8,marginTop:12},privacyPoint:{flex:1,backgroundColor:C.white,borderRadius:16,paddingVertical:12,alignItems:'center',gap:4,borderWidth:1,borderColor:C.line},privacyPointText:{color:C.ink,fontSize:10,fontFamily:'DMSans_700Bold',textAlign:'center'},preferencePanel:{backgroundColor:C.card,borderRadius:24,padding:16,borderWidth:1,borderColor:C.line,...surface},preferenceHead:{flexDirection:'row',alignItems:'center',gap:12,marginBottom:16},choiceGrid:{flexDirection:'row',flexWrap:'wrap',gap:8},choiceRow:{flexDirection:'row',gap:8},choicePill:{minHeight:44,justifyContent:'center',minWidth:44,alignItems:'center',paddingHorizontal:12,paddingVertical:8,borderRadius:12,backgroundColor:C.bg,borderWidth:1,borderColor:C.line},choicePillActive:{backgroundColor:C.accent,borderColor:C.green},choiceText:{color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:10},choiceTextActive:{color:C.onAccent},preferenceLabel:{color:C.muted,fontFamily:'DMSans_700Bold',fontSize:10,letterSpacing:1.1,marginTop:16,marginBottom:8},settings:{backgroundColor:C.card,borderRadius:24,overflow:'hidden',borderWidth:1,borderColor:C.line,...surface},setting:{minHeight:69,flexDirection:'row',alignItems:'center',gap:12,paddingHorizontal:12,borderBottomWidth:1,borderColor:C.line},settingName:{color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:13},
+ profileName:{color:C.onAccent,fontSize:18,fontFamily:'DMSans_700Bold'},profileSub:{color:'#C2DED3',fontSize:10,marginTop:4},privacyHero:{borderRadius:24,padding:20,flexDirection:'row',alignItems:'center',gap:12,...shadow},privacyPoints:{flexDirection:'row',gap:8,marginTop:12},privacyPoint:{flex:1,backgroundColor:C.card,borderRadius:16,paddingVertical:12,alignItems:'center',gap:4,borderWidth:1,borderColor:C.line},privacyPointText:{color:C.ink,fontSize:10,fontFamily:'DMSans_700Bold',textAlign:'center'},preferencePanel:{backgroundColor:C.card,borderRadius:24,padding:16,borderWidth:1,borderColor:C.line,...surface},preferenceHead:{flexDirection:'row',alignItems:'center',gap:12,marginBottom:16},prefIconTile:{width:54,height:54,borderRadius:18,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},choiceGrid:{flexDirection:'row',flexWrap:'wrap',gap:8},choiceRow:{flexDirection:'row',gap:8},choicePill:{minHeight:44,justifyContent:'center',minWidth:44,alignItems:'center',paddingHorizontal:12,paddingVertical:8,borderRadius:12,backgroundColor:C.bg,borderWidth:1,borderColor:C.line},choicePillActive:{backgroundColor:C.accent,borderColor:C.green},choiceText:{color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:10},choiceTextActive:{color:C.onAccent},preferenceLabel:{color:C.muted,fontFamily:'DMSans_700Bold',fontSize:10,letterSpacing:1.1,marginTop:16,marginBottom:8},settings:{backgroundColor:C.card,borderRadius:24,overflow:'hidden',borderWidth:1,borderColor:C.line,...surface},setting:{minHeight:69,flexDirection:'row',alignItems:'center',gap:12,paddingHorizontal:12,borderBottomWidth:1,borderColor:C.line},settingName:{color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:13},
  locationGate:{flexDirection:'row',gap:16,alignItems:'flex-start',backgroundColor:C.card,borderRadius:24,padding:20,borderWidth:1,borderColor:C.line,...soft},locationGateNarrow:{flexDirection:'column',alignItems:'stretch'},locationGateTitle:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:16},locationGateBody:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:12,lineHeight:18,marginTop:4},locationActions:{flexDirection:'row',flexWrap:'wrap',gap:8,marginTop:16},locationActionsNarrow:{flexDirection:'column',alignItems:'stretch'},primarySmall:{backgroundColor:C.accent,paddingHorizontal:16,paddingVertical:12,borderRadius:12,minHeight:44,justifyContent:'center'},ghostSmall:{backgroundColor:C.mint,paddingHorizontal:16,paddingVertical:12,borderRadius:12,minHeight:44,justifyContent:'center'},ghostText:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:11},
  prayerTools:{flexDirection:'row',flexWrap:'wrap',gap:8},prayerToolsTwo:{flexDirection:'row',gap:12,marginBottom:8},prayerToolTwo:{flex:1},prayerTool:{flexGrow:1,flexBasis:'30%',minWidth:220},prayerToolInner:{minHeight:86,flexDirection:'row',alignItems:'center',gap:12,backgroundColor:C.white,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line},prayerToolText:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:12,flex:1},
  libraryKicker:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10,letterSpacing:1.7,marginTop:24},libraryHeading:{color:C.ink,fontFamily:'Newsreader_600SemiBold',fontSize:23,marginTop:4,marginBottom:12},
