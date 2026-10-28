@@ -1078,7 +1078,7 @@ function HajjLiveScreen({ navigation }: any) {
           <Text style={st.noteText}>{T('Fasting on the day of Arafah expiates the sins of the year before it and the year after it. It is for those not standing at Arafah — the pilgrim does not fast that day.')}</Text>
         </View>
 
-        <MotionPress style={st.action} onPress={() => navigation.navigate('Holy site channels', { site: 'Hajj' })}>
+        <MotionPress style={st.action} onPress={() => navigation.navigate('Tools',{screen:'Holy site channels',params:{site:'Hajj'}})}>
           <View style={{ flex: 1 }}>
             <Text style={st.actionText}>{T('Hajj broadcast')}</Text>
             <Text style={st.actionSub}>{T('The Ministry of Hajj and Umrah channel — live during the days of Hajj')}</Text>
@@ -3316,9 +3316,16 @@ function Root() {
   const { dark, tick } = useTheme();
   const [initial, setInitial] = useState<any>(undefined);
   const [ready, setReady] = useState(false);
+  /* The palette is a module-level object, so a theme change remounts the
+     navigator (via `key` below) to make every screen repaint. That remount
+     re-runs `initialState`, which would otherwise restore the snapshot taken
+     at app start and teleport the person back to it - wiping the stack they
+     had built. Keeping the newest state in a ref means the remount restores
+     exactly where they were, back stack and all. */
+  const liveState = useRef<any>(undefined);
   useEffect(() => { void loadNavState().then((state) => { setInitial(state); setReady(true); }); }, []);
   if (!ready) return <SafeAreaView style={s.safe}><Spinner /></SafeAreaView>;
-  return <NavigationContainer ref={navigationRef} key={(dark ? 'dark' : 'light') + ':' + tick} initialState={initial} onStateChange={saveNavState}>
+  return <NavigationContainer ref={navigationRef} key={(dark ? 'dark' : 'light') + ':' + tick} initialState={liveState.current ?? initial} onStateChange={(state: any) => { liveState.current = state; saveNavState(state); (globalThis as any).__DBG=(globalThis as any).__DBG||[]; (globalThis as any).__DBG.push('state:'+JSON.stringify(state?.routes?.[state?.index||0]?.name)); }}>
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Main" component={Tabs} />
       <Stack.Screen name="Settings" component={SettingsStack} />
