@@ -354,3 +354,63 @@ export async function getNearbyMosques(latitude: number, longitude: number): Pro
   const data = await json(`${ISLAMIC}/masajid/near?lat=${latitude}&lng=${longitude}&radius=50&limit=20`);
   return data.mosques || [];
 }
+
+/**
+ * How long until the next Hajj, worked out from the Hijri calendar rather
+ * than a hard-coded date. We count to Arafah — 9 Dhul-Hijjah — because that
+ * is the day the pilgrimage stands or falls on: miss it and there is no Hajj.
+ * AlAdhan converts both ways (gToH to read today's Hijri date, hToG to place
+ * the coming Dhul-Hijjah back on the Gregorian calendar).
+ */
+export interface HajjCountdown {
+  todayHijri: string;
+  hijriYear: number;
+  daysToArafah: number;
+  daysToTarwiyah: number;
+  arafahGregorian: string;
+  tarwiyahGregorian: string;
+  eidGregorian: string;
+}
+
+const MONTHS = ['Muharram','Safar','Rabi al-Awwal','Rabi al-Thani','Jumada al-Ula','Jumada al-Akhirah','Rajab','Shaban','Ramadan','Shawwal','Dhul-Qadah','Dhul-Hijjah'];
+
+function gregorianStamp(date: Date) {
+  return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+export async function getHajjCountdown(): Promise<HajjCountdown> {
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  const greg = (await json(`https://api.aladhan.com/v1/gToH?date=${pad(now.getDate())}-${pad(now.getMonth() + 1)}-${now.getFullYear()}`)) as any;
+  const hijri = greg.data?.hijri ?? greg.hijri;
+  const day = Number(hijri.day);
+  const month = Number(hijri.month.number);
+  let year = Number(hijri.year);
+
+  // Hajj belongs to the coming Dhul-Hijjah. Once Tashriq is over we roll to
+  // the next Hijri year, so the countdown never shows a negative or a zero.
+  if (month > 12 || (month === 12 && day > 13)) year += 1;
+
+  const toGregorian = async (hijriDay: number) => {
+    const back = (await json(`https://api.aladhan.com/v1/hToG?date=${pad(hijriDay)}-12-${year}`)) as any;
+    const g = back.data?.gregorian ?? back.gregorian;
+    return new Date(Number(g.year), Number(g.month.number) - 1, Number(g.day));
+  };
+
+  const tarwiyah = await toGregorian(8);
+  const arafah = await toGregorian(9);
+  const eid = await toGregorian(10);
+  const nights = (target: Date) => Math.max(0, Math.round((target.getTime() - today.getTime()) / 86400000));
+
+  return {
+    todayHijri: `${day} ${MONTHS[month - 1] || hijri.month.en} ${year}`,
+    hijriYear: year,
+    daysToArafah: nights(arafah),
+    daysToTarwiyah: nights(tarwiyah),
+    arafahGregorian: gregorianStamp(arafah),
+    tarwiyahGregorian: gregorianStamp(tarwiyah),
+    eidGregorian: gregorianStamp(eid),
+  };
+}
