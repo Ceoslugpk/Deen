@@ -7,7 +7,7 @@ function ExploreStack(){return <Stack.Navigator screenOptions={{headerShown:fals
  */
 function PrayerStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="Prayer" component={PrayerScreen}/><Stack.Screen name="Adhan" component={AdhanScreen}/><Stack.Screen name="Ramadan" component={RamadanScreen}/></Stack.Navigator>}
 /** The tools tab: what you calculate, look up, travel for, or record. */
-function ToolsStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="ToolsHome" component={ToolsHomeScreen}/><Stack.Screen name="Zakat" component={ZakatScreen}/><Stack.Screen name="Mosques" component={DataTool}/><Stack.Screen name="Holy site channels" component={HolyChannelsScreen}/><Stack.Screen name="Women" component={WomenHubScreen}/><Stack.Screen name="Cycle" component={CycleScreen}/><Stack.Screen name="Qada" component={QadaScreen}/><Stack.Screen name="Women Guides" component={WomenGuidesScreen}/><Stack.Screen name="Privacy Lock" component={PrivacyLockScreen}/><Stack.Screen name="Fasting" component={FastingScreen}/><Stack.Screen name="Weekly Summary" component={WeeklySummaryScreen}/><Stack.Screen name="Qibla" component={QiblaScreen}/><Stack.Screen name="Location Setup" component={LocationSetupScreen}/><Stack.Screen name="Notifications" component={NotificationScreen}/><Stack.Screen name="Hijri Calendar" component={HijriCalendarScreen}/><Stack.Screen name="Tasbih" component={TasbihScreen}/><Stack.Screen name="Umrah Packing" component={UmrahPackingScreen}/></Stack.Navigator>}
+function ToolsStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="ToolsHome" component={ToolsHomeScreen}/><Stack.Screen name="Zakat" component={ZakatScreen}/><Stack.Screen name="Mosques" component={DataTool}/><Stack.Screen name="Holy site channels" component={HolyChannelsScreen}/><Stack.Screen name="Women" component={WomenHubScreen}/><Stack.Screen name="Cycle" component={CycleScreen}/><Stack.Screen name="Qada" component={QadaScreen}/><Stack.Screen name="Women Guides" component={WomenGuidesScreen}/><Stack.Screen name="Privacy Lock" component={PrivacyLockScreen}/><Stack.Screen name="Fasting" component={FastingScreen}/><Stack.Screen name="Weekly Summary" component={WeeklySummaryScreen}/><Stack.Screen name="Qibla" component={QiblaScreen}/><Stack.Screen name="Location Setup" component={LocationSetupScreen}/><Stack.Screen name="Notifications" component={NotificationScreen}/><Stack.Screen name="Hijri Calendar" component={HijriCalendarScreen}/><Stack.Screen name="Tasbih" component={TasbihScreen}/><Stack.Screen name="Umrah Packing" component={UmrahPackingScreen}/><Stack.Screen name="Hajj Live" component={HajjLiveScreen}/></Stack.Navigator>}
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -51,6 +51,7 @@ import {
   AudioEdition, Chapter, DailyAyah, DailyHadith, DivineName, getAyahEditions, getAyahOfDay, getChapters, getDailyHadith, getDuas, getQuranEditions,
   getGregorianCalendar, getNameOfDay, getNames, getNearbyMosques, getPrayerSnapshot, getQibla, getRamadanCalendar,
   getHizbVerses, getJuzVerses, getPageVerses, getVerses, searchQuran, CalendarDay, Prayer, PrayerSnapshot, QuranEdition, QuranSearchResult, SurahReciter, Verse,
+  HajjCountdown, getHajjCountdown,
 } from './src/services/api';
 import {
   DEFAULT_WORSHIP_SETTINGS, loadDailyContent, loadPrayerCache, loadPrayerCompletion, loadPrayerHistory, loadQuickTasbih, loadStoredLocation, loadWorshipSettings,
@@ -701,7 +702,7 @@ function HomeScreen() {
   const reflections=[{id:'ayah'},{id:'name'},{id:'dua'},{id:'tasbih'}];
   return <Page><Animated.ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false} scrollEventThrottle={16} onScroll={Animated.event([{nativeEvent:{contentOffset:{y:scrollY}}}],{useNativeDriver:false})} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.green}/>}>
     <AppHeader/>
-    <View style={s.greeting}><View><Text style={s.salam}>السَّلَامُ عَلَيْكُمْ</Text><Text style={s.greetingTitle}>{greeting}</Text></View><View style={s.avatar}>{ico('moon',19,C.white)}</View></View>
+    <View style={s.greeting}><View><Text style={s.salam}>السَّلَامُ عَلَيْكُمْ</Text><Text style={s.greetingTitle}>{greeting}</Text></View></View>
     {!data.location?<LocationPrompt/>:data.error && !data.snapshot ? <ErrorState message={data.error} retry={data.load} /> : <>
       <View style={[s.hero,wide&&s.heroWide]}><Animated.View style={[StyleSheet.absoluteFill,{transform:[{translateY:heroShift},{scale:heroZoom}]}]}><Image source={(dark?SCENE_MOSQUE_DARK:SCENE_MOSQUE)} resizeMode="cover" style={s.heroBg}/></Animated.View>
         <LinearGradient colors={['rgba(30,30,63,.92)','rgba(56,48,103,.54)','rgba(11,120,145,.08)']} start={{x:0,y:.5}} end={{x:1,y:.5}} style={StyleSheet.absoluteFill} /> <HeroAura still={still}/> <Animated.View pointerEvents="none" style={[s.heroSheen,{transform:[{translateX:Animated.multiply(sheenShift,width)},{skewX:'-16deg'}]}]}><LinearGradient colors={['rgba(255,255,255,0)','rgba(255,255,255,.16)','rgba(255,255,255,0)']} start={{x:0,y:0}} end={{x:1,y:0}} style={StyleSheet.absoluteFill}/></Animated.View> 
@@ -761,7 +762,7 @@ const TOOL_GROUPS: { label: string; title: string; items: ToolItem[] }[] = [
   { label: 'WATCH', title: 'Live broadcasts', items: [
     { title: 'Makkah Live', caption: 'Al-Masjid al-Haram, around the clock', route: 'Holy site channels', params: { site: 'Makkah' } },
     { title: 'Madinah Live', caption: 'Al-Masjid an-Nabawi, around the clock', route: 'Holy site channels', params: { site: 'Madinah' } },
-    { title: 'Hajj Live', caption: 'The holy sites, during the days of Hajj', route: 'Holy site channels', params: { site: 'Hajj' } },
+    { title: 'Hajj Live', caption: 'The days of Hajj, and the countdown to Arafah', route: 'Hajj Live' },
   ]},
 ];
 
@@ -771,50 +772,83 @@ const TOOL_GROUPS: { label: string; title: string; items: ToolItem[] }[] = [
  */
 const PACKING_GROUPS: { title: string; items: string[] }[] = [
   { title: 'Documents and money', items: [
-    'Passport, with six months left on it',
-    'Visa and any printed confirmations',
-    'A spare copy of your passport, kept apart from the original',
-    'Travel insurance details',
-    'Cash in small notes, and a card that works abroad',
-    'A drawstring bag for your shoes at the mosque',
+    'Passport with at least six months left on it',
+    'Visa or Nusuk permit — printed, and saved offline on your phone',
+    'Meningitis ACWY vaccination certificate — required for every pilgrim',
+    'Printed hotel bookings and your agency’s contact details',
+    'A card in your pocket with your name, hotel and a companion’s number',
+    'Photocopies of your passport photo page, kept apart from the original',
+    'Nusuk installed and logged in before you leave home wifi',
+    'Some cash in riyals for the small things',
   ]},
-  { title: 'Ihram and clothing', items: [
-    'Two ihram towels, and a spare',
-    'A belt or money pouch that sits under the ihram',
-    'Slippers that leave the ankle and the top of the foot bare',
-    'Loose, modest clothes for the days after Umrah',
-    'A light layer — the prayer halls are kept very cold',
-    'Spare underwear and socks',
+  { title: 'Ihram — for men', items: [
+    'Two sets, not one — a wet set and a dry set',
+    'Towelling weave rather than thin cotton, which goes see-through when you sweat',
+    'Hold it up to a light before you buy it',
+    'A belt with a zip pocket — the only place your phone and cards can live',
+    'Safety pins, plus a spare set',
+  ]},
+  { title: 'For women', items: [
+    'No special garment — modest, loose clothing you can walk in',
+    'No face veil and no gloves while in ihram; face and hands stay uncovered',
+    'Two or three interchangeable abayas — laundries wash same-day and cheaply',
+    'Scarves that pin easily, and more pins than you think you need',
+    'A dark, non-see-through layer underneath',
+    'Sanitary products in the quantity you will actually need',
   ]},
   { title: 'Unscented toiletries', items: [
-    'Unscented soap and shampoo',
-    'Toothbrush and a miswak',
-    'Unscented deodorant',
-    'Nail clippers',
-    'Tissues and unscented wet wipes',
-    'Your regular medicine, in its original packaging',
+    'Unscented soap and shower gel',
+    'Unscented shampoo — check the bottle, not the label',
+    'Deodorant without perfume; a crystal or alum stick is the safe bet',
+    'Unscented wet wipes — almost all supermarket wipes are scented',
+    'Hand sanitiser, unscented lip balm, unscented sunscreen',
+    'Wash your travel clothes in plain detergent, not the perfumed kind',
   ]},
-  { title: 'Health', items: [
-    'Prescription medicine, with a copy of the prescription',
-    'Pain relief and plasters',
-    'Hand sanitiser',
-    'Rehydration salts — it is hot and you will walk a long way',
-    'Throat lozenges and a face mask',
-    'Unscented sunscreen for the days between rites',
+  { title: 'Chafing — the thing nobody warns you about', items: [
+    'Unscented petroleum jelly — plain, not aloe, cocoa butter or baby-scented',
+    'Or an unscented anti-chafe balm in a stick',
+    'Zinc oxide cream for skin that is already raw — jelly prevents, zinc heals',
+    'A small pot decanted into your day bag',
+    'Apply before you set out, and again before Sa’i, on dry skin',
+    'Inner thighs, waistband, underarms, feet and between the toes',
   ]},
-  { title: 'Prayer and Qur’an', items: [
-    'A small Qur’an, or this app with the offline download',
-    'A travel prayer mat for the hotel room',
-    'A tasbih, or the counter in this app',
-    'A notebook for what you want to ask for',
-    'The qiblah direction for your hotel',
+  { title: 'Feet', items: [
+    'Sandals already broken in — never new ones for this trip',
+    'A spare pair, in case one gives out',
+    'Men’s must leave the ankle bare while in ihram',
+    'A drawstring shoe bag — the gates hold thousands of identical pairs',
+    'Blister plasters in the day bag, not the suitcase',
+    'Thin socks for outside ihram — the marble runs cold at Fajr',
   ]},
-  { title: 'Electronics', items: [
-    'Phone and its charger',
-    'A power bank — you will be out all day',
-    'A travel adapter for Saudi sockets',
-    'Offline copies: tickets, maps, and the Qur’an',
-    'A small torch for the walk back after Fajr',
+  { title: 'Health and medicines', items: [
+    'Prescriptions in their original packaging, with a copy of the prescription',
+    'A doctor’s letter for anything controlled — codeine, tramadol, sedatives, some ADHD medication',
+    'All medicines in hand luggage, never in the hold',
+    'Rehydration salts, painkillers, throat lozenges, upset-stomach remedy',
+    'Face masks, spare glasses or lenses, eye drops',
+    'Your own nail and hair clippers',
+  ]},
+  { title: 'Power and connectivity', items: [
+    'A Type G plug adapter — Saudi runs 220V on UK-style three-pin sockets',
+    'Power bank, carried in hand luggage',
+    'A short charging cable and a spare',
+    'Offline maps of Makkah and Madinah',
+    'A phone lanyard — a dropped phone in the mataf is gone',
+  ]},
+  { title: 'The mosque day bag', items: [
+    'A small shoulder bag — large backpacks are turned away at the gates',
+    'Shoes in their bag, your jelly pot, blister plasters',
+    'Phone, power bank and short cable',
+    'Your ID card and a little cash',
+    'A collapsible cup for the Zamzam coolers',
+    'A thin folding prayer mat and unscented wipes',
+  ]},
+  { title: 'Leave at home', items: [
+    'Half the clothes you were going to bring',
+    'Anything perfumed — scented product in ihram breaks a restriction',
+    'Expensive jewellery',
+    'A hairdryer, iron or travel kettle',
+    'A rigid itinerary — the crowds will set your pace',
   ]},
 ];
 
@@ -872,6 +906,148 @@ function UmrahPackingScreen({ navigation }: any) {
     </ScrollView></Page>;
 }
 
+/**
+ * The days of Hajj, in order. Everything here is fixed by the Sunnah rather
+ * than by us: 8 to 13 Dhul-Hijjah, and Arafah is the day the pilgrimage
+ * stands on — the Prophet ﷺ said Hajj is Arafah.
+ */
+const HAJJ_DAYS: { day: string; name: string; place: string; note: string; steps: string[] }[] = [
+  { day: '8', name: 'Yawm at-Tarwiyah', place: 'Mina', note: 'The day of preparing', steps: [
+    'Enter ihram where you are and make the intention for Hajj',
+    'Begin the Talbiyah and keep it going until the stoning on the 10th',
+    'Travel to Mina and pray Dhuhr, Asr, Maghrib and Isha there',
+    'Spend the night in Mina',
+  ]},
+  { day: '9', name: 'Yawm al-Arafah', place: 'Arafah, then Muzdalifah', note: 'Hajj itself', steps: [
+    'Pray Fajr in Mina, then head for Arafah after sunrise',
+    'Hear the khutbah at Namirah, then pray Dhuhr and Asr together, shortened',
+    'Stand in supplication from noon to sunset — this is the pillar of Hajj',
+    'Leave for Muzdalifah after sunset without praying Maghrib at Arafah',
+    'Pray Maghrib and Isha together in Muzdalifah and sleep under the sky',
+  ]},
+  { day: '10', name: 'Yawm an-Nahr', place: 'Mina, then Makkah', note: 'Eid al-Adha', steps: [
+    'Pray Fajr in Muzdalifah and gather your pebbles',
+    'Stone Jamarat al-Aqabah with seven pebbles, saying Allahu Akbar each time',
+    'Offer the sacrifice',
+    'Shave the head or trim the hair — shaving is better for men',
+    'Tawaf al-Ifadah and Sa’i back in Makkah',
+  ]},
+  { day: '11', name: 'First day of Tashriq', place: 'Mina', note: 'All three jamarat', steps: [
+    'After midday, stone the small, then the middle, then the large jamarah',
+    'Seven pebbles each — twenty-one for the day',
+    'Fill the rest of the day with dhikr, Qur’an and rest',
+  ]},
+  { day: '12', name: 'Second day of Tashriq', place: 'Mina', note: 'Most pilgrims leave today', steps: [
+    'Stone all three jamarat again after midday',
+    'You may leave Mina before sunset once every rite is done',
+    'Stay another night only if you intend to stone on the 13th',
+  ]},
+  { day: '13', name: 'Last day of Tashriq', place: 'Mina', note: 'For those who stayed', steps: [
+    'Stone all three jamarat after midday',
+    'Leave Mina for Makkah once the stoning is finished',
+    'Tawaf al-Wada, the farewell tawaf, before you leave Makkah',
+  ]},
+];
+
+const hajjStyles = StyleSheet.create({
+  wrap: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 40 },
+  hero: { borderRadius: 26, padding: 22, marginBottom: 18, overflow: 'hidden' },
+  overline: { color: 'rgba(255,255,255,.72)', fontSize: 10, fontFamily: 'DMSans_600SemiBold', letterSpacing: 1.2, marginBottom: 10 },
+  countRow: { flexDirection: 'row', alignItems: 'flex-end', marginBottom: 6 },
+  count: { color: C.white, fontSize: 62, fontFamily: 'Newsreader_600SemiBold', letterSpacing: -2, lineHeight: 64 },
+  countUnit: { color: 'rgba(255,255,255,.8)', fontSize: 15, fontFamily: 'DMSans_600SemiBold', marginBottom: 12, marginStart: 10 },
+  until: { color: C.white, fontSize: 17, fontFamily: 'DMSans_600SemiBold', marginBottom: 14 },
+  meta: { color: 'rgba(255,255,255,.75)', fontSize: 12.5, fontFamily: 'DMSans_400Regular', lineHeight: 19 },
+  sectionTitle: { color: C.ink, fontSize: 18, fontFamily: 'Newsreader_600SemiBold', letterSpacing: -.3, marginBottom: 4, marginTop: 8 },
+  sectionNote: { color: C.muted, fontSize: 12.5, fontFamily: 'DMSans_400Regular', lineHeight: 19, marginBottom: 14 },
+  dayCard: { backgroundColor: C.card, borderRadius: 20, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: C.line },
+  dayTop: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
+  dayBadge: { width: 38, height: 38, borderRadius: 13, backgroundColor: C.heroA, alignItems: 'center', justifyContent: 'center', marginEnd: 12 },
+  dayNum: { color: C.white, fontSize: 16, fontFamily: 'DMSans_700Bold' },
+  dayName: { color: C.ink, fontSize: 15.5, fontFamily: 'DMSans_600SemiBold', letterSpacing: -.2 },
+  dayPlace: { color: C.green, fontSize: 11.5, fontFamily: 'DMSans_600SemiBold', marginTop: 2 },
+  dayNote: { marginStart: 'auto', backgroundColor: C.mint, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
+  dayNoteText: { color: C.green, fontSize: 10.5, fontFamily: 'DMSans_600SemiBold' },
+  step: { flexDirection: 'row', marginBottom: 7 },
+  bullet: { color: C.green, fontSize: 13, lineHeight: 19, marginEnd: 8, marginTop: 1 },
+  stepText: { flex: 1, color: C.body, fontSize: 13, fontFamily: 'DMSans_400Regular', lineHeight: 19 },
+  note: { backgroundColor: C.mint, borderRadius: 16, padding: 14, marginTop: 6, marginBottom: 18 },
+  noteText: { color: C.body, fontSize: 12.5, fontFamily: 'DMSans_400Regular', lineHeight: 19 },
+  action: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.heroA, borderRadius: 18, padding: 15, marginBottom: 10 },
+  actionText: { flex: 1, color: C.white, fontSize: 14, fontFamily: 'DMSans_600SemiBold' },
+  actionSub: { color: 'rgba(255,255,255,.7)', fontSize: 11.5, fontFamily: 'DMSans_400Regular', marginTop: 2 },
+});
+
+function HajjLiveScreen({ navigation }: any) {
+  const { rtl } = useLanguage(); const T = (text: string) => tx(rtl, text);
+  const [count, setCount] = useState<HajjCountdown | null>(null);
+  const [error, setError] = useState('');
+  const load = useCallback(async () => {
+    setError('');
+    try { setCount(await getHajjCountdown()); }
+    catch (e: any) { setError(e?.message || T('Could not reach the calendar')); }
+  }, [T]);
+  useEffect(() => { load(); }, [load]);
+  const st = hajjStyles;
+
+  return (
+    <Page>
+      <ScrollView contentContainerStyle={st.wrap} showsVerticalScrollIndicator={false}>
+        <AppHeader />
+        {!!error && <ErrorState message={error} retry={load} />}
+        {!error && !count && <Spinner />}
+        {!!count && (
+          <LinearGradient colors={[C.heroA, C.green]} style={st.hero}>
+            <Text style={st.overline}>{T(`HAJJ ${count.hijriYear} AH`)}</Text>
+            <View style={st.countRow}>
+              <Text style={st.count}>{count.daysToArafah}</Text>
+              <Text style={st.countUnit}>{count.daysToArafah === 1 ? T('day') : T('days')}</Text>
+            </View>
+            <Text style={st.until}>{T('until Arafah, 9 Dhul-Hijjah')}</Text>
+            <Text style={st.meta}>{count.arafahGregorian}</Text>
+            <Text style={st.meta}>{T('Today')} · {count.todayHijri}</Text>
+          </LinearGradient>
+        )}
+
+        <Text style={st.sectionTitle}>{T('The six days')}</Text>
+        <Text style={st.sectionNote}>{T('What happens on each day of Hajj, from entering ihram to the farewell tawaf.')}</Text>
+        {HAJJ_DAYS.map((d, i) => (
+          <RiseIn key={d.day} delay={i * 45}>
+            <View style={st.dayCard}>
+              <View style={st.dayTop}>
+                <View style={st.dayBadge}><Text style={st.dayNum}>{d.day}</Text></View>
+                <View style={{ flex: 1 }}>
+                  <Text style={st.dayName}>{T(d.name)}</Text>
+                  <Text style={st.dayPlace}>{T(d.place)}</Text>
+                </View>
+                <View style={st.dayNote}><Text style={st.dayNoteText}>{T(d.note)}</Text></View>
+              </View>
+              {d.steps.map((step) => (
+                <View style={st.step} key={step}>
+                  <Text style={st.bullet}>›</Text>
+                  <Text style={st.stepText}>{T(step)}</Text>
+                </View>
+              ))}
+            </View>
+          </RiseIn>
+        ))}
+
+        <View style={st.note}>
+          <Text style={st.noteText}>{T('Fasting on the day of Arafah expiates the sins of the year before it and the year after it. It is for those not standing at Arafah — the pilgrim does not fast that day.')}</Text>
+        </View>
+
+        <MotionPress style={st.action} onPress={() => navigation.navigate('Holy site channels', { site: 'Hajj' })}>
+          <View style={{ flex: 1 }}>
+            <Text style={st.actionText}>{T('Hajj broadcast')}</Text>
+            <Text style={st.actionSub}>{T('The Ministry of Hajj and Umrah channel — live during the days of Hajj')}</Text>
+          </View>
+          {ico('chevron-right', 18, 'rgba(255,255,255,.8)')}
+        </MotionPress>
+      </ScrollView>
+    </Page>
+  );
+}
+
 function ToolsHomeScreen({ navigation }: any) {
   const { rtl } = useLanguage();
   const T = (text: string) => tx(rtl, text);
@@ -906,7 +1082,7 @@ function PrayerScreen({navigation}:any) {
   const togglePrayer=(name:string)=>{if(name==='Sunrise')return;setCompleted(current=>{const next=current.includes(name)?current.filter(x=>x!==name):[...current,name];savePrayerCompletion(dateKey,next).catch(()=>{});return next})};
   const load=async()=>{if(!location)return;setError('');try{const value=await managedPrayerSnapshot(location,settings);setSnap(value.snapshot);setCached(value.cached);if(settings.remindersEnabled)schedulePrayerNotifications(value.snapshot,settings,rtl).catch(()=>{})}catch(e:any){setError(T(e.message))}}; useEffect(()=>{setSnap(null);load()},[location?.latitude,location?.longitude,settings.calculationMethod,settings.madhab,settings.timeFormat]);
   const next=snap?getNext(snap.prayers):undefined; const days=Array.from({length:7},(_,i)=>{const d=new Date();d.setDate(d.getDate()+i);return d;}); const done=completed.length;
-  return <Page><ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}><View style={s.backRow}><IconButton name={rtl?'arrow-forward':'arrow-back'} onPress={()=>navigation.goBack()}/></View><TopBar overline={cached?T('SAVED ON DEVICE'):T('TODAY')} title={T('Prayer times')} right={<ToolGraphic tool="Qibla" size={46}/>} />
+  return <Page><ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}><AppHeader/><View style={s.prayerHeader}><View><Text style={s.prayerOverline}>{cached?T('SAVED ON DEVICE'):T('TODAY')}</Text><Text style={s.prayerTitle}>{T('Prayer times')}</Text></View><ToolGraphic tool="Qibla" size={46}/></View>
     <View style={s.dayStrip}>{days.map((d,i)=><View key={i} style={[s.day,i===0&&s.dayActive]}><Text style={[s.dayName,i===0&&s.dayText]}>{d.toLocaleDateString(rtl?'ar-u-nu-latn':'en',{weekday:'short'})}</Text><Text style={[s.dayNum,i===0&&s.dayText]}>{d.getDate()}</Text></View>)}</View>
     {!location?<LocationPrompt compact/>:error?<ErrorState message={error} retry={load}/>:!snap?<Spinner/>:<><LinearGradient colors={[C.heroA,C.green]} style={s.nextCard}><View>{!!cached && <LiveBadge source="SAVED ON DEVICE"/>}<Text style={s.nextCardLabel}>{T('NEXT PRAYER')}</Text><Text style={s.nextCardName}>{next ? prayerName(rtl, next.name) : ''}</Text><Text style={s.nextCardTime}>{clockTime(rtl, next?.time || '')}</Text><View style={s.countPill}><Text style={s.countText}>{T('Begins in')} {untilPrayer(next, rtl)}</Text></View></View><View style={s.moonOrb}>{ico('moon',42,C.onHero)}</View></LinearGradient>
       <View style={s.prayerProgress}><View style={{flex:1}}><Text style={s.sourceTitle}>{T('Today’s Salah')}</Text><Text style={s.sourceBody}>{rtl?`${done} من 5 صلوات مؤداة`:`${done} of 5 prayers marked complete`}</Text></View><View style={s.progressTrack}><View style={[s.progressFill,{width:`${done*20}%`} as any]}/></View><Text style={s.progressCount}>{done}/5</Text></View>
@@ -3269,7 +3445,7 @@ function makeStyles() {
  appName:{color:C.ink,fontSize:20,fontFamily:'Newsreader_600SemiBold',letterSpacing:-.5,flexShrink:1},
  appHeaderActions:{flexDirection:'row',alignItems:'center',gap:6},
  headerBtn:{width:40,height:40,borderRadius:14},overline:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.8,marginBottom:4},h1:{color:C.ink,fontSize:32,fontFamily:'Newsreader_600SemiBold',letterSpacing:-.8},iconBtn:{width:44,height:44,borderRadius:16,backgroundColor:C.white,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,...soft},iconBtnDark:{backgroundColor:C.deep,borderColor:C.deep},section:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginTop:28,marginBottom:16},h2:{color:C.ink,fontSize:22,fontFamily:'Newsreader_600SemiBold',letterSpacing:-.35},sectionAction:{color:C.green,fontFamily:'DMSans_600SemiBold',fontSize:11},
- graphicFrame:{alignItems:'center',justifyContent:'center',overflow:'hidden'},motionGlyph:{width:49,height:49,borderRadius:16,backgroundColor:C.mint,borderWidth:1,borderColor:'#DDD6FF',alignItems:'center',justifyContent:'center'},motionGlyphInverse:{backgroundColor:'rgba(255,255,255,.14)',borderColor:'rgba(255,255,255,.22)'},glyphDot:{position:'absolute',right:6,top:6,width:5,height:5,borderRadius:4,backgroundColor:C.gold},greeting:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginBottom:16},salam:{color:C.green,fontSize:10,fontFamily:'DMSans_600SemiBold',letterSpacing:1.2,marginBottom:4},greetingTitle:{color:C.ink,fontSize:29,fontFamily:'Newsreader_600SemiBold',letterSpacing:-.6},avatar:{width:45,height:45,borderRadius:16,backgroundColor:C.accent,alignItems:'center',justifyContent:'center'},
+ graphicFrame:{alignItems:'center',justifyContent:'center',overflow:'hidden'},motionGlyph:{width:49,height:49,borderRadius:16,backgroundColor:C.mint,borderWidth:1,borderColor:'#DDD6FF',alignItems:'center',justifyContent:'center'},motionGlyphInverse:{backgroundColor:'rgba(255,255,255,.14)',borderColor:'rgba(255,255,255,.22)'},glyphDot:{position:'absolute',right:6,top:6,width:5,height:5,borderRadius:4,backgroundColor:C.gold},greeting:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginBottom:16},salam:{color:C.green,fontSize:10,fontFamily:'DMSans_600SemiBold',letterSpacing:1.2,marginBottom:4},greetingTitle:{color:C.ink,fontSize:29,fontFamily:'Newsreader_600SemiBold',letterSpacing:-.6},prayerHeader:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginTop:6,marginBottom:16},prayerOverline:{color:C.muted,fontSize:10,fontFamily:'DMSans_600SemiBold',letterSpacing:1.2,marginBottom:5},prayerTitle:{color:C.ink,fontSize:27,fontFamily:'Newsreader_600SemiBold',letterSpacing:-.6},
  aura:{position:'absolute',top:'-30%',left:'-20%',right:'-20%',height:'160%'},auraAlt:{position:'absolute',top:'-20%',left:'10%',right:'-25%',height:'140%',opacity:.8},heroSheen:{position:'absolute',top:'-20%',bottom:'-20%',width:'38%',left:'31%',opacity:.5},hero:{height:285,borderRadius:28,overflow:'hidden',padding:20,...shadow},heroWide:{height:310},heroBg:{position:'absolute',left:0,right:0,top:0,bottom:0,width:'100%',height:'100%'},locationPill:{flexDirection:'row',alignItems:'center',gap:4,alignSelf:'flex-start',maxWidth:'72%',backgroundColor:'rgba(2,28,30,.62)',paddingHorizontal:12,paddingVertical:8,borderRadius:16},locationText:{color:C.onAccent,fontFamily:'DMSans_600SemiBold',fontSize:11,flexShrink:1},hijri:{color:'#D8D5E9',fontSize:11,marginTop:12},nextLabel:{color:'#FFE2A1',fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.8,marginTop:36},heroTime:{color:C.onAccent,fontSize:42,fontFamily:'DMSans_700Bold',letterSpacing:-1.2,marginTop:2},heroFooter:{position:'absolute',left:20,right:20,bottom:18,flexDirection:'row',alignItems:'center',justifyContent:'space-between'},countPill:{flexDirection:'row',alignItems:'center',gap:4,backgroundColor:'rgba(255,255,255,.16)',paddingHorizontal:12,paddingVertical:8,borderRadius:16,borderWidth:1,borderColor:'rgba(255,255,255,.18)'},countText:{color:C.onAccent,fontSize:10,fontFamily:'DMSans_600SemiBold'},heroCta:{flexDirection:'row',alignItems:'center',gap:8},heroCtaText:{color:C.onAccent,fontSize:10,fontFamily:'DMSans_700Bold'},
  prayerRail:{marginHorizontal:8,marginTop:-1,backgroundColor:C.white,borderBottomLeftRadius:24,borderBottomRightRadius:24,flexDirection:'row',paddingHorizontal:8,paddingVertical:12,borderWidth:1,borderTopWidth:0,borderColor:C.line,...soft},railItem:{flex:1,alignItems:'center',paddingVertical:4,borderRadius:16},railItemActive:{backgroundColor:'#F0EDFF'},railIcon:{width:40,height:40,borderRadius:20,backgroundColor:'rgba(255,255,255,.94)',borderWidth:1,borderColor:'#DDD6FF',alignItems:'center',justifyContent:'center',marginBottom:8},railIconDone:{backgroundColor:'#E4F2EC',borderColor:C.green},railCheck:{position:'absolute',top:-2,right:-2,width:16,height:16,borderRadius:8,backgroundColor:C.accent,alignItems:'center',justifyContent:'center',borderWidth:1.5,borderColor:C.white},railName:{color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:10},railTime:{color:C.ink,textAlign:'center',fontFamily:'DMSans_600SemiBold',fontSize:10,lineHeight:11,marginTop:2},
  sliderContent:{gap:12,paddingRight:28},sliderControls:{minHeight:48,flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingTop:8},sliderHint:{color:C.muted,fontFamily:'DMSans_600SemiBold',fontSize:10},sliderButtons:{flexDirection:'row',gap:8},sliderButton:{width:44,height:44,borderRadius:20,alignItems:'center',justifyContent:'center',backgroundColor:C.card,borderWidth:1,borderColor:C.line},sliderButtonDisabled:{opacity:.32},essentialSlide:{height:174,backgroundColor:C.card,borderRadius:24,padding:16,borderWidth:1,borderColor:C.line,...soft},essentialTop:{flexDirection:'row',alignItems:'flex-start',justifyContent:'space-between'},essentialArrow:{width:34,height:34,borderRadius:17,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},essentialTitle:{color:C.ink,fontFamily:'Newsreader_600SemiBold',fontSize:21,marginTop:4},essentialBody:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:12,lineHeight:18,marginTop:4},reflectionSlide:{height:220,backgroundColor:C.white,borderRadius:24,padding:16,borderWidth:1,borderColor:C.line,...soft},tool:{width:'33.33%',paddingVertical:12},
