@@ -129,7 +129,7 @@ export async function getPageVerses(page: number, options: { script?: string; tr
   const script = options.script === 'quran-indopak' ? 'quran-uthmani' : options.script || 'quran-uthmani';
   const translation = options.translation || 'en.sahih';
   const [arabic, translated] = await Promise.all([json(`${QURAN}/page/${page}/${script}`),json(`${QURAN}/page/${page}/${translation}`)]);
-  return arabic.ayahs.map((a:any,index:number)=>({id:a.number,verse_key:`${a.surah.number}:${a.numberInSurah}`,text_uthmani:a.text,translation:translated.ayahs[index]?.text,page:a.page,juz:a.juz,surah_name:a.surah.englishName}));
+  return arabic.ayahs.map((a:any,index:number)=>({id:a.number,verse_key:`${a.surah.number}:${a.numberInSurah}`,text_uthmani:a.text,translation:translated.ayahs[index]?.text,page:a.page,juz:a.juz,hizbQuarter:a.hizbQuarter,surah_name:a.surah.englishName}));
 }
 
 export async function getAyahOfDay(): Promise<DailyAyah> {
@@ -154,7 +154,7 @@ export async function getJuzVerses(juz: number, options: { script?: string; tran
   const [arabic, english, audio] = await Promise.all([
     json(`${QURAN}/juz/${juz}/${script}`), json(`${QURAN}/juz/${juz}/${translation}`), json(`${QURAN}/juz/${juz}/ar.alafasy`),
   ]);
-  return arabic.ayahs.map((a:any,index:number)=>({id:a.number,verse_key:`${a.surah.number}:${a.numberInSurah}`,text_uthmani:a.text,translation:english.ayahs[index]?.text,audio:audio.ayahs[index]?.audio,page:a.page,juz:a.juz,surah_name:a.surah.englishName} as Verse & {surah_name:string}));
+  return arabic.ayahs.map((a:any,index:number)=>({id:a.number,verse_key:`${a.surah.number}:${a.numberInSurah}`,text_uthmani:a.text,translation:english.ayahs[index]?.text,audio:audio.ayahs[index]?.audio,page:a.page,juz:a.juz,hizbQuarter:a.hizbQuarter,surah_name:a.surah.englishName} as Verse & {surah_name:string}));
 }
 
 export async function getHizbVerses(hizb: number, options: { script?: string; translation?: string } = {}): Promise<Verse[]> {
