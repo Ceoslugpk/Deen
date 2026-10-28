@@ -1,13 +1,13 @@
-function ExploreStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="ExploreHome" component={ExploreHome}/><Stack.Screen name="Adhkar" component={AdhkarScreen}/><Stack.Screen name="99 Names" component={NamesScreen}/><Stack.Screen name="Prophet Names" component={ProphetNamesScreen}/><Stack.Screen name="Duas" component={DuasScreen}/><Stack.Screen name="Dua Category" component={DuaCategoryScreen}/><Stack.Screen name="Hadith" component={HadithScreen}/><Stack.Screen name="Hadith Collection" component={HadithCollectionScreen}/><Stack.Screen name="Hadith Detail" component={HadithDetailScreen}/><Stack.Screen name="Hadith Saved" component={HadithSavedScreen}/><Stack.Screen name="Worship Guides" component={GuideDirectory}/><Stack.Screen name="Guide Detail" component={GuideDetail}/><Stack.Screen name="Tasbih" component={TasbihScreen}/><Stack.Screen name="Quran Vocabulary" component={VocabularyScreen}/><Stack.Screen name="Tajweed Study" component={TajweedStudyScreen}/><Stack.Screen name="Pilgrimage" component={PilgrimageScreen}/><Stack.Screen name="Journey" component={JourneyScreen}/><Stack.Screen name="Purity" component={PurityScreen}/></Stack.Navigator>}
+function ExploreStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="ExploreHome" component={ExploreHome}/><Stack.Screen name="Adhkar" component={AdhkarScreen}/><Stack.Screen name="99 Names" component={NamesScreen}/><Stack.Screen name="Prophet Names" component={ProphetNamesScreen}/><Stack.Screen name="Duas" component={DuasScreen}/><Stack.Screen name="Dua Category" component={DuaCategoryScreen}/><Stack.Screen name="Hadith" component={HadithScreen}/><Stack.Screen name="Hadith Collection" component={HadithCollectionScreen}/><Stack.Screen name="Hadith Detail" component={HadithDetailScreen}/><Stack.Screen name="Hadith Saved" component={HadithSavedScreen}/><Stack.Screen name="Worship Guides" component={GuideDirectory}/><Stack.Screen name="Guide Detail" component={GuideDetail}/><Stack.Screen name="Quran Vocabulary" component={VocabularyScreen}/><Stack.Screen name="Tajweed Study" component={TajweedStudyScreen}/><Stack.Screen name="Pilgrimage" component={PilgrimageScreen}/><Stack.Screen name="Journey" component={JourneyScreen}/><Stack.Screen name="Purity" component={PurityScreen}/></Stack.Navigator>}
 
 /**
  * The prayer tab: keeping the day. The times, the direction, the call, the
  * reminders, the location they are worked out from, and the calendar and
  * fasts that hang on them.
  */
-function PrayerStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="Prayer" component={PrayerScreen}/><Stack.Screen name="Qibla" component={QiblaScreen}/><Stack.Screen name="Location Setup" component={LocationSetupScreen}/><Stack.Screen name="Notifications" component={NotificationScreen}/><Stack.Screen name="Adhan" component={AdhanScreen}/><Stack.Screen name="Hijri Calendar" component={HijriCalendarScreen}/><Stack.Screen name="Ramadan" component={RamadanScreen}/><Stack.Screen name="Fasting" component={FastingScreen}/><Stack.Screen name="Weekly Summary" component={WeeklySummaryScreen}/></Stack.Navigator>}
+function PrayerStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="Prayer" component={PrayerScreen}/><Stack.Screen name="Adhan" component={AdhanScreen}/><Stack.Screen name="Ramadan" component={RamadanScreen}/></Stack.Navigator>}
 /** The tools tab: what you calculate, look up, travel for, or record. */
-function ToolsStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="ToolsHome" component={ToolsHomeScreen}/><Stack.Screen name="Zakat" component={ZakatScreen}/><Stack.Screen name="Mosques" component={DataTool}/><Stack.Screen name="Holy site channels" component={HolyChannelsScreen}/><Stack.Screen name="Women" component={WomenHubScreen}/><Stack.Screen name="Cycle" component={CycleScreen}/><Stack.Screen name="Qada" component={QadaScreen}/><Stack.Screen name="Women Guides" component={WomenGuidesScreen}/><Stack.Screen name="Privacy Lock" component={PrivacyLockScreen}/></Stack.Navigator>}
+function ToolsStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="ToolsHome" component={ToolsHomeScreen}/><Stack.Screen name="Zakat" component={ZakatScreen}/><Stack.Screen name="Mosques" component={DataTool}/><Stack.Screen name="Holy site channels" component={HolyChannelsScreen}/><Stack.Screen name="Women" component={WomenHubScreen}/><Stack.Screen name="Cycle" component={CycleScreen}/><Stack.Screen name="Qada" component={QadaScreen}/><Stack.Screen name="Women Guides" component={WomenGuidesScreen}/><Stack.Screen name="Privacy Lock" component={PrivacyLockScreen}/><Stack.Screen name="Fasting" component={FastingScreen}/><Stack.Screen name="Weekly Summary" component={WeeklySummaryScreen}/><Stack.Screen name="Qibla" component={QiblaScreen}/><Stack.Screen name="Location Setup" component={LocationSetupScreen}/><Stack.Screen name="Notifications" component={NotificationScreen}/><Stack.Screen name="Hijri Calendar" component={HijriCalendarScreen}/><Stack.Screen name="Tasbih" component={TasbihScreen}/><Stack.Screen name="Umrah Packing" component={UmrahPackingScreen}/></Stack.Navigator>}
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -426,6 +426,11 @@ const TOOL_IMAGES:Record<string,any>={
   Purity:require('./assets/tool-icons/purity.png'),
   'Qada fasts':require('./assets/tool-icons/qada-fasts.png'),
   'Privacy lock':require('./assets/tool-icons/privacy-lock.png'),
+  'Umrah Resources':require('./assets/tool-icons/pilgrimage.png'),
+  'Hajj Live':require('./assets/tool-icons/holy-sites.png'),
+  'Madinah Live':require('./assets/tool-icons/holy-sites.png'),
+  'Makkah Live':require('./assets/tool-icons/holy-sites.png'),
+  'Salah Tracker':require('./assets/tool-icons/prayer-fajr.png'),
 };
 /** The same icons, re-toned for the dark palette. */
 const TOOL_IMAGES_DARK:Record<string,any>={
@@ -504,6 +509,11 @@ const TOOL_IMAGES_DARK:Record<string,any>={
   Purity:require('./assets/tool-icons/purity-dark.png'),
   'Qada fasts':require('./assets/tool-icons/qada-fasts-dark.png'),
   'Privacy lock':require('./assets/tool-icons/privacy-lock-dark.png'),
+  'Umrah Resources':require('./assets/tool-icons/pilgrimage-dark.png'),
+  'Hajj Live':require('./assets/tool-icons/holy-sites-dark.png'),
+  'Madinah Live':require('./assets/tool-icons/holy-sites-dark.png'),
+  'Makkah Live':require('./assets/tool-icons/holy-sites-dark.png'),
+  'Salah Tracker':require('./assets/tool-icons/prayer-fajr-dark.png'),
 };
 function ToolGraphic({tool,size=58}:{tool:string;size?:number}){const{dark}=useTheme();const image=dark?(TOOL_IMAGES_DARK[tool]||TOOL_IMAGES[tool]):TOOL_IMAGES[tool];const enter=useRef(new Animated.Value(.78)).current;const fade=useRef(new Animated.Value(0)).current;useEffect(()=>{Animated.parallel([Animated.spring(enter,{toValue:1,friction:6,tension:75,useNativeDriver:true}),Animated.timing(fade,{toValue:1,duration:350,useNativeDriver:true})]).start()},[]);return <Animated.View accessibilityElementsHidden style={[s.graphicFrame,{width:size,height:size,opacity:fade,transform:[{scale:enter}]}]}>{image?<Image source={image} resizeMode="contain" style={{width:size-6,height:size-6}}/>:ico('sparkles-outline',size*.48,C.green)}</Animated.View>}
 /** Hadith bodies arrive with markup; the card shows them as plain text. */
@@ -569,7 +579,7 @@ function LiveBadge({ source }: { source: string }) {
   const { rtl } = useLanguage();
   return <View style={s.liveBadge}><View style={s.liveDot} /><Text style={s.liveText}>{rtl ? `مباشر · ${tx(rtl, source)}` : `LIVE · ${source}`}</Text></View>;
 }
-function LocationPrompt({compact=false}:{compact?:boolean}){const loc=useAppLocation();const navigation=useNavigation<any>();const{width}=useWindowDimensions();const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);const manual=()=>{const names=navigation.getState()?.routeNames||[];names.includes('Location Setup')?navigation.navigate('Prayer',{screen:'Location Setup'}):navigation.navigate('Prayer',{screen:'Location Setup'})};return <View style={[s.locationGate,width<370&&s.locationGateNarrow,compact&&{marginVertical: 12}]}><ToolGraphic tool="Location" size={54}/><View style={{flex:1,width:width<370?'100%':undefined}}><Text style={s.locationGateTitle}>{T('Choose your prayer location')}</Text><Text style={s.locationGateBody}>{T('No location is assumed. Use GPS once, select a city, or enter coordinates manually.')}</Text><View style={[s.locationActions,width<370&&s.locationActionsNarrow]}><Pressable accessibilityLabel={T('Use my current location')} onPress={loc.useDevice} style={s.primarySmall}><Text style={s.primaryText}>{T(loc.locating ? 'Locating…' : 'Use my location')}</Text></Pressable><Pressable accessibilityLabel={T('Choose prayer location manually')} onPress={manual} style={s.ghostSmall}><Text style={s.ghostText}>{T('Choose manually')}</Text></Pressable></View></View></View>}
+function LocationPrompt({compact=false}:{compact?:boolean}){const loc=useAppLocation();const navigation=useNavigation<any>();const{width}=useWindowDimensions();const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);const manual=()=>{const names=navigation.getState()?.routeNames||[];names.includes('Location Setup')?navigation.navigate('Tools',{screen:'Location Setup'}):navigation.navigate('Tools',{screen:'Location Setup'})};return <View style={[s.locationGate,width<370&&s.locationGateNarrow,compact&&{marginVertical: 12}]}><ToolGraphic tool="Location" size={54}/><View style={{flex:1,width:width<370?'100%':undefined}}><Text style={s.locationGateTitle}>{T('Choose your prayer location')}</Text><Text style={s.locationGateBody}>{T('No location is assumed. Use GPS once, select a city, or enter coordinates manually.')}</Text><View style={[s.locationActions,width<370&&s.locationActionsNarrow]}><Pressable accessibilityLabel={T('Use my current location')} onPress={loc.useDevice} style={s.primarySmall}><Text style={s.primaryText}>{T(loc.locating ? 'Locating…' : 'Use my location')}</Text></Pressable><Pressable accessibilityLabel={T('Choose prayer location manually')} onPress={manual} style={s.ghostSmall}><Text style={s.ghostText}>{T('Choose manually')}</Text></Pressable></View></View></View>}
 
 function SlidingCards<T>({label,items,cardWidth,renderItem}:{label:string;items:T[];cardWidth:number;renderItem:(item:T,index:number)=>React.ReactNode}){
   const ref=useRef<any>(null);const[active,setActive]=useState(0);const{rtl}=useLanguage();const stride=cardWidth+12;
@@ -682,9 +692,9 @@ function HomeScreen() {
   const hydrateLocal=()=>Promise.all([loadPrayerCompletion(dateKey).then(setCompleted),loadPrayerHistory().then(setHistory),loadQuickTasbih().then(setQuickCount),loadReadingPosition().then(setQuranPosition)]);useEffect(()=>{hydrateLocal()},[dateKey]);useFocusEffect(useCallback(()=>{void hydrateLocal()},[]));const togglePrayer=(name:string)=>setCompleted(current=>{const next=current.includes(name)?current.filter(x=>x!==name):[...current,name];savePrayerCompletion(dateKey,next).then(()=>loadPrayerHistory().then(setHistory));return next});const addQuick=async()=>{await tapTasbih();if(Platform.OS!=='web')Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)};const onRefresh=async()=>{setRefreshing(true);await Promise.all([data.load(),hydrateLocal()]);setRefreshing(false)};const weekTotal=Object.entries(history).filter(([key])=>Date.now()-new Date(key).getTime()<7*86400000).reduce((sum,[,items])=>sum+items.length,0);let streak=0;for(let i=0;i<60;i++){const d=new Date();d.setDate(d.getDate()-i);const key=d.toISOString().slice(0,10);if((history[key]||[]).length>=5)streak++;else if(i>0||completed.length<5)break}
   const tools = [
     {label:'Quran',title:T('Quran'),description:quranPosition?(rtl?`تابع ${quranPosition.surahName} من ${quranPosition.verseKey}`:`Continue ${quranPosition.surahName} at ${quranPosition.verseKey}`):T('Read with verified Arabic and translation'),onPress:()=>nav.navigate('Quran')},
-    {label:'Qibla',title:T('Qibla'),description:T('Find the direction of the Kaaba'),onPress:()=>nav.navigate('Prayer',{screen:'Qibla'})},
+    {label:'Qibla',title:T('Qibla'),description:T('Find the direction of the Kaaba'),onPress:()=>nav.navigate('Tools',{screen:'Qibla'})},
     hour<13?{label:'Morning Adhkar',title:T('Morning Adhkar'),description:T('Begin the day with authentic remembrance'),onPress:()=>nav.navigate('Library',{screen:'Adhkar',params:{initial:'morning'}})}:{label:'Evening Adhkar',title:T('Evening Adhkar'),description:T('Close the day with authentic remembrance'),onPress:()=>nav.navigate('Library',{screen:'Adhkar',params:{initial:'evening'}})},
-    {label:'Tasbih',title:T('Tasbih'),description:rtl?`${quickCount} معدودة · محفوظة على جهازك`:`${quickCount} counted · saved privately`,onPress:()=>nav.navigate('Library',{screen:'Tasbih'})},
+    {label:'Tasbih',title:T('Tasbih'),description:rtl?`${quickCount} معدودة · محفوظة على جهازك`:`${quickCount} counted · saved privately`,onPress:()=>nav.navigate('Tools',{screen:'Tasbih'})},
     {label:'Audio',title:T('Audio'),description:T('Listen to Quran recitation and Adhan'),onPress:()=>nav.navigate('Quran')},
   ];
   const contentWidth=Math.min(Math.max(width-36,280),980);const essentialCardWidth=wide?Math.min(300,(contentWidth-24)/3):Math.min(318,Math.max(260,width-66));const reflectionCardWidth=wide?Math.min(310,(contentWidth-24)/3):Math.min(318,Math.max(260,width-66));
@@ -706,7 +716,7 @@ function HomeScreen() {
     <SlidingCards label={T('Daily essentials')} items={tools} cardWidth={essentialCardWidth} renderItem={(tool:any)=><MotionPress onPress={tool.onPress} style={{width:'100%'}}><View style={s.essentialSlide}><View style={s.essentialTop}><ToolGraphic tool={tool.label} size={66}/><View style={s.essentialArrow}>{ico('arrow-forward',16,C.green)}</View></View><Text style={s.essentialTitle}>{tool.title}</Text><Text style={s.essentialBody}>{tool.description}</Text></View></MotionPress>}/>
     <Section title={T('Daily reflection')} action={T('Refresh')} onPress={onRefresh}/>
     <SlidingCards label={T('Daily reflections')} items={reflections} cardWidth={reflectionCardWidth} renderItem={(item:any)=>item.id==='ayah'?<View style={s.reflectionSlide}><Text style={s.dailyKicker}>{T('AYAH OF THE DAY')}</Text><Text numberOfLines={3} style={s.dailyArabic}>{data.ayah?.arabic||T('Loading verified Quran text…')}</Text>{!rtl && <Text numberOfLines={4} style={s.dailyBody}>{data.ayah?.translation}</Text>}<Text style={s.dataMeta}>{rtl ? data.ayah?.arabicReference || data.ayah?.reference : data.ayah?.reference}</Text></View>:item.id==='name'?<View style={s.reflectionSlide}><Text style={s.dailyKicker}>{T('NAME OF ALLAH')}</Text><Text style={s.nameOfDay}>{data.name?.name}</Text>{rtl ? <Text style={s.dailyTitle}>{data.name?.name}</Text> : <Text style={s.dailyTitle}>{data.name?.transliteration}</Text>}{!rtl && <Text style={s.dailyBody}>{data.name?.meaning}</Text>}</View>:item.id==='dua'?<View style={s.reflectionSlide}><Text style={s.dailyKicker}>{T('DUA OF THE DAY')}</Text><Text numberOfLines={3} style={s.dailyArabic}>{data.dua?.arabic||T('Loading verified dua…')}</Text>{!rtl && <Text numberOfLines={4} style={s.dailyBody}>{data.dua?.translation}</Text>}</View>:<Pressable accessibilityRole="button" accessibilityLabel={`${T('Quick Tasbih')}: ${quickCount}. ${T('Tap to count')}`} onPress={addQuick} style={[s.reflectionSlide,s.quickTasbih]}><ToolGraphic tool="Tasbih" size={56}/><Text style={s.dailyKicker}>{T('QUICK TASBIH')}</Text><Text style={s.quickCount}>{todayTotal(tasbih)}</Text><Text style={s.dailyBody}>{rtl ? currentPhrase(tasbih).arabic : currentPhrase(tasbih).transliteration}{rtl ? ' · اضغط للعد' : ' · tap to count'}</Text></Pressable>}/>
-    <Pressable onPress={()=>nav.navigate('Prayer',{screen:'Weekly Summary'})} style={s.weekSummary}><View><Text style={s.weekSummaryTitle}>{T('This week')}</Text><Text style={s.weekSummaryBody}>{rtl ? `${weekTotal} من 35 صلاة مؤداة · ${streak} ${arNoun(streak,'يوم متتابع','يومان متتابعان','أيام متتابعة','يومًا متتابعًا')}` : `${weekTotal} of 35 prayers marked · ${streak} day streak`}</Text></View>{ico('arrow-forward',18,C.white)}</Pressable>
+    <Pressable onPress={()=>nav.navigate('Tools',{screen:'Weekly Summary'})} style={s.weekSummary}><View><Text style={s.weekSummaryTitle}>{T('This week')}</Text><Text style={s.weekSummaryBody}>{rtl ? `${weekTotal} من 35 صلاة مؤداة · ${streak} ${arNoun(streak,'يوم متتابع','يومان متتابعان','أيام متتابعة','يومًا متتابعًا')}` : `${weekTotal} of 35 prayers marked · ${streak} day streak`}</Text></View>{ico('arrow-forward',18,C.white)}</Pressable>
     <Section title={T('Continue reading')} action={T('Open Quran')} onPress={()=>nav.navigate('Quran')} />
     <View style={s.readCard}><Image source={(dark?SCENE_QURAN_DARK:SCENE_QURAN)} resizeMode="cover" style={s.heroBg}/>
       <LinearGradient colors={['rgba(39,34,82,.95)','rgba(76,58,130,.55)','rgba(11,120,145,.08)']} start={{x:0,y:.5}} end={{x:1,y:.5}} style={StyleSheet.absoluteFill} />
@@ -723,34 +733,168 @@ let CARD_GREEN: any = { backgroundColor: C.mint }; let CARD_GOLD: any = { backgr
  * cluster — times, Qibla, Adhan, reminders, location, the calendar, the
  * fasts, the week — now has its own tab and is not repeated here.
  */
-const FIND_TOOLS: [string, string, string][] = [
-  ['Zakat', 'Work out what is due, and record what you gave', 'Zakat'],
-  ['Mosques', 'Prayer spaces around you', 'Mosques'],
+type ToolItem = { title: string; caption: string; route: string; params?: any };
+
+/**
+ * Tools is what you work out, keep track of, or watch. Three groups, and
+ * every card opens a screen inside this stack so the back button returns
+ * here rather than leaving you in another tab.
+ */
+const TOOL_GROUPS: { label: string; title: string; items: ToolItem[] }[] = [
+  { label: 'TRACK', title: 'Trackers and calculators', items: [
+    { title: 'Salah Tracker', caption: 'The five prayers, and the run you are on', route: 'Prayer' },
+    { title: 'Fasting', caption: 'Ramadan, voluntary and missed fasts', route: 'Fasting' },
+    { title: 'Qada Fasts', caption: 'What you owe, and what you have made up', route: 'Qada' },
+    { title: 'Zakat', caption: 'Gold, silver, cash and investments', route: 'Zakat' },
+    { title: 'Cycle Tracker', caption: 'Period logging and predictions', route: 'Cycle' },
+    { title: 'Tasbih', caption: 'A quiet, tactile dhikr counter', route: 'Tasbih' },
+    { title: 'Weekly Summary', caption: 'Your past seven days at a glance', route: 'Weekly Summary' },
+  ]},
+  { label: 'FIND', title: 'Utilities and location', items: [
+    { title: 'Qibla', caption: 'Direction to the Ka‘bah', route: 'Qibla' },
+    { title: 'Mosques', caption: 'Nearby prayer spaces, with directions', route: 'Mosques' },
+    { title: 'Location', caption: 'Automatic GPS, or coordinates you set', route: 'Location Setup' },
+    { title: 'Hijri Calendar', caption: 'Islamic dates and the month grid', route: 'Hijri Calendar' },
+    { title: 'Prayer Reminders', caption: 'Adhan alerts and their toggles', route: 'Notifications' },
+    { title: 'Umrah Resources', caption: 'A packing checklist you can tick off', route: 'Umrah Packing' },
+  ]},
+  { label: 'WATCH', title: 'Live broadcasts', items: [
+    { title: 'Makkah Live', caption: 'Al-Masjid al-Haram, around the clock', route: 'Holy site channels', params: { site: 'Makkah' } },
+    { title: 'Madinah Live', caption: 'Al-Masjid an-Nabawi, around the clock', route: 'Holy site channels', params: { site: 'Madinah' } },
+    { title: 'Hajj Live', caption: 'The holy sites, during the days of Hajj', route: 'Holy site channels', params: { site: 'Hajj' } },
+  ]},
 ];
 
-const RECORD_TOOLS: [string, string, string][] = [
-  ['Women’s worship', 'Cycle, purity and the fasts owed — private to this device', 'Women'],
+/**
+ * What to take for Umrah. Grouped in the order you would think of it, not
+ * alphabetically, and ticked off on the device rather than on a web page.
+ */
+const PACKING_GROUPS: { title: string; items: string[] }[] = [
+  { title: 'Documents and money', items: [
+    'Passport, with six months left on it',
+    'Visa and any printed confirmations',
+    'A spare copy of your passport, kept apart from the original',
+    'Travel insurance details',
+    'Cash in small notes, and a card that works abroad',
+    'A drawstring bag for your shoes at the mosque',
+  ]},
+  { title: 'Ihram and clothing', items: [
+    'Two ihram towels, and a spare',
+    'A belt or money pouch that sits under the ihram',
+    'Slippers that leave the ankle and the top of the foot bare',
+    'Loose, modest clothes for the days after Umrah',
+    'A light layer — the prayer halls are kept very cold',
+    'Spare underwear and socks',
+  ]},
+  { title: 'Unscented toiletries', items: [
+    'Unscented soap and shampoo',
+    'Toothbrush and a miswak',
+    'Unscented deodorant',
+    'Nail clippers',
+    'Tissues and unscented wet wipes',
+    'Your regular medicine, in its original packaging',
+  ]},
+  { title: 'Health', items: [
+    'Prescription medicine, with a copy of the prescription',
+    'Pain relief and plasters',
+    'Hand sanitiser',
+    'Rehydration salts — it is hot and you will walk a long way',
+    'Throat lozenges and a face mask',
+    'Unscented sunscreen for the days between rites',
+  ]},
+  { title: 'Prayer and Qur’an', items: [
+    'A small Qur’an, or this app with the offline download',
+    'A travel prayer mat for the hotel room',
+    'A tasbih, or the counter in this app',
+    'A notebook for what you want to ask for',
+    'The qiblah direction for your hotel',
+  ]},
+  { title: 'Electronics', items: [
+    'Phone and its charger',
+    'A power bank — you will be out all day',
+    'A travel adapter for Saudi sockets',
+    'Offline copies: tickets, maps, and the Qur’an',
+    'A small torch for the walk back after Fajr',
+  ]},
 ];
+
+const PACKING_KEY = '@deen/umrah-packing/v1';
+
+/**
+ * The Umrah packing list. A tool rather than a guide: what you have packed is
+ * kept on the device, so the list is where you left it.
+ */
+function UmrahPackingScreen({ navigation }: any) {
+  const { rtl } = useLanguage();
+  const T = (text: string) => tx(rtl, text);
+  const [packed, setPacked] = useState<string[]>([]);
+
+  useEffect(() => {
+    AsyncStorage.getItem(PACKING_KEY).then((raw) => {
+      if (raw) { try { const value = JSON.parse(raw); if (Array.isArray(value)) setPacked(value); } catch { /* a damaged list simply starts empty */ } }
+    }).catch(() => {});
+  }, []);
+
+  const toggle = (item: string) => setPacked((current) => {
+    const next = current.includes(item) ? current.filter((entry) => entry !== item) : [...current, item];
+    AsyncStorage.setItem(PACKING_KEY, JSON.stringify(next)).catch(() => {});
+    return next;
+  });
+  const clear = () => { setPacked([]); AsyncStorage.removeItem(PACKING_KEY).catch(() => {}); };
+
+  const total = PACKING_GROUPS.reduce((count, group) => count + group.items.length, 0);
+  const done = PACKING_GROUPS.reduce((count, group) => count + group.items.filter((item) => packed.includes(item)).length, 0);
+  const percent = total ? Math.round((done / total) * 100) : 0;
+
+  return <Page><ToolBar title={T('Umrah packing')} navigation={navigation} />
+    <ScrollView contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
+      <ToolGraphic tool="Pilgrimage" size={74} />
+      <Text style={s.dataTitle}>{T('What to take')}</Text>
+      <Text style={s.intro}>{T('A list you can tick off, kept on this device. While you are in ihram, anything with perfume in it is best left at home.')}</Text>
+      <View style={s.packingHead}>
+        <Text style={s.packingCount}>{`${done} / ${total}`}</Text>
+        <View style={s.packingTrack}><View style={[s.packingFill, { width: `${percent}%` }]} /></View>
+        <Text style={s.packingPct}>{`${percent}%`}</Text>
+      </View>
+      {!!done && <Pressable accessibilityRole="button" accessibilityLabel={T('Clear the list')} onPress={clear} style={s.secondary}>
+        <Text style={s.secondaryText}>{T('Clear the list')}</Text>
+      </Pressable>}
+      {PACKING_GROUPS.map((group) => <View key={group.title} style={s.packingGroup}>
+        <Text style={s.packingGroupTitle}>{T(group.title)}</Text>
+        {group.items.map((item) => {
+          const checked = packed.includes(item);
+          return <Pressable key={item} onPress={() => toggle(item)} accessibilityRole="checkbox" accessibilityState={{ checked }} accessibilityLabel={T(item)} style={s.packingRow}>
+            <View style={[s.packingBox, checked && s.packingBoxOn]}>{checked && ico('checkmark', 14, C.onAccent)}</View>
+            <Text style={[s.packingItem, checked && s.packingItemOn]}>{T(item)}</Text>
+          </Pressable>;
+        })}
+      </View>)}
+    </ScrollView></Page>;
+}
 
 function ToolsHomeScreen({ navigation }: any) {
   const { rtl } = useLanguage();
   const T = (text: string) => tx(rtl, text);
   const womens = useWomens();
-  const row = ([title, caption, route]: [string, string, string]) => <Pressable key={title} onPress={() => navigation.navigate(route)} style={s.settings} accessibilityRole="button" accessibilityLabel={title}>
-    <ToolGraphic tool={title} size={44} />
-    <View style={{ flex: 1, marginHorizontal: 12 }}>
-      <Text style={s.settingName}>{T(title)}</Text>
-      <Text style={s.meta}>{T(caption)}</Text>
-    </View>
-    {ico('arrow-forward', 17, C.chevron)}
-  </Pressable>;
+  // The women's area stays hidden until it is opted into.
+  const shown = (group: typeof TOOL_GROUPS[number]) => group.items.filter((item) => item.route !== 'Women' || womens.optedIn);
   return <Page><AppHeader/>
-    <ScrollView contentContainerStyle={s.dataPage}>
+    <ScrollView contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
       <Text style={s.dataTitle}>{T('Tools')}</Text>
       <Text style={s.dataArabic}>أَدَوَاتٌ لِلْعِبَادَةِ</Text>
-      <Text style={s.dataBody}>{T('What you work out, look up, or keep a record of — apart from the flow of the day.')}</Text>
-      <Section title={T('Calculate and find')} />{FIND_TOOLS.map(row)}
-      <Section title={T('Journeys and records')} />{RECORD_TOOLS.filter((item) => item[2] !== 'Women' || womens.optedIn).map(row)}
+      <Text style={s.dataBody}>{T('What you work out, look up, keep track of, or watch — apart from the flow of the day.')}</Text>
+      {TOOL_GROUPS.map((group) => <View key={group.label}>
+        <Text style={s.libraryKicker}>{T(group.label)}</Text>
+        <Text style={s.libraryHeading}>{T(group.title)}</Text>
+        <View style={s.exploreGrid}>{shown(group).map((item) => <MotionPress key={item.title} onPress={() => navigation.navigate(item.route, item.params)} style={s.exploreCard}>
+          <View style={s.exploreCardInner}>
+            <ToolGraphic tool={item.title} size={64} />
+            <Text style={s.exploreTitle}>{T(item.title)}</Text>
+            <Text style={s.exploreBody}>{T(item.caption)}</Text>
+            <View style={s.exploreArrow}>{ico('arrow-forward', 15, C.green)}</View>
+          </View>
+        </MotionPress>)}</View>
+      </View>)}
     </ScrollView>
   </Page>;
 }
@@ -877,7 +1021,6 @@ const libraryGroups: { label: string; title: string; items: LibraryItem[] }[] = 
   { label: 'REMEMBER', title: 'What you say', items: [
     { title: 'Duas', caption: 'Hisn al-Muslim by occasion', route: 'Duas' },
     { title: 'Adhkar', caption: 'Morning and evening remembrance', route: 'Adhkar' },
-    { title: 'Tasbih', caption: 'A quiet, tactile dhikr counter', route: 'Tasbih' },
     { title: 'Shahada', caption: 'The declaration of faith', route: 'Guide Detail', params: { guide: WORSHIP_GUIDES.find((guide) => guide.id === 'Shahada') } },
   ]},
   { label: 'GUIDES', title: 'Step by step', items: [
@@ -1504,17 +1647,20 @@ function JourneyScreen({ route, navigation }: any) {
   </Page>;
 }
 
-function HolyChannelsScreen({ navigation }: any) {
+function HolyChannelsScreen({ route, navigation }: any) {
   const { rtl } = useLanguage();
   const T = (text: string) => tx(rtl, text);
   const [opened, setOpened] = useState('');
+  const site = route?.params?.site;
+  const channels = site ? HOLY_CHANNELS.filter((channel) => channel.site === site) : HOLY_CHANNELS;
+  const heading = site === 'Madinah' ? 'Madinah Live' : site === 'Hajj' ? 'Hajj Live' : 'Makkah Live';
   const open = async (channel: (typeof HOLY_CHANNELS)[number]) => { setOpened(channel.id); await openChannel(channel); };
-  return <Page><ToolBar title={rtl ? 'بثّ الحرمين' : 'Holy site channels'} navigation={navigation} />
+  return <Page><ToolBar title={site ? T(heading) : (rtl ? 'بثّ الحرمين' : 'Holy site channels')} navigation={navigation} />
     <ScrollView contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
       <ToolGraphic tool="Holy site channels" size={76} />
       <Text style={s.dataTitle}>{rtl ? 'بثّ الحرمين' : 'Holy site channels'}</Text>
       <Text style={s.intro}>{rtl ? 'البثّ الرسمي من مكة والمدينة على مدار الساعة.' : 'The official broadcasts from Makkah and Madinah, around the clock.'}</Text>
-      {HOLY_CHANNELS.map((channel) => <View key={channel.id} style={s.channelCard}>
+      {channels.map((channel) => <View key={channel.id} style={s.channelCard}>
         <View style={[s.channelHead, ]}>
           <ToolGraphic tool="Holy site channels" size={46} />
           <View style={{ flex: 1 }}>
@@ -1635,7 +1781,7 @@ function GuideDirectory({route,navigation}:any){const{rtl}=useLanguage();const T
 function GuideDetail({route,navigation}:any){const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);const guide:WorshipGuide=localizeGuide(route.params.guide,rtl);return <Page><ToolBar title={guide.title} navigation={navigation}/><ScrollView contentContainerStyle={s.dataPage}><ToolGraphic tool={guide.id} size={82}/><Text style={s.dataTitle}>{guide.subtitle}</Text>{guide.arabic&&<Text style={s.guideArabic}>{guide.arabic}</Text>}<Text style={s.intro}>{guide.introduction}</Text><Section title={T('Step by step')}/><View style={s.settings}>{guide.steps.map((step,i)=><View key={step} style={s.guideStep}><View style={s.stepNo}><Text style={s.stepNoText}>{i+1}</Text></View><Text style={s.guideStepText}>{step}</Text></View>)}</View>{guide.note&&<View style={s.guideNote}><Text style={s.sourceTitle}>{T('Important note')}</Text><Text style={s.sourceBody}>{guide.note}</Text></View>}<Section title={T('References')}/>{guide.references.map(ref=><Pressable key={ref.url} onPress={()=>Linking.openURL(ref.url)} style={s.referenceRow}><Text style={s.settingName}>{ref.label}</Text>{ico('open-outline',18,C.green)}</Pressable>)}</ScrollView></Page>}
 
 function HijriCalendarScreen({navigation}:any){const{rtl,language}=useLanguage();const T=(text:string)=>tx(rtl,text);const{location}=useAppLocation();const[days,setDays]=useState<CalendarDay[]>([]);const[error,setError]=useState('');const now=new Date();const load=async()=>{if(!location)return;setError('');setDays([]);try{setDays(await getGregorianCalendar(location.latitude,location.longitude,now.getMonth()+1,now.getFullYear()))}catch(e:any){setError(T(e.message))}};useEffect(()=>{load()},[location?.latitude,location?.longitude]);const first=days[0]?.gregorian.split('-').map(Number);const offset=first?new Date(first[2],first[1]-1,first[0]).getDay():0;return <Page><ToolBar title={T('Hijri calendar')} navigation={navigation}/><ScrollView contentContainerStyle={s.dataPage}>{!location?<LocationPrompt compact/>:<><View style={s.calendarIntro}><Text style={s.calendarMonth}>{now.toLocaleDateString(language==='ar'?'ar-u-nu-latn':'en',{month:'long',year:'numeric'})}</Text><Text style={s.calendarHijri}>{days.length?(rtl?`${days[0].hijriMonthAr||days[0].hijriMonth} – ${days[days.length-1].hijriMonthAr||days[days.length-1].hijriMonth} ${days[0].hijriYear} هـ`:`${days[0].hijriMonth} – ${days[days.length-1].hijriMonth} ${days[0].hijriYear} AH`):''}</Text></View>{error?<ErrorState message={error} retry={load}/>:!days.length?<Spinner/>:<><View style={s.weekHead}>{['ح','ن','ث','ر','خ','ج','س'].map((d,i)=><Text key={i} style={s.weekLabel}>{rtl?d:['S','M','T','W','T','F','S'][i]}</Text>)}</View><View style={s.calendarGrid}>{Array.from({length:offset}).map((_,i)=><View key={`e${i}`} style={s.calendarCell}/>) }{days.map((d,i)=><View key={d.gregorian} style={[s.calendarCell,d.gregorian.startsWith(String(now.getDate()).padStart(2,'0'))&&s.calendarToday]}><Text style={s.gregorianDay}>{i+1}</Text><Text style={s.hijriDay}>{d.hijriDay}</Text></View>)}</View><View style={s.calendarLegend}><View style={s.legendDot}/><Text style={s.sourceBody}>{T('Large number: Gregorian · Small number: Hijri')}</Text></View></>}</>}</ScrollView></Page>}
-function RamadanScreen({navigation}:any){const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);const{location}=useAppLocation();const[days,setDays]=useState<CalendarDay[]>([]);const[year,setYear]=useState<number|null>(null);const[error,setError]=useState('');const load=async()=>{if(!location)return;setError('');setDays([]);try{const snap=await getPrayerSnapshot(location.latitude,location.longitude);const target=snap.hijriMonth>9?snap.hijriYear+1:snap.hijriYear;setYear(target);setDays(await getRamadanCalendar(location.latitude,location.longitude,target));}catch(e:any){setError(T(e.message))}};useEffect(()=>{load()},[location?.latitude,location?.longitude]);return <Page><ToolBar title={T('Ramadan')} navigation={navigation}/><ScrollView contentContainerStyle={s.dataPage}>{!location?<LocationPrompt compact/>:<><LinearGradient colors={[C.heroA,C.green]} style={s.ramadanHero}><Text style={s.ramadanArabic}>رَمَضَان</Text><Text style={s.ramadanTitle}>{T('Ramadan')} {year||''} {T('AH')}</Text><Text style={s.ramadanSub}>{T('A live 30-day Suhoor and Iftar timetable for')} {T(location.label)}.</Text></LinearGradient><Pressable onPress={()=>navigation.navigate('Prayer',{screen:'Fasting'})} style={[s.sourceCard,{marginTop: 12}]}>{ico('create-outline',20,C.green)}<View style={{flex:1}}><Text style={s.sourceTitle}>{T('Fasting record')}</Text><Text style={s.sourceBody}>{T('Mark each day and keep your make-up ledger')}</Text></View>{ico('arrow-forward',18,C.green)}</Pressable>{error?<ErrorState message={error} retry={load}/>:!days.length?<Spinner/>:<><Section title={T('Fasting timetable')} action={rtl?`${days.length} يومًا`:`${days.length} days`}/><View style={s.ramadanList}>{days.map(d=>{const fajr=d.prayers.find(p=>p.name==='Fajr');const maghrib=d.prayers.find(p=>p.name==='Maghrib');return <View key={d.gregorian} style={s.ramadanRow}><View style={s.ramadanDay}><Text style={s.ramadanDayNo}>{d.hijriDay}</Text><Text style={s.ramadanDayLabel}>{T('RAM')}</Text></View><View style={{flex:1}}><Text style={s.ramadanDate}>{rtl ? d.weekdayAr || d.weekday : d.weekday} · {d.gregorian}</Text><Text style={s.meta}>{T(location.label)}</Text></View><View style={s.fastTime}><Text style={s.fastLabel}>{T('SUHOOR')}</Text><Text style={s.fastValue}>{clockTime(rtl, fajr?.time || '')}</Text></View><View style={s.fastTime}><Text style={s.fastLabel}>{T('IFTAR')}</Text><Text style={s.fastValue}>{maghrib?.time}</Text></View></View>})}</View></>}</>}</ScrollView></Page>}
+function RamadanScreen({navigation}:any){const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);const{location}=useAppLocation();const[days,setDays]=useState<CalendarDay[]>([]);const[year,setYear]=useState<number|null>(null);const[error,setError]=useState('');const load=async()=>{if(!location)return;setError('');setDays([]);try{const snap=await getPrayerSnapshot(location.latitude,location.longitude);const target=snap.hijriMonth>9?snap.hijriYear+1:snap.hijriYear;setYear(target);setDays(await getRamadanCalendar(location.latitude,location.longitude,target));}catch(e:any){setError(T(e.message))}};useEffect(()=>{load()},[location?.latitude,location?.longitude]);return <Page><ToolBar title={T('Ramadan')} navigation={navigation}/><ScrollView contentContainerStyle={s.dataPage}>{!location?<LocationPrompt compact/>:<><LinearGradient colors={[C.heroA,C.green]} style={s.ramadanHero}><Text style={s.ramadanArabic}>رَمَضَان</Text><Text style={s.ramadanTitle}>{T('Ramadan')} {year||''} {T('AH')}</Text><Text style={s.ramadanSub}>{T('A live 30-day Suhoor and Iftar timetable for')} {T(location.label)}.</Text></LinearGradient><Pressable onPress={()=>navigation.navigate('Tools',{screen:'Fasting'})} style={[s.sourceCard,{marginTop: 12}]}>{ico('create-outline',20,C.green)}<View style={{flex:1}}><Text style={s.sourceTitle}>{T('Fasting record')}</Text><Text style={s.sourceBody}>{T('Mark each day and keep your make-up ledger')}</Text></View>{ico('arrow-forward',18,C.green)}</Pressable>{error?<ErrorState message={error} retry={load}/>:!days.length?<Spinner/>:<><Section title={T('Fasting timetable')} action={rtl?`${days.length} يومًا`:`${days.length} days`}/><View style={s.ramadanList}>{days.map(d=>{const fajr=d.prayers.find(p=>p.name==='Fajr');const maghrib=d.prayers.find(p=>p.name==='Maghrib');return <View key={d.gregorian} style={s.ramadanRow}><View style={s.ramadanDay}><Text style={s.ramadanDayNo}>{d.hijriDay}</Text><Text style={s.ramadanDayLabel}>{T('RAM')}</Text></View><View style={{flex:1}}><Text style={s.ramadanDate}>{rtl ? d.weekdayAr || d.weekday : d.weekday} · {d.gregorian}</Text><Text style={s.meta}>{T(location.label)}</Text></View><View style={s.fastTime}><Text style={s.fastLabel}>{T('SUHOOR')}</Text><Text style={s.fastValue}>{clockTime(rtl, fajr?.time || '')}</Text></View><View style={s.fastTime}><Text style={s.fastLabel}>{T('IFTAR')}</Text><Text style={s.fastValue}>{maghrib?.time}</Text></View></View>})}</View></>}</>}</ScrollView></Page>}
 /* ==================== Phase 4 · women's area ==================== */
 function haptic(kind: 'tap' | 'error' = 'tap') {
   try {
@@ -3035,6 +3181,18 @@ let s: Record<string, any> = makeStyles();
 /** Builds the style sheet for the palette that is currently in use. */
 function makeStyles() {
   const created: Record<string, any> = StyleSheet.create({
+ packingHead:{flexDirection:'row',alignItems:'center',gap:12,marginTop:18,marginBottom:4},
+ packingCount:{color:C.ink,fontSize:14,fontFamily:'DMSans_700Bold',minWidth:52},
+ packingTrack:{flex:1,height:8,borderRadius:4,backgroundColor:C.mint,overflow:'hidden'},
+ packingFill:{height:8,borderRadius:4,backgroundColor:C.green},
+ packingPct:{color:C.muted,fontSize:12,fontFamily:'DMSans_600SemiBold',minWidth:38,textAlign:'right'},
+ packingGroup:{marginTop:22},
+ packingGroupTitle:{color:C.green,fontSize:11,fontFamily:'DMSans_700Bold',letterSpacing:1.4,marginBottom:10},
+ packingRow:{flexDirection:'row',alignItems:'center',gap:12,paddingVertical:11,borderBottomWidth:1,borderColor:C.line},
+ packingBox:{width:24,height:24,borderRadius:8,borderWidth:1,borderColor:C.line,alignItems:'center',justifyContent:'center',backgroundColor:C.card},
+ packingBoxOn:{backgroundColor:C.green,borderColor:C.green},
+ packingItem:{flex:1,color:C.ink,fontSize:14,fontFamily:'DMSans_400Regular'},
+ packingItemOn:{color:C.muted,textDecorationLine:'line-through'},
  shellRoot:{flex:1,backgroundColor:C.bg},
  shellLayer:{position:'absolute',left:0,right:0,top:0,bottom:0},
  splashRoot:{flex:1,backgroundColor:C.heroA,alignItems:'center',justifyContent:'center',overflow:'hidden'},

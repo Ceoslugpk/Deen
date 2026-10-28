@@ -13,7 +13,7 @@ import { Linking } from 'react-native';
 
 export type HolyChannel = {
   id: string;
-  site: 'Makkah' | 'Madinah';
+  site: 'Makkah' | 'Madinah' | 'Hajj';
   place: string;
   arabic: string;
   channel: string;
@@ -66,6 +66,17 @@ export const HOLY_CHANNELS: HolyChannel[] = [
     broadcaster: 'Relayed from Saudi Quran TV',
     detail: 'A plain web page carrying the same official feed, for when a phone browser is easier than the YouTube app.',
     url: 'https://makkahlive.net/makkahlive.aspx',
+    icon: 'holy-sites',
+  },
+  {
+    id: 'hajj-ministry',
+    site: 'Hajj',
+    place: 'The holy sites',
+    arabic: 'الْمَشَاعِرُ الْمُقَدَّسَةُ',
+    channel: 'Ministry of Hajj and Umrah',
+    broadcaster: 'Ministry of Hajj and Umrah',
+    detail: 'Official coverage from the holy sites — Arafah, Muzdalifah and Mina. The channel is live during the days of Hajj and carries other programming for the rest of the year.',
+    url: 'https://www.youtube.com/@HajjUmrah',
     icon: 'holy-sites',
   },
 ];
