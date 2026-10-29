@@ -67,7 +67,7 @@ import {
 import { addNotificationResponseReceivedListener, type NotificationResponse } from 'expo-notifications';
 import { getBatteryOptimizationState, requestBatteryExemption, type BatteryState } from './src/services/batteryOptimization';
 import { copyFeedback, issueLabel, loadReports, markReportSent } from './src/services/reportService';
-import { computeMushafLayout, spreadFor, stepSpread, SPREAD_GUTTER, SPREAD_MODES, spreadModeLabel, spreadModeNote, MIN_SPREAD_WIDTH } from './src/services/mushafLayout';
+import { computeMushafLayout } from './src/services/mushafLayout';
 import { markerBetween, MARKER_KINDS, MARKER_LABELS, MARKER_NOTE, type MushafMarker, type MarkerKind, type PageConnection } from './src/services/mushafMarkers';
 import { localizeGuide, WORSHIP_GUIDES, WorshipGuide } from './src/content/worshipGuides';
 import { GUIDE_HADITH, GUIDE_VERSES } from './src/content/guideSources';
@@ -2819,12 +2819,12 @@ function MushafPage({ page, verses, width, height, preferences, rtl, T, bookmark
  * reader can jump to any of 604 pages at will and a cache of the last page
  * visited would be wrong the moment somebody types a number in.
  */
-function useMushafNeighbours(page: number, showSpread: boolean, opening: { right: number; left: number | null }, script: string, translation: string) {
+function useMushafNeighbours(page: number, script: string, translation: string) {
   const [pages, setPages] = useState<{ prev: any[]; next: any[] }>({ prev: [], next: [] });
 
   useEffect(() => {
-    const before = (showSpread ? opening.right : page) - 1;
-    const after = (showSpread ? (opening.left ?? opening.right) : page) + 1;
+    const before = page - 1;
+    const after = page + 1;
     let live = true;
     const opts = { script, translation };
 
@@ -2837,7 +2837,7 @@ function useMushafNeighbours(page: number, showSpread: boolean, opening: { right
       setPages({ prev: p || [], next: n || [] });
     });
     return () => { live = false; };
-  }, [page, showSpread, opening.right, opening.left, script, translation]);
+  }, [page, script, translation]);
 
   return pages;
 }
@@ -2854,9 +2854,7 @@ function MushafPageView({page,verses,error,cached,retry,preferences,rtl,T,input,
   const [boxW,setBoxW]=useState(0);
   const availW=boxW||Math.max(200,Math.min(screenW,READER_MAX_WIDTH)-READER_PAD*2);
   const availH=Math.max(200,screenH-(screenW>screenH?96:190));
-  const layout=useMemo(()=>computeMushafLayout(availW,screenH,availH,preferences.spreadMode||'auto'),[availW,screenH,availH,preferences.spreadMode]);
-  const opening = spreadFor(page);
-  const showSpread = layout.columns === 2 && opening.left !== null;
+  const layout=useMemo(()=>computeMushafLayout(availW,availH),[availW,availH]);
 
   const scriptFor = (id: string) => (id === 'quran-indopak' || id === 'quran-mushaf') ? 'quran-uthmani' : id;
 
@@ -2868,34 +2866,9 @@ function MushafPageView({page,verses,error,cached,retry,preferences,rtl,T,input,
      turn of a page can only be recognised by seeing the same verse key on
      both sides. So the neighbours are fetched: quietly, and only once per
      page, since what comes back is cached with everything else. */
-  const neighbours = useMushafNeighbours(page, showSpread, opening, scriptFor(preferences.scriptEdition), preferences.translationEdition);
+  const neighbours = useMushafNeighbours(page, scriptFor(preferences.scriptEdition), preferences.translationEdition);
 
-  /* The other half of the opening. The reader only hands us the verses for
-     one page, so the facing page is fetched here, and only when there is
-     going to be a facing page. */
-  const [facing, setFacing] = useState<any[]>([]);
-  const [facingPage, setFacingPage] = useState<number | null>(null);
-
-  useEffect(() => {
-    if (!showSpread) { setFacing([]); setFacingPage(null); return; }
-    const other = page % 2 === 1 ? page + 1 : page - 1;
-    if (other === facingPage) return;
-    let live = true;
-    getPageVerses(other, { script: scriptFor(preferences.scriptEdition), translation: preferences.translationEdition })
-      .then((v) => { if (live) { setFacing(v || []); setFacingPage(other); } })
-      .catch(() => { if (live) { setFacing([]); setFacingPage(other); } });
-    return () => { live = false; };
-  }, [showSpread, page, preferences.scriptEdition, preferences.translationEdition]);
-
-  /* Which side the page we came in on sits, and which is its partner. */
-  const pageIsRight = page % 2 === 1;
-  const rightVerses = pageIsRight ? verses : (facingPage === opening.right ? facing : []);
-  const leftVerses = pageIsRight ? (facingPage === opening.left ? facing : []) : verses;
-
-  /* Stepping in single pages, but by a whole opening when a spread is shown:
-     turning two pages at once keeps odd pages on the right, which is the one
-     thing a mushaf never does differently. */
-  const step = (delta: number) => goPage(showSpread ? stepSpread(page, delta) : page + delta);
+  const step = (delta: number) => goPage(page + delta);
 
   const pageProps = { preferences, rtl, T, bookmarks, savedPosition, onBookmark, onMark, onPlay, onNote };
 
@@ -2903,14 +2876,14 @@ function MushafPageView({page,verses,error,cached,retry,preferences,rtl,T,input,
      Worked out by comparing verse keys across the join rather than assuming,
      because most page turns fall between verses, and claiming a verse runs on
      when it does not is a small lie repeated on every page. */
-  const firstShown = (showSpread ? rightVerses : verses) || [];
-  const lastShown = (showSpread ? (leftVerses.length ? leftVerses : rightVerses) : verses) || [];
+  const firstShown = verses || [];
+  const lastShown = verses || [];
   const startsContinued = !!neighbours.prev.length && !!firstShown.length &&
     neighbours.prev[neighbours.prev.length - 1].verse_key === firstShown[0].verse_key;
   const endsContinued = !!neighbours.next.length && !!lastShown.length &&
     lastShown[lastShown.length - 1].verse_key === neighbours.next[0].verse_key;
-  const canPrev = showSpread ? opening.right > 1 : page > 1;
-  const canNext = showSpread ? opening.right + 2 <= 604 : page < 604;
+  const canPrev = page > 1;
+  const canNext = page < 604;
 
   return <View style={{width:'100%'}} onLayout={e=>{const w=e.nativeEvent.layout.width;if(w&&Math.abs(w-boxW)>.5)setBoxW(w);}}>
   <View style={s.mushafNav}>
@@ -2918,7 +2891,6 @@ function MushafPageView({page,verses,error,cached,retry,preferences,rtl,T,input,
     <View style={s.pageJump}>
       <Text style={s.dataMeta}>
         {T(cached ? 'OFFLINE PAGE' : 'MADINAH MUSHAF · 604 PAGES')}
-        {showSpread && ` · ${T('TWO PAGES')}`}
       </Text>
       <TextInput accessibilityLabel={T('Mushaf page number')} keyboardType="number-pad" value={input} onChangeText={setInput} onSubmitEditing={() => goPage(Number(input))} style={s.pageInput} />
     </View>
@@ -2927,30 +2899,20 @@ function MushafPageView({page,verses,error,cached,retry,preferences,rtl,T,input,
   <View style={s.pageProgress}><View style={[s.preloadFill, { width: `${page / 604 * 100}%` } as any]} /></View>
 
   {error ? <ErrorState message={error} retry={retry} /> : !verses.length ? <Spinner /> :
-   <View style={[s.mushafSpreadRow, { gap: SPREAD_GUTTER }]}>
-     {showSpread ? <>
-       {/* First child sits on the right, which is where an odd page belongs. */}
-       {!!preferences.showVerseConnections && opening.right > 1 &&
-         <MushafConnectionNote kind="continued" rtl={rtl} T={T} page={opening.right} cut={startsContinued} nextVerse={neighbours.prev[neighbours.prev.length - 1]} />}
-       <MushafPage page={opening.right} verses={rightVerses} width={layout.pageWidth} height={layout.pageHeight} before={neighbours.prev} {...pageProps} />
-       <MushafPage page={opening.left} verses={leftVerses} width={layout.pageWidth} height={layout.pageHeight} before={rightVerses} {...pageProps} />
-       {!!preferences.showVerseConnections && (opening.left ?? opening.right) < 604 &&
-         <MushafConnectionNote kind="continues" rtl={rtl} T={T} page={opening.left ?? opening.right} cut={endsContinued} nextVerse={neighbours.next[0]} />}
-     </> : <>
-       {!!preferences.showVerseConnections && page > 1 &&
-         <MushafConnectionNote kind="continued" rtl={rtl} T={T} page={page} cut={startsContinued} nextVerse={neighbours.prev[neighbours.prev.length - 1]} />}
-       <MushafPage page={page} verses={verses} width={layout.pageWidth} height={layout.pageHeight} before={neighbours.prev} {...pageProps} />
-       {!!preferences.showVerseConnections && page < 604 &&
-         <MushafConnectionNote kind="continues" rtl={rtl} T={T} page={page} cut={endsContinued} nextVerse={neighbours.next[0]} />}
-     </>}
+   <View style={s.mushafPageRow}>
+     {!!preferences.showVerseConnections && page > 1 &&
+       <MushafConnectionNote kind="continued" rtl={rtl} T={T} page={page} cut={startsContinued} nextVerse={neighbours.prev[neighbours.prev.length - 1]} />}
+     <MushafPage page={page} verses={verses} width={layout.pageWidth} height={layout.pageHeight} before={neighbours.prev} {...pageProps} />
+     {!!preferences.showVerseConnections && page < 604 &&
+       <MushafConnectionNote kind="continues" rtl={rtl} T={T} page={page} cut={endsContinued} nextVerse={neighbours.next[0]} />}
    </View>}
 
   <View style={[s.mushafNav, s.mushafNavFoot]}>
     <Pressable onPress={() => step(-1)} disabled={!canPrev} style={s.secondary}><Text style={s.secondaryText}>{T('Previous')}</Text></Pressable>
     <Text style={s.meta}>
       {rtl
-        ? `الجزء ${verses[0]?.juz || '—'} · ${showSpread ? `صفحة ${toArabicDigits(opening.right)}–${toArabicDigits(opening.left || opening.right)}` : `صفحة ${toArabicDigits(page)}`}`
-        : `Juz ${verses[0]?.juz || '—'} · ${showSpread ? `Pages ${opening.right}–${opening.left}` : `Page ${page}`}`}
+        ? `الجزء ${verses[0]?.juz || '—'} · صفحة ${toArabicDigits(page)}`
+        : `Juz ${verses[0]?.juz || '—'} · Page ${page}`}
     </Text>
     <Pressable onPress={() => step(1)} disabled={!canNext} style={s.secondary}><Text style={s.secondaryText}>{T('Next')}</Text></Pressable>
   </View>
@@ -2980,7 +2942,7 @@ function needsPayload(Inner: any, title: string) {
 
 function NoteEditorScreen({route,navigation}:any){const verse:Verse=route.params.verse;const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);const chapter:Chapter=route.params.chapter;const[text,setText]=useState(route.params.verse.note||'');const save=async()=>{if(!text.trim()){if(route.params.verse.note){await deleteNote(verse.verse_key)}navigation.goBack();return}await saveNote({verseKey:verse.verse_key,surahId:chapter.id,surahName:chapter.name_simple,arabic:verse.text_uthmani,translation:verse.translation,note:text.trim(),savedAt:route.params.verse.savedAt||Date.now(),updatedAt:Date.now()});navigation.goBack()};return <Page><ToolBar title={`Note · ${verse.verse_key}`} navigation={navigation}/><View style={s.dataPage}><Text style={s.dataArabic}>{verse.text_uthmani}</Text><TextInput multiline autoFocus value={text} onChangeText={setText} placeholder={T('Write a private reflection…')} style={s.noteInput}/><View style={s.actionRow}><Pressable onPress={save} style={s.primary}><Text style={s.primaryText}>{T('Save note')}</Text></Pressable>{route.params.verse.note&&<Pressable onPress={async()=>{await deleteNote(verse.verse_key);navigation.goBack()}} style={s.dangerButton}><Text style={s.dangerText}>{T('Delete')}</Text></Pressable>}</View></View></Page>}
 
-function ReaderSettingsScreen({navigation}:any){const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);const{preferences,update}=useQuranPreferences();const{width:screenW,height:screenH}=useWindowDimensions();const canSpreadNow=computeMushafLayout(Math.max(200,Math.min(screenW,READER_MAX_WIDTH)-READER_PAD*2),screenH,Math.max(200,screenH-(screenW>screenH?96:190)),'auto').canSpread;const scripts=[['quran-uthmani','Uthmani'],['quran-simple','Imla’i Simple'],['quran-indopak','IndoPak'],['quran-tajweed','Tajweed colour'],['quran-mushaf','Mushaf page']];
+function ReaderSettingsScreen({navigation}:any){const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);const{preferences,update}=useQuranPreferences();const{width:screenW,height:screenH}=useWindowDimensions();const scripts=[['quran-uthmani','Uthmani'],['quran-simple','Imla’i Simple'],['quran-indopak','IndoPak'],['quran-tajweed','Tajweed colour'],['quran-mushaf','Mushaf page']];
   /* Every control below is a setting of the same two lines of text, so the two
      lines sit at the top and change as the controls change. Reading about a
      type size is slower than seeing it. */
@@ -3028,11 +2990,6 @@ function ReaderSettingsScreen({navigation}:any){const{rtl}=useLanguage();const T
 
       {preferences.scriptEdition==='quran-mushaf'&&<View style={s.rsGroup}>
         <Text style={s.rsGroupTitle}>{T('MUSHAF PAGE')}</Text>
-        <Text style={s.preferenceLabel}>{T('ONE PAGE OR TWO')}</Text>
-        <View style={s.choiceGrid}>{SPREAD_MODES.map(mode=><ChoicePill key={mode} label={spreadModeLabel(mode,rtl)} selected={(preferences.spreadMode||'auto')===mode} onPress={()=>update({spreadMode:mode})}/>)}</View>
-        <Text style={[s.meta,{marginTop:8}]}>{T(spreadModeNote(preferences.spreadMode||'auto',rtl))}</Text>
-        {!canSpreadNow&&<Text style={[s.meta,{marginTop:6,color:C.gold}]}>{T('This screen is not wide enough for two readable pages, so “automatic” is showing one. “Always two” will still force them.')}</Text>}
-        <View style={s.rsDivider}/>
         <Text style={s.rsGroupTitle}>{T('ON THE PAGE')}</Text>
         <View style={s.settings}>
           <Pressable accessibilityRole="switch" accessibilityState={{checked:!!preferences.mushafTranslation}} onPress={()=>update({mushafTranslation:!preferences.mushafTranslation})} style={s.setting}><MotionGlyph name={preferences.mushafTranslation?'text':'text-outline'} size={19}/><View style={{flex:1}}><Text style={s.settingName}>{T('Show the meaning on the page')}</Text><Text style={s.meta}>{T('A printed page carries no translation. Turn this on to have the meaning under each verse.')}</Text></View>{ico(preferences.mushafTranslation?'toggle':'toggle-outline',22,preferences.mushafTranslation?C.green:C.muted)}</Pressable>
@@ -7796,7 +7753,7 @@ rangeEnd:{flex:1},
 stepperSmall:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:6,marginTop:4,backgroundColor:C.bg,borderRadius:11,paddingHorizontal:6,paddingVertical:3,borderWidth:1,borderColor:C.line},
 rangeNumber:{color:C.ink,fontSize:14,fontFamily:'DMSans_600SemiBold'},
 stepButtonSmall:{padding:4},
-mushafSpreadRow:{flexDirection:'row',justifyContent:'center',alignItems:'flex-start',paddingVertical:6},
+mushafPageRow:{flexDirection:'row',justifyContent:'center',alignItems:'flex-start',paddingVertical:6},
 mushafPageOuter:{overflow:'hidden'},
 mushafMarkerBand:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:6,marginVertical:5},
 mushafMarkerRule:{height:1,backgroundColor:C.gold,opacity:.55},

@@ -27,7 +27,6 @@ export type QuranPreferences = {
    * turn their devices sideways for different reasons: some want the spread,
    * some only want the width.
    */
-  spreadMode: 'auto' | 'always' | 'never';
 
   /**
    * Which of the division marks to print.
@@ -76,7 +75,6 @@ const K = {
 };
 export const DEFAULTS: QuranPreferences = {
   focusMode: false,
-  spreadMode: 'auto',
   mushafMarkers: { juz: true, hizb: true, rub: true, nisf: true, thuluth: true },
   showVerseConnections: true,
   mushafTranslation: false,
