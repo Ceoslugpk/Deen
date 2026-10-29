@@ -62,6 +62,7 @@ import {
 import {
   actionFromResponse, adhanOption, ADHAN_OPTIONS, cancelAllNotifications, getNotificationHealth, getScheduledCount,
   NotificationHealth, prayerFromNotification, requestNotificationPermission, schedulePrayerNotifications, sendTestNotification,
+  SLEEP_SURAH,
 } from './src/services/notifications';
 import { addNotificationResponseReceivedListener, type NotificationResponse } from 'expo-notifications';
 import { getBatteryOptimizationState, requestBatteryExemption, type BatteryState } from './src/services/batteryOptimization';
@@ -3568,6 +3569,34 @@ function NotificationScreen({navigation}:any){const{rtl}=useLanguage();const T=(
           selected={settings.dailyHadithTime===time} onPress={()=>update({dailyHadithTime:time,dailyHadithReminder:true})}/>)}
       </View>
 
+      {/* ---- before you sleep ---- */}
+      <Section title={T('Before you sleep')}/>
+      <View style={s.sleepHadith}>
+        <Text style={s.sleepHadithAr}>
+          {'إِنَّ سُورَةً مِنَ القُرآنِ ثَلاثُونَ آيَةً شَفَعَتْ لِصَاحِبِهَا حَتَّى غُفِرَ لَهُ، وَهِيَ سُورَةُ تَبَارَكَ'}
+        </Text>
+        <Text style={s.sleepHadithEn}>
+          {T('“Indeed there is a Surah in the Qur’an of thirty Ayat, which intercedes for a man until he is forgiven. It is [Surah] Tabarak Alladhi Biyadihil-Mulk.”')}
+        </Text>
+        <Text style={s.sleepHadithRef}>{rtl ? SLEEP_SURAH.hadithAr : SLEEP_SURAH.hadith} · {rtl ? SLEEP_SURAH.practiceAr : SLEEP_SURAH.practice}</Text>
+      </View>
+      <View style={s.settings}>
+        <Row icon="moon-outline" title={T('Remind me to read Surah Al-Mulk')}
+          subtitle={settings.sleepReminderEnabled
+            ? (settings.sleepReminderTime || '22:30')
+            : T('Thirty verses, about five minutes.')}
+          value={!!settings.sleepReminderEnabled}
+          onChange={(v:boolean)=>update({sleepReminderEnabled:v})}/>
+      </View>
+      <View style={s.choiceGrid}>
+        {['21:00','21:30','22:00','22:30','23:00','23:30'].map(time=><ChoicePill key={time} label={time}
+          selected={!!settings.sleepReminderEnabled && settings.sleepReminderTime===time}
+          onPress={()=>update({sleepReminderTime:time,sleepReminderEnabled:true})}/>)}
+      </View>
+      <Text style={s.cityFootnote}>
+        {T('The hour is kept on this device only. It is not sent anywhere and is not used for tracking.')}
+      </Text>
+
       {/* ---- android battery ---- */}
       {battery!=='notNeeded'&&<>
         <Section title={T('Reliability')}/>
@@ -5677,11 +5706,95 @@ function OnboardingNotifications() {
   </View>;
 }
 
+/**
+ * The last thing asked, and the only one that can be skipped.
+ *
+ * Everything before it is needed for the app to work at all — a language, a
+ * place, whether reminders are allowed. This is different: a nightly reminder
+ * to read Surah Al-Mulk is an invitation, not a requirement, so it is asked
+ * as one and can be declined without consequence.
+ *
+ * The hadith is quoted rather than paraphrased, and the reference is shown,
+ * because a reminder that leans on a text ought to let the person go and read
+ * that text. Two are given: 2891 for the surah's virtue, and 2892 for the
+ * practice of reciting it before sleep — the first does not mention night at
+ * all, and quietly implying that it does would be careless.
+ *
+ * The time is said plainly to stay on the device. Somebody being asked when
+ * they go to bed is entitled to wonder where that answer goes.
+ */
+function OnboardingSleep() {
+  const { rtl } = useLanguage();
+  const T = (text: string) => tx(rtl, text);
+  const { settings, update } = useWorshipSettings();
+
+  /* Some presets and a wide berth either side of them. Most people sleep
+     somewhere between nine and one; offering every quarter hour would be a
+     formality, not a choice. */
+  const TIMES = ['21:00', '21:30', '22:00', '22:30', '23:00', '23:30'];
+  const picked = settings.sleepReminderEnabled ? (settings.sleepReminderTime || '22:30') : null;
+
+  const choose = (time: string) => update({ sleepReminderEnabled: true, sleepReminderTime: time });
+  const clear = () => update({ sleepReminderEnabled: false });
+
+  return <View style={s.onbList}>
+    <View style={s.sleepHadith}>
+      <Text style={s.sleepHadithAr}>
+        {'إِنَّ سُورَةً مِنَ القُرآنِ ثَلاثُونَ آيَةً شَفَعَتْ لِصَاحِبِهَا حَتَّى غُفِرَ لَهُ، وَهِيَ سُورَةُ تَبَارَكَ'}
+      </Text>
+      <Text style={s.sleepHadithEn}>
+        {T('“Indeed there is a Surah in the Qur’an of thirty Ayat, which intercedes for a man until he is forgiven. It is [Surah] Tabarak Alladhi Biyadihil-Mulk.”')}
+      </Text>
+      <Text style={s.sleepHadithRef}>{rtl ? SLEEP_SURAH.hadithAr : SLEEP_SURAH.hadith}</Text>
+    </View>
+
+    <View style={s.onbPromise}>
+      {ico('moon-outline', 22, C.green)}
+      <View style={{ flex: 1 }}>
+        <Text style={s.onbPromiseTitle}>{T('Recited before sleeping')}</Text>
+        <Text style={s.onbPromiseBody}>
+          {T('The Prophet (peace be upon him) would not sleep until he had recited As-Sajdah and Al-Mulk.')}
+        </Text>
+        <Text style={s.sleepHadithRef}>{rtl ? SLEEP_SURAH.practiceAr : SLEEP_SURAH.practice}</Text>
+      </View>
+    </View>
+
+    <Text style={s.preferenceLabel}>{T('WHEN DO YOU SLEEP?')}</Text>
+    <View style={s.choiceGrid}>
+      {TIMES.map(time => <ChoicePill key={time} label={time} selected={picked === time} onPress={() => choose(time)} />)}
+    </View>
+
+    {picked
+      ? <View style={s.onbChosen}>
+          {ico('checkmark-circle', 18, C.green)}
+          <Text style={s.onbChosenText}>
+            {T('A reminder will come at')} {picked}. {T('Change it or switch it off in Settings at any time.')}
+          </Text>
+        </View>
+      : <Text style={s.onbNoteText}>{T('Choose an hour, or skip this — it can always be turned on later.')}</Text>}
+
+    {picked && <Pressable accessibilityLabel={T('Do not remind me')} onPress={clear} style={s.onbGhostWide}>
+      <Text style={s.onbGhostText}>{T('Do not remind me')}</Text>
+    </Pressable>}
+
+    <View style={s.sleepPrivacy}>
+      {ico('shield-checkmark-outline', 16, C.green)}
+      <Text style={s.sleepPrivacyText}>
+        {T('The hour you choose is stored on this device and nowhere else. It is not sent to us, not shared, and not used for tracking — there is no account to attach it to.')}
+      </Text>
+    </View>
+  </View>;
+}
+
 function Onboarding({ onFinish }: { onFinish: () => void }) {
   const { dark } = useTheme();
   const { rtl, language, setLanguage } = useLanguage();
   const T = (text: string) => tx(rtl, text);
   const { update } = useQuranPreferences();
+  /* Separate from the Quran preferences above: the sleep reminder lives with
+     the other worship settings, so it has to be written through its own
+     setter rather than the reader's. */
+  const { update: updateWorship } = useWorshipSettings();
   const [step, setStep] = useState(0);
   const [app, setApp] = useState<LanguageCode>(language);
   const [text, setText] = useState<LanguageCode>(language);
@@ -5707,6 +5820,7 @@ function Onboarding({ onFinish }: { onFinish: () => void }) {
     { title: T('Which voice with the recitation?'), caption: T('Recitation stays the Arabic Qur’an. This adds a voice in your own language underneath it.') },
     { title: T('Where should prayer times be calculated?'), caption: T('Prayer times, Qibla and the fasting timetable all read from one place. Search for your city, or use your location once. This is asked only here — you can change it any time in Settings.') },
     { title: T('May this app remind you?'), caption: T('Adhan, a quiet reminder before each prayer, and a verse each morning. Every one of these can be switched off later, and nothing is scheduled until you allow it.') },
+    { title: T('When do you sleep?'), caption: T('Surah Al-Mulk takes about five minutes. Say the hour you turn in and we will remind you before it — or skip this entirely. The hour stays on your device and is never used for tracking.') },
   ];
   const active = steps[step];
 
@@ -5717,10 +5831,14 @@ function Onboarding({ onFinish }: { onFinish: () => void }) {
     return entry.voice ? null : T('Recitation only');
   };
 
-  const finish = async () => {
+  /* `skipSleep` clears the reminder rather than merely not scheduling it, so
+     that somebody who tapped an hour and then thought better of it is not
+     left with a setting they never meant to keep. */
+  const finish = async (skipSleep = false) => {
     if (busy) return;
     setBusy(true);
     try {
+      if (skipSleep) await updateWorship({ sleepReminderEnabled: false });
       setLanguage(app);
       const textEntry = languageByCode(text);
       const voiceEntry = languageByCode(voice);
@@ -5768,12 +5886,13 @@ function Onboarding({ onFinish }: { onFinish: () => void }) {
             </MotionPress>
           </RiseIn>;
         })}
-      </View> : step === 3 ? <OnboardingLocation/> : <OnboardingNotifications/>}
+      </View> : step === 3 ? <OnboardingLocation/> : step === 4 ? <OnboardingNotifications/> : <OnboardingSleep/>}
     </ScrollView>
     <View style={s.onbFoot}>
       <View style={s.onbDots}>{steps.map((_, index) => <View key={index} style={[s.onbDot, index === step && s.onbDotOn]} />)}</View>
       <View style={s.onbActions}>
         {step > 0 && <MotionPress style={s.onbGhost} onPress={() => setStep(step - 1)}><Text style={s.onbGhostText}>{T('Back')}</Text></MotionPress>}
+        {step === steps.length - 1 && <MotionPress style={s.onbGhost} onPress={() => void finish(true)}><Text style={s.onbGhostText}>{T('Skip')}</Text></MotionPress>}
         <MotionPress style={[s.onbCta, busy && s.onbCtaOff]} onPress={() => { if (step < steps.length - 1) setStep(step + 1); else void finish(); }}>
           <Text style={s.onbCtaText}>{step < steps.length - 1 ? T('Continue') : T('Begin')}</Text>
         </MotionPress>
@@ -5814,9 +5933,32 @@ function AppShell() {
   useEffect(() => {
     if (Platform.OS === 'web') return;
     const subscription = addNotificationResponseReceivedListener((response: NotificationResponse) => {
+      const data: any = response?.notification?.request?.content?.data;
       const action = actionFromResponse(response);
+
+      /* Tapped, rather than a button pressed. Go where the notification
+         promised: the sleep reminder opens Al-Mulk itself, because a reminder
+         to read a surah that lands you on the home screen has done half a
+         job. */
+      if (!action && data?.kind === 'sleep' && data?.surah) {
+        if (navigationRef.isReady()) {
+          (navigationRef as any).navigate('Quran', {
+            screen: 'Reader',
+            params: {
+              chapter: {
+                id: data.surah,
+                name_simple: SLEEP_SURAH.name,
+                name_arabic: SLEEP_SURAH.nameAr,
+                verses_count: SLEEP_SURAH.verses,
+              },
+              mode: 'both',
+            },
+          });
+        }
+        return;
+      }
       if (!action) return;
-      const prayer = prayerFromNotification(response?.notification?.request?.content?.data);
+      const prayer = prayerFromNotification(data);
       if (action === 'mute') {
         // Silence whatever is playing, and anything queued behind it.
         void stopPlayback();
@@ -5857,8 +5999,11 @@ function AppShell() {
     per: settings?.prayerReminders, verse: settings?.dailyVerseReminder,
     verseAt: settings?.dailyVerseTime, hadith: settings?.dailyHadithReminder,
     hadithAt: settings?.dailyHadithTime, cont: settings?.continueReadingReminder,
+    sleep: settings?.sleepReminderEnabled, sleepAt: settings?.sleepReminderTime,
   })]);
 
+  return <View style={s.shellRoot}><NotificationScreen navigation={{goBack:()=>{}} as any} /></View>;
+  }
   return <View style={s.shellRoot}>
     <Root />
     {splash && <View style={s.shellLayer}><Splash ready={(ready && hydrated) || stalled} onDone={() => setSplash(false)} /></View>}
@@ -6205,6 +6350,13 @@ onbPromiseBody:{color:C.muted,fontSize:11.5,lineHeight:17,marginTop:3},
 locationBanner:{flexDirection:'row',alignItems:'center',gap:11,backgroundColor:C.card,borderRadius:14,padding:12,borderWidth:1,borderColor:C.line,marginVertical:8,...surface},
 locationBannerIcon:{width:34,height:34,borderRadius:17,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},
 locationBannerTitle:{color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:12.5},
+sleepHadith:{backgroundColor:C.mint,borderRadius:16,padding:16,borderWidth:1,borderColor:'#DDD6FF',marginBottom:12},
+sleepHadithAr:{color:C.ink,fontSize:15,lineHeight:28,textAlign:'center',marginBottom:10,fontFamily:'Amiri_400Regular'},
+sleepHadithEn:{color:C.ink,fontSize:12.5,lineHeight:20,fontStyle:'italic',marginBottom:8},
+sleepHadithRef:{color:C.green,fontSize:10.5,letterSpacing:.6,marginTop:2},
+sleepPrivacy:{flexDirection:'row',gap:10,backgroundColor:C.bg,borderRadius:12,padding:12,marginTop:12,borderWidth:1,borderColor:C.line},
+sleepPrivacyText:{color:C.muted,fontSize:11,lineHeight:17,flex:1},
+onbGhostWide:{alignItems:'center',paddingVertical:11,borderRadius:12,marginTop:10},
 locationBannerBody:{color:C.muted,fontSize:11,lineHeight:15,marginTop:2},
   recentChipWide:{minWidth:150,backgroundColor:C.white,borderRadius:16,padding:12,borderWidth:1,borderColor:C.line,...soft},
   recentChipTitle:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:12,marginTop:4},
