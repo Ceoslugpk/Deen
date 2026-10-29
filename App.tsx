@@ -460,6 +460,72 @@ function useChromeHidden() {
   return hidden;
 }
 
+/* ==================== Overlay layer ==================== */
+/**
+ * Sheets that have to sit above the floating menu.
+ *
+ * A sheet drawn inside a screen is a descendant of the navigator, while the
+ * floating tab bar and the mini player are siblings rendered after it - so
+ * they paint on top and swallow the bottom of every sheet. zIndex cannot fix
+ * that, because it only orders siblings, and a sheet and the tab bar are not
+ * siblings: no zIndex on the sheet can lift it out of the navigator.
+ *
+ * So sheets register themselves here instead, and a host that is the last
+ * child of the navigation container draws them. Being last, it is above
+ * everything the app floats, and its scrim dims the whole screen - the tab bar
+ * included - rather than fighting it for the same strip of pixels.
+ */
+type OverlayEntry = { key: string; render: () => React.ReactNode };
+let overlayEntries: OverlayEntry[] = [];
+const overlayListeners = new Set<() => void>();
+function emitOverlay() { overlayListeners.forEach((fn) => fn()); }
+function showOverlay(key: string, render: () => React.ReactNode) {
+  overlayEntries = [...overlayEntries.filter((entry) => entry.key !== key), { key, render }];
+  emitOverlay();
+}
+function hideOverlay(key: string) {
+  const next = overlayEntries.filter((entry) => entry.key !== key);
+  if (next.length === overlayEntries.length) return;
+  overlayEntries = next;
+  emitOverlay();
+}
+function useOverlayEntries() {
+  const [, bump] = useState(0);
+  useEffect(() => {
+    const listener = () => bump((n) => n + 1);
+    overlayListeners.add(listener);
+    return () => { overlayListeners.delete(listener); };
+  }, []);
+  return overlayEntries;
+}
+/** Draws the registered sheets, in the order they were opened. */
+function OverlayHost() {
+  const entries = useOverlayEntries();
+  if (!entries.length) return null;
+  return <>{entries.map((entry) => (
+    <View key={entry.key} pointerEvents="box-none" style={s.overlayLayer}>{entry.render()}</View>
+  ))}</>;
+}
+/**
+ * Keeps one sheet registered while `active` is true, and tears it down on
+ * close or unmount.
+ *
+ * The callback is held in a ref rather than captured, so when the parent
+ * re-renders the host calls the newest one and the sheet's props stay current
+ * - while the sheet itself is never remounted. That matters for the note
+ * sheet: the keyboard pushes a re-render through on every keystroke, and a
+ * remount would throw away whatever had been typed.
+ */
+function useOverlaySheet(key: string, active: boolean, render: () => React.ReactNode) {
+  const latest = useRef(render);
+  latest.current = render;
+  useEffect(() => {
+    if (!active) return;
+    showOverlay(key, () => latest.current());
+    return () => hideOverlay(key);
+  }, [key, active]);
+}
+
 /* The same defaults the service uses, so the two cannot drift: this is only
    what is on screen until the stored preferences have been read. */
 const DEFAULT_QURAN_PREFERENCES:QuranPreferences=DEFAULTS;
@@ -1097,6 +1163,20 @@ const[quranPosition,setQuranPosition]=useState<any>(null);const[openReflection,s
   }, [afterPrayer, contentWidth]);
 const reflectionCardWidth=wide?Math.min(310,(contentWidth-24)/3):Math.min(318,Math.max(260,width-66));
   const reflections=[{id:'ayah'},{id:'name'},{id:'dua'},{id:'tasbih'}];
+  /* Both of these are drawn by the overlay host, above the floating menu. */
+  useOverlaySheet('home-hadith-report', !!reportHadith, () => reportHadith
+    ? <CorrectionSheet target={{kind:'hadith',
+        reference:`${hadithSourceLabel(rtl, reportHadith.collection)} · ${reportHadith.number}`,
+        source:hadithSourceLabel(rtl, reportHadith.collection),
+        arabic:stripTags(reportHadith.arabic||''), text:stripTags(reportHadith.text||'')}}
+        rtl={rtl} T={T} appLanguage={rtl?'ar':'en'} onClose={()=>setReportHadith(null)}/>
+    : null);
+  useOverlaySheet('home-reflection', !!openReflection, () => openReflection
+    ? <ReflectionDetail kind={openReflection} data={data} rtl={rtl} T={T}
+        translationName={T(rtl?preferences.translationLanguage:preferences.translationName)}
+        onClose={()=>setOpenReflection(null)}
+        onOpenVerse={(verseKey:string,surahId:number,surahName:string)=>nav.navigate('Quran',{screen:'Reader',params:{chapter:{id:surahId,name_simple:surahName,name_arabic:'',verses_count:0},focusVerse:verseKey},initial:false})}/>
+    : null);
   return <Page><Animated.ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false} scrollEventThrottle={16} onScroll={Animated.event([{nativeEvent:{contentOffset:{y:scrollY}}}],{useNativeDriver:false})} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.green}/>}>
     <AppHeader/>
     <View style={s.greeting}><View><Text style={s.salam}>السَّلَامُ عَلَيْكُمْ</Text><Text style={s.greetingTitle}>{greeting}</Text></View></View>
@@ -1184,15 +1264,6 @@ const reflectionCardWidth=wide?Math.min(310,(contentWidth-24)/3):Math.min(318,Ma
     <Section title={T('Hadith of the day')} />
     <View style={[s.depthCard,s.hadithSurface,{borderRadius:RADIUS.xl}]}><Text style={s.quote}>“</Text><Text numberOfLines={6} style={s.hadithText}>{data.hadith ? (rtl && data.hadith.arabic ? stripTags(data.hadith.arabic) : data.hadith.text) : T('Loading today’s authenticated hadith…')}</Text><View style={s.hadithFoot}><Text style={s.meta}>{data.hadith ? `${hadithSourceLabel(rtl, data.hadith.collection)} · ${data.hadith.number}` : ''}</Text>{!!data.hadith&&<Pressable accessibilityRole="button" accessibilityLabel={T('Report a correction in this hadith')} onPress={()=>{const h=data.hadith;if(h)setReportHadith({collection:h.collection,number:h.number,arabic:h.arabic,text:h.text})}} hitSlop={10}>{ico('flag-outline',18,C.muted)}</Pressable>}</View></View>
   </Animated.ScrollView>
-    {!!reportHadith&&<CorrectionSheet target={{kind:'hadith',
-      reference:`${hadithSourceLabel(rtl, reportHadith.collection)} · ${reportHadith.number}`,
-      source:hadithSourceLabel(rtl, reportHadith.collection),
-      arabic:stripTags(reportHadith.arabic||''), text:stripTags(reportHadith.text||'')}}
-      rtl={rtl} T={T} appLanguage={rtl?'ar':'en'} onClose={()=>setReportHadith(null)}/>}
-    {!!openReflection&&<ReflectionDetail kind={openReflection} data={data} rtl={rtl} T={T}
-      translationName={T(rtl?preferences.translationLanguage:preferences.translationName)}
-      onClose={()=>setOpenReflection(null)}
-      onOpenVerse={(verseKey:string,surahId:number,surahName:string)=>nav.navigate('Quran',{screen:'Reader',params:{chapter:{id:surahId,name_simple:surahName,name_arabic:'',verses_count:0},focusVerse:verseKey},initial:false})}/>}
 </Page>;
 }
 let CARD_GREEN: any = { backgroundColor: C.mint }; let CARD_GOLD: any = { backgroundColor: C.peach };
@@ -1824,6 +1895,7 @@ function ReaderScreen({route,navigation}:any){
   const[savedPosition,setSavedPosition]=useState<ReadingPosition|null>(null);
   const[shareVerse,setShareVerse]=useState<Verse|null>(null);
   const[noteVerse,setNoteVerse]=useState<Verse|null>(null);
+  const[actionsVerse,setActionsVerse]=useState<Verse|null>(null);
   /* Focus mode. Scrolling down takes the chrome away; tapping a verse brings
      it back. It is never hidden leaving the screen, and it is never hidden
      when focus mode is off, so the toggle is the only thing that changes how
@@ -1895,6 +1967,17 @@ function ReaderScreen({route,navigation}:any){
   const step=(delta:number)=>{if(section==='juz')navigation.replace('Reader',{section:'juz',juz:juz+delta});else if(section==='hizb')navigation.replace('Reader',{section:'hizb',hizb:hizb+delta});else{const i=chapters.findIndex(c=>c.id===chapterId);const next=chapters[i+delta];if(next)navigation.replace('Reader',{chapter:next})}};
   const canStep=(delta:number)=>{if(section==='juz')return delta<0?juz>1:juz<30;if(section==='hizb')return delta<0?hizb>1:hizb<60;if(isMushaf||section==='page')return false;const i=chapters.findIndex(c=>c.id===chapterId);return i<0?false:!!chapters[i+delta]};
   const arStyle=[{fontSize:preferences.fontSize,lineHeight:preferences.fontSize*preferences.lineHeight,fontFamily:quranFont(preferences.arabicFont),includeFontPadding:false}];
+  /* Both sheets go through the overlay layer so the floating tab bar and the
+     mini player sit behind them instead of across their lower edge. */
+  useOverlaySheet('verse-share', !!shareVerse, () => shareVerse
+    ? <VerseShareSheet verse={shareVerse} chapter={full} rtl={rtl} T={T} onClose={()=>setShareVerse(null)}/>
+    : null);
+  useOverlaySheet('verse-note', !!noteVerse, () => noteVerse
+    ? <VerseNoteSheet verse={noteVerse} chapter={full} rtl={rtl} T={T} onClose={()=>setNoteVerse(null)}/>
+    : null);
+  useOverlaySheet('verse-actions', !!actionsVerse, () => actionsVerse
+    ? <VerseActionsSheet verse={actionsVerse} chapter={full} rtl={rtl} T={T} navigation={navigation} onClose={()=>setActionsVerse(null)}/>
+    : null);
   return <Page><Animated.View style={[s.readerBar,{transform:[{translateY:chromeY}]}]}><IconButton name={rtl?'arrow-forward':'arrow-back'} onPress={()=>navigation.goBack()}/>{canStep(-1)?<Pressable accessibilityLabel={T('Previous section')} onPress={()=>step(-1)} style={s.surahStep}>{ico(rtl?'chevron-forward':'chevron-back',19,C.ink)}</Pressable>:<View style={s.surahStep}/>}<View style={{alignItems:'center',flex:1}}><Text style={s.readerName} numberOfLines={1}>{title}</Text><Text style={s.meta} numberOfLines={1}>{subtitle}</Text></View>{canStep(1)?<Pressable accessibilityLabel={T('Next section')} onPress={()=>step(1)} style={s.surahStep}>{ico(rtl?'chevron-back':'chevron-forward',19,C.ink)}</Pressable>:<View style={s.surahStep}/>}<View style={s.readerHeaderActions}>{section==='surah'&&<Pressable accessibilityLabel={T('Play this Surah')} onPress={()=>{void playSurahFromReader(full,rtl)}} style={s.iconBtn}>{ico('play-circle',20,C.ink)}</Pressable>}{section==='surah'&&<Pressable accessibilityLabel={T('Keep this Surah for offline')} onPress={()=>navigation.navigate('Downloads',{chapterId,surahName:full.name_simple})} style={s.iconBtn}>{ico('download-outline',20,C.ink)}</Pressable>}<Pressable accessibilityRole="switch" accessibilityState={{checked:focusOn}} accessibilityLabel={`${T('Focus mode')}: ${focusOn?T('On'):T('Off')}`} onPress={()=>update({focusMode:!focusOn})} style={s.iconBtn}>{ico(focusOn?'eye':'eye-outline',20,focusOn?C.gold:C.ink)}</Pressable><Pressable accessibilityLabel={T('Reader settings')} onPress={()=>navigation.navigate('Reader Settings')} style={s.iconBtn}>{ico('options-outline',20,C.ink)}</Pressable></View></Animated.View><View style={s.readerProgress}><View style={[s.preloadFill,{width:`${Math.round(progress*100)}%`} as any]}/></View>
   <ScrollView ref={scrollRef} contentContainerStyle={s.readerScroll} showsVerticalScrollIndicator={false} scrollEventThrottle={16} onScroll={e=>{const{layoutMeasurement,contentOffset,contentSize}=e.nativeEvent;if(focusOn){const dy=contentOffset.y-scrollY.current;if(dy>4&&chromeShown)setChromeShown(false)}scrollY.current=contentOffset.y;const span=contentSize.height-layoutMeasurement.height;const next=span>0?Math.min(1,Math.max(0,contentOffset.y/span)):0;if(Math.abs(next-progress)>0.005)setProgress(next)}}>
   {isMushaf?<MushafPageView page={page||1} verses={verses} error={error} cached={cached} retry={load} preferences={preferences} rtl={rtl} T={T} input={input} setInput={setInput} goPage={goPage} navigation={navigation} arStyle={arStyle} bookmarks={bookmarks} savedPosition={savedPosition} onBookmark={(v:any)=>{void bookmark(v)}} onMark={(v:any)=>{void mark(v)}} onPlay={(v:any)=>{void playFromReader(full,v,rtl)}} onNote={(v:any)=>setNoteVerse(v)}/>
@@ -1910,7 +1993,7 @@ function ReaderScreen({route,navigation}:any){
     <VerseActionButton label={`${T('Mark position at')} ${v.verse_key}`} name={isMarked(v)?'locate':'locate-outline'} size={19} active={isMarked(v)} onPress={()=>mark(v)} haptic="success"/>
     <VerseActionButton label={`${saved?T('Remove bookmark from'):T('Bookmark')} ${T('verse')} ${v.verse_key}`} name={saved?'bookmark':'bookmark-outline'} size={19} active={saved} onPress={()=>bookmark(v)}/>
     <VerseActionButton label={`${T('Share')} ${T('verse')} ${v.verse_key}`} name="share-outline" size={19} onPress={()=>setShareVerse(v)}/>
-    <VerseActionButton label={`${T('More actions for verse')} ${v.verse_key}`} name="ellipsis-horizontal-circle-outline" size={20} onPress={()=>navigation.navigate('Ayah Actions',{verse:v,chapter:full})}/>
+    <VerseActionButton label={`${T('More actions for verse')} ${v.verse_key}`} name="ellipsis-horizontal-circle-outline" size={20} onPress={()=>setActionsVerse(v)}/>
   </View></View>
   {(section!=='surah'||showArabic)&&(preferences.scriptEdition==='quran-tajweed'?<TajweedText text={v.text_uthmani} style={[s.ayahAr,...arStyle]}/>:<Text style={[s.ayahAr,...arStyle]}>{v.text_uthmani}</Text>)}
   {(section!=='surah'||showEnglish)&&v.translation?<Text style={[s.ayahTranslation,(!showArabic||section!=='surah')&&{borderTopWidth:0,marginTop:8,paddingTop:0}]}>{v.translation}</Text>:null}
@@ -1918,8 +2001,6 @@ function ReaderScreen({route,navigation}:any){
   <View style={s.ayahFooter}><Text style={s.ayahMeta}>{rtl?`الجزء ${v.juz} · صفحة ${v.page}`:`Juz ${v.juz} · Page ${v.page}`}{section==='hizb'?(rtl?` · الربع ${v.hizbQuarter}`:` · Quarter ${v.hizbQuarter}`):''} · {T(rtl?preferences.translationLanguage:preferences.translationName)}</Text></View></Pressable></View>})}
   </>}
   </ScrollView>
-    {!!shareVerse&&<VerseShareSheet verse={shareVerse} chapter={full} rtl={rtl} T={T} onClose={()=>setShareVerse(null)}/>}
-    {!!noteVerse&&<VerseNoteSheet verse={noteVerse} chapter={full} rtl={rtl} T={T} onClose={()=>setNoteVerse(null)}/>}
   </Page>
 }
 
@@ -2758,22 +2839,119 @@ function ReaderSettingsScreen({navigation}:any){const{rtl}=useLanguage();const T
 <Section title={T('Division marks')}/><View style={s.settings}>{MARKER_KINDS.map(kind=><Pressable key={kind} accessibilityRole="switch" accessibilityState={{checked:preferences.mushafMarkers?.[kind]!==false}} onPress={()=>update({mushafMarkers:{...preferences.mushafMarkers,[kind]:preferences.mushafMarkers?.[kind]===false}})} style={s.setting}><MotionGlyph name="bookmark-outline" size={19}/><View style={{flex:1}}><Text style={s.settingName}>{rtl?MARKER_LABELS[kind].ar:MARKER_LABELS[kind].en}</Text><Text style={s.meta}>{MARKER_NOTE[kind][rtl?'ar':'en']}</Text></View>{ico(preferences.mushafMarkers?.[kind]!==false?'toggle':'toggle-outline',22,preferences.mushafMarkers?.[kind]!==false?C.green:C.muted)}</Pressable>)}</View></>}
 </ScrollView></Page>}
 
-function AyahActionsScreen({route,navigation}:any){const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);const verse:Verse=route.params.verse;const chapter:Chapter=route.params.chapter;const{preferences}=useQuranPreferences();
-const[bookmarked,setBookmarked]=useState(false);
-useEffect(()=>{let live=true;loadBookmarks().then(all=>{if(live)setBookmarked(all.some(x=>x.verseKey===verse.verse_key))});return()=>{live=false}},[verse.verse_key]);
-const[reporting,setReporting]=useState(false);
-const cardRef=useRef<any>(null);
-const cardData={arabic:verse.text_uthmani,translation:verse.translation||'',reference:verse.verse_key,surahName:chapter.name_simple,translationName:T(rtl?preferences.translationLanguage:preferences.translationName),arabicFontFamily:quranFont(preferences.arabicFont)};
-const onShare=async()=>{const result=await shareVerseCard(cardData,cardRef);if(result==='saved')Alert.alert(T('Image saved'),T('The verse card was saved to your downloads.'))};
-const bookmark:QuranBookmark={verseKey:verse.verse_key,surahId:chapter.id,surahName:chapter.name_simple,arabic:verse.text_uthmani,translation:verse.translation||'',savedAt:Date.now()};
-const onToggleBookmark=async()=>{const all=await toggleBookmark(bookmark);const now=all.some(x=>x.verseKey===verse.verse_key);setBookmarked(now);Alert.alert(now?T('Bookmarked'):T('Bookmark removed'),`${chapter.name_simple} ${verse.verse_key}`)};/* `done` carries the confirmation message, so it travels with the action
-   instead of being guessed from the label - which broke in Arabic, where
-   the label no longer starts with "Copy". */
-const actions:[string,string,()=>any,string?][]=[['copy-outline',T('Copy Arabic'),()=>Clipboard.setStringAsync(verse.text_uthmani),T('Copied')],['copy-outline',T('Copy translation'),()=>Clipboard.setStringAsync(verse.translation||''),T('Copied')],['share-outline',T('Share as image card'),onShare],['create-outline',T('Add or edit note'),()=>navigation.navigate('Note Editor',{verse,chapter})],['library-outline',T('Tafsir & compare'),()=>navigation.navigate('Tafsir Compare',{verse,chapter})],['flag-outline',T('Report a correction'),()=>setReporting(true)],['bookmark-outline',T('Save reading position'),()=>saveReadingPosition({surahId:chapter.id,surahName:chapter.name_simple,verseKey:verse.verse_key,ayah:Number(verse.verse_key.split(':')[1]),page:verse.page,updatedAt:Date.now()}),T('Reading position saved')]];return <Page><ToolBar title={`${T('Verse')} ${verse.verse_key}`} navigation={navigation}/><ScrollView contentContainerStyle={s.dataPage}><Text style={s.dataArabic}>{verse.text_uthmani}</Text><Text style={s.dataBody}>{verse.translation}</Text><Text style={s.dataMeta}>{T(rtl ? preferences.translationLanguage : preferences.translationName)}</Text><Section title={T('Actions')}/>{Platform.OS!=='web'&&<View style={s.offscreenCard} pointerEvents="none" aria-hidden><VerseShareCard viewRef={cardRef} {...cardData}/></View>}<View style={s.settings}><Pressable onPress={onToggleBookmark} style={s.setting}><MotionGlyph name={bookmarked?'bookmark':'bookmark-outline'} size={19}/><Text style={[s.settingName,{flex:1}]}>{bookmarked?T('Remove bookmark'):T('Bookmark this verse')}</Text>{bookmarked?ico('checkmark',17,C.green):ico('arrow-forward',17,C.muted)}</Pressable>{actions.map(([icon,label,action,done]:any)=><Pressable key={label} onPress={async()=>{await action();if(done)Alert.alert(done,label)}} style={s.setting}><MotionGlyph name={icon} size={19}/><Text style={[s.settingName,{flex:1}]}>{label}</Text>{ico('arrow-forward',17,C.muted)}</Pressable>)}</View></ScrollView>{!!reporting&&<CorrectionSheet
-  target={{kind:'ayah',reference:verse.verse_key,source:`${T('Surah')} ${chapter.name_simple}`,
-    arabic:verse.text_uthmani,text:verse.translation,
-    edition:T(rtl?preferences.translationLanguage:preferences.translationName)}}
-  rtl={rtl} T={T} appLanguage={rtl?'ar':'en'} onClose={()=>setReporting(false)}/>}</Page>}
+/**
+ * Everything you can do to one verse, as a sheet.
+ *
+ * This used to be a screen you were pushed to. It is a sheet now, for the same
+ * reason the share and note sheets are: the verse is right there in front of
+ * you, and leaving the page to act on it costs more than the act is worth.
+ *
+ * It is drawn by the overlay host, so the floating menu is behind it rather
+ * than across it.
+ */
+function VerseActionsSheet({ verse, chapter, rtl, T, navigation, onClose }: {
+  verse: Verse; chapter: Chapter; rtl: boolean; T: (t: string) => string; navigation: any; onClose: () => void;
+}) {
+  const { preferences } = useQuranPreferences();
+  const { height } = useWindowDimensions();
+  const [bookmarked, setBookmarked] = useState(false);
+  const [reporting, setReporting] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const cardRef = useRef<any>(null);
+  const rise = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.spring(rise, { toValue: 1, friction: 9, tension: 130, useNativeDriver: true }).start();
+  }, [rise]);
+  useEffect(() => {
+    let live = true;
+    loadBookmarks().then((all) => { if (live) setBookmarked(all.some((x) => x.verseKey === verse.verse_key)); });
+    return () => { live = false; };
+  }, [verse.verse_key]);
+
+  const cardData = {
+    arabic: verse.text_uthmani,
+    translation: verse.translation || '',
+    reference: verse.verse_key,
+    surahName: chapter.name_simple,
+    translationName: T(rtl ? preferences.translationLanguage : preferences.translationName),
+    arabicFontFamily: quranFont(preferences.arabicFont),
+  };
+
+  const mark: QuranBookmark = { verseKey: verse.verse_key, surahId: chapter.id, surahName: chapter.name_simple, arabic: verse.text_uthmani, translation: verse.translation || '', savedAt: Date.now() };
+  const toggleMark = async () => {
+    const all = await toggleBookmark(mark);
+    const now = all.some((x) => x.verseKey === verse.verse_key);
+    setBookmarked(now);
+    Alert.alert(now ? T('Bookmarked') : T('Bookmark removed'), `${chapter.name_simple} ${verse.verse_key}`);
+  };
+  const shareImage = async () => {
+    setBusy(true);
+    try {
+      const result = await shareVerseCard(cardData, cardRef);
+      if (result === 'saved') Alert.alert(T('Image saved'), T('The verse card was saved to your downloads.'));
+    } finally { setBusy(false); }
+  };
+
+  /* `done` carries the confirmation so the wording travels with the action
+     instead of being guessed back from the label - which broke in Arabic,
+     where the label no longer starts with "Copy". */
+  const options: any[] = [
+    { key: 'bookmark', icon: bookmarked ? 'bookmark' : 'bookmark-outline', label: bookmarked ? T('Remove bookmark') : T('Bookmark this verse'), detail: bookmarked ? T('Saved to your bookmarks') : T('Keep it, to come back to'), onPress: toggleMark },
+    { key: 'copy-ar', icon: 'copy-outline', label: T('Copy Arabic'), detail: T('The verse as it is written'), done: T('Copied'), onPress: () => Clipboard.setStringAsync(verse.text_uthmani) },
+    { key: 'copy-tr', icon: 'copy-outline', label: T('Copy translation'), detail: T(rtl ? preferences.translationLanguage : preferences.translationName), done: T('Copied'), onPress: () => Clipboard.setStringAsync(verse.translation || '') },
+    { key: 'share-image', icon: 'image-outline', label: T('Share as image card'), detail: T('A designed card, ready to post'), onPress: shareImage },
+    { key: 'note', icon: 'create-outline', label: T('Add or edit note'), detail: T('Your own words beside the verse'), go: 'Note Editor' },
+    { key: 'tafsir', icon: 'library-outline', label: T('Tafsir & compare'), detail: T('Other translations and commentary'), go: 'Tafsir Compare' },
+    { key: 'position', icon: 'locate-outline', label: T('Save reading position'), detail: T('Carry on from here next time'), done: T('Reading position saved'), onPress: () => saveReadingPosition({ surahId: chapter.id, surahName: chapter.name_simple, verseKey: verse.verse_key, ayah: Number(verse.verse_key.split(':')[1]), page: verse.page, updatedAt: Date.now() }) },
+    { key: 'report', icon: 'flag-outline', label: T('Report a correction'), detail: T('Tell us what looks wrong'), onPress: () => setReporting(true) },
+  ];
+
+  /* Stacked on this sheet rather than drawn inside it, so the report opens
+     above the actions instead of being clipped by them. */
+  useOverlaySheet('verse-report', reporting, () => <CorrectionSheet
+    target={{ kind: 'ayah', reference: verse.verse_key, source: `${T('Surah')} ${chapter.name_simple}`,
+      arabic: verse.text_uthmani, text: verse.translation,
+      edition: T(rtl ? preferences.translationLanguage : preferences.translationName) }}
+    rtl={rtl} T={T} appLanguage={rtl ? 'ar' : 'en'} onClose={() => setReporting(false)} />);
+
+  return <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+    {/* captured into a PNG on native; the web path draws on a canvas instead */}
+    {Platform.OS !== 'web' && <View style={s.offscreenCard} pointerEvents="none" aria-hidden>
+      <VerseShareCard viewRef={cardRef} {...cardData} />
+    </View>}
+    <Pressable accessibilityRole="button" accessibilityLabel={T('Close')} onPress={onClose} style={s.sheetScrim} />
+    <Animated.View style={[s.verseSheet, {
+      transform: [{ translateY: rise.interpolate({ inputRange: [0, 1], outputRange: [420, 0] }) }],
+      opacity: rise,
+    }]}>
+      <View style={s.sheetGrip} />
+      <Text style={s.sheetTitle}>{T('Verse')} {verse.verse_key}</Text>
+      <Text style={s.sheetSub} numberOfLines={2}>{chapter.name_simple} · {T(rtl ? preferences.translationLanguage : preferences.translationName)}</Text>
+      {/* Eight options will not fit on a short screen, so the list scrolls and
+          the sheet never grows past the point where it could be read. */}
+      <ScrollView style={{ maxHeight: Math.round(height * 0.44) }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        {options.map((option) => (
+          <Pressable key={option.key} accessibilityRole="button" accessibilityLabel={option.label}
+            disabled={busy} onPress={async () => {
+              if (option.go) { onClose(); navigation.navigate(option.go, { verse, chapter }); return; }
+              await option.onPress();
+              if (option.done) Alert.alert(option.done, option.label);
+            }} style={s.sheetOption}>
+            <View style={s.sheetOptionIcon}>{ico(option.icon, 20, C.green)}</View>
+            <View style={{ flex: 1 }}>
+              <Text style={s.sheetOptionLabel}>{option.label}</Text>
+              <Text style={s.sheetOptionDetail}>{option.detail}</Text>
+            </View>
+            {busy ? <ActivityIndicator color={C.green} /> : ico('arrow-forward', 17, C.muted)}
+          </Pressable>
+        ))}
+      </ScrollView>
+      <Pressable accessibilityRole="button" accessibilityLabel={T('Close')} onPress={onClose} style={[s.primary, { marginTop: 12 }]}>
+        <Text style={s.primaryText}>{T('Close')}</Text>
+      </Pressable>
+    </Animated.View>
+  </View>;
+}
 function TafsirCompareScreen({route,navigation}:any){const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);const verse:Verse=route.params?.verse||{verse_key:'2:255',text_uthmani:''};const[reference,setReference]=useState(verse.verse_key);const{preferences}=useQuranPreferences();const{width}=useWindowDimensions();const[mode,setMode]=useState<'translation'|'tafsir'>('translation');const[editions,setEditions]=useState<QuranEdition[]>([]);const[selected,setSelected]=useState<string[]>([preferences.translationEdition,'en.pickthall'].filter((x,i,a)=>a.indexOf(x)===i));const[rows,setRows]=useState<any[]>([]);const[query,setQuery]=useState('');const[error,setError]=useState('');const loadEditions=()=>getQuranEditions(mode).then(setEditions).catch(e=>setError(T(e.message)));const load=async()=>{setError('');const ids=[preferences.scriptEdition==='quran-indopak'?'quran-uthmani':preferences.scriptEdition,...selected];const cacheKey=`${reference}:${ids.join(',')}`;const cached=mode==='tafsir'?await getCachedJson<any[]>('tafsir',cacheKey):null;if(cached)setRows(cached);try{const fresh=await getAyahEditions(reference,ids);setRows(fresh);if(mode==='tafsir')await setCachedJson('tafsir',cacheKey,fresh)}catch(e:any){if(!cached)setError(T(e.message))}};useEffect(()=>{loadEditions()},[mode]);useEffect(()=>{load()},[reference,selected.join('|'),preferences.scriptEdition]);useEffect(()=>{if(mode==='tafsir')setSelected(['ar.jalalayn']);else setSelected([preferences.translationEdition,'en.pickthall'].filter((x,i,a)=>a.indexOf(x)===i))},[mode]);const toggle=(id:string)=>setSelected(current=>current.includes(id)?current.length>1?current.filter(x=>x!==id):current:current.length<(mode==='translation'?3:1)?[...current,id]:current);const shown=query.trim().length<2?editions.filter(e=>selected.includes(e.identifier)):editions.filter(e=>`${e.englishName} ${e.name} ${e.language}`.toLowerCase().includes(query.toLowerCase())).slice(0,30);const arabic=rows[0];const compared=rows.slice(1);const columnWidth=width>=760?Math.max(230,(Math.min(width-36,860)-12*(compared.length-1))/Math.max(1,compared.length)):270;return <Page><ToolBar title={T('Tafsir & comparison')} navigation={navigation}/><ScrollView contentContainerStyle={s.dataPage}><ToolGraphic tool={mode==='tafsir'?'Tafsir':'Translation Compare'} size={72}/><Text style={s.dataTitle}>{T('QURAN')} {reference}</Text><View style={s.referenceNavigator}><Pressable accessibilityLabel={T('Previous verse')} onPress={()=>{const[a,v]=reference.split(':').map(Number);setReference(`${a}:${Math.max(1,v-1)}`)}} style={s.stepButton}>{ico('arrow-back',19,C.green)}</Pressable><TextInput accessibilityLabel={T('Verse reference')} value={reference} onChangeText={setReference} onSubmitEditing={load} style={s.referenceInput}/><Pressable accessibilityLabel={T('Next verse')} onPress={()=>{const[a,v]=reference.split(':').map(Number);setReference(`${a}:${v+1}`)}} style={s.stepButton}>{ico('arrow-forward',19,C.green)}</Pressable></View><View style={s.choiceRow}><ChoicePill label={T('Translations')} selected={mode==='translation'} onPress={()=>setMode('translation')}/><ChoicePill label={T('Tafsir')} selected={mode==='tafsir'} onPress={()=>setMode('tafsir')}/></View><View style={[s.search,{marginTop: 12}]}>{ico('search-outline',18,C.muted)}<TextInput value={query} onChangeText={setQuery} placeholder={T(mode === 'translation' ? 'Search language or translator' : 'Search Tafsir source')} style={s.searchInput}/></View><Text style={s.comparisonHelp}>{T(mode === 'translation' ? 'Select two or three editions. Search to discover every live edition.' : 'Select a live Tafsir source and language.')}</Text><View style={s.editionPicker}>{shown.map(e=><Pressable accessibilityRole="checkbox" accessibilityState={{checked:selected.includes(e.identifier)}} key={e.identifier} onPress={()=>toggle(e.identifier)} style={[s.editionChip,selected.includes(e.identifier)&&s.editionChipActive]}><Flag code={e.language} size={16} /><View style={{flex:1}}><Text numberOfLines={1} style={s.settingName}>{e.englishName}</Text><Text numberOfLines={1} style={s.meta}>{e.language.toUpperCase()} · {e.identifier}</Text></View>{ico(selected.includes(e.identifier)?'checkmark-circle':'add-circle-outline',19,selected.includes(e.identifier)?C.green:C.muted)}</Pressable>)}</View>{error?<ErrorState message={error} retry={load}/>:!rows.length?<Spinner/>:<><View style={s.arabicReference}><Text style={s.dataMeta}>{T('ARABIC REFERENCE')} · {arabic?.name}</Text>{preferences.scriptEdition==='quran-tajweed'?<TajweedText text={arabic?.text||''} style={s.dataArabic}/>:<Text style={s.dataArabic}>{arabic?.text}</Text>}</View><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.comparisonColumns}>{compared.map(row=><View key={row.edition} style={[s.compareCard,{width:columnWidth}]}><Flag code={row.language} size={16} />{row.name} · {row.language.toUpperCase()}<Text style={row.language==='ar'?s.dataArabic:s.comparisonText}>{row.text}</Text></View>)}</ScrollView></>}</ScrollView></Page>}
 
 function QuranTopicsScreen({navigation}:any){const[category,setCategory]=useState('All');const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);const[query,setQuery]=useState('');const shown=QURAN_TOPICS.filter(topic=>(category==='All'||topic.category===category)&&`${topic.title} ${topic.description} ${topic.titleAr} ${topic.descriptionAr}`.toLowerCase().includes(query.toLowerCase()));return <Page><ToolBar title={T('Quran topics')} navigation={navigation}/><ScrollView contentContainerStyle={s.dataPage}><ToolGraphic tool="Quran Topics" size={74}/><Text style={s.dataTitle}>{T('Explore the Quran by theme')}</Text><Text style={s.intro}>{T('Curated references open the Arabic text alongside your selected translation.')}</Text><View style={s.search}>{ico('search-outline',18,C.muted)}<TextInput value={query} onChangeText={setQuery} placeholder={T('Search faith, family, patience…')} style={s.searchInput}/></View><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap: 8,marginVertical: 12}}>{['All','Faith','Life','Spirituality'].map(item=><ChoicePill key={item} label={T(item)} selected={category===item} onPress={()=>setCategory(item)}/>)}</ScrollView><View style={s.topicGrid}>{shown.map(topic=><MotionPress key={topic.id} onPress={()=>navigation.navigate('Topic Detail',{topic})} style={s.topicWrap}><View style={s.topicCard}><Text style={s.libraryKicker}>{topicCategory(topic,rtl)}</Text><Text style={s.exploreTitle}>{topicTitle(topic,rtl)}</Text><Text style={s.exploreBody}>{topicDescription(topic,rtl)}</Text><Text style={s.dataMeta}>{rtl?`${topic.references.length} آيات`:`${topic.references.length} VERSES`}</Text></View></MotionPress>)}</View></ScrollView></Page>}
@@ -3116,7 +3294,8 @@ function MemorizeTestScreen({ navigation, route }: any) {
   </Page>;
 }
 
-function QuranStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="QuranHome" component={QuranHome}/><Stack.Screen name="Downloads" component={DownloadsScreen}/><Stack.Screen name="Reader" component={ReaderScreen}/><Stack.Screen name="Translations" component={TranslationScreen}/><Stack.Screen name="Quran Search" component={QuranSearchScreen}/><Stack.Screen name="Bookmarks" component={BookmarkScreen}/><Stack.Screen name="Notes" component={NotesScreen}/><Stack.Screen name="Note Editor" component={needsPayload(NoteEditorScreen, 'Note')}/><Stack.Screen name="Reader Settings" component={ReaderSettingsScreen}/><Stack.Screen name="Ayah Actions" component={AyahActionsScreen}/><Stack.Screen name="Tafsir Compare" component={TafsirCompareScreen}/><Stack.Screen name="Quran Topics" component={QuranTopicsScreen}/><Stack.Screen name="Topic Detail" component={TopicDetailScreen}/><Stack.Screen name="Juz Directory" component={JuzDirectoryScreen}/><Stack.Screen name="Hizb Directory" component={HizbDirectoryScreen}/><Stack.Screen name="Reading Plans" component={ReadingPlansScreen}/><Stack.Screen name="Quran Preload" component={QuranPreloadScreen}/><Stack.Screen name="Hifz" component={HifzScreen}/><Stack.Screen name="Memorize" component={MemorizeHubScreen}/><Stack.Screen name="Memorize Test" component={MemorizeTestScreen}/><Stack.Screen name="Quran Audio" component={AudioCenterScreen}/><Stack.Screen name="Audio Player" component={AudioPlayerScreen}/></Stack.Navigator>}
+function QuranStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="QuranHome" component={QuranHome}/><Stack.Screen name="Downloads" component={DownloadsScreen}/><Stack.Screen name="Reader" component={ReaderScreen}/><Stack.Screen name="Translations" component={TranslationScreen}/><Stack.Screen name="Quran Search" component={QuranSearchScreen}/><Stack.Screen name="Bookmarks" component={BookmarkScreen}/><Stack.Screen name="Notes" component={NotesScreen}/><Stack.Screen name="Note Editor" component={needsPayload(NoteEditorScreen, 'Note')}/><Stack.Screen name="Reader Settings" component={ReaderSettingsScreen}/>{/* 'Ayah Actions' was a screen; it is the verse actions sheet now. The route is
+    gone on purpose - a restored stack naming it is dropped by the navigator. */}<Stack.Screen name="Tafsir Compare" component={TafsirCompareScreen}/><Stack.Screen name="Quran Topics" component={QuranTopicsScreen}/><Stack.Screen name="Topic Detail" component={TopicDetailScreen}/><Stack.Screen name="Juz Directory" component={JuzDirectoryScreen}/><Stack.Screen name="Hizb Directory" component={HizbDirectoryScreen}/><Stack.Screen name="Reading Plans" component={ReadingPlansScreen}/><Stack.Screen name="Quran Preload" component={QuranPreloadScreen}/><Stack.Screen name="Hifz" component={HifzScreen}/><Stack.Screen name="Memorize" component={MemorizeHubScreen}/><Stack.Screen name="Memorize Test" component={MemorizeTestScreen}/><Stack.Screen name="Quran Audio" component={AudioCenterScreen}/><Stack.Screen name="Audio Player" component={AudioPlayerScreen}/></Stack.Navigator>}
 
 /**
  * The library holds what you read, recite and learn. Nothing here calculates
@@ -5169,6 +5348,13 @@ function HadithDetailScreen({route,navigation}:any){const{rtl}=useLanguage();con
     if(!hadith)return;
     try{await Clipboard.setStringAsync(`${hadith.arabic}\n\n${hadith.english}`);setCopied(true);setTimeout(()=>setCopied(false),1800)}catch{/* clipboard unavailable */}
   };
+  useOverlaySheet('hadith-detail-report', !!hadith && reporting, () => hadith
+    ? <CorrectionSheet
+        target={{kind:'hadith',reference:`${collection?.name||''} · ${hadith.number}`,
+          source:collection?.name||'', arabic:hadith.arabic, text:hadith.english,
+          edition:hadith.grades[0]?.grade}}
+        rtl={rtl} T={T} appLanguage={rtl?'ar':'en'} onClose={()=>setReporting(false)}/>
+    : null);
   return <Page><ToolBar title={rtl ? (collection?.arabicName || T('Hadith')) : (collection?.name || 'Hadith')} navigation={navigation}/>
     {!hadith&&!error&&<Spinner/>}
     {!!error&&<ErrorState message={error} retry={load}/>}
@@ -5209,11 +5395,6 @@ function HadithDetailScreen({route,navigation}:any){const{rtl}=useLanguage();con
       </View>
       <View style={s.apiPanel}><Text style={s.apiTitle}>{T('Source')}</Text><Text style={s.apiText}>{hadithReference(collection,hadith)}</Text></View>
     </ScrollView>}
-    {!!hadith&&!!reporting&&<CorrectionSheet
-      target={{kind:'hadith',reference:`${collection?.name||''} · ${hadith.number}`,
-        source:collection?.name||'', arabic:hadith.arabic, text:hadith.english,
-        edition:hadith.grades[0]?.grade}}
-      rtl={rtl} T={T} appLanguage={rtl?'ar':'en'} onClose={()=>setReporting(false)}/>}
   </Page>}
 
 function HadithSavedScreen({navigation}:any){const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);
@@ -6419,7 +6600,7 @@ function Root() {
       <Stack.Screen name="Main" component={Tabs} />
       <Stack.Screen name="Settings" component={SettingsStack} />
     </Stack.Navigator>
-    <ExpoStatusBar style={dark ? 'light' : 'dark'} /><MiniPlayer />
+    <ExpoStatusBar style={dark ? 'light' : 'dark'} /><MiniPlayer /><OverlayHost />
   </NavigationContainer>;
 }
 
@@ -7145,8 +7326,14 @@ surahCard:{width:'100%',minHeight:64,backgroundColor:C.card,borderRadius:16,bord
   mushafMenuLabel:{color:C.ink,fontSize:11,fontFamily:'DMSans_600SemiBold'},
   mushafVerseOpen:{backgroundColor:'#FBF4E3',borderRadius:10},
   /* the share sheet: a scrim that dismisses, and a card that rises */
+  /* The overlay is the last child of the navigation container, so it is above
+     the floating tab bar and the mini player by order of drawing alone. The
+     zIndex is belt and braces for the platforms that reorder on elevation. */
+  overlayLayer:{position:'absolute',left:0,right:0,top:0,bottom:0,zIndex:9000,elevation:9000},
   sheetScrim:{position:'absolute',left:0,right:0,top:0,bottom:0,backgroundColor:'rgba(20,18,32,.42)'},
-  verseSheet:{position:'absolute',left:12,right:12,bottom:0,backgroundColor:C.card,borderTopLeftRadius:26,borderTopRightRadius:26,padding:18,paddingBottom:22,borderWidth:1,borderColor:C.line,...shadow},
+  /* Sheets are drawn by the overlay host, which sits outside every SafeAreaView
+     in the app, so the sheet has to clear the home indicator itself. */
+  verseSheet:{position:'absolute',left:12,right:12,bottom:0,backgroundColor:C.card,borderTopLeftRadius:26,borderTopRightRadius:26,padding:18,paddingBottom:Platform.OS==='ios'?36:24,borderWidth:1,borderColor:C.line,...shadow},
   sheetGrip:{width:44,height:4,borderRadius:2,backgroundColor:C.line,alignSelf:'center',marginBottom:14},
   sheetTitle:{color:C.ink,fontFamily:'Newsreader_600SemiBold',fontSize:19,textAlign:'center'},
   sheetSub:{color:C.muted,fontSize:11,textAlign:'center',marginTop:3,marginBottom:16},
