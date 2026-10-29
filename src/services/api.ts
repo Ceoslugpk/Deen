@@ -1,3 +1,5 @@
+import { getCachedJson, setCachedJson } from './contentCache';
+
 export type Prayer = { name: string; time: string; raw: string };
 export type PrayerSnapshot = { prayers: Prayer[]; hijri: string; hijriAr?: string; hijriYear: number; hijriMonth: number; readable: string; timezone: string; method: string };
 export type CalendarDay = { gregorian: string; weekday: string; weekdayAr?: string; hijriDay: number; hijriMonth: string; hijriMonthAr?: string; hijriMonthNumber: number; hijriYear: number; prayers: Prayer[] };
@@ -152,16 +154,42 @@ export async function getRamadanCalendar(latitude: number, longitude: number, hi
   return data.map(calendarDay);
 }
 
-export async function getChapters(): Promise<Chapter[]> {
-  const data = await json(`${QURAN}/surah`);
+/**
+ * The list of surahs.
+ *
+ * This is the index to the whole Quran: without it nothing can be opened, no
+ * matter how much text is cached. It also barely ever changes, which makes it
+ * the one thing that should always be answered from the device first.
+ *
+ * The stored list is used whenever the network will not answer, so a cold open
+ * with no signal still shows all 114 surahs rather than a failure message.
+ */
+const CHAPTERS_KEY = 'chapters-v1';
+
+function shapeChapters(data: any[]): Chapter[] {
   return data.map((s: any) => ({
     id: s.number,
     name_simple: s.englishName,
-    name_arabic: s.name.replace(/^سُورَةُ\s*/, ''),
+    name_arabic: String(s.name || '').replace(/^سُورَةُ\s*/, ''),
     verses_count: s.numberOfAyahs,
     revelation_place: s.revelationType,
     translated_name: { name: s.englishNameTranslation },
   }));
+}
+
+export async function getChapters(): Promise<Chapter[]> {
+  const cached = await getCachedJson<Chapter[]>('quran', CHAPTERS_KEY).catch(() => null);
+  try {
+    const data = await json(`${QURAN}/surah`);
+    const chapters = shapeChapters(data);
+    if (chapters.length) void setCachedJson('quran', CHAPTERS_KEY, chapters).catch(() => undefined);
+    return chapters;
+  } catch (error) {
+    // Offline, or the server refused. A stored index is enough to open any
+    // surah whose text is on the device, so it is returned rather than thrown.
+    if (cached && cached.length) return cached;
+    throw error;
+  }
 }
 
 export async function getVerses(chapterId: number, options: { script?: string; translation?: string } = {}): Promise<Verse[]> {

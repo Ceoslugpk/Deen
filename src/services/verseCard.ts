@@ -150,19 +150,48 @@ async function renderWeb(data: VerseCardData): Promise<Blob> {
   ctx.fillStyle = glow;
   ctx.fillRect(0, 0, W, H);
 
-  // thin gold frame
+  // ---- the frame: a heavy outer rule and a hairline inside it, with a small
+  // diamond set into each corner. One rule reads as a border; two read as a
+  // page, which is what this is pretending to be.
   ctx.strokeStyle = 'rgba(216,188,128,0.34)';
   ctx.lineWidth = 3;
   roundRect(ctx, 34, 34, W - 68, H - 68, 44);
   ctx.stroke();
 
-  // ---- header: reference + surah ----
+  ctx.strokeStyle = 'rgba(216,188,128,0.17)';
+  ctx.lineWidth = 1.5;
+  roundRect(ctx, 54, 54, W - 108, H - 108, 32);
+  ctx.stroke();
+
+  ctx.fillStyle = 'rgba(216,188,128,0.72)';
+  for (const [cx, cy] of [[70, 70], [W - 70, 70], [70, H - 70], [W - 70, H - 70]]) {
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - 7);
+    ctx.lineTo(cx + 7, cy);
+    ctx.lineTo(cx, cy + 7);
+    ctx.lineTo(cx - 7, cy);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // ---- header: the reference in a pill, the surah beside it ----
   let y = PAD + 34;
   ctx.direction = 'ltr';
   ctx.textAlign = 'left';
   ctx.fillStyle = GOLD;
-  ctx.font = font(28, 600, UI_STACK);
-  ctx.fillText(`QURAN ${data.reference}`, PAD, y);
+  ctx.font = font(26, 700, UI_STACK);
+  const refText = `QURAN ${data.reference}`;
+  const refW = ctx.measureText(refText).width;
+  const pillH = 54;
+  const pillY = y - 34;
+  roundRect(ctx, PAD - 20, pillY, refW + 40, pillH, 27);
+  ctx.strokeStyle = 'rgba(216,188,128,0.42)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(216,188,128,0.10)';
+  ctx.fill();
+  ctx.fillStyle = GOLD;
+  ctx.fillText(refText, PAD, y);
 
   ctx.textAlign = 'right';
   ctx.fillStyle = 'rgba(247,243,234,0.78)';
@@ -194,7 +223,7 @@ async function renderWeb(data: VerseCardData): Promise<Blob> {
     const midY = y + 12;
     ctx.strokeStyle = 'rgba(216,188,128,0.32)';
     ctx.lineWidth = 2;
-    const gap = 26;
+    const gap = 40;
     const cx = W / 2;
     ctx.beginPath();
     ctx.moveTo(PAD, midY);
@@ -202,14 +231,20 @@ async function renderWeb(data: VerseCardData): Promise<Blob> {
     ctx.moveTo(cx + gap, midY);
     ctx.lineTo(W - PAD, midY);
     ctx.stroke();
+    // a diamond flanked by two dots, rather than a diamond on its own
     ctx.fillStyle = GOLD;
     ctx.beginPath();
-    ctx.moveTo(cx, midY - 9);
-    ctx.lineTo(cx + 9, midY);
-    ctx.lineTo(cx, midY + 9);
-    ctx.lineTo(cx - 9, midY);
+    ctx.moveTo(cx, midY - 10);
+    ctx.lineTo(cx + 10, midY);
+    ctx.lineTo(cx, midY + 10);
+    ctx.lineTo(cx - 10, midY);
     ctx.closePath();
     ctx.fill();
+    for (const dx of [-24, 24]) {
+      ctx.beginPath();
+      ctx.arc(cx + dx, midY, 4, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
     // ---- translation ----
     y += 74;
@@ -224,7 +259,14 @@ async function renderWeb(data: VerseCardData): Promise<Blob> {
     });
   }
 
-  // ---- footer ----
+  // ---- footer, above a hairline ----
+  ctx.strokeStyle = 'rgba(216,188,128,0.22)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(PAD, H - PAD - 58);
+  ctx.lineTo(W - PAD, H - PAD - 58);
+  ctx.stroke();
+
   ctx.direction = 'ltr';
   ctx.textAlign = 'left';
   ctx.fillStyle = 'rgba(216,188,128,0.86)';
