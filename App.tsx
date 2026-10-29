@@ -76,7 +76,7 @@ import { addSearchHistory, clearSearchHistory, clearSurahCache, deleteNote, Hifz
 import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 import * as Clipboard from 'expo-clipboard';
 import { getCacheUsage, getCachedJson, setCachedJson } from './src/services/contentCache';
-import { AudioSession, AudioSettings, AudioTrackKind, buildQueueForChapter, buildSurahQueue, loadSurahReciters, clearQueue, clearRecentPlays, deletePlaylist, formatClock, getAudioSettings, loadAudioEditions, loadAudioSession, loadAudioSettings, loadPlaylists, loadRecentPlays, nextTrack, playQueue, Playlist, previousTrack, RecentPlay, removeFromQueue, saveAudioSettings, savePlaylist, seekTo, selectQueueItem, setPlaybackRate, setRepeatMode, reciterLabel, stopPlayback, togglePlayback, useAudio } from './src/services/audioService';
+import { AudioSession, AudioSettings, AudioTrackKind, buildQueueForChapter, buildSurahQueue, loadSurahReciters, clearQueue, clearRecentPlays, deletePlaylist, formatClock, getAudioSettings, loadAudioEditions, loadAudioSession, loadAudioSettings, loadPlaylists, loadRecentPlays, nextTrack, playQueue, Playlist, previousTrack, RecentPlay, removeFromQueue, restoreSavedSession, saveAudioSettings, savePlaylist, seekTo, selectQueueItem, setAutoNextSurah, setRepeatCount, setRepeatMode, setRepeatRange, setResumeOnStart, setVolume, stepPlaybackRate, MAX_RATE, MIN_RATE, RATE_STEPS, REPEAT_COUNT_CHOICES, REPEAT_FOREVER, setPlaybackRate, reciterLabel, stopPlayback, togglePlayback, useAudio } from './src/services/audioService';
 import { getHadithPage, getHadith, getLoadedCollections, getNeighbours, whenArabicReady, hadithReference, hadithSourceLabel, HADITH_COLLECTIONS, Hadith, HadithCollectionData, isHadithSaved, loadHadithCollection, loadHadithState, markHadithRead, removeHadithBookmark, searchLoadedCollections, toggleHadithSaved, useHadithState } from './src/services/hadithService';
 import {
   buildReportMailto, deleteReport, openReportEmail, saveReport, subscribeReports,
@@ -5191,6 +5191,41 @@ const languageName = (code: string, rtl: boolean) =>
   (rtl ? AUDIO_LANGUAGES_AR : AUDIO_LANGUAGES)[code] || code;
 const AUDIO_RATES = [0.75, 1, 1.25, 1.5];
 
+/**
+ * A level from nothing to full, dragged with the thumb.
+ *
+ * Built the same way as the seek bar so the two feel like one instrument:
+ * the same track, the same knob, the same resistance under the finger. Volume
+ * is the obvious use, but nothing about it is specific to sound.
+ */
+function LevelBar({ value, onValue, label, tint = C.green }: {
+  value: number; onValue: (next: number) => void; label: string; tint?: string;
+}) {
+  const width = useRef(0);
+  const [drag, setDrag] = useState<number | null>(null);
+  const clamp = (next: number) => Math.min(1, Math.max(0, next));
+  const shown = drag ?? clamp(value);
+
+  const responder = useRef(PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onMoveShouldSetPanResponder: () => true,
+    onPanResponderGrant: (event) => setDrag(clamp(event.nativeEvent.locationX / (width.current || 1))),
+    onPanResponderMove: (event) => setDrag(clamp(event.nativeEvent.locationX / (width.current || 1))),
+    onPanResponderRelease: (event) => {
+      const next = clamp(event.nativeEvent.locationX / (width.current || 1));
+      setDrag(null);
+      onValue(next);
+    },
+  })).current;
+
+  return <View accessibilityRole="adjustable" accessibilityLabel={label} accessibilityValue={{ now: Math.round(shown * 100), min: 0, max: 100 }}
+    onLayout={(event) => { width.current = event.nativeEvent.layout.width; }}
+    {...responder.panHandlers} style={s.levelTrack}>
+    <View style={[s.levelFill, { width: `${shown * 100}%`, backgroundColor: tint }]} />
+    <View style={[s.levelKnob, { left: `${shown * 100}%`, borderColor: tint }]} />
+  </View>;
+}
+
 function SeekBar({ position, duration, onSeek }: { position: number; duration: number; onSeek: (value: number) => void }) {
   const { rtl } = useLanguage();
   const width = useRef(0);
@@ -5462,6 +5497,11 @@ function AudioPlayerScreen({ navigation }: any) {
   const [name, setName] = useState('');
   const [editions, setEditions] = useState<QuranEdition[]>([]);
   const [pickingTranslation, setPickingTranslation] = useState(false);
+  /* The settings object rather than the playback state: volume, repeat count
+     and the range are settings that persist, and `useAudio` only carries what
+     is true of the playback at this instant. */
+  const [settings, setSettingsState] = useState<AudioSettings>(getAudioSettings());
+  useEffect(() => { void loadAudioSettings().then(setSettingsState); }, []);
   useEffect(() => { void loadPlaylists().then(setPlaylists); }, []);
   useEffect(() => { getQuranEditions().then(setEditions).catch(() => undefined); }, []);
   const track = audio.track;
@@ -5536,7 +5576,99 @@ function AudioPlayerScreen({ navigation }: any) {
     </View>
 
     <Text style={s.preferenceLabel}>{T('SPEED')}</Text>
-    <View style={s.choiceRow}>{AUDIO_RATES.map((rate) => <ChoicePill key={rate} label={`${rate}×`} selected={audio.rate === rate} onPress={() => { void setPlaybackRate(rate); }} />)}</View>
+    <View style={s.rateRow}>
+      <Pressable accessibilityLabel={T('Slower')} onPress={() => { void stepPlaybackRate(false); }} style={s.stepButton}>{ico('remove', 19, C.green)}</Pressable>
+      <Text style={s.rateValue}>{audio.rate.toFixed(2).replace(/0$/, '').replace(/\.$/, '')}×</Text>
+      <Pressable accessibilityLabel={T('Faster')} onPress={() => { void stepPlaybackRate(true); }} style={s.stepButton}>{ico('add', 19, C.green)}</Pressable>
+    </View>
+    <View style={s.choiceRow}>{RATE_STEPS.map((rate) => <ChoicePill key={rate} label={`${rate}×`} selected={Math.abs(audio.rate - rate) < 0.001} onPress={() => { void setPlaybackRate(rate); }} />)}</View>
+    <Text style={s.meta}>{T('Half speed to double. Pitch is held, so slowing the recitation does not make the voice drop.')}</Text>
+
+    <Section title={T('Repeat')} />
+    <View style={s.choiceRow}>
+      {(['none', 'one', 'range', 'all'] as const).map((mode) => <ChoicePill key={mode}
+        label={T(mode === 'none' ? 'Off' : mode === 'one' ? 'This verse' : mode === 'range' ? 'A passage' : 'The Surah')}
+        selected={audio.repeat === mode} onPress={() => { setSettingsState({ ...settings, repeat: mode }); void setRepeatMode(mode); }} />)}
+    </View>
+    <Text style={s.meta}>{
+      audio.repeat === 'none' ? T('Plays straight through, then stops.')
+      : audio.repeat === 'one' ? T('The verse under your finger, again and again.')
+      : audio.repeat === 'range' ? T('A stretch of verses, both ends included — for learning a passage.')
+      : T('The whole Surah, then again from the top.')}</Text>
+
+    {audio.repeat !== 'none' && <>
+      <Text style={s.preferenceLabel}>{T('HOW MANY TIMES')}</Text>
+      <View style={s.choiceRow}>{REPEAT_COUNT_CHOICES.map((count) => <ChoicePill key={count}
+        label={count === REPEAT_FOREVER ? '∞' : String(count)}
+        selected={(settings.repeatCount ?? 0) === count} onPress={() => { setSettingsState({ ...settings, repeatCount: count }); void setRepeatCount(count); }} />)}</View>
+      <Text style={s.meta}>{T('Without end is the default: you stop when you know it, not when a counter runs out.')}</Text>
+    </>}
+
+    {audio.repeat === 'range' && <View style={s.playerCard}>
+      <Text style={s.preferenceLabel}>{T('WHICH VERSES')}</Text>
+      <View style={s.rangeRow}>
+        <View style={s.rangeEnd}><Text style={s.meta}>{T('From')}</Text>
+          <View style={s.stepperSmall}>
+            <Pressable accessibilityLabel={T('Earlier start')} onPress={() => { const a = Math.max(1, settings.repeatRangeStart - 1); setSettingsState({ ...settings, repeatRangeStart: a }); void setRepeatRange(a, settings.repeatRangeEnd); }} style={s.stepButtonSmall}>{ico('remove', 15, C.green)}</Pressable>
+            <Text style={s.rangeNumber}>{settings.repeatRangeStart}</Text>
+            <Pressable accessibilityLabel={T('Later start')} onPress={() => { const a = Math.min(settings.repeatRangeEnd, settings.repeatRangeStart + 1); setSettingsState({ ...settings, repeatRangeStart: a }); void setRepeatRange(a, settings.repeatRangeEnd); }} style={s.stepButtonSmall}>{ico('add', 15, C.green)}</Pressable>
+          </View>
+        </View>
+        <View style={s.rangeEnd}><Text style={s.meta}>{T('To')}</Text>
+          <View style={s.stepperSmall}>
+            <Pressable accessibilityLabel={T('Earlier end')} onPress={() => { const b = Math.max(settings.repeatRangeStart, settings.repeatRangeEnd - 1); setSettingsState({ ...settings, repeatRangeEnd: b }); void setRepeatRange(settings.repeatRangeStart, b); }} style={s.stepButtonSmall}>{ico('remove', 15, C.green)}</Pressable>
+            <Text style={s.rangeNumber}>{settings.repeatRangeEnd}</Text>
+            <Pressable accessibilityLabel={T('Later end')} onPress={() => { const b = settings.repeatRangeEnd + 1; setSettingsState({ ...settings, repeatRangeEnd: b }); void setRepeatRange(settings.repeatRangeStart, b); }} style={s.stepButtonSmall}>{ico('add', 15, C.green)}</Pressable>
+          </View>
+        </View>
+      </View>
+      <Text style={s.meta}>{rtl
+        ? `من الآية ${settings.repeatRangeStart} إلى الآية ${settings.repeatRangeEnd}`
+        : `Verses ${settings.repeatRangeStart} to ${settings.repeatRangeEnd}, both included.`}</Text>
+    </View>}
+
+    <Section title={T('When the Surah ends')} />
+    <View style={s.settings}>
+      <Pressable accessibilityRole="switch" accessibilityState={{ checked: !!settings.autoNextSurah }}
+        onPress={() => { setSettingsState({ ...settings, autoNextSurah: !settings.autoNextSurah }); void setAutoNextSurah(!settings.autoNextSurah); }} style={s.setting}>
+        <MotionGlyph name="play-skip-forward" size={19} />
+        <View style={{ flex: 1 }}>
+          <Text style={s.settingName}>{T('Carry on to the next Surah')}</Text>
+          <Text style={s.meta}>{T('Rather than stopping at the end. Stops at An-Nas.')}</Text>
+        </View>
+        {ico(settings.autoNextSurah ? 'toggle' : 'toggle-outline', 22, settings.autoNextSurah ? C.green : C.muted)}
+      </Pressable>
+      <Pressable accessibilityRole="switch" accessibilityState={{ checked: settings.resumeOnStart !== false }}
+        onPress={() => { setSettingsState({ ...settings, resumeOnStart: settings.resumeOnStart === false }); void setResumeOnStart(settings.resumeOnStart === false); }} style={s.setting}>
+        <MotionGlyph name="refresh-outline" size={19} />
+        <View style={{ flex: 1 }}>
+          <Text style={s.settingName}>{T('Pick up where I left off')}</Text>
+          <Text style={s.meta}>{T('Restores the Surah and the exact moment when the app opens, paused and ready.')}</Text>
+        </View>
+        {ico(settings.resumeOnStart !== false ? 'toggle' : 'toggle-outline', 22, settings.resumeOnStart !== false ? C.green : C.muted)}
+      </Pressable>
+    </View>
+
+    <Section title={T('Volume')} />
+    <View style={s.playerCard}>
+      <Text style={s.preferenceLabel}>{T('RECITATION')}</Text>
+      <View style={s.levelRow}>
+        {ico('volume-high', 17, C.green)}
+        <LevelBar value={settings.arabicVolume ?? 1} label={T('Recitation volume')}
+          onValue={(next) => { setSettingsState({ ...settings, arabicVolume: next }); void setVolume('arabic', next); }} />
+        <Text style={s.levelValue}>{Math.round((settings.arabicVolume ?? 1) * 100)}</Text>
+      </View>
+      {settings.translationAudioEnabled && <>
+        <Text style={[s.preferenceLabel, { marginTop: 14 }]}>{T('TRANSLATION')}</Text>
+        <View style={s.levelRow}>
+          {ico('volume-medium', 17, C.green)}
+          <LevelBar value={settings.translationVolume ?? 1} label={T('Translation volume')} tint={C.gold}
+            onValue={(next) => { setSettingsState({ ...settings, translationVolume: next }); void setVolume('translation', next); }} />
+          <Text style={s.levelValue}>{Math.round((settings.translationVolume ?? 1) * 100)}</Text>
+        </View>
+      </>}
+      <Text style={s.meta}>{T('Set apart, because the Arabic and its meaning are not listened to the same way.')}</Text>
+    </View>
 
     <Section title={`Queue · ${audio.queue.length} tracks`} />
     {audio.queue.map((item, index) => <Pressable key={`${item.id}-${index}`} onPress={() => { void selectQueueItem(index); }} style={[s.queueRow, index === audio.index && s.queueRowActive]}>
@@ -6259,7 +6391,7 @@ function AppShell() {
   </View>;
 }
 
-export default function App(){const[fontsLoaded]=useFonts({DMSans_400Regular,DMSans_600SemiBold,DMSans_700Bold,Newsreader_600SemiBold,NotoNaskhArabic_400Regular,NotoNaskhArabic_600SemiBold,Amiri_400Regular,KFGQPCUthmanicHafs,IBMPlexSansArabic_400Regular,IBMPlexSansArabic_600SemiBold});useEffect(()=>{if(fontsLoaded){void loadOfflineSetup();void resumeSavedOfflineSetup();resumeSavedQuranPreload();void loadAudioSettings();void loadHadithState();void loadTasbihState();void loadDownloads();void loadActivity();void loadFastingState();void loadJourneys();void loadWomensState();void loadZakatState();void loadLockConfig();void refreshMarket();startLockWatch()}},[fontsLoaded]);if(!fontsLoaded)return <SafeAreaView style={s.safe}><Spinner/></SafeAreaView>;return <ThemeProvider><LanguageProvider><QuranPreferencesProvider><WorshipSettingsProvider><LocationProvider><AppShell/></LocationProvider></WorshipSettingsProvider></QuranPreferencesProvider></LanguageProvider></ThemeProvider>}
+export default function App(){const[fontsLoaded]=useFonts({DMSans_400Regular,DMSans_600SemiBold,DMSans_700Bold,Newsreader_600SemiBold,NotoNaskhArabic_400Regular,NotoNaskhArabic_600SemiBold,Amiri_400Regular,KFGQPCUthmanicHafs,IBMPlexSansArabic_400Regular,IBMPlexSansArabic_600SemiBold});useEffect(()=>{if(fontsLoaded){void loadOfflineSetup();void resumeSavedOfflineSetup();resumeSavedQuranPreload();void loadAudioSettings().then(() => restoreSavedSession());void loadHadithState();void loadTasbihState();void loadDownloads();void loadActivity();void loadFastingState();void loadJourneys();void loadWomensState();void loadZakatState();void loadLockConfig();void refreshMarket();startLockWatch()}},[fontsLoaded]);if(!fontsLoaded)return <SafeAreaView style={s.safe}><Spinner/></SafeAreaView>;return <ThemeProvider><LanguageProvider><QuranPreferencesProvider><WorshipSettingsProvider><LocationProvider><AppShell/></LocationProvider></WorshipSettingsProvider></QuranPreferencesProvider></LanguageProvider></ThemeProvider>}
 
 let s: Record<string, any> = makeStyles();
 
@@ -6604,6 +6736,18 @@ sleepHadithEn:{color:C.ink,fontSize:12.5,lineHeight:20,fontStyle:'italic',margin
 sleepHadithRef:{color:C.green,fontSize:10.5,letterSpacing:.6,marginTop:2},
 sleepPrivacy:{flexDirection:'row',gap:10,backgroundColor:C.bg,borderRadius:12,padding:12,marginTop:12,borderWidth:1,borderColor:C.line},
 sleepPrivacyText:{color:C.muted,fontSize:11,lineHeight:17,flex:1},
+levelRow:{flexDirection:'row',alignItems:'center',gap:11},
+levelValue:{color:C.muted,fontSize:11,fontFamily:'DMSans_600SemiBold',width:26,textAlign:'right'},
+levelTrack:{flex:1,height:26,justifyContent:'center'},
+levelFill:{position:'absolute',left:0,height:4,borderRadius:2},
+levelKnob:{position:'absolute',width:15,height:15,borderRadius:8,backgroundColor:'#fff',borderWidth:2,marginLeft:-7.5,elevation:2,shadowColor:'#000',shadowOpacity:.18,shadowRadius:2,shadowOffset:{width:0,height:1}},
+rateRow:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:22,marginVertical:6},
+rateValue:{color:C.ink,fontSize:22,fontFamily:'DMSans_700Bold',minWidth:74,textAlign:'center'},
+rangeRow:{flexDirection:'row',gap:14,marginTop:6},
+rangeEnd:{flex:1},
+stepperSmall:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:6,marginTop:4,backgroundColor:C.bg,borderRadius:11,paddingHorizontal:6,paddingVertical:3,borderWidth:1,borderColor:C.line},
+rangeNumber:{color:C.ink,fontSize:14,fontFamily:'DMSans_600SemiBold'},
+stepButtonSmall:{padding:4},
 mushafSpreadRow:{flexDirection:'row',justifyContent:'center',alignItems:'flex-start',paddingVertical:6},
 mushafPageOuter:{overflow:'hidden'},
 mushafMarkerBand:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:6,marginVertical:5},
