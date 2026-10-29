@@ -2733,15 +2733,39 @@ function MushafPage({ page, verses, width, height, preferences, rtl, T, bookmark
   const budget = Math.max(40, (contentH - chromeH) * fill);
 
   const [settledH, setSettledH] = useState(0);
+  /* Whether the solve has finished, and the page may be seen.
+     It finishes three ways, and the second is the one that was being missed:
+     the size lands inside the page, the size stops moving, or it runs out of
+     passes. A page carrying very little text on a large screen asks for more
+     size than there is, stops at the largest size there is, and stops asking —
+     which is a finished solve, not a failed one. Counting only the first and
+     the last left those pages invisible for good, which is how a mushaf came
+     to have pages missing from it. */
+  const [settledFlag, setSettledFlag] = useState(false);
 
   useEffect(() => {
-    if (!textH || pass >= 3) return;
+    if (!textH) return;
+    if (pass >= 3) { setSettledFlag(true); if (settledH !== textH) setSettledH(textH); return; }
     const ratio = budget / textH;
-    if (Math.abs(ratio - 1) < 0.03) { if (settledH !== textH) setSettledH(textH); return; }
+    if (Math.abs(ratio - 1) < 0.03) { setSettledFlag(true); if (settledH !== textH) setSettledH(textH); return; }
     const next = Math.max(MUSHAF_MIN_SIZE, Math.min(MUSHAF_MAX_SIZE, size * Math.sqrt(ratio)));
-    if (Math.abs(next - size) < 0.4) { if (settledH !== textH) setSettledH(textH); return; }
+    if (Math.abs(next - size) < 0.4) { setSettledFlag(true); if (settledH !== textH) setSettledH(textH); return; }
     segH.current = {}; setTextH(0); setPass(n => n + 1); setSize(next);
   }, [textH, budget, size, pass, settledH]);
+
+  /* Turning the page starts the solve again from where the last one left off,
+     which is quicker than starting from a guess. */
+  useEffect(() => { setPass(0); setSettledFlag(false); }, [page, verses, width, height]);
+
+  /* No page is allowed to stay invisible. If the solve has not finished a
+     moment after arriving, the page is shown as it stands rather than left
+     blank — a size slightly off is a smaller wrong than a page that is not
+     there at all. */
+  useEffect(() => {
+    if (settledFlag) return;
+    const t = setTimeout(() => setSettledFlag(true), 900);
+    return () => clearTimeout(t);
+  }, [settledFlag, page]);
 
   /* Normally the leading is a fixed proportion of the size. Where the size has
      run into one of its bounds — a page carrying very little text on a large
@@ -2761,7 +2785,7 @@ function MushafPage({ page, verses, width, height, preferences, rtl, T, bookmark
   }
   /* Until the size has settled the page is measured, not shown, so the text is
      not seen jumping between sizes while it is being solved for. */
-  const settled = pass >= 3 || (!!textH && Math.abs(budget / textH - 1) < 0.03);
+  const settled = settledFlag;
 
   const savedKeys = new Set((bookmarks || []).map((b: any) => b.verseKey));
 
@@ -2899,7 +2923,7 @@ function MushafPageView({page,verses,error,cached,retry,preferences,rtl,T,input,
   <View style={s.pageProgress}><View style={[s.preloadFill, { width: `${page / 604 * 100}%` } as any]} /></View>
 
   {error ? <ErrorState message={error} retry={retry} /> : !verses.length ? <Spinner /> :
-   <View style={s.mushafPageRow}>
+   <View style={s.mushafPageStack}>
      {!!preferences.showVerseConnections && page > 1 &&
        <MushafConnectionNote kind="continued" rtl={rtl} T={T} page={page} cut={startsContinued} nextVerse={neighbours.prev[neighbours.prev.length - 1]} />}
      <MushafPage page={page} verses={verses} width={layout.pageWidth} height={layout.pageHeight} before={neighbours.prev} {...pageProps} />
@@ -7753,7 +7777,7 @@ rangeEnd:{flex:1},
 stepperSmall:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:6,marginTop:4,backgroundColor:C.bg,borderRadius:11,paddingHorizontal:6,paddingVertical:3,borderWidth:1,borderColor:C.line},
 rangeNumber:{color:C.ink,fontSize:14,fontFamily:'DMSans_600SemiBold'},
 stepButtonSmall:{padding:4},
-mushafPageRow:{flexDirection:'row',justifyContent:'center',alignItems:'flex-start',paddingVertical:6},
+mushafPageStack:{alignItems:'center',paddingVertical:6},
 mushafPageOuter:{overflow:'hidden'},
 mushafMarkerBand:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:6,marginVertical:5},
 mushafMarkerRule:{height:1,backgroundColor:C.gold,opacity:.55},
