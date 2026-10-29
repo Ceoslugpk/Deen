@@ -1,6 +1,11 @@
 import * as React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+
+/** The same mark the app header wears, in its light-on-dark variant:
+    the card is a dark gradient, so the dark-background artwork is the
+    one that reads. */
+const BRAND_MARK = require('../../assets/logo-mark-dark.png');
 
 /**
  * The verse card as a real view. On native this is what gets captured into the
@@ -87,7 +92,10 @@ export function VerseShareCard({
       <View style={cardStyles.footerRule} />
       <View style={cardStyles.footer}>
         <Text style={cardStyles.footerLeft}>{translationName}</Text>
-        <Text style={cardStyles.footerRight}>Deen</Text>
+        <View style={cardStyles.brand}>
+          <Text style={cardStyles.footerRight}>Deen Companion</Text>
+          <Image source={BRAND_MARK} resizeMode="contain" style={cardStyles.brandMark} />
+        </View>
       </View>
     </View>
   );
@@ -158,4 +166,6 @@ const cardStyles = StyleSheet.create({
   footer: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 26 },
   footerLeft: { color: 'rgba(216,188,128,0.86)', fontSize: 26 },
   footerRight: { color: 'rgba(247,243,234,0.62)', fontSize: 26, fontWeight: '700' },
+  brand: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  brandMark: { width: 40, height: 40 },
 });

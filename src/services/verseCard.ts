@@ -34,6 +34,7 @@ const HERO_A = '#2A2849';
 const HERO_B = '#5146A4';
 
 const UI_STACK = '"IBMPlexSansArabic_400Regular","DMSans_400Regular",system-ui,-apple-system,"Segoe UI",sans-serif';
+const BRAND_MARK = require('../../assets/logo-mark-dark.png');
 const FALLBACK_ARABIC = '"NotoNaskhArabic_400Regular","Amiri_400Regular","Geeza Pro","Al Bayan",Tahoma,serif';
 
 function font(size: number, weight: number, stack: string) {
@@ -87,6 +88,26 @@ function fitArabic(ctx: CanvasRenderingContext2D, text: string, family: string) 
   }
   ctx.font = font(38, 400, stack);
   return { size: 38, lines: wrapLines(ctx, text, INNER, 'rtl') };
+}
+
+/**
+ * The header's mark, loaded so the canvas can draw it. The card is a dark
+ * gradient, so this is the light-on-dark variant. If it cannot be decoded we
+ * simply draw the wordmark without it rather than failing the whole share.
+ */
+async function loadBrandMark(): Promise<HTMLImageElement | null> {
+  try {
+    const raw: any = BRAND_MARK;
+    const src = typeof raw === 'string' ? raw : (raw?.default ?? raw?.uri ?? raw);
+    if (!src || typeof src !== 'string') return null;
+    const img = new Image();
+    img.src = src;
+    if (typeof (img as any).decode === 'function') await (img as any).decode();
+    else await new Promise<void>((resolve, reject) => { img.onload = () => resolve(); img.onerror = () => reject(new Error('mark')); });
+    return img;
+  } catch {
+    return null;
+  }
 }
 
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
@@ -273,10 +294,17 @@ async function renderWeb(data: VerseCardData): Promise<Blob> {
   ctx.font = font(26, 400, UI_STACK);
   ctx.fillText(data.translationName || '', PAD, H - PAD - 6);
 
+  // ---- brand: the wordmark, and the same mark the app header wears ----
+  const mark = await loadBrandMark();
+  const MARK = 36;
   ctx.textAlign = 'right';
   ctx.fillStyle = 'rgba(247,243,234,0.62)';
   ctx.font = font(26, 600, UI_STACK);
-  ctx.fillText('Deen', W - PAD, H - PAD - 6);
+  ctx.fillText('Deen Companion', mark ? W - PAD - MARK - 16 : W - PAD, H - PAD - 6);
+  if (mark) {
+    // centred on the text baseline rather than sitting on it
+    ctx.drawImage(mark, W - PAD - MARK, H - PAD - 6 - 13 - MARK / 2, MARK, MARK);
+  }
 
   return new Promise<Blob>((resolve, reject) => {
     canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('Could not encode the image.'))), 'image/png');
