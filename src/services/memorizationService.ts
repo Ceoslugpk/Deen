@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useEffect, useState } from 'react';
 
 /**
  * Memorisation, kept entirely on the device.
@@ -172,9 +173,29 @@ export function getMemorization(): MemorizationState {
   return state;
 }
 
-export function subscribeMemorization(listener: (next: MemorizationState) => void) {
+export function subscribeMemorization(listener: (next: MemorizationState) => void): () => void {
   listeners.add(listener);
-  return () => listeners.delete(listener);
+  /* Wrapped in a block so the unsubscribe returns nothing. Set#delete hands
+     back a boolean, and a cleanup function that returns one is not a cleanup
+     function as far as useEffect is concerned. */
+  return () => { listeners.delete(listener); };
+}
+
+/**
+ * The memorisation state, kept in step with the store.
+ *
+ * Screens read the derived numbers (confidence, the weak bank) straight from
+ * the module rather than out of this value, so a correction made in one place
+ * re-scores everything immediately. This exists to make the screen re-render
+ * when that happens.
+ */
+export function useMemorization(): MemorizationState {
+  const [value, setValue] = useState<MemorizationState>(state);
+  useEffect(() => {
+    void loadMemorization();
+    return subscribeMemorization(setValue);
+  }, []);
+  return value;
 }
 
 export async function saveMemSettings(patch: Partial<MemorizationSettings>) {

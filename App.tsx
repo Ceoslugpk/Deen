@@ -73,6 +73,12 @@ import { localizeGuide, WORSHIP_GUIDES, WorshipGuide } from './src/content/worsh
 import { GUIDE_HADITH, GUIDE_VERSES } from './src/content/guideSources';
 import { QURAN_TOPICS, QURAN_VOCABULARY, TAJWEED_RULES, topicTitle, topicDescription, topicCategory, tajweedName, tajweedDetail } from './src/content/quranStudy';
 import { addSearchHistory, clearSearchHistory, clearSurahCache, deleteNote, HifzStatus, loadBookmarks, loadHifz, loadNotes, loadPlan, loadQuranPreferences, loadReadingPosition, loadRecentSurahs, loadSearchHistory, loadSurahCache, readerCacheKey, loadSurahCacheIndex, DEFAULTS, loadVocabularyProgress, QuranBookmark, QuranNote, QuranPreferences, removeSearchHistory, saveHifz, saveNote, savePlan, saveQuranPreferences, saveReadingPosition, saveSurahCache, saveVocabularyProgress, toggleBookmark, ReadingPosition } from './src/services/quranState';
+import {
+  clearMemorization, confidenceOf, demoteVerse, getMemorization, hiddenIndexes, isWord,
+  loadMemorization, MODE_LABELS, overallConfidence, pickNext, recentAttempts, recordAttempt,
+  saveMemSettings, splitWords, undoAttempt, unflagVerse, useMemorization, weakBank,
+} from './src/services/memorizationService';
+import type { Attempt, AttemptResult, MemorizationMode, VerseRecord } from './src/services/memorizationService';
 import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 import * as Clipboard from 'expo-clipboard';
 import { getCacheUsage, getCachedJson, setCachedJson } from './src/services/contentCache';
@@ -2773,11 +2779,336 @@ function JuzDirectoryScreen({navigation}:any){const{rtl}=useLanguage();const T=(
 function HizbDirectoryScreen({navigation}:any){const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);return <Page><ToolBar title={T('60 Hizb')} navigation={navigation}/><ScrollView contentContainerStyle={s.dataPage}><ToolGraphic tool="60 Hizb" size={72}/><Text style={s.dataTitle}>{T('Read by Hizb')}</Text><Text style={s.intro}>{T('Each Hizb contains four quarter-Hizb sections.')}</Text><View style={s.juzGrid}>{Array.from({length:60},(_,i)=>i+1).map(hizb=><Pressable key={hizb} onPress={()=>navigation.navigate('Reader',{section:'hizb',hizb})} style={s.juzCard}><Text style={s.juzNo}>{hizb}</Text><Text style={s.meta}>{T('HIZB')}</Text></Pressable>)}</View></ScrollView></Page>}
 function QuranPreloadScreen({navigation}:any){const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);const{preferences}=useQuranPreferences();const[state,setState]=useState(getPreloadState());useEffect(()=>{const unsubscribe=subscribePreload(setState);refreshPreload({script:preferences.scriptEdition,translation:preferences.translationEdition});return unsubscribe},[preferences.scriptEdition,preferences.translationEdition]);const start=()=>startQuranPreload({script:preferences.scriptEdition,translation:preferences.translationEdition});return <Page><ToolBar title={T('Offline Quran')} navigation={navigation}/><ScrollView contentContainerStyle={s.dataPage}><ToolGraphic tool="Offline Quran" size={76}/><Text style={s.dataTitle}>{T('Prepare for offline reading')}</Text><Text style={s.intro}>{T('Downloads the Arabic script and translation you have selected, one Surah at a time. Preparation continues while you use other screens and prioritizes your current reading Surah.')}</Text><View style={s.preloadScore}><Text style={s.planDays}>{state.cached}</Text><Text style={s.settingName}>{T('of 114 Surahs cached')}</Text><View style={s.preloadTrack}><View style={[s.preloadFill,{width:`${state.cached/114*100}%`} as any]}/></View><Text style={s.meta}>{T(preferences.scriptName)} · {T(rtl ? preferences.translationLanguage : preferences.translationName)}{state.current?(rtl?` · يجهّز سورة ${state.current}`:` · Preparing Surah ${state.current}`):''}</Text>{state.usage&&<Text style={s.cacheUsage}>{rtl?`ذاكرة المصحف ${(state.usage.byNamespace.quran/1048576).toFixed(1)} ميغابايت · الحد ${(state.usage.limits.quran/1000000).toFixed(0)} ميغابايت · الإجمالي ${(state.usage.limits.total/1000000).toFixed(0)} ميغابايت`:`Quran cache ${(state.usage.byNamespace.quran/1048576).toFixed(1)} MB · limit ${(state.usage.limits.quran/1000000).toFixed(0)} MB · total limit ${(state.usage.limits.total/1000000).toFixed(0)} MB`}</Text>}</View>{state.error&&<ErrorState message={state.error} retry={start}/>}<View style={s.actionRow}>{!state.running?<Pressable onPress={start} style={s.primary}><Text style={s.primaryText}>{T(state.cached ? 'Resume preparation' : 'Preload all')}</Text></Pressable>:<Pressable onPress={pauseQuranPreload} style={s.secondary}><Text style={s.secondaryText}>{T('Pause')}</Text></Pressable>}<Pressable onPress={clearPreparedQuran} style={s.dangerButton}><Text style={s.dangerText}>{T('Clear Quran cache')}</Text></Pressable></View><View style={s.sourceCard}>{ico('shield-checkmark-outline',21,C.green)}<View style={{flex:1}}><Text style={s.sourceTitle}>{T('Managed low-priority preparation')}</Text><Text style={s.sourceBody}>{T('Cached Surahs open first, already-saved content is skipped, and bounded LRU storage prevents unlimited growth.')}</Text></View></View></ScrollView></Page>}
 function ReadingPlansScreen({navigation}:any){const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);const[plan,setPlan]=useState<any>(null);useEffect(()=>{loadPlan().then(setPlan)},[]);const start=async(days:number)=>{const next={days,startedAt:Date.now(),completed:[]};await savePlan(next);setPlan(next)};const today=plan?Math.min(plan.days,Math.floor((Date.now()-plan.startedAt)/86400000)+1):0;const toggle=async()=>{const completed=plan.completed.includes(today)?plan.completed.filter((x:number)=>x!==today):[...plan.completed,today];const next={...plan,completed};await savePlan(next);setPlan(next)};return <Page><ToolBar title={T('Reading plans')} navigation={navigation}/><ScrollView contentContainerStyle={s.dataPage}><ToolGraphic tool="Reading Plans" size={72}/><Text style={s.dataTitle}>{T('Complete the Quran')}</Text>{!plan?<><Text style={s.intro}>{T('Choose a private local plan. Progress stays on this device.')}</Text><View style={s.planGrid}>{[30,60,90,120].map(days=><Pressable key={days} onPress={()=>start(days)} style={s.planCard}><Text style={s.planDays}>{days}</Text><Text style={s.settingName}>{T('day plan')}</Text><Text style={s.meta}>{rtl?`${(604/days).toFixed(1)} صفحة يومياً`:`${(604/days).toFixed(1)} pages daily`}</Text></Pressable>)}</View></>:<><View style={s.summaryScore}><View><Text style={s.nextCardLabel}>{T('CURRENT DAY')}</Text><Text style={s.zakatNo}>{today} / {plan.days}</Text></View><View><Text style={s.nextCardLabel}>{T('COMPLETED')}</Text><Text style={s.zakatNo}>{plan.completed.length}</Text></View></View><Pressable onPress={toggle} style={s.planToday}><Text style={s.settingName}>{rtl?`قراءة اليوم ${today}`:`Day ${today} reading`}</Text>{ico(plan.completed.includes(today)?'checkmark-circle':'ellipse-outline',28,C.green)}</Pressable><Pressable onPress={async()=>{await savePlan(null);setPlan(null)}} style={s.dangerButton}><Text style={s.dangerText}>{T('End current plan')}</Text></Pressable></>}</ScrollView></Page>}
-function HifzScreen({navigation}:any){const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);const[chapters,setChapters]=useState<Chapter[]>([]);const[status,setStatus]=useState<Record<number,HifzStatus>>({});const[filter,setFilter]=useState<'all'|HifzStatus>('all');useEffect(()=>{getChapters().then(setChapters);loadHifz().then(setStatus)},[]);const cycle=async(id:number)=>{const current=status[id]||'not-started';const next:HifzStatus=current==='not-started'?'revising':current==='revising'?'memorized':'not-started';const value={...status,[id]:next};setStatus(value);await saveHifz(value)};const shown=chapters.filter(c=>filter==='all'||(status[c.id]||'not-started')===filter);const memorized=Object.values(status).filter(x=>x==='memorized').length;return <Page><ToolBar title={T('Hifz tracker')} navigation={navigation}/><ScrollView contentContainerStyle={s.dataPage}><ToolGraphic tool="Hifz" size={72}/><Text style={s.dataTitle}>{rtl?`حفظت ${memorized} من 114`:`${memorized} of 114 memorized`}</Text><Pressable onPress={()=>navigation.navigate('Hifz Practice')} style={s.practiceLaunch}><View><Text style={s.settingName}>{T('Hide-and-peek recall')}</Text><Text style={s.meta}>{T('Test a verse from your revising or memorized Surahs')}</Text></View>{ico('play-circle',28,C.green)}</Pressable><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap: 8}}>{(['all','not-started','revising','memorized'] as const).map(value=><ChoicePill key={value} label={T(value.replace('-',' '))} selected={filter===value} onPress={()=>setFilter(value)}/>)}</ScrollView><View style={{height:13}}/><View style={s.settings}>{shown.map(c=><Pressable key={c.id} onPress={()=>cycle(c.id)} style={s.translationRow}><View style={s.surahNum}><Text style={s.surahNumText}>{c.id}</Text></View><View style={{flex:1}}><Text style={s.settingName}>{c.name_simple}</Text><Text style={s.meta}>{rtl?`${c.verses_count} آية`:`${c.verses_count} verses`}</Text></View><Text style={s.hifzStatus}>{T((status[c.id]||'not-started').replace('-',' '))}</Text></Pressable>)}</View></ScrollView></Page>}
+function HifzScreen({navigation}:any){const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);const[chapters,setChapters]=useState<Chapter[]>([]);const[status,setStatus]=useState<Record<number,HifzStatus>>({});const[filter,setFilter]=useState<'all'|HifzStatus>('all');useEffect(()=>{getChapters().then(setChapters);loadHifz().then(setStatus)},[]);const cycle=async(id:number)=>{const current=status[id]||'not-started';const next:HifzStatus=current==='not-started'?'revising':current==='revising'?'memorized':'not-started';const value={...status,[id]:next};setStatus(value);await saveHifz(value)};const shown=chapters.filter(c=>filter==='all'||(status[c.id]||'not-started')===filter);const memorized=Object.values(status).filter(x=>x==='memorized').length;return <Page><ToolBar title={T('Hifz tracker')} navigation={navigation}/><ScrollView contentContainerStyle={s.dataPage}><ToolGraphic tool="Hifz" size={72}/><Text style={s.dataTitle}>{rtl?`حفظت ${memorized} من 114`:`${memorized} of 114 memorized`}</Text><Pressable onPress={()=>navigation.navigate('Memorize')} style={s.practiceLaunch}><View><Text style={s.settingName}>{T('Hide-and-peek recall')}</Text><Text style={s.meta}>{T('Test a verse from your revising or memorized Surahs')}</Text></View>{ico('play-circle',28,C.green)}</Pressable><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap: 8}}>{(['all','not-started','revising','memorized'] as const).map(value=><ChoicePill key={value} label={T(value.replace('-',' '))} selected={filter===value} onPress={()=>setFilter(value)}/>)}</ScrollView><View style={{height:13}}/><View style={s.settings}>{shown.map(c=><Pressable key={c.id} onPress={()=>cycle(c.id)} style={s.translationRow}><View style={s.surahNum}><Text style={s.surahNumText}>{c.id}</Text></View><View style={{flex:1}}><Text style={s.settingName}>{c.name_simple}</Text><Text style={s.meta}>{rtl?`${c.verses_count} آية`:`${c.verses_count} verses`}</Text></View><Text style={s.hifzStatus}>{T((status[c.id]||'not-started').replace('-',' '))}</Text></Pressable>)}</View></ScrollView></Page>}
 
-function HifzPracticeScreen({navigation}:any){const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);const{preferences}=useQuranPreferences();const[status,setStatus]=useState<Record<number,HifzStatus>>({});const[verses,setVerses]=useState<Verse[]>([]);const[index,setIndex]=useState(0);const[revealed,setRevealed]=useState(false);const[error,setError]=useState('');const[surah,setSurah]=useState(112);const load=async()=>{setError('');try{const saved=await loadHifz();setStatus(saved);const candidates=Object.keys(saved).map(Number).filter(id=>saved[id]!=='not-started');const id=candidates.length?candidates[Math.floor(Math.random()*candidates.length)]:112;setSurah(id);setVerses(await getVerses(id,{script:preferences.scriptEdition,translation:preferences.translationEdition}));setIndex(0);setRevealed(false)}catch(e:any){setError(T(e.message))}};useEffect(()=>{load()},[]);const next=()=>{setRevealed(false);setIndex(value=>value+1<verses.length?value+1:0)};const mark=async(value:HifzStatus)=>{const updated={...status,[surah]:value};setStatus(updated);await saveHifz(updated);void logHifzReview();next()};const verse=verses[index];return <Page><ToolBar title={T('Hifz recall practice')} navigation={navigation}/><ScrollView contentContainerStyle={s.dataPage}><ToolGraphic tool="Hifz" size={72}/><Text style={s.dataTitle}>{T('Recall before you reveal')}</Text><Text style={s.intro}>{T('Read the meaning and reference, recite from memory, then reveal the verified Arabic text.')}</Text>{error?<ErrorState message={error} retry={load}/>:!verse?<Spinner/>:<><View style={s.recallCard}><Text style={s.dataMeta}>{rtl?`القرآن ${verse.verse_key} · الآية ${index+1} من ${verses.length}`:`QURAN ${verse.verse_key} · VERSE ${index+1} OF ${verses.length}`}</Text><Text style={s.recallPrompt}>{verse.translation}</Text>{revealed?(preferences.scriptEdition==='quran-tajweed'?<TajweedText text={verse.text_uthmani} style={s.recallArabic}/>:<Text style={s.recallArabic}>{verse.text_uthmani}</Text>):<Pressable accessibilityLabel={T('Reveal Arabic verse')} onPress={()=>setRevealed(true)} style={s.revealArea}>{ico('eye-outline',27,C.green)}<Text style={s.sectionAction}>{T('Reveal Arabic')}</Text></Pressable>}</View>{revealed&&<View style={s.actionRow}><Pressable onPress={()=>mark('revising')} style={s.secondary}><Text style={s.secondaryText}>{T('Review again')}</Text></Pressable><Pressable onPress={()=>mark('memorized')} style={s.primary}><Text style={s.primaryText}>{T('Remembered')}</Text></Pressable><Pressable onPress={next} style={s.secondary}><Text style={s.secondaryText}>{T('Skip')}</Text></Pressable></View>}</>}</ScrollView></Page>}
+/** The four ways a verse can be put in front of you, in the order they get easier. */
+const MEM_MODES: MemorizationMode[] = ['hide-ayah', 'hide-words', 'progressive', 'random'];
 
-function QuranStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="QuranHome" component={QuranHome}/><Stack.Screen name="Downloads" component={DownloadsScreen}/><Stack.Screen name="Reader" component={ReaderScreen}/><Stack.Screen name="Translations" component={TranslationScreen}/><Stack.Screen name="Quran Search" component={QuranSearchScreen}/><Stack.Screen name="Bookmarks" component={BookmarkScreen}/><Stack.Screen name="Notes" component={NotesScreen}/><Stack.Screen name="Note Editor" component={needsPayload(NoteEditorScreen, 'Note')}/><Stack.Screen name="Reader Settings" component={ReaderSettingsScreen}/><Stack.Screen name="Ayah Actions" component={AyahActionsScreen}/><Stack.Screen name="Tafsir Compare" component={TafsirCompareScreen}/><Stack.Screen name="Quran Topics" component={QuranTopicsScreen}/><Stack.Screen name="Topic Detail" component={TopicDetailScreen}/><Stack.Screen name="Juz Directory" component={JuzDirectoryScreen}/><Stack.Screen name="Hizb Directory" component={HizbDirectoryScreen}/><Stack.Screen name="Reading Plans" component={ReadingPlansScreen}/><Stack.Screen name="Quran Preload" component={QuranPreloadScreen}/><Stack.Screen name="Hifz" component={HifzScreen}/><Stack.Screen name="Hifz Practice" component={HifzPracticeScreen}/><Stack.Screen name="Quran Audio" component={AudioCenterScreen}/><Stack.Screen name="Audio Player" component={AudioPlayerScreen}/></Stack.Navigator>}
+/**
+ * The memorisation hub.
+ *
+ * Everything shown here is read back out of the attempt history rather than
+ * stored alongside it, so the numbers cannot drift away from the evidence.
+ * Correct a verse anywhere in the app and this screen already agrees.
+ */
+function MemorizeHubScreen({ navigation }: any) {
+  const { rtl } = useLanguage(); const T = (text: string) => tx(rtl, text);
+  const mem = useMemorization();
+  const [hifz, setHifz] = useState<Record<number, HifzStatus>>({});
+  const [chapters, setChapters] = useState<Chapter[]>([]);
+
+  useEffect(() => {
+    void loadHifz().then(setHifz);
+    void getChapters().then(setChapters);
+  }, []);
+
+  const settings = mem.settings;
+  const bank = weakBank();
+  const practised = Object.values(mem.verses).filter((verse) => verse.attempts > 0).length;
+  const overall = overallConfidence();
+  const logged = mem.attempts.filter((entry) => entry.kind === 'attempt').length;
+  const working = chapters.filter((chapter) => (hifz[chapter.id] || 'not-started') !== 'not-started');
+  const recent = recentAttempts(8);
+  const score = Math.round(overall * 100);
+
+  const open = (surahId: number | undefined, label: string) =>
+    navigation.navigate('Memorize Test', { surahId, label });
+
+  /* The sliders run over a narrower range than 0-1: blanking nothing is not a
+     test, and blanking everything is the other mode. */
+  const blankSpan = (settings.hideRatio - 0.15) / 0.7;
+  const weakSpan = (settings.weakThreshold - 0.2) / 0.7;
+
+  return <Page><ToolBar title={T('Memorisation')} navigation={navigation} />
+    <ScrollView contentContainerStyle={s.dataPage}>
+      <View style={s.memHero}>
+        <Text style={s.memScore}>{score}%</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={s.memScoreLabel}>{T('Remembered')}</Text>
+          <Text style={s.memHeroNote}>{T('Worked out from your attempts, never set by hand — so correcting one moves this immediately.')}</Text>
+        </View>
+      </View>
+      <View style={s.memBar}><View style={[s.memBarFill, { width: `${score}%` }]} /></View>
+      <View style={s.memStats}>
+        <View style={s.memStat}><Text style={s.memStatValue}>{practised}</Text><Text style={s.memStatLabel}>{T('Practised')}</Text></View>
+        <View style={s.memStat}><Text style={s.memStatValue}>{bank.length}</Text><Text style={s.memStatLabel}>{T('Weak')}</Text></View>
+        <View style={s.memStat}><Text style={s.memStatValue}>{logged}</Text><Text style={s.memStatLabel}>{T('Attempts')}</Text></View>
+      </View>
+
+      <Section title={T('How you are tested')} />
+      <View style={s.choiceGrid}>
+        {MEM_MODES.map((mode) => <ChoicePill key={mode}
+          label={T(rtl ? MODE_LABELS[mode].ar : MODE_LABELS[mode].en)}
+          selected={settings.mode === mode}
+          onPress={() => { void saveMemSettings({ mode }); }} />)}
+      </View>
+      <Text style={[s.meta, { marginTop: 8 }]}>{T(rtl ? MODE_LABELS[settings.mode].noteAr : MODE_LABELS[settings.mode].note)}</Text>
+
+      <Section title={T('How it behaves')} />
+      <View style={s.playerCard}>
+        {settings.mode === 'hide-words' && <>
+          <Text style={s.preferenceLabel}>{T('HOW MUCH TO BLANK')}</Text>
+          <View style={s.levelRow}>
+            {ico('eye-off-outline', 17, C.green)}
+            <LevelBar value={blankSpan} label={T('How much of the verse is blanked')}
+              onValue={(next) => { void saveMemSettings({ hideRatio: 0.15 + next * 0.7 }); }} />
+            <Text style={s.levelValue}>{Math.round(settings.hideRatio * 100)}</Text>
+          </View>
+          <Text style={[s.meta, { marginTop: 8 }]}>{T('The blanked words are spread through the verse rather than bunched at one end.')}</Text>
+        </>}
+        {settings.mode === 'progressive' && <>
+          <Text style={s.preferenceLabel}>{T('WORDS AT A TIME')}</Text>
+          <View style={s.memStepper}>
+            <Pressable onPress={() => { void saveMemSettings({ revealStep: Math.max(1, settings.revealStep - 1) }); }} style={s.memStepButton}>{ico('remove', 18, C.green)}</Pressable>
+            <Text style={s.memStepValue}>{settings.revealStep}</Text>
+            <Pressable onPress={() => { void saveMemSettings({ revealStep: Math.min(8, settings.revealStep + 1) }); }} style={s.memStepButton}>{ico('add', 18, C.green)}</Pressable>
+          </View>
+          <Text style={[s.meta, { marginTop: 8 }]}>{T('Each press uncovers a few more words, so you are never completely stuck.')}</Text>
+        </>}
+        <Text style={[s.preferenceLabel, { marginTop: 16 }]}>{T('TREAT BELOW THIS AS WEAK')}</Text>
+        <View style={s.levelRow}>
+          {ico('trending-down-outline', 17, C.green)}
+          <LevelBar value={weakSpan} label={T('Confidence below which a verse counts as weak')} tint={C.gold}
+            onValue={(next) => { void saveMemSettings({ weakThreshold: 0.2 + next * 0.7 }); }} />
+          <Text style={s.levelValue}>{Math.round(settings.weakThreshold * 100)}</Text>
+        </View>
+        <Text style={[s.meta, { marginTop: 8 }]}>{T('Verses under this are drawn more often. Anything you flag yourself counts as weak whatever it scores.')}</Text>
+      </View>
+
+      <Section title={T('Practise')} />
+      <Pressable onPress={() => open(undefined, T('Weak bank'))} style={s.practiceLaunch}>
+        <View style={{ flex: 1 }}>
+          <Text style={s.settingName}>{T('Weak bank')}</Text>
+          <Text style={s.meta}>{bank.length
+            ? T('What you have flagged, and whatever scores lowest')
+            : T('Empty for now — flag a verse during practice and it waits here')}</Text>
+        </View>
+        {ico('play-circle', 28, C.green)}
+      </Pressable>
+      {working.length ? <View style={s.settings}>
+        {working.map((chapter) => <Pressable key={chapter.id} onPress={() => open(chapter.id, chapter.name_simple)} style={s.memRow}>
+          <View style={s.surahNum}><Text style={s.surahNumText}>{chapter.id}</Text></View>
+          <View style={s.memRowMain}>
+            <Text style={s.memKey}>{chapter.name_simple}</Text>
+            <Text style={s.meta}>{T((hifz[chapter.id] || 'not-started').replace('-', ' '))}</Text>
+          </View>
+          {ico('chevron-forward', 18, C.muted)}
+        </Pressable>)}
+      </View> : <Text style={s.meta}>{T('Mark a Surah as revising or memorised in the Hifz tracker and it appears here.')}</Text>}
+
+      {bank.length > 0 && <>
+        <Section title={T('Weak bank')} />
+        <View style={s.settings}>
+          {bank.slice(0, 12).map((record) => {
+            const percent = Math.round(confidenceOf(record) * 100);
+            return <View key={record.verseKey} style={s.memRow}>
+              <View style={s.memRowMain}>
+                <Text style={s.memKey}>{record.verseKey}  <Text style={s.meta}>{record.surahName}</Text></Text>
+                <View style={s.memMiniBar}><View style={[s.memMiniFill, { width: `${percent}%` }]} /></View>
+              </View>
+              <View style={s.memRowRight}>
+                <Text style={s.memConf}>{percent}%</Text>
+                {record.flaggedWeak ? <View style={s.memFlag}><Text style={s.memFlagText}>{T('Flagged')}</Text></View> : null}
+              </View>
+              {record.flaggedWeak
+                ? <Pressable onPress={() => { void unflagVerse(record.verseKey); }} style={s.memChip}><Text style={s.memChipText}>{T('Remove')}</Text></Pressable>
+                : <View style={s.memSpacer} />}
+            </View>;
+          })}
+        </View>
+      </>}
+
+      {recent.length > 0 && <>
+        <Section title={T('Recent')} />
+        <View style={s.memChipWrap}>
+          {recent.map((entry) => <View key={entry.id} style={s.memChip}>
+            <Text style={s.memChipText}>{entry.verseKey} {entry.result === 'correct' ? '✓' : '✗'}</Text>
+          </View>)}
+        </View>
+      </>}
+
+      <Pressable onPress={() => { void clearMemorization(); }} style={s.dangerButton}>
+        <Text style={s.dangerText}>{T('Erase all memorisation history')}</Text>
+      </Pressable>
+    </ScrollView>
+  </Page>;
+}
+
+/**
+ * One verse at a time.
+ *
+ * The two ways of being wrong about a verse need two different corrections,
+ * which is why both are offered after every answer. "Move to weak bank" says
+ * the app gave credit it should not have, and the verse stays weak until it is
+ * taken out. "That was a mis-tap" says the attempt should never have counted,
+ * and it stops counting — but the record that it happened survives, because
+ * quietly deleting the evidence of a mistake is not the same as correcting it.
+ */
+function MemorizeTestScreen({ navigation, route }: any) {
+  const { rtl } = useLanguage(); const T = (text: string) => tx(rtl, text);
+  const { preferences } = useQuranPreferences();
+  const mem = useMemorization();
+  const settings = mem.settings;
+  const surahId = route?.params?.surahId as number | undefined;
+  const scopeLabel = (route?.params?.label as string) || T('Weak bank');
+
+  const byKey = useRef<Record<string, Verse>>({}).current;
+  const [pool, setPool] = useState<VerseRecord[]>([]);
+  const [currentKey, setCurrentKey] = useState<string | null>(null);
+  const [revealed, setRevealed] = useState(0);
+  const [open, setOpen] = useState(false);
+  const [answer, setAnswer] = useState<Attempt | null>(null);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  const load = async () => {
+    setLoading(true); setError('');
+    try {
+      await loadMemorization();
+      const known = getMemorization().verses;
+      const records: VerseRecord[] = [];
+      if (surahId) {
+        const list = await getVerses(surahId, { script: preferences.scriptEdition, translation: preferences.translationEdition });
+        list.forEach((item) => { byKey[item.verse_key] = item; });
+        list.forEach((item) => {
+          records.push(known[item.verse_key] || {
+            verseKey: item.verse_key, surahId,
+            surahName: item.surah_name || scopeLabel,
+            ayah: Number(item.verse_key.split(':')[1]) || 0,
+            attempts: 0, correct: 0, wrong: 0, streak: 0,
+          });
+        });
+      } else {
+        const bank = weakBank();
+        const ids = Array.from(new Set(bank.map((record) => record.surahId)));
+        const lists = await Promise.all(ids.map((id) => getVerses(id, { script: preferences.scriptEdition, translation: preferences.translationEdition })));
+        lists.forEach((list) => list.forEach((item) => { byKey[item.verse_key] = item; }));
+        bank.forEach((record) => { if (byKey[record.verseKey]) records.push(record); });
+      }
+      setPool(records);
+      const pick = pickNext(records);
+      setCurrentKey(pick ? pick.verseKey : null);
+      setRevealed(0); setOpen(false); setAnswer(null);
+    } catch (e: any) {
+      setError(T(e.message));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { void load(); }, []);
+
+  /* Read the record live rather than from the pool, so a demote or an undo is
+     reflected here straight away instead of on the next verse. */
+  const current = currentKey ? (mem.verses[currentKey] || pool.find((record) => record.verseKey === currentKey) || null) : null;
+  const verse = currentKey ? byKey[currentKey] : undefined;
+  const parts = useMemo(() => (verse ? splitWords(verse.text_uthmani) : []), [verse]);
+  const wordIndexes = useMemo(() => parts.map((part, index) => (isWord(part) ? index : -1)).filter((index) => index >= 0), [parts]);
+  const total = wordIndexes.length;
+
+  const hiddenSet = useMemo(() => {
+    if (!total) return new Set<number>();
+    if (open) return new Set<number>();
+    if (settings.mode === 'progressive') return new Set(wordIndexes.slice(revealed));
+    if (settings.mode === 'hide-words') return new Set(hiddenIndexes(parts, settings.hideRatio, currentKey || ''));
+    return new Set(wordIndexes);
+  }, [total, open, settings.mode, settings.hideRatio, revealed, currentKey, parts, wordIndexes]);
+
+  const revealedRatio = total ? (total - hiddenSet.size) / total : 0;
+
+  const next = () => {
+    const live = pool.map((record) => mem.verses[record.verseKey] || record);
+    const pick = pickNext(live, currentKey || undefined);
+    setCurrentKey(pick ? pick.verseKey : null);
+    setRevealed(0); setOpen(false); setAnswer(null);
+  };
+
+  const mark = async (result: AttemptResult) => {
+    if (!current) return;
+    /* Captured before the verse opens, or every answer would look like it was
+       given with the whole thing on screen. */
+    const ratio = revealedRatio;
+    setOpen(true);
+    const attempt = await recordAttempt(current.verseKey, current.surahId, current.surahName, current.ayah, result, settings.mode, ratio);
+    setAnswer(attempt);
+    void logHifzReview();
+  };
+
+  const demoteCurrent = async () => {
+    if (!current) return;
+    await demoteVerse(current.verseKey, current.surahId, current.surahName, current.ayah);
+  };
+
+  const undoCurrent = async () => {
+    if (!answer) return;
+    if (await undoAttempt(answer.id)) setAnswer(null);
+  };
+
+  if (loading) return <Page><ToolBar title={scopeLabel} navigation={navigation} /><Spinner /></Page>;
+  if (error) return <Page><ToolBar title={scopeLabel} navigation={navigation} /><ScrollView contentContainerStyle={s.dataPage}><ErrorState message={error} retry={load} /></ScrollView></Page>;
+  if (!current || !verse) return <Page><ToolBar title={scopeLabel} navigation={navigation} /><View style={s.emptyWrap}>
+    <Text style={s.emptyTitle}>{T('Nothing to test yet')}</Text>
+    <Text style={s.emptyBody}>{surahId
+      ? T('This Surah has no verses to hand at the moment.')
+      : T('Flag a verse during practice and it will wait for you here.')}</Text>
+    <Pressable onPress={() => navigation.goBack()} style={s.primary}><Text style={s.primaryText}>{T('Back')}</Text></Pressable>
+  </View></Page>;
+
+  const useTajweed = preferences.scriptEdition === 'quran-tajweed' && (open || !!answer);
+  const live = mem.verses[current.verseKey];
+  const percent = Math.round(confidenceOf(live || current) * 100);
+
+  return <Page><ToolBar title={scopeLabel} navigation={navigation} />
+    <ScrollView contentContainerStyle={s.dataPage}>
+      <Text style={s.memTarget}>{current.surahName} · {current.verseKey}</Text>
+      <Text style={s.meta}>{current.attempts
+        ? T(`Asked ${current.attempts} times · ${percent}% remembered`)
+        : T('Not tested yet')}</Text>
+
+      <View style={s.memVerseBox}>
+        {useTajweed
+          ? <TajweedText text={verse.text_uthmani} style={s.memVerseText} />
+          : <Text style={s.memVerseText}>{parts.map((part, index) => {
+              if (!isWord(part)) return <Text key={index}>{part}</Text>;
+              const hidden = hiddenSet.has(index) && !answer;
+              return hidden
+                ? <Text key={index} style={s.memBlank}>{'\u2007'.repeat(Math.min(5, Math.max(3, Math.round(part.length * 0.5))))}</Text>
+                : <Text key={index}>{part}</Text>;
+            })}</Text>}
+        {!open && !answer && <Text style={s.memHint}>{T('Say it, then check.')}</Text>}
+      </View>
+
+      {!answer && <View style={s.memActions}>
+        <Pressable onPress={() => { void mark('correct'); }} style={s.primary}><Text style={s.primaryText}>{T('I knew it')}</Text></Pressable>
+        {settings.mode === 'progressive' && !open
+          ? <Pressable onPress={() => setRevealed((value) => Math.min(total, value + settings.revealStep))} style={s.secondary}>
+              {ico('add', 16, C.green)}<Text style={s.secondaryText}>{T('Show more')}</Text></Pressable>
+          : null}
+        {!open
+          ? <Pressable onPress={() => setOpen(true)} style={s.secondary}>
+              {ico('eye-outline', 16, C.green)}<Text style={s.secondaryText}>{T('Show me')}</Text></Pressable>
+          : <Pressable onPress={() => { void mark('wrong'); }} style={s.secondary}>
+              {ico('close-outline', 16, C.coral)}<Text style={s.secondaryText}>{T('I didn’t know it')}</Text></Pressable>}
+      </View>}
+
+      {answer && <View style={s.memAnswerCard}>
+        <Text style={s.memAnswerTitle}>{answer.result === 'correct' ? T('Marked as known') : T('Marked for review')}</Text>
+        <Text style={s.memAnswerBody}>{T(`Counted with ${Math.round(answer.revealedRatio * 100)}% of the verse on screen. Now ${percent}% remembered.`)}</Text>
+        <View style={s.memActions}>
+          <Pressable onPress={() => { void demoteCurrent(); }} style={s.secondary}>
+            {ico('arrow-down-circle-outline', 16, C.gold)}<Text style={s.secondaryText}>{T('Move to weak bank')}</Text></Pressable>
+          <Pressable onPress={() => { void undoCurrent(); }} style={s.secondary}>
+            {ico('arrow-undo-outline', 16, C.green)}<Text style={s.secondaryText}>{T('That was a mis-tap')}</Text></Pressable>
+        </View>
+        <Text style={[s.meta, { marginTop: 8 }]}>{T('Moving to the weak bank keeps the attempt and holds the verse there. Undoing stops it counting at all.')}</Text>
+      </View>}
+
+      {answer && <Pressable onPress={next} style={s.primary}><Text style={s.primaryText}>{T('Next verse')}</Text></Pressable>}
+    </ScrollView>
+  </Page>;
+}
+
+function QuranStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="QuranHome" component={QuranHome}/><Stack.Screen name="Downloads" component={DownloadsScreen}/><Stack.Screen name="Reader" component={ReaderScreen}/><Stack.Screen name="Translations" component={TranslationScreen}/><Stack.Screen name="Quran Search" component={QuranSearchScreen}/><Stack.Screen name="Bookmarks" component={BookmarkScreen}/><Stack.Screen name="Notes" component={NotesScreen}/><Stack.Screen name="Note Editor" component={needsPayload(NoteEditorScreen, 'Note')}/><Stack.Screen name="Reader Settings" component={ReaderSettingsScreen}/><Stack.Screen name="Ayah Actions" component={AyahActionsScreen}/><Stack.Screen name="Tafsir Compare" component={TafsirCompareScreen}/><Stack.Screen name="Quran Topics" component={QuranTopicsScreen}/><Stack.Screen name="Topic Detail" component={TopicDetailScreen}/><Stack.Screen name="Juz Directory" component={JuzDirectoryScreen}/><Stack.Screen name="Hizb Directory" component={HizbDirectoryScreen}/><Stack.Screen name="Reading Plans" component={ReadingPlansScreen}/><Stack.Screen name="Quran Preload" component={QuranPreloadScreen}/><Stack.Screen name="Hifz" component={HifzScreen}/><Stack.Screen name="Memorize" component={MemorizeHubScreen}/><Stack.Screen name="Memorize Test" component={MemorizeTestScreen}/><Stack.Screen name="Quran Audio" component={AudioCenterScreen}/><Stack.Screen name="Audio Player" component={AudioPlayerScreen}/></Stack.Navigator>}
 
 /**
  * The library holds what you read, recite and learn. Nothing here calculates
@@ -6816,6 +7147,41 @@ dayStepper:{flexDirection:'row',alignItems:'center',gap:12,marginTop:4},
 
 assetRow:{minHeight:69,alignItems:'center',paddingHorizontal:12,borderBottomWidth:1,borderColor:C.line},
 assetInput:{width:120,backgroundColor:C.bg,borderWidth:1,borderColor:C.line,borderRadius:14,paddingHorizontal:12,paddingVertical:8,fontSize:15,fontFamily:'DMSans_700Bold',color:C.ink,textAlign:'right',outlineStyle:'none'} as any,
-metalRow:{alignItems:'center',minHeight:56,borderBottomWidth:1,borderColor:C.line}});
+metalRow:{alignItems:'center',minHeight:56,borderBottomWidth:1,borderColor:C.line},
+memHero:{backgroundColor:C.deep,borderRadius:24,padding:20,flexDirection:'row',alignItems:'center',gap:16,...shadow},
+memScore:{color:C.onAccent,fontSize:38,fontFamily:'DMSans_700Bold'},
+memScoreLabel:{color:C.onAccent,fontSize:13,fontFamily:'DMSans_700Bold'},
+memHeroNote:{color:'#C7C2E4',fontSize:10,marginTop:3},
+memBar:{height:6,borderRadius:3,backgroundColor:'rgba(255,255,255,.22)',overflow:'hidden',marginTop:12},
+memBarFill:{height:'100%',borderRadius:3,backgroundColor:C.gold},
+memStats:{flexDirection:'row',gap:8,marginTop:12},
+memStat:{flex:1,backgroundColor:C.card,borderRadius:16,paddingVertical:12,alignItems:'center',gap:2,borderWidth:1,borderColor:C.line},
+memStatValue:{color:C.ink,fontSize:19,fontFamily:'DMSans_700Bold'},
+memStatLabel:{color:C.muted,fontSize:9,fontFamily:'DMSans_700Bold',letterSpacing:.6,textTransform:'uppercase'},
+memVerseBox:{backgroundColor:C.white,borderRadius:24,padding:20,marginTop:12,borderWidth:1,borderColor:C.line,...shadow},
+memTarget:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.1,textTransform:'uppercase'},
+memVerseText:{color:C.ink,fontFamily:'KFGQPCUthmanicHafs',fontSize:29,lineHeight:58,textAlign:'right',marginTop:14,writingDirection:'rtl'} as any,
+memBlank:{color:'transparent',backgroundColor:C.mint,borderRadius:5,overflow:'hidden'},
+memHint:{color:C.muted,fontSize:12,lineHeight:18,marginTop:14,textAlign:'center'},
+memAnswerCard:{backgroundColor:C.mint,borderRadius:20,padding:16,marginTop:12,borderWidth:1,borderColor:'#CFC7EE'},
+memAnswerTitle:{color:C.green,fontSize:11,fontFamily:'DMSans_700Bold',letterSpacing:.6,textTransform:'uppercase'},
+memAnswerBody:{color:'#474653',fontSize:12,lineHeight:18,marginTop:6},
+memActions:{flexDirection:'row',flexWrap:'wrap',alignItems:'center',gap:8,marginTop:14},
+memRow:{minHeight:58,flexDirection:'row',alignItems:'center',gap:12,paddingHorizontal:12,borderBottomWidth:1,borderColor:C.line},
+memRowMain:{flex:1},
+memRowRight:{alignItems:'flex-end',minWidth:56},
+memKey:{color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:13},
+memConf:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:11},
+memFlag:{backgroundColor:C.yellow,borderRadius:8,paddingHorizontal:7,paddingVertical:2,marginTop:4},
+memFlagText:{color:'#7A6320',fontSize:9,fontFamily:'DMSans_700Bold'},
+memMiniBar:{height:4,borderRadius:2,backgroundColor:'#E6E2EB',overflow:'hidden',marginTop:6},
+memMiniFill:{height:'100%',borderRadius:2,backgroundColor:C.green},
+memStepper:{flexDirection:'row',alignItems:'center',gap:10,marginTop:8},
+memStepButton:{width:38,height:38,borderRadius:14,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},
+memStepValue:{color:C.ink,fontSize:17,fontFamily:'DMSans_700Bold',minWidth:26,textAlign:'center'},
+memChip:{backgroundColor:C.mint,borderRadius:12,paddingHorizontal:10,paddingVertical:6,borderWidth:1,borderColor:C.line},
+memChipText:{color:C.green,fontSize:10,fontFamily:'DMSans_600SemiBold'},
+memChipWrap:{flexDirection:'row',flexWrap:'wrap',gap:8,marginTop:10},
+memSpacer:{width:1,height:1}});
   return themeDark ? remapStyles(created) : created;
 }
