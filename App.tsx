@@ -207,10 +207,10 @@ const MINI_PLAYER_INSET = MINI_PLAYER_H + 20;
 const READER_MAX_WIDTH = 860;
 const READER_PAD = 16;
 /** How a mushaf page is put together: the frame, and the border it carries. */
-const MUSHAF_FRAME_PAD = 14;
+const MUSHAF_FRAME_PAD = 10;
 const MUSHAF_FRAME_BORDER = 1.6;
-const MUSHAF_INNER_PAD_H = 16;
-const MUSHAF_INNER_PAD_V = 24;
+const MUSHAF_INNER_PAD_H = 12;
+const MUSHAF_INNER_PAD_V = 16;
 const MUSHAF_INNER_BORDER = 0.8;
 /** Bounds the fitted script is allowed to land between. */
 const MUSHAF_MIN_SIZE = 9;
@@ -2749,9 +2749,16 @@ function MushafPage({ page, verses, width, height, preferences, rtl, T, bookmark
      rather than ending halfway down. */
   const probeLines = settledH ? Math.max(1, Math.round(settledH / (size * MUSHAF_LEAD))) : 0;
   const atBound = size >= MUSHAF_MAX_SIZE - 0.01 || size <= MUSHAF_MIN_SIZE + 0.01;
-  const lineHeight = atBound && probeLines
+  let lineHeight = atBound && probeLines
     ? Math.max(size * 1.25, Math.min(size * 2.4, budget / probeLines))
     : size * MUSHAF_LEAD;
+  /* However the solve ends, the text must not run past the room it has. If it
+     still would, the lines are drawn closer rather than the page losing its
+     foot. This is the backstop, not the mechanism. */
+  const room = Math.max(40, contentH - chromeH);
+  if (probeLines && probeLines * lineHeight > room) {
+    lineHeight = Math.max(size * 1.2, room / probeLines);
+  }
   /* Until the size has settled the page is measured, not shown, so the text is
      not seen jumping between sizes while it is being solved for. */
   const settled = pass >= 3 || (!!textH && Math.abs(budget / textH - 1) < 0.03);
@@ -2761,7 +2768,11 @@ function MushafPage({ page, verses, width, height, preferences, rtl, T, bookmark
   return <View style={[s.mushafPageOuter, { width, height }]}>
     <View style={s.mushafFrame}>
       <MushafCorners />
-      <View style={s.mushafFrameInner} onLayout={e => setTotalH(e.nativeEvent.layout.height)}>
+      <View style={s.mushafFrameInner}>
+        {/* Measured without the frame's padding, which the budget already
+            allows for — counting it twice here stole about fifty points and
+            the script paid for it. */}
+        <View onLayout={e => setTotalH(e.nativeEvent.layout.height)}>
         {segments.map((seg: any, idx: number) => seg.kind === 'surah' ? (
           <View key={`s${idx}`} style={s.mushafSurahBand}>
             <View style={s.mushafBandRule} />
@@ -2784,6 +2795,7 @@ function MushafPage({ page, verses, width, height, preferences, rtl, T, bookmark
         ))}
         <View style={s.mushafPageNoRow}>
           <View style={s.mushafPageNo}><Text style={s.mushafPageNoText}>{toArabicDigits(page)}</Text></View>
+        </View>
         </View>
       </View>
       {!!openVerse && <View style={s.mushafVerseMenuOverlay}>
@@ -7600,7 +7612,7 @@ mushafBandRule:{height:1,width:'62%',backgroundColor:C.gold,opacity:.5},
 mushafSurahName:{color:C.green,fontFamily:'Newsreader_700Bold',fontSize:18,textAlign:'center',paddingVertical:7,paddingHorizontal:14,letterSpacing:.3},
 mushafOrnamentRow:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:10,marginVertical:16},
 mushafOrnamentRule:{height:1,flex:1,maxWidth:96},
-mushafPageNoRow:{alignItems:'center',marginTop:'auto',paddingTop:8},
+mushafPageNoRow:{alignItems:'center',marginTop:10},
 mushafPageNo:{width:34,height:34,borderRadius:17,borderWidth:1.2,borderColor:C.gold,alignItems:'center',justifyContent:'center',backgroundColor:C.mint},
 mushafPageNoText:{color:C.green,fontFamily:'Newsreader_700Bold',fontSize:16},mushafAyah:{paddingVertical:12,borderBottomWidth:1,borderColor:'#E9E1D5'},mushafSurah:{textAlign:'center',color:C.green,fontFamily:'Newsreader_600SemiBold',fontSize:20,backgroundColor:C.mint,borderRadius:16,paddingVertical:8,marginBottom:12},verseMarker:{color:C.gold,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:17},mushafTranslation:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:12,lineHeight:18,marginTop:8},sectionMarker:{flexDirection:'row',alignItems:'center',gap:10,marginTop:18,marginBottom:6},sectionRule:{flex:1,height:1,backgroundColor:C.line},sectionMarkerText:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10,textTransform:'uppercase',letterSpacing:1},mushafPageLine:{color:C.ink,textAlign:'center',writingDirection:'rtl'},topicGrid:{flexDirection:'row',flexWrap:'wrap',gap:12},topicWrap:{width:'48%'},topicCard:{minHeight:190,backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},vocabStats:{backgroundColor:C.mint,borderRadius:20,padding:16,marginBottom:12,flexDirection:'row',justifyContent:'space-between',alignItems:'center'},flashcard:{minHeight:330,backgroundColor:C.white,borderRadius:28,padding:24,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,...shadow},flashIndex:{position:'absolute',top:18,right:18,color:C.muted,fontFamily:'DMSans_600SemiBold',fontSize:10},flashArabic:{color:C.ink,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:58,lineHeight:86,textAlign:'center'},flashTransliteration:{color:C.green,fontFamily:'Newsreader_600SemiBold',fontSize:28,marginTop:12},flashMeaning:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:18,marginVertical:8,textAlign:'center'},flashHint:{color:C.muted,fontFamily:'DMSans_600SemiBold',fontSize:11,marginTop:16},tajweedPractice:{backgroundColor:C.card,borderRadius:24,padding:20,marginTop:16,borderWidth:1,borderColor:C.line,...surface},tajweedRule:{minHeight:72,flexDirection:'row',alignItems:'center',gap:12,padding:12,borderBottomWidth:1,borderColor:C.line},tajweedSwatch:{width:18,height:44,borderRadius:9},compareCard:{backgroundColor:C.card,borderRadius:20,padding:16,marginBottom:12,borderWidth:1,borderColor:C.line,...surface},
   tcRefBar:{flexDirection:'row',alignItems:'center',gap:10,marginBottom:14},

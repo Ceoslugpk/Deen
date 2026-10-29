@@ -32,6 +32,18 @@ import { useWindowDimensions } from 'react-native';
  */
 export const PAGE_ASPECT = 0.7;
 
+/**
+ * How much taller than its true proportions a page is allowed to become.
+ *
+ * Held upright, a phone is far taller than a page is wide, so a page at its
+ * printed proportions uses the width and leaves a third of the height unused
+ * — and it is the script, not the page, that pays for the waste. A page may
+ * therefore be set taller than 0.70, down to this, when there is height going
+ * begging. It is never set shorter: on a wide screen the true proportions are
+ * kept exactly.
+ */
+export const MIN_PAGE_ASPECT = 0.6;
+
 /** Total pages in the Madinah Mushaf. */
 export const TOTAL_PAGES = 604;
 
@@ -161,14 +173,22 @@ export function computeMushafLayout(
  */
 function fit(count: number, availWidth: number, availHeight: number) {
   const gutter = count > 1 ? SPREAD_GUTTER * (count - 1) : 0;
-  const usableWidth = Math.max(0, availWidth - gutter);
+  const usableWidth = Math.max(0, availWidth - gutter) / count;
 
-  // A page is PAGE_ASPECT wide for every 1 tall.
-  const byWidth = usableWidth / (count * PAGE_ASPECT);
-  const byHeight = availHeight;
-  const height = Math.min(byWidth, byHeight);
+  // The height this page would have at its printed proportions.
+  const trueHeight = usableWidth / PAGE_ASPECT;
 
-  return { width: height * PAGE_ASPECT, height };
+  if (trueHeight > availHeight) {
+    // Not enough height for the true proportions: the page shrinks, keeping
+    // them. This is the landscape case, where a spread costs nothing.
+    return { width: availHeight * PAGE_ASPECT, height: availHeight };
+  }
+  // Height to spare: the page takes as much of it as it is allowed, so the
+  // script does not have to shrink into a shape the screen did not need.
+  return {
+    width: usableWidth,
+    height: Math.min(availHeight, usableWidth / MIN_PAGE_ASPECT),
+  };
 }
 
 /**
