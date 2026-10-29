@@ -79,6 +79,14 @@ import {
   saveMemSettings, splitWords, undoAttempt, unflagVerse, useMemorization, weakBank,
 } from './src/services/memorizationService';
 import type { Attempt, AttemptResult, MemorizationMode, VerseRecord } from './src/services/memorizationService';
+import {
+  BackupSummary, BACKUP_RELOCK_OPTIONS, clearLastRestore, createBackup, getLastRestore, loadBackupSettings, lockBackup, readBackupSummary,
+  removePassword, restoreBackup, saveRelock, setPassword as setBackupPassword, startBackupWatch, unlock,
+  useBackupSettings, useBackupUnlocked, useRestoreNonce,
+} from './src/services/backupService';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
+import * as DocumentPicker from 'expo-document-picker';
 import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 import * as Clipboard from 'expo-clipboard';
 import { getCacheUsage, getCachedJson, setCachedJson } from './src/services/contentCache';
@@ -5342,7 +5350,247 @@ function ReportsScreen({navigation}:any){
   </Page>;
 }
 
-function SettingsStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="Settings" component={SettingsScreen}/><Stack.Screen name="Data sources" component={DataSourcesScreen}/><Stack.Screen name="Reader Settings" component={ReaderSettingsScreen}/><Stack.Screen name="Privacy Lock" component={PrivacyLockScreen}/><Stack.Screen name="My Reports" component={ReportsScreen}/></Stack.Navigator>}
+/**
+ * Backup and restore.
+ *
+ * The screen says plainly what the encryption does and does not protect
+ * against, because a backup is exactly the thing people assume is safe and
+ * then share. It is safe to share — the file is sealed — but only for as long
+ * as the password is not written anywhere, and there is no way to recover it.
+ */
+function BackupScreen({ navigation }: any) {
+  const { rtl } = useLanguage(); const T = (text: string) => tx(rtl, text);
+  const backup = useBackupSettings();
+  const unlocked = useBackupUnlocked();
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [pending, setPending] = useState<{ text: string; summary: BackupSummary } | null>(null);
+  const [restorePassword, setRestorePassword] = useState('');
+  const [pasteOpen, setPasteOpen] = useState(false);
+  const [pasted, setPasted] = useState('');
+  /* A restore remounts this screen, so the confirmation is read back from the
+     service rather than held here. */
+  const done = getLastRestore();
+  useEffect(() => {
+    if (!done) return undefined;
+    const id = setTimeout(() => clearLastRestore(), 12000);
+    return () => clearTimeout(id);
+  }, [done]);
+
+  const run = async (label: string, work: () => Promise<void>) => {
+    setBusy(label); setError('');
+    try {
+      await work();
+    } catch (e: any) {
+      setError(T(e?.message || 'Something went wrong.'));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const onSetPassword = () => run(T('Setting the password…'), async () => {
+    if (password !== confirm) {
+      setError(T('Those two passwords do not match.'));
+      return;
+    }
+    await setBackupPassword(password);
+    setPassword(''); setConfirm('');
+    setNotice(T('Password set. Nothing can recover it — not this app, and not anyone else.'));
+  });
+
+  const onUnlock = () => run(T('Unlocking…'), async () => {
+    await unlock(password);
+    setPassword('');
+  });
+
+  const onChangePassword = () => run(T('Changing…'), async () => {
+    if (password !== confirm) {
+      setError(T('Those two passwords do not match.'));
+      return;
+    }
+    await setBackupPassword(password);
+    setPassword(''); setConfirm('');
+    setNotice(T('Password changed. Backups already made still open with the old one.'));
+  });
+
+  const fileStamp = () => new Date().toISOString().slice(0, 10);
+
+  const onCreate = () => run(T('Encrypting…'), async () => {
+    const made = await createBackup();
+    const name = `deen-backup-${fileStamp()}.deenbackup`;
+    const root = FileSystem.cacheDirectory || FileSystem.documentDirectory || '';
+    const uri = `${root}${name}`;
+    let saved = false;
+    try {
+      await FileSystem.writeAsStringAsync(uri, made.text);
+      saved = true;
+    } catch {
+      /* a device that will not take the file can still share the text */
+    }
+    let shared = false;
+    try {
+      if (saved && await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, { mimeType: 'application/json', dialogTitle: T('Save your Deen backup') });
+        shared = true;
+      }
+    } catch {
+      shared = false;
+    }
+    setNotice(shared
+      ? T(`Encrypted ${made.keys} records. Keep the file somewhere you will find it again.`)
+      : T(`Encrypted ${made.keys} records, but this device would not open a share sheet. The file is in the app's cache.`));
+  });
+
+  const accept = (text: string) => {
+    const summary = readBackupSummary(text);
+    if (!summary) {
+      setError(T('That file is not a Deen backup.'));
+      return;
+    }
+    setPending({ text, summary });
+    setError('');
+  };
+
+  const onPick = () => run(T('Opening…'), async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({ multiple: false, copyToCacheDirectory: true });
+      if (result.canceled || !result.assets?.length) return;
+      accept(await FileSystem.readAsStringAsync(result.assets[0].uri));
+    } catch {
+      setError(T('No file picker here — paste the backup instead.'));
+      setPasteOpen(true);
+    }
+  });
+
+  const onRestore = () => run(T('Restoring…'), async () => {
+    if (!pending) return;
+    await restoreBackup(pending.text, restorePassword);
+    setPending(null); setRestorePassword(''); setPasted(''); setPasteOpen(false);
+  });
+
+  const onRemove = () => run(T('Removing…'), async () => {
+    await removePassword();
+    setNotice(T('Password removed. Backups already made still open with it.'));
+  });
+
+  const secretField = (value: string, onChange: (next: string) => void, label: string) =>
+    <TextInput value={value} onChangeText={onChange} secureTextEntry autoCapitalize="none"
+      autoCorrect={false} placeholder={T(label)} placeholderTextColor={C.muted}
+      style={s.backupInput} accessibilityLabel={T(label)} />;
+
+  return <Page><ToolBar title={T('Backup')} navigation={navigation} />
+    <ScrollView contentContainerStyle={s.dataPage} keyboardShouldPersistTaps="handled">
+      <Text style={s.dataTitle}>{T('An encrypted copy of everything')}</Text>
+      <Text style={s.intro}>{T('Your worship, memorisation, notes, fasting and Qada are sealed with a password you choose. The password is never written down and cannot be recovered — not by this app, and not by anyone else.')}</Text>
+
+      <View style={s.backupHero}>
+        {ico(backup.passwordSet ? (unlocked ? 'lock-open-outline' : 'lock-closed-outline') : 'key-outline', 22, C.onAccent)}
+        <View style={{ flex: 1 }}>
+          <Text style={s.backupHeroTitle}>{backup.passwordSet
+            ? (unlocked ? T('Unlocked') : T('Locked'))
+            : T('No password yet')}</Text>
+          <Text style={s.backupHeroText}>{backup.passwordSet
+            ? (unlocked
+              ? T('This device can make and open backups until it locks again.')
+              : T('Enter the password to make or open a backup.'))
+            : T('Choose a password to begin.')}</Text>
+        </View>
+      </View>
+
+      {backup.lastBackupAt ? <Text style={[s.meta, { marginTop: 10 }]}>
+        {T(`Last backup ${new Date(backup.lastBackupAt).toLocaleDateString()}`)}</Text> : null}
+
+      {!!notice && <View style={[s.backupNotice, s.backupNoticeGood]}><Text style={s.backupNoticeGoodText}>{notice}</Text></View>}
+      {!!done && <View style={[s.backupNotice, s.backupNoticeGood]}>
+        <Text style={s.backupNoticeGoodText}>
+          {T(`Restored ${done.keys} records, from ${new Date(done.exportedAt).toLocaleDateString()}.`)}
+        </Text>
+      </View>}
+      {!!error && <View style={s.backupNotice}><Text style={s.backupNoticeText}>{error}</Text></View>}
+      {busy && <View style={s.backupBusy}><ActivityIndicator color={C.green} /><Text style={s.meta}>{busy}</Text></View>}
+
+      {!backup.passwordSet && <View style={s.formCard}>
+        <Text style={s.inputLabel}>{T('CHOOSE A PASSWORD')}</Text>
+        {secretField(password, setPassword, 'At least 8 characters')}
+        {secretField(confirm, setConfirm, 'The same password again')}
+        <Pressable onPress={() => { void onSetPassword(); }} style={s.primary}><Text style={s.primaryText}>{T('Set password')}</Text></Pressable>
+      </View>}
+
+      {backup.passwordSet && !unlocked && <View style={s.formCard}>
+        <Text style={s.inputLabel}>{T('YOUR PASSWORD')}</Text>
+        {secretField(password, setPassword, 'Password')}
+        <Pressable onPress={() => { void onUnlock(); }} style={s.primary}><Text style={s.primaryText}>{T('Unlock')}</Text></Pressable>
+      </View>}
+
+      {backup.passwordSet && unlocked && <>
+        <Section title={T('Make a backup')} />
+        <Pressable onPress={() => { void onCreate(); }} style={s.practiceLaunch}>
+          <View style={{ flex: 1 }}>
+            <Text style={s.settingName}>{T('Create and share a backup')}</Text>
+            <Text style={s.meta}>{T('Sealed here before it leaves the device, then handed to whatever you save it with.')}</Text>
+          </View>
+          {ico('cloud-upload-outline', 28, C.green)}
+        </Pressable>
+
+        <Section title={T('Restore')} />
+        {!pending && <>
+          <Pressable onPress={() => { void onPick(); }} style={s.practiceLaunch}>
+            <View style={{ flex: 1 }}>
+              <Text style={s.settingName}>{T('Choose a backup file')}</Text>
+              <Text style={s.meta}>{T('Everything on this device is replaced by what is in the file.')}</Text>
+            </View>
+            {ico('cloud-download-outline', 28, C.green)}
+          </Pressable>
+          <Pressable onPress={() => setPasteOpen((open) => !open)} style={s.backupLink}>
+            <Text style={s.backupLinkText}>{T('Or paste one instead')}</Text>
+          </Pressable>
+          {pasteOpen && <>
+            <TextInput value={pasted} onChangeText={setPasted} multiline
+              placeholder={T('Paste the whole backup file here')} placeholderTextColor={C.muted}
+              style={s.backupPaste} accessibilityLabel={T('Backup contents')} />
+            <Pressable onPress={() => accept(pasted)} style={s.secondary}><Text style={s.secondaryText}>{T('Use this backup')}</Text></Pressable>
+          </>}
+        </>}
+
+        {pending && <View style={s.formCard}>
+          <Text style={s.inputLabel}>{T('OPENING THIS BACKUP')}</Text>
+          <Text style={s.meta}>{T(`Made ${new Date(pending.summary.exportedAt).toLocaleDateString()}`)}</Text>
+          {secretField(restorePassword, setRestorePassword, 'The password for this backup')}
+          <View style={s.backupActions}>
+            <Pressable onPress={() => { void onRestore(); }} style={s.primary}><Text style={s.primaryText}>{T('Restore and replace')}</Text></Pressable>
+            <Pressable onPress={() => { setPending(null); setRestorePassword(''); }} style={s.secondary}><Text style={s.secondaryText}>{T('Cancel')}</Text></Pressable>
+          </View>
+        </View>}
+
+        <Section title={T('Password')} />
+        <View style={s.formCard}>
+          <Text style={s.inputLabel}>{T('ASK AGAIN')}</Text>
+          <View style={s.choiceGrid}>{BACKUP_RELOCK_OPTIONS.map((option) =>
+            <ChoicePill key={option.minutes} label={T(option.label)}
+              selected={backup.relockMinutes === option.minutes}
+              onPress={() => { void saveRelock(option.minutes); }} />)}</View>
+          <Text style={s.inputLabel}>{T('NEW PASSWORD')}</Text>
+          {secretField(password, setPassword, 'New password')}
+          {secretField(confirm, setConfirm, 'The same password again')}
+          <Pressable onPress={() => { void onChangePassword(); }} style={s.secondary}><Text style={s.secondaryText}>{T('Change password')}</Text></Pressable>
+          <Pressable onPress={() => { void onRemove(); }} style={s.dangerButton}><Text style={s.dangerText}>{T('Remove the password')}</Text></Pressable>
+          <Pressable onPress={() => lockBackup()} style={s.secondary}><Text style={s.secondaryText}>{T('Lock now')}</Text></Pressable>
+        </View>
+      </>}
+
+      <Section title={T('What travels, and what does not')} />
+      <View style={s.preferencePanel}>
+        <Text style={s.meta}>{T('Included: prayer and fasting records, Qada, Zakat, memorisation, Quran bookmarks and notes, journeys, dhikr counts, and your settings — including this device’s cycle records, if you keep them.')}</Text>
+        <Text style={[s.meta, { marginTop: 8 }]}>{T('Left out: downloaded recitation audio, which lives as files on this device and can be downloaded again, and the backup password itself.')}</Text>
+      </View>
+    </ScrollView>
+  </Page>;
+}
+
+function SettingsStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="Settings" component={SettingsScreen}/><Stack.Screen name="Data sources" component={DataSourcesScreen}/><Stack.Screen name="Reader Settings" component={ReaderSettingsScreen}/><Stack.Screen name="Privacy Lock" component={PrivacyLockScreen}/><Stack.Screen name="My Reports" component={ReportsScreen}/><Stack.Screen name="Backup" component={BackupScreen}/></Stack.Navigator>}
 
 /**
  * The header of a settings card: a tile, a name, and what the choice does.
@@ -5492,6 +5740,14 @@ function SettingsScreen({navigation}:any){
           </View>
           {ico(rtl ? 'arrow-back' : 'arrow-forward', 17, C.chevron)}
         </Pressable>}
+        <Pressable accessibilityRole="button" accessibilityLabel={T('Backup')} onPress={() => navigation.navigate('Backup')} style={s.setting}>
+          <ToolGraphic tool="Backup" size={44} />
+          <View style={{ flex: 1, marginHorizontal: 12 }}>
+            <Text style={s.settingName}>{rtl ? 'النسخة الاحتياطية' : 'Backup'}</Text>
+            <Text style={s.meta}>{rtl ? 'نسخة مشفرة بكلمة سر تختارها' : 'An encrypted copy, sealed with a password you choose'}</Text>
+          </View>
+          {ico(rtl ? 'arrow-back' : 'arrow-forward', 17, C.chevron)}
+        </Pressable>
       </View>
 
       <Section title={rtl ? 'عن التطبيق' : 'About'} />
@@ -6722,7 +6978,26 @@ function AppShell() {
   </View>;
 }
 
-export default function App(){const[fontsLoaded]=useFonts({DMSans_400Regular,DMSans_600SemiBold,DMSans_700Bold,Newsreader_600SemiBold,NotoNaskhArabic_400Regular,NotoNaskhArabic_600SemiBold,Amiri_400Regular,KFGQPCUthmanicHafs,IBMPlexSansArabic_400Regular,IBMPlexSansArabic_600SemiBold});useEffect(()=>{if(fontsLoaded){void loadOfflineSetup();void resumeSavedOfflineSetup();resumeSavedQuranPreload();void loadAudioSettings().then(() => restoreSavedSession());void loadHadithState();void loadTasbihState();void loadDownloads();void loadActivity();void loadFastingState();void loadJourneys();void loadWomensState();void loadZakatState();void loadLockConfig();void refreshMarket();startLockWatch()}},[fontsLoaded]);if(!fontsLoaded)return <SafeAreaView style={s.safe}><Spinner/></SafeAreaView>;return <ThemeProvider><LanguageProvider><QuranPreferencesProvider><WorshipSettingsProvider><LocationProvider><AppShell/></LocationProvider></WorshipSettingsProvider></QuranPreferencesProvider></LanguageProvider></ThemeProvider>}
+/**
+ * Re-reads everything a restore may have replaced.
+ *
+ * Most services keep their state in a module variable set once at startup.
+ * Writing new values into storage does not move those variables, so without
+ * this the app would carry on showing the old data until it was restarted —
+ * a restore that appears to do nothing is worse than one that refuses.
+ */
+async function reloadAllState() {
+  await Promise.all([
+    loadOfflineSetup(), loadAudioSettings(), loadHadithState(), loadTasbihState(),
+    loadDownloads(), loadActivity(), loadFastingState(), loadJourneys(),
+    loadWomensState(), loadZakatState(), loadLockConfig(), loadMemorization(),
+    loadReports(),
+  ]).catch(() => undefined);
+}
+
+export default function App(){const[fontsLoaded]=useFonts({DMSans_400Regular,DMSans_600SemiBold,DMSans_700Bold,Newsreader_600SemiBold,NotoNaskhArabic_400Regular,NotoNaskhArabic_600SemiBold,Amiri_400Regular,KFGQPCUthmanicHafs,IBMPlexSansArabic_400Regular,IBMPlexSansArabic_600SemiBold});const restoreTick=useRestoreNonce();
+useEffect(()=>{if(restoreTick>0){void reloadAllState()}},[restoreTick]);
+useEffect(()=>{if(fontsLoaded){void loadOfflineSetup();void resumeSavedOfflineSetup();resumeSavedQuranPreload();void loadAudioSettings().then(() => restoreSavedSession());void loadHadithState();void loadTasbihState();void loadDownloads();void loadActivity();void loadFastingState();void loadJourneys();void loadWomensState();void loadZakatState();void loadLockConfig();void loadBackupSettings();void refreshMarket();startLockWatch();startBackupWatch()}},[fontsLoaded]);if(!fontsLoaded)return <SafeAreaView style={s.safe}><Spinner/></SafeAreaView>;return <ThemeProvider key={restoreTick}><LanguageProvider><QuranPreferencesProvider><WorshipSettingsProvider><LocationProvider><AppShell/></LocationProvider></WorshipSettingsProvider></QuranPreferencesProvider></LanguageProvider></ThemeProvider>}
 
 let s: Record<string, any> = makeStyles();
 
@@ -7182,6 +7457,19 @@ memStepValue:{color:C.ink,fontSize:17,fontFamily:'DMSans_700Bold',minWidth:26,te
 memChip:{backgroundColor:C.mint,borderRadius:12,paddingHorizontal:10,paddingVertical:6,borderWidth:1,borderColor:C.line},
 memChipText:{color:C.green,fontSize:10,fontFamily:'DMSans_600SemiBold'},
 memChipWrap:{flexDirection:'row',flexWrap:'wrap',gap:8,marginTop:10},
-memSpacer:{width:1,height:1}});
+memSpacer:{width:1,height:1},
+backupHero:{backgroundColor:C.deep,borderRadius:24,padding:18,flexDirection:'row',alignItems:'center',gap:14,...shadow},
+backupHeroTitle:{color:C.onAccent,fontSize:15,fontFamily:'DMSans_700Bold'},
+backupHeroText:{color:'#C7C2E4',fontSize:11,lineHeight:16,marginTop:3},
+backupNotice:{backgroundColor:'#FDECEA',borderRadius:16,padding:14,marginTop:12,borderWidth:1,borderColor:'#F3C9C4'},
+backupNoticeText:{color:'#8C2F21',fontSize:12,lineHeight:17},
+backupNoticeGood:{backgroundColor:C.mint,borderColor:'#CFC7EE'},
+backupNoticeGoodText:{color:C.green,fontSize:12,lineHeight:17},
+backupBusy:{flexDirection:'row',alignItems:'center',gap:10,marginTop:14},
+backupInput:{backgroundColor:C.bg,borderWidth:1,borderColor:C.line,borderRadius:16,padding:14,fontSize:14,color:C.ink,marginTop:8,outlineStyle:'none'} as any,
+backupPaste:{backgroundColor:C.bg,borderWidth:1,borderColor:C.line,borderRadius:16,padding:14,fontSize:11,color:C.ink,minHeight:120,textAlignVertical:'top',marginTop:8,outlineStyle:'none'} as any,
+backupLink:{alignSelf:'flex-start',paddingVertical:10},
+backupLinkText:{color:C.green,fontSize:11,fontFamily:'DMSans_600SemiBold'},
+backupActions:{flexDirection:'row',flexWrap:'wrap',alignItems:'center',gap:8,marginTop:12}});
   return themeDark ? remapStyles(created) : created;
 }
