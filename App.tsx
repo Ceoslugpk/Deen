@@ -67,7 +67,7 @@ import {
 import { addNotificationResponseReceivedListener, type NotificationResponse } from 'expo-notifications';
 import { getBatteryOptimizationState, requestBatteryExemption, type BatteryState } from './src/services/batteryOptimization';
 import { copyFeedback, issueLabel, loadReports, markReportSent } from './src/services/reportService';
-import { useMushafLayout, computeMushafLayout, spreadFor, stepSpread, SPREAD_GUTTER, SPREAD_MODES, spreadModeLabel, spreadModeNote, MIN_SPREAD_WIDTH } from './src/services/mushafLayout';
+import { computeMushafLayout, spreadFor, stepSpread, SPREAD_GUTTER, SPREAD_MODES, spreadModeLabel, spreadModeNote, MIN_SPREAD_WIDTH } from './src/services/mushafLayout';
 import { markerBetween, MARKER_KINDS, MARKER_LABELS, MARKER_NOTE, type MushafMarker, type MarkerKind, type PageConnection } from './src/services/mushafMarkers';
 import { localizeGuide, WORSHIP_GUIDES, WorshipGuide } from './src/content/worshipGuides';
 import { GUIDE_HADITH, GUIDE_VERSES } from './src/content/guideSources';
@@ -199,6 +199,13 @@ const MINI_PLAYER_TOP = MINI_PLAYER_BOTTOM + MINI_PLAYER_H;
 /** Extra room a screen needs once the mini-player appears, given it already
     reserves BOTTOM_RESERVE. Keeps the shortest container clear of the player. */
 const MINI_PLAYER_INSET = MINI_PLAYER_H + 20;
+/**
+ * How much horizontal room the reader's scroll area actually hands its
+ * content. It caps its width and pads what is left, so anything sized to the
+ * raw screen width comes out wider than the box it sits in.
+ */
+const READER_MAX_WIDTH = 860;
+const READER_PAD = 16;
 
 let C: Record<string, string> = { ...C_LIGHT };
 /** True while the dark palette is the one in use. */
@@ -2644,7 +2651,7 @@ function MushafConnectionNote({ kind, rtl, T, page, cut, nextVerse }: {
  * One page, drawn at a given size.
  *
  * The size is passed in rather than measured, because how big a page should be
- * is decided once for the whole opening by `useMushafLayout`, and every page
+ * is decided once for the whole opening by `computeMushafLayout`, and every page
  * in the opening is then the same size. Letting each page decide for itself
  * would let the two halves of a spread drift apart.
  */
@@ -2746,9 +2753,18 @@ function useMushafNeighbours(page: number, showSpread: boolean, opening: { right
 }
 
 function MushafPageView({page,verses,error,cached,retry,preferences,rtl,T,input,setInput,goPage,navigation,arStyle,bookmarks,savedPosition,onBookmark,onMark,onPlay,onNote}:any){
-  /* How many pages, and how big. Measured from the screen, so turning the
-     device sideways or opening a foldable re-decides this on its own. */
-  const layout = useMushafLayout(preferences.spreadMode || 'auto');
+  /* How many pages, and how big — fitted to the room it is actually given
+     rather than to the screen. The reader pads its scroll area and caps its
+     width, so a page sized to the screen is always wider than the box it has
+     to sit in and gets clipped at both edges. That is worst on a phone held
+     upright, where the page is already as wide as the screen allows and what
+     the clipping cuts off is the decorated frame. Measured rather than
+     assumed, so turning the device or opening a foldable re-decides it. */
+  const {width:screenW,height:screenH}=useWindowDimensions();
+  const [boxW,setBoxW]=useState(0);
+  const availW=boxW||Math.max(200,Math.min(screenW,READER_MAX_WIDTH)-READER_PAD*2);
+  const availH=Math.max(200,screenH-(screenW>screenH?96:190));
+  const layout=useMemo(()=>computeMushafLayout(availW,screenH,availH,preferences.spreadMode||'auto'),[availW,screenH,availH,preferences.spreadMode]);
   const opening = spreadFor(page);
   const showSpread = layout.columns === 2 && opening.left !== null;
 
@@ -2806,7 +2822,7 @@ function MushafPageView({page,verses,error,cached,retry,preferences,rtl,T,input,
   const canPrev = showSpread ? opening.right > 1 : page > 1;
   const canNext = showSpread ? opening.right + 2 <= 604 : page < 604;
 
-  return <>
+  return <View style={{width:'100%'}} onLayout={e=>{const w=e.nativeEvent.layout.width;if(w&&Math.abs(w-boxW)>.5)setBoxW(w);}}>
   <View style={s.mushafNav}>
     <Pressable accessibilityLabel={T('Previous Mushaf page')} disabled={!canPrev} onPress={() => step(-1)} style={[s.stepButton, !canPrev && { opacity: .3 }]}>{ico('arrow-back', 20, C.green)}</Pressable>
     <View style={s.pageJump}>
@@ -2848,7 +2864,7 @@ function MushafPageView({page,verses,error,cached,retry,preferences,rtl,T,input,
     </Text>
     <Pressable onPress={() => step(1)} disabled={!canNext} style={s.secondary}><Text style={s.secondaryText}>{T('Next')}</Text></Pressable>
   </View>
-  </>;
+  </View>;
 }
 
 function TranslationScreen({navigation}:any){const{preferences,update}=useQuranPreferences();const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);const[editions,setEditions]=useState<QuranEdition[]>([]);const[query,setQuery]=useState('');const[language,setLanguage]=useState('en');const[error,setError]=useState('');useEffect(()=>{getQuranEditions().then(setEditions).catch(e=>setError(T(e.message)))},[]);const languages=[['en','English'],['ur','Urdu'],['fr','French'],['tr','Turkish'],['id','Indonesian'],['ru','Russian'],['zh','Chinese']];const shown=editions.filter(e=>e.language===language&&`${e.englishName} ${e.name}`.toLowerCase().includes(query.toLowerCase()));return <Page><ToolBar title={T('Translation')} navigation={navigation}/><ScrollView contentContainerStyle={s.dataPage}><ToolGraphic tool="Translations" size={76}/><Text style={s.dataTitle}>{T('Choose a translation')}</Text><Text style={s.intro}>{T('Translations explain meaning and do not replace the Arabic Quran. Edition attribution remains visible in the reader.')}</Text><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap: 8}}>{languages.map(([code,name])=><ChoicePill key={code} label={name} selected={language===code} onPress={()=>setLanguage(code)}/>)}</ScrollView><View style={[s.search,{marginTop: 12}]}>{ico('search-outline',18,C.muted)}<TextInput value={query} onChangeText={setQuery} placeholder={T('Search translator or edition')} style={s.searchInput}/></View>{error?<ErrorState message={error}/>:!editions.length?<Spinner/>:<View style={s.settings}>{shown.map(e=><Pressable key={e.identifier} onPress={async()=>{await update({translationEdition:e.identifier,translationName:e.englishName,translationLanguage:languages.find(x=>x[0]===e.language)?.[1]||e.language});navigation.goBack()}} style={s.translationRow}><View style={s.languageBadge}><Flag code={e.language} size={13} /><Text style={s.languageBadgeText}>{e.language.toUpperCase()}</Text></View><View style={{flex:1}}><Text style={s.settingName}>{e.englishName}</Text><Text style={s.meta}>{e.name} · {e.identifier}</Text></View>{ico(preferences.translationEdition===e.identifier?'checkmark-circle':'ellipse-outline',20,preferences.translationEdition===e.identifier?C.green:C.muted)}</Pressable>)}</View>}</ScrollView></Page>}
@@ -2874,7 +2890,7 @@ function needsPayload(Inner: any, title: string) {
 
 function NoteEditorScreen({route,navigation}:any){const verse:Verse=route.params.verse;const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);const chapter:Chapter=route.params.chapter;const[text,setText]=useState(route.params.verse.note||'');const save=async()=>{if(!text.trim()){if(route.params.verse.note){await deleteNote(verse.verse_key)}navigation.goBack();return}await saveNote({verseKey:verse.verse_key,surahId:chapter.id,surahName:chapter.name_simple,arabic:verse.text_uthmani,translation:verse.translation,note:text.trim(),savedAt:route.params.verse.savedAt||Date.now(),updatedAt:Date.now()});navigation.goBack()};return <Page><ToolBar title={`Note · ${verse.verse_key}`} navigation={navigation}/><View style={s.dataPage}><Text style={s.dataArabic}>{verse.text_uthmani}</Text><TextInput multiline autoFocus value={text} onChangeText={setText} placeholder={T('Write a private reflection…')} style={s.noteInput}/><View style={s.actionRow}><Pressable onPress={save} style={s.primary}><Text style={s.primaryText}>{T('Save note')}</Text></Pressable>{route.params.verse.note&&<Pressable onPress={async()=>{await deleteNote(verse.verse_key);navigation.goBack()}} style={s.dangerButton}><Text style={s.dangerText}>{T('Delete')}</Text></Pressable>}</View></View></Page>}
 
-function ReaderSettingsScreen({navigation}:any){const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);const{preferences,update}=useQuranPreferences();const{width:screenW,height:screenH}=useWindowDimensions();const canSpreadNow=computeMushafLayout(screenW,screenH,Math.max(200,screenH-(screenW>screenH?96:190)),'auto').canSpread;const scripts=[['quran-uthmani','Uthmani'],['quran-simple','Imla’i Simple'],['quran-indopak','IndoPak'],['quran-tajweed','Tajweed colour'],['quran-mushaf','Mushaf page']];
+function ReaderSettingsScreen({navigation}:any){const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);const{preferences,update}=useQuranPreferences();const{width:screenW,height:screenH}=useWindowDimensions();const canSpreadNow=computeMushafLayout(Math.max(200,Math.min(screenW,READER_MAX_WIDTH)-READER_PAD*2),screenH,Math.max(200,screenH-(screenW>screenH?96:190)),'auto').canSpread;const scripts=[['quran-uthmani','Uthmani'],['quran-simple','Imla’i Simple'],['quran-indopak','IndoPak'],['quran-tajweed','Tajweed colour'],['quran-mushaf','Mushaf page']];
   /* Every control below is a setting of the same two lines of text, so the two
      lines sit at the top and change as the controls change. Reading about a
      type size is slower than seeing it. */
