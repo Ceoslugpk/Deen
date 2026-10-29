@@ -28,6 +28,16 @@ export type WorshipSettings = {
   /** One hadith each morning. */
   dailyHadithReminder?: boolean;
   dailyHadithTime?: string;
+  /**
+   * A reminder to read Surah Al-Mulk before sleeping.
+   *
+   * Off until a time has been chosen, because a reminder set to an hour the
+   * person never picked is a guess, and a guess that wakes them at the wrong
+   * time is worse than no reminder at all.
+   */
+  sleepReminderEnabled?: boolean;
+  /** Kept as "HH:MM" in the person's own local time. */
+  sleepReminderTime?: string;
   /** Buzz on every press. Off means silent everywhere, not per-screen. */
   hapticsEnabled: boolean;
 };
@@ -51,6 +61,8 @@ export const DEFAULT_WORSHIP_SETTINGS: WorshipSettings = {
   dailyVerseTime: '08:00',
   dailyHadithReminder: false,
   dailyHadithTime: '09:00',
+  sleepReminderEnabled: false,
+  sleepReminderTime: '22:30',
   hapticsEnabled: true,
 };
 

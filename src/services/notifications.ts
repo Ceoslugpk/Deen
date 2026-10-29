@@ -70,6 +70,9 @@ const COPY = {
     hadithTitle: 'Hadith of the day',
     preAdhan: (name: string, mins: string) => `${name} in ${mins}`,
     preAdhanBody: (name: string, at: string) => `${name} begins at ${at}.`,
+    sleepTitle: 'Surah Al-Mulk before you sleep',
+    sleepBody: 'Thirty verses that intercede for the one who recites them. It takes about five minutes.',
+    sleepAction: 'Read it now',
   },
   ar: {
     channelReminder: 'تذكيرات الصلاة',
@@ -90,10 +93,36 @@ const COPY = {
     hadithTitle: 'حديث اليوم',
     preAdhan: (name: string, mins: string) => `${name} بعد ${mins}`,
     preAdhanBody: (name: string, at: string) => `يبدأ ${name} في ${at}.`,
+    sleepTitle: 'سورة الملك قبل النوم',
+    sleepBody: 'ثلاثون آية تشفع لصاحبها حتى يُغفر له. تستغرق نحو خمس دقائق.',
+    sleepAction: 'اقرأها الآن',
   },
 };
 
 const copy = (rtl: boolean) => (rtl ? COPY.ar : COPY.en);
+
+/**
+ * Surah Al-Mulk, and why it is the one this reminder is about.
+ *
+ * Jami` at-Tirmidhi 2891 (hasan): "Indeed there is a Surah in the Qur'an of
+ * thirty Ayat, which intercedes for a man until he is forgiven. It is [Surah]
+ * Tabarak Alladhi Biyadihil-Mulk."
+ *
+ * The nightly practice itself comes from the next hadith, Tirmidhi 2892: the
+ * Prophet (peace be upon him) would not sleep until he had recited As-Sajdah
+ * and Al-Mulk. Both are quoted in the app so the reminder rests on what the
+ * texts actually say rather than on a habit nobody can source.
+ */
+export const SLEEP_SURAH = {
+  chapterId: 67,
+  name: 'Al-Mulk',
+  nameAr: 'الملك',
+  verses: 30,
+  hadith: 'Jami` at-Tirmidhi 2891 · hasan',
+  hadithAr: 'جامع الترمذي ٢٨٩١ · حسن',
+  practice: 'Jami` at-Tirmidhi 2892',
+  practiceAr: 'جامع الترمذي ٢٨٩٢',
+};
 
 /** Minutes, with the Arabic noun agreeing with the number in front of it. */
 function minutesWord(rtl: boolean, n: number) {
@@ -304,6 +333,28 @@ export async function schedulePrayerNotifications(
   if (settings.dailyHadithReminder) {
     await daily(true, settings.dailyHadithTime || '09:00', 'daily-hadith', c.hadithTitle, 'Home');
     scheduled++;
+  }
+
+  /* ---- 5. Surah Al-Mulk before sleeping --------------------------------
+     Scheduled on its own rather than folded into the morning reminders,
+     because it is the one reminder tied to a time of day the person chose
+     themselves and may well change. */
+  if (settings.sleepReminderEnabled) {
+    const at = atTime(settings.sleepReminderTime || '22:30');
+    if (at) {
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: c.sleepTitle,
+          body: c.sleepBody,
+          sound: 'default',
+          // Opens straight into the surah, so the reminder and the reading
+          // are one motion rather than two.
+          data: { route: 'Quran', kind: 'sleep', surah: SLEEP_SURAH.chapterId },
+        },
+        trigger: dailyTrigger(at.getHours(), at.getMinutes(), 'daily'),
+      });
+      scheduled++;
+    }
   }
 
   // The older Quran reminder, kept for anyone who set it before the above existed.
