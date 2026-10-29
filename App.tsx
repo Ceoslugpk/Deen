@@ -2111,17 +2111,6 @@ function toArabicDigits(value: number | string): string {
   return String(value).replace(/[0-9]/g, (d) => east[Number(d)]);
 }
 
-function MushafOrnament({ color = C.gold }: { color?: string }) {
-  return <View style={s.mushafOrnamentRow}>
-    <View style={[s.mushafOrnamentRule, { backgroundColor: color, opacity: .45 }]} />
-    <Svg width={30} height={12} viewBox="0 0 30 12">
-      <Path d="M15 0 L23 6 L15 12 L7 6 Z" fill={color} opacity={.9} />
-      <Circle cx="2.5" cy="6" r="1.7" fill={color} opacity={.7} />
-      <Circle cx="27.5" cy="6" r="1.7" fill={color} opacity={.7} />
-    </Svg>
-    <View style={[s.mushafOrnamentRule, { backgroundColor: color, opacity: .45 }]} />
-  </View>;
-}
 
 /** The four corner medallions, drawn rather than imported so they match exactly. */
 function MushafCorners({ color = C.gold }: { color?: string }) {
