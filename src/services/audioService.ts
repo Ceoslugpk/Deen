@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AudioPlayer, createAudioPlayer, setAudioModeAsync } from 'expo-audio';
-import { AudioEdition, getAudioEditions, getSurahAudio, getSurahReciters, SurahAudioAyah, SurahReciter } from './api';
+import { AudioEdition, getAudioEditions, getChapters, getSurahAudio, getSurahReciters, SurahAudioAyah, SurahReciter } from './api';
 import { getCachedJson, setCachedJson } from './contentCache';
 import { localAudioUri } from './downloadService';
 
@@ -17,7 +17,38 @@ import { localAudioUri } from './downloadService';
  */
 
 export type AudioTrackKind = 'arabic' | 'translation';
-export type RepeatMode = 'none' | 'one' | 'all';
+/**
+ * What plays again, and how many times.
+ *
+ * 'one' repeats the single ayah under the finger. 'range' repeats a stretch —
+ * a passage being committed to memory. 'all' repeats the surah. 'none' plays
+ * straight through and stops.
+ *
+ * The distinction that matters is between a range and a surah: somebody
+ * learning a passage does not want the whole surah, and making them sit
+ * through it to get back to their ten verses is what sends them elsewhere.
+ */
+export type RepeatMode = 'none' | 'one' | 'range' | 'all';
+
+/**
+ * Zero means without end.
+ *
+ * Repeat-forever is the right default for memorisation — you stop when you
+ * know it, not when a counter runs out — but some people want the passage
+ * three times and then to move on, so the count is theirs to set.
+ */
+export const REPEAT_FOREVER = 0;
+
+export const REPEAT_COUNT_CHOICES = [0, 2, 3, 5, 10];
+
+/** Slowest and fastest the recitation can be played. */
+export const MIN_RATE = 0.5;
+export const MAX_RATE = 2;
+/**
+ * The steps offered between the two.
+ * Fine enough to find a comfortable pace, coarse enough to hit one by finger.
+ */
+export const RATE_STEPS = [0.5, 0.6, 0.7, 0.75, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2];
 
 export type AudioTrack = {
   id: string;
@@ -46,6 +77,29 @@ export type AudioSettings = {
   sequential: boolean;
   repeat: RepeatMode;
   rate: number;
+  /* ---- repetition ---- */
+  /** How many times the repeated unit plays. Zero is without end. */
+  repeatCount: number;
+  /** The stretch repeated in 'range' mode, as ayah numbers, both ends included. */
+  repeatRangeStart: number;
+  repeatRangeEnd: number;
+  /** Carry on into the next surah when this one ends, rather than stopping. */
+  autoNextSurah: boolean;
+  /* ---- volume ---- */
+  /**
+   * Separate levels for the recitation and for the translation.
+   *
+   * They are not listened to the same way. The Arabic is the thing being
+   * recited and is usually wanted forward; the translation is there to be
+   * understood and is often wanted quieter underneath. One volume for both
+   * means either straining to hear the meaning or having it fight the
+   * recitation.
+   */
+  arabicVolume: number;
+  translationVolume: number;
+  /* ---- interruptions ---- */
+  /** Offer to pick up where a session was left when the app next opens. */
+  resumeOnStart: boolean;
 };
 
 export type AudioState = {
@@ -102,6 +156,13 @@ export const DEFAULT_AUDIO_SETTINGS: AudioSettings = {
   sequential: true,
   repeat: 'all',
   rate: 1,
+  repeatCount: REPEAT_FOREVER,
+  repeatRangeStart: 1,
+  repeatRangeEnd: 7,
+  autoNextSurah: false,
+  arabicVolume: 1,
+  translationVolume: 0.85,
+  resumeOnStart: true,
 };
 
 const KEYS = {
@@ -303,28 +364,59 @@ async function ensurePlayer(): Promise<AudioPlayer> {
   if (player) return player;
   if (Platform.OS !== 'web') {
     try {
-      await setAudioModeAsync({ playsInSilentMode: true, shouldRouteThroughEarpiece: false });
+      /* Three separate things, and all three are needed.
+         `playsInSilentMode` so a recitation is not swallowed by the ringer
+         switch. `shouldPlayInBackground` so locking the phone, or leaving for
+         another app, does not cut the recitation off — a surah is long enough
+         that nobody holds the app open for all of it. And
+         `keepAudioSessionActive` so the session is not torn down the moment
+         playback pauses, which is what otherwise makes resuming stutter.
+         `doNotMix` asks that other audio yield, so a notification does not
+         talk over the Quran. */
+      await setAudioModeAsync({
+        playsInSilentMode: true,
+        shouldRouteThroughEarpiece: false,
+        shouldPlayInBackground: true,
+        interruptionMode: 'doNotMix',
+      });
     } catch {
-      /* audio mode is best-effort on device */
+      /* audio mode is best-effort on device, and some browsers reject it */
     }
   }
-  player = createAudioPlayer(null, { updateInterval: 500 });
-  player.addListener('playbackStatusUpdate', (status) => {
+  /* `keepAudioSessionActive` belongs to the player, not the audio mode: it
+     keeps the session alive across a pause so that resuming does not have to
+     re-establish it, which is what makes a resume stutter or start late. */
+  player = createAudioPlayer(null, { updateInterval: 500, keepAudioSessionActive: true });
+  player.addListener('playbackStatusUpdate', async (status) => {
     const track = state.track;
     if (status.didJustFinish && track) {
-      const isLast = state.index >= state.queue.length - 1;
-      if (state.repeat === 'one') {
-        player?.seekTo(0);
-        player?.play();
+      const plan = nextIndexAfterFinish(state.queue, state.index, settings, timesPlayed);
+      if (plan.advanceCount) timesPlayed += 1;
+
+      if (plan.next !== null) {
+        await goToIndex(plan.next, true);
         return;
       }
-      if (isLast && state.repeat === 'none') {
-        emit({ playing: false, position: 0 });
+
+      /* Nothing left in this surah. Either carry on into the next one, or
+         stop honestly rather than looping on silence. */
+      resetRepeatProgress();
+      if (settings.autoNextSurah && track.chapterId < 114) {
+        void playChapter(track.chapterId + 1, true);
         return;
       }
-      goToIndex((state.index + 1) % Math.max(1, state.queue.length), true);
+      emit({ playing: false, position: 0 });
       return;
     }
+    /* Something else took the audio away. Give it a moment to give it back,
+       then carry on — up to a few tries, so a Bluetooth headset dropping out
+       does not leave a recitation stalled for the rest of the surah. */
+    if (intendedPlaying && !status.playing && !status.didJustFinish) {
+      if (!status.isBuffering) scheduleResume();
+    } else if (status.playing) {
+      clearResume();
+    }
+
     emit({
       playing: status.playing,
       position: status.currentTime,
@@ -343,6 +435,114 @@ async function ensurePlayer(): Promise<AudioPlayer> {
   return player;
 }
 
+/**
+ * Where to go when the current track finishes.
+ *
+ * Kept as a pure function of the queue and the settings rather than folded
+ * into the status listener, because the rules are what people get wrong —
+ * off-by-one on a repeat count, or a range that silently excludes its last
+ * verse — and a pure function can be reasoned about and tested on its own.
+ *
+ * Returns the index to move to, or null to stop.
+ */
+export function nextIndexAfterFinish(
+  queue: AudioTrack[],
+  index: number,
+  settings: AudioSettings,
+  timesPlayed: number,
+): { next: number | null; advanceCount: boolean; completed: boolean } {
+  if (!queue.length) return { next: null, advanceCount: false, completed: true };
+  const last = queue.length - 1;
+  const endless = (settings.repeatCount ?? REPEAT_FOREVER) === REPEAT_FOREVER;
+  const done = endless ? false : timesPlayed + 1 >= (settings.repeatCount ?? 1);
+
+  /* One ayah, over and over. */
+  if (settings.repeat === 'one') {
+    if (!done) return { next: index, advanceCount: true, completed: false };
+    return { next: index >= last ? null : index + 1, advanceCount: false, completed: index >= last };
+  }
+
+  /* A stretch of ayahs, over and over. Both ends included, because somebody
+     who asks for verses 1 to 7 means seven verses, not six. */
+  if (settings.repeat === 'range') {
+    const start = Math.max(1, Math.min(settings.repeatRangeStart, settings.repeatRangeEnd));
+    const end = Math.max(settings.repeatRangeStart, settings.repeatRangeEnd);
+    const inside = queue
+      .map((track, position) => ({ track, position }))
+      .filter(({ track }) => track.ayahNumber >= start && track.ayahNumber <= end)
+      .map(({ position }) => position);
+
+    if (inside.length) {
+      const at = inside.indexOf(index);
+      if (at > -1) {
+        if (at < inside.length - 1) return { next: inside[at + 1], advanceCount: false, completed: false };
+        // End of the stretch: go round again, or step out of it.
+        if (!done) return { next: inside[0], advanceCount: true, completed: false };
+        const after = inside[inside.length - 1] + 1;
+        return { next: after > last ? null : after, advanceCount: false, completed: after > last };
+      }
+    }
+    /* Not currently inside the stretch — fall through and play normally. */
+  }
+
+  /* The whole surah. */
+  if (settings.repeat === 'all' && index >= last) {
+    if (!done) return { next: 0, advanceCount: true, completed: false };
+    return { next: null, advanceCount: false, completed: true };
+  }
+
+  if (index >= last) return { next: null, advanceCount: false, completed: true };
+  return { next: index + 1, advanceCount: false, completed: false };
+}
+
+/** How many times the current repeat unit has played, kept across tracks. */
+let timesPlayed = 0;
+
+/**
+ * Whether we meant to be playing.
+ *
+ * expo-audio tells us the player has stopped but not why, and there is no
+ * interruption event to listen for. So the difference between "the person
+ * pressed pause" and "a phone call took the audio away" is tracked here: if we
+ * intended to be playing and the player reports it is not, without having
+ * finished, something else stopped us — and once whatever it was has passed,
+ * the recitation should carry on by itself rather than sitting there silently.
+ */
+let intendedPlaying = false;
+let resumeAttempts = 0;
+let resumeTimer: ReturnType<typeof setTimeout> | null = null;
+
+const RESUME_GRACE_MS = 900;
+const MAX_RESUME_ATTEMPTS = 3;
+
+function scheduleResume() {
+  if (resumeTimer) return;
+  if (resumeAttempts >= MAX_RESUME_ATTEMPTS) return;
+  resumeAttempts += 1;
+  resumeTimer = setTimeout(() => {
+    resumeTimer = null;
+    if (!intendedPlaying || !state.track) return;
+    try {
+      player?.play();
+    } catch {
+      /* nothing to resume into */
+    }
+  }, RESUME_GRACE_MS * resumeAttempts);
+}
+
+function clearResume() {
+  if (resumeTimer) { clearTimeout(resumeTimer); resumeTimer = null; }
+  resumeAttempts = 0;
+}
+
+function resetRepeatProgress() { timesPlayed = 0; }
+
+/** The volume this track should play at, from the kind of track it is. */
+function volumeFor(track: AudioTrack | null, settings: AudioSettings) {
+  if (!track) return settings.arabicVolume ?? 1;
+  return (track.kind === 'translation' ? settings.translationVolume : settings.arabicVolume) ?? 1;
+}
+
 function applySource(track: AudioTrack | null, autoplay: boolean) {
   const nextPlayer = player;
   if (!nextPlayer || !track) return;
@@ -350,10 +550,19 @@ function applySource(track: AudioTrack | null, autoplay: boolean) {
     currentSource = track.uri;
     nextPlayer.replace(track.uri);
   }
+  /* Rate and volume have to be re-applied on every source change, not only
+     when the user changes them: the player resets both when a new track is
+     loaded, and a recitation that comes back at full speed and full volume
+     after every ayah has not really remembered the settings at all. */
   try {
-    nextPlayer.setPlaybackRate(state.rate);
+    nextPlayer.setPlaybackRate(state.rate, 'high');
   } catch {
     /* rate control is unavailable on some browsers */
+  }
+  try {
+    nextPlayer.volume = volumeFor(track, settings);
+  } catch {
+    /* volume is unavailable in some browsers until playback starts */
   }
   if (autoplay) nextPlayer.play();
 }
@@ -364,6 +573,7 @@ async function goToIndex(index: number, autoplay: boolean) {
   const track = state.queue[safe];
   const instance = await ensurePlayer();
   emit({ index: safe, track, position: 0, duration: 0, buffering: true, error: null });
+  intendedPlaying = autoplay;
   applySource(track, autoplay);
   if (Platform.OS !== 'web') {
     try {
@@ -383,6 +593,23 @@ export async function playQueue(queue: AudioTrack[], startIndex = 0) {
   await goToIndex(Math.max(0, Math.min(startIndex, queue.length - 1)), true);
 }
 
+/**
+ * Start a chapter from its number alone.
+ *
+ * Needed by auto-next, which knows only that surah 2 has ended and surah 3
+ * should follow. The name is looked up from the chapter list rather than
+ * passed in, because the caller genuinely does not have it.
+ */
+export async function playChapter(chapterId: number, autoplay = true) {
+  if (chapterId < 1 || chapterId > 114) return;
+  const chapters = await getChapters().catch(() => []);
+  const name = chapters.find((entry) => entry.id === chapterId)?.name_simple || `Surah ${chapterId}`;
+  const queue = await buildQueueForChapter(chapterId, name, settings);
+  resetRepeatProgress();
+  await playQueue(queue, 0);
+  if (!autoplay) await pause();
+}
+
 export async function playTrack(track: AudioTrack) {
   await playQueue([track], 0);
 }
@@ -390,10 +617,15 @@ export async function playTrack(track: AudioTrack) {
 export async function resume() {
   const instance = await ensurePlayer();
   if (!state.track) return;
+  intendedPlaying = true;
+  clearResume();
   instance.play();
 }
 
 export async function pause() {
+  /* Said out loud, so an unasked-for stop is not mistaken for this. */
+  intendedPlaying = false;
+  clearResume();
   player?.pause();
   emit({ playing: false });
 }
@@ -428,6 +660,8 @@ export async function seekTo(seconds: number) {
 }
 
 export async function stopPlayback() {
+  intendedPlaying = false;
+  clearResume();
   player?.pause();
   if (player) await player.seekTo(0);
   emit({ playing: false, position: 0 });
@@ -467,19 +701,74 @@ export async function selectQueueItem(index: number) {
   await goToIndex(index, true);
 }
 
-export function setRepeatMode(mode: RepeatMode) {
-  emit({ repeat: mode });
-  void saveAudioSettings({ repeat: mode });
-}
-
 export async function setPlaybackRate(rate: number) {
+  const safe = Math.max(MIN_RATE, Math.min(MAX_RATE, rate));
   try {
-    player?.setPlaybackRate(rate);
+    player?.setPlaybackRate(safe, 'high');
   } catch {
     /* rate control is unavailable on some browsers */
   }
-  emit({ rate });
-  void saveAudioSettings({ rate });
+  emit({ rate: safe });
+  void saveAudioSettings({ rate: safe });
+}
+
+/** Nudge the speed to the next step, up or down. */
+export async function stepPlaybackRate(up: boolean) {
+  const current = state.rate;
+  const next = up
+    ? RATE_STEPS.find((step) => step > current + 0.001)
+    : [...RATE_STEPS].reverse().find((step) => step < current - 0.001);
+  await setPlaybackRate(next ?? current);
+  return state.rate;
+}
+
+export async function setRepeatMode(mode: RepeatMode, count?: number) {
+  resetRepeatProgress();
+  emit({ repeat: mode });
+  void saveAudioSettings(count === undefined ? { repeat: mode } : { repeat: mode, repeatCount: count });
+}
+
+export async function setRepeatCount(count: number) {
+  resetRepeatProgress();
+  void saveAudioSettings({ repeatCount: Math.max(0, Math.round(count)) });
+}
+
+/** The verses repeated in 'range' mode. Ordered, so either end can be given first. */
+export async function setRepeatRange(start: number, end: number) {
+  resetRepeatProgress();
+  const lo = Math.max(1, Math.min(start, end));
+  const hi = Math.max(start, end);
+  void saveAudioSettings({ repeatRangeStart: lo, repeatRangeEnd: hi, repeat: 'range' });
+  emit({ repeat: 'range' });
+}
+
+export async function setAutoNextSurah(on: boolean) {
+  void saveAudioSettings({ autoNextSurah: on });
+}
+
+/**
+ * Set one of the two volumes.
+ *
+ * Applied immediately if the matching kind of track is the one playing, so
+ * dragging the slider is audible as it happens rather than only on the next
+ * ayah.
+ */
+export async function setVolume(kind: AudioTrackKind, value: number) {
+  const safe = Math.max(0, Math.min(1, value));
+  const patch = kind === 'translation' ? { translationVolume: safe } : { arabicVolume: safe };
+  settings = { ...settings, ...patch };
+  if (state.track && state.track.kind === kind) {
+    try {
+      if (player) player.volume = safe;
+    } catch {
+      /* volume is unavailable in some browsers until playback starts */
+    }
+  }
+  void saveAudioSettings(patch);
+}
+
+export async function setResumeOnStart(on: boolean) {
+  void saveAudioSettings({ resumeOnStart: on });
 }
 
 export function getAudioState() {
@@ -602,6 +891,67 @@ async function rememberSession(position: number) {
     savedAt: now,
   };
   await writeJson(KEYS.session, session);
+}
+
+/**
+ * Put a saved session back, paused and in the right place.
+ *
+ * Called when the app opens. Deliberately does not start playing: a recitation
+ * that begins by itself the moment the app is opened is alarming, and whoever
+ * is opening it may be in a library. What it does instead is make the session
+ * real again — the queue rebuilt, the position restored, the track in the
+ * player — so the recitation is one press from continuing rather than needing
+ * to be found again from scratch.
+ *
+ * The position is held until the track reports a duration, because seeking on
+ * a source that has not loaded yet is silently ignored, and the recitation
+ * would then begin from the start of the ayah instead of where it stopped.
+ */
+export async function restoreSavedSession(): Promise<boolean> {
+  if (!settings.resumeOnStart) return false;
+  const session = await loadAudioSession();
+  if (!session || state.queue.length) return false;
+
+  try {
+    const queue = await buildQueueForChapter(session.chapterId, session.chapterName, {
+      ...settings,
+      reciterMode: session.reciterMode || 'verse',
+      surahReciterId: session.surahReciterId ?? settings.surahReciterId,
+      reciter: session.edition,
+      translationEdition: session.translationEdition,
+      sequential: session.sequential,
+      translationAudioEnabled: session.sequential,
+    });
+    if (!queue.length) return false;
+
+    await ensurePlayer();
+    const index = Math.max(0, Math.min(session.index, queue.length - 1));
+    emit({ queue, index, error: null });
+    await goToIndex(index, false);
+
+    if (session.position > 1) {
+      const target = session.position;
+      let attempts = 0;
+      const trySeek = async (): Promise<void> => {
+        if (attempts++ > 12) return;
+        const ready = state.duration > 0 || (player && player.duration > 0);
+        if (!ready) {
+          await new Promise((resolve) => setTimeout(resolve, 400));
+          return trySeek();
+        }
+        try {
+          await player?.seekTo(target);
+          emit({ position: target });
+        } catch {
+          /* a seek that fails leaves the ayah at its start, which is survivable */
+        }
+      };
+      void trySeek();
+    }
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export async function clearAudioSession() {
