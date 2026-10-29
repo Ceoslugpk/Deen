@@ -6002,8 +6002,6 @@ function AppShell() {
     sleep: settings?.sleepReminderEnabled, sleepAt: settings?.sleepReminderTime,
   })]);
 
-  return <View style={s.shellRoot}><NotificationScreen navigation={{goBack:()=>{}} as any} /></View>;
-  }
   return <View style={s.shellRoot}>
     <Root />
     {splash && <View style={s.shellLayer}><Splash ready={(ready && hydrated) || stalled} onDone={() => setSplash(false)} /></View>}
