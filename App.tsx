@@ -206,6 +206,17 @@ const MINI_PLAYER_INSET = MINI_PLAYER_H + 20;
  */
 const READER_MAX_WIDTH = 860;
 const READER_PAD = 16;
+/** How a mushaf page is put together: the frame, and the border it carries. */
+const MUSHAF_FRAME_PAD = 14;
+const MUSHAF_FRAME_BORDER = 1.6;
+const MUSHAF_INNER_PAD_H = 16;
+const MUSHAF_INNER_PAD_V = 24;
+const MUSHAF_INNER_BORDER = 0.8;
+/** Bounds the fitted script is allowed to land between. */
+const MUSHAF_MIN_SIZE = 9;
+const MUSHAF_MAX_SIZE = 52;
+/** Leading, as a proportion of the script size. */
+const MUSHAF_LEAD = 1.55;
 
 let C: Record<string, string> = { ...C_LIGHT };
 /** True while the dark palette is the one in use. */
@@ -2655,72 +2666,150 @@ function MushafConnectionNote({ kind, rtl, T, page, cut, nextVerse }: {
  * in the opening is then the same size. Letting each page decide for itself
  * would let the two halves of a spread drift apart.
  */
+/**
+ * One page of the mushaf.
+ *
+ * A printed page is a fixed amount of room holding a variable amount of text:
+ * one page of the Quran carries three hundred characters and another carries
+ * twelve hundred. Setting the script at one size and hoping is what made this
+ * screen cut pages in half — the short ones came out half empty and the dense
+ * ones ran off the bottom and were clipped.
+ *
+ * So the size is solved for rather than chosen. The height a block of text
+ * occupies grows with the square of the type size: double the size and you get
+ * twice as many lines, each of them twice as tall. That means a single
+ * measurement at one size is enough to work out the size that fills the page,
+ * and a second pass corrects for the rounding that natural word breaking
+ * introduces. Dense pages land smaller, sparse pages larger, and nothing is
+ * ever cut off.
+ *
+ * The verses are set as one continuous text rather than one block each, which
+ * is how a mushaf is actually typeset: a verse does not start a new line
+ * merely because the one before it finished. Verse ends are marked inline with
+ * the aya sign, as they are on the page.
+ */
 function MushafPage({ page, verses, width, height, preferences, rtl, T, bookmarks, savedPosition,
   onBookmark, onMark, onPlay, onNote, before }: any) {
   const [openVerse, setOpenVerse] = useState<string | null>(null);
-
-  /* Fifteen lines to a page of the Madinah Mushaf. The script is sized to make
-     that true rather than using a fixed size that might give eleven lines on
-     one screen and nineteen on another. */
-  const lineHeight = height / 15;
-  const arabicSize = lineHeight * 0.66 * (preferences.fontSize / 30);
-  const lineStyle = {
-    fontSize: arabicSize,
-    lineHeight,
-    fontFamily: quranFont(preferences.arabicFont),
-  };
   const enabled = preferences.mushafMarkers || {};
+
+  /* The room inside the frame. The page is a fixed size and the frame's
+     padding and border come off it, so this is known without measuring. */
+  const contentW = Math.max(60, width - 2 * (MUSHAF_FRAME_PAD + MUSHAF_FRAME_BORDER) - 2 * (MUSHAF_INNER_PAD_H + MUSHAF_INNER_BORDER));
+  const contentH = Math.max(60, height - 2 * (MUSHAF_FRAME_PAD + MUSHAF_FRAME_BORDER) - 2 * (MUSHAF_INNER_PAD_V + MUSHAF_INNER_BORDER));
+
+  /* The runs of text, split wherever something that is not text has to be
+     inserted — the heading of a surah, or a division mark. Everything else
+     flows as one piece. */
+  const segments = useMemo(() => {
+    const out: any[] = [];
+    let run: any[] = [];
+    const flush = () => { if (run.length) { out.push({ kind: 'text', verses: run }); run = []; } };
+    verses.forEach((v: any, i: number) => {
+      const prev = i > 0 ? verses[i - 1] : (before && before.length ? before[before.length - 1] : null);
+      const startsSurah = i === 0
+        ? (!prev || prev.surah_name !== v.surah_name)
+        : verses[i - 1].surah_name !== v.surah_name;
+      const marker = markerBetween(prev, v);
+      if (startsSurah) { flush(); out.push({ kind: 'surah', name: v.surah_name }); }
+      if (marker && enabled[marker.kind] !== false) { flush(); out.push({ kind: 'marker', marker }); }
+      run.push(v);
+    });
+    flush();
+    return out;
+  }, [verses, before, enabled]);
+
+  const [size, setSize] = useState(18);
+  const [textH, setTextH] = useState(0);
+  const [totalH, setTotalH] = useState(0);
+  const [pass, setPass] = useState(0);
+  const segH = useRef<{ [k: number]: number }>({});
+
+  const setSegH = (k: number, h: number) => {
+    if (Math.abs((segH.current[k] || 0) - h) < 0.5) return;
+    segH.current[k] = h;
+    setTextH(Object.keys(segH.current).reduce((a, key) => a + segH.current[+key], 0));
+  };
+
+  /* What is left once everything that is not text has taken its share. The
+     headings, the marks and the page number occupy the same room whatever size
+     the script is, so they are whatever the column measures minus what the
+     text measures. */
+  const chromeH = Math.max(0, totalH - textH);
+  /* How full the page should be. The reader's size preference moves this: at
+     the default the page keeps a little margin at the foot, as a printed page
+     does, and asking for larger script takes that margin back. It cannot go
+     past full, because the page itself cannot grow. */
+  const fill = Math.min(1, 0.92 * Math.max(0.6, (preferences.fontSize || 30) / 30));
+  const budget = Math.max(40, (contentH - chromeH) * fill);
+
+  const [settledH, setSettledH] = useState(0);
+
+  useEffect(() => {
+    if (!textH || pass >= 3) return;
+    const ratio = budget / textH;
+    if (Math.abs(ratio - 1) < 0.03) { if (settledH !== textH) setSettledH(textH); return; }
+    const next = Math.max(MUSHAF_MIN_SIZE, Math.min(MUSHAF_MAX_SIZE, size * Math.sqrt(ratio)));
+    if (Math.abs(next - size) < 0.4) { if (settledH !== textH) setSettledH(textH); return; }
+    segH.current = {}; setTextH(0); setPass(n => n + 1); setSize(next);
+  }, [textH, budget, size, pass, settledH]);
+
+  /* Normally the leading is a fixed proportion of the size. Where the size has
+     run into one of its bounds — a page carrying very little text on a large
+     screen — the lines are spread instead, so the page still reads as full
+     rather than ending halfway down. */
+  const probeLines = settledH ? Math.max(1, Math.round(settledH / (size * MUSHAF_LEAD))) : 0;
+  const atBound = size >= MUSHAF_MAX_SIZE - 0.01 || size <= MUSHAF_MIN_SIZE + 0.01;
+  const lineHeight = atBound && probeLines
+    ? Math.max(size * 1.25, Math.min(size * 2.4, budget / probeLines))
+    : size * MUSHAF_LEAD;
+  /* Until the size has settled the page is measured, not shown, so the text is
+     not seen jumping between sizes while it is being solved for. */
+  const settled = pass >= 3 || (!!textH && Math.abs(budget / textH - 1) < 0.03);
+
+  const savedKeys = new Set((bookmarks || []).map((b: any) => b.verseKey));
 
   return <View style={[s.mushafPageOuter, { width, height }]}>
     <View style={s.mushafFrame}>
       <MushafCorners />
-      <View style={s.mushafFrameInner}>
-        {verses.map((v: any, i: number) => {
-          /* For the first verse, the one before it is the last verse of the
-             page before — fetched for exactly this reason. Without it, a page
-             that opens a new juz or hizb would carry no mark at all. */
-          const prev = i > 0 ? verses[i - 1] : (before && before.length ? before[before.length - 1] : null);
-          const marker = markerBetween(prev, v);
-          const showMarker = marker && enabled[marker.kind] !== false;
-          const newSurah = i === 0 || verses[i - 1].surah_name !== v.surah_name;
-          const grouped = !newSurah && i > 0 && i % 5 === 0;
-          const saved = (bookmarks || []).some((x: any) => x.verseKey === v.verse_key);
-          const marked = savedPosition?.verseKey === v.verse_key;
-          const open = openVerse === v.verse_key;
-          const close = () => setOpenVerse(null);
-          return <View key={v.verse_key}>
-            {showMarker && <MushafMarkerBand marker={marker} width={width} />}
-            {newSurah && <View style={s.mushafSurahBand}>
-              <View style={s.mushafBandRule} />
-              <Text style={s.mushafSurahName}>{v.surah_name}</Text>
-              <View style={s.mushafBandRule} />
-            </View>}
-            {grouped && <MushafOrnament />}
-            <Pressable onLongPress={() => setOpenVerse(open ? null : v.verse_key)} delayLongPress={500}
+      <View style={s.mushafFrameInner} onLayout={e => setTotalH(e.nativeEvent.layout.height)}>
+        {segments.map((seg: any, idx: number) => seg.kind === 'surah' ? (
+          <View key={`s${idx}`} style={s.mushafSurahBand}>
+            <View style={s.mushafBandRule} />
+            <Text style={s.mushafSurahName}>{seg.name}</Text>
+            <View style={s.mushafBandRule} />
+          </View>
+        ) : seg.kind === 'marker' ? (
+          <MushafMarkerBand key={`m${idx}`} marker={seg.marker} width={contentW} />
+        ) : (
+          <Text key={`t${idx}`} style={[s.mushafPageLine, { fontSize: size, lineHeight, width: contentW, opacity: settled ? 1 : 0 }]}
+            onLayout={e => setSegH(idx, e.nativeEvent.layout.height)}>
+            {seg.verses.map((v: any) => <Text key={v.verse_key}
+              onLongPress={() => setOpenVerse(openVerse === v.verse_key ? null : v.verse_key)}
+              onPress={() => openVerse === v.verse_key && setOpenVerse(null)}
               accessibilityLabel={`${T('Verse')} ${v.verse_key}. ${T('Press and hold for actions')}`}
-              onPress={open ? close : undefined} style={open && s.mushafVerseOpen}>
-              <Text style={[s.mushafPageLine, lineStyle]}>
-                {v.text_uthmani} <Text style={{ fontSize: arabicSize * 0.72 }}>۝{v.verse_key.split(':')[1]}</Text>
-              </Text>
-              {!!preferences.mushafTranslation && !!v.translation &&
-                <Text style={[s.mushafPageTranslation, { fontSize: preferences.translationFontSize, textAlign: rtl ? 'right' : 'left' }]}>
-                  {v.translation}
-                </Text>}
-            </Pressable>
-            {open && <MushafVerseMenu T={T} rtl={rtl} saved={saved} marked={marked}
-              onPlay={() => { close(); onPlay(v); }}
-              onBookmark={() => { close(); onBookmark(v); }}
-              onMark={() => { close(); onMark(v); }}
-              onNote={() => { close(); onNote(v); }} />}
-          </View>;
-        })}
+              style={openVerse === v.verse_key ? s.mushafVerseOpen : undefined}>
+              {v.text_uthmani} <Text style={{ fontSize: size * 0.72 }}>۝{v.verse_key.split(':')[1]}</Text>{' '}
+            </Text>)}
+          </Text>
+        ))}
         <View style={s.mushafPageNoRow}>
           <View style={s.mushafPageNo}><Text style={s.mushafPageNoText}>{toArabicDigits(page)}</Text></View>
         </View>
       </View>
+      {!!openVerse && <View style={s.mushafVerseMenuOverlay}>
+        <MushafVerseMenu T={T} rtl={rtl}
+          saved={savedKeys.has(openVerse)}
+          marked={savedPosition?.verseKey === openVerse}
+          onPlay={() => { const v = verses.find((x: any) => x.verse_key === openVerse); setOpenVerse(null); v && onPlay(v); }}
+          onBookmark={() => { const v = verses.find((x: any) => x.verse_key === openVerse); setOpenVerse(null); v && onBookmark(v); }}
+          onMark={() => { const v = verses.find((x: any) => x.verse_key === openVerse); setOpenVerse(null); v && onMark(v); }}
+          onNote={() => { const v = verses.find((x: any) => x.verse_key === openVerse); setOpenVerse(null); v && onNote(v); }} />
+      </View>}
     </View>
   </View>;
 }
+
 
 /**
  * The verses on the pages immediately before and after what is on screen.
@@ -7467,6 +7556,7 @@ surahCard:{width:'100%',minHeight:64,backgroundColor:C.card,borderRadius:16,bord
   mushafMenuItem:{flexDirection:'row',alignItems:'center',gap:5,paddingHorizontal:10,paddingVertical:7,borderRadius:14},
   mushafMenuItemOn:{backgroundColor:'#FBF4E3'},
   mushafMenuLabel:{color:C.ink,fontSize:11,fontFamily:'DMSans_600SemiBold'},
+  mushafVerseMenuOverlay:{position:'absolute',left:0,right:0,bottom:0,alignItems:'center',paddingBottom:6},
   mushafVerseOpen:{backgroundColor:'#FBF4E3',borderRadius:10},
   /* the share sheet: a scrim that dismisses, and a card that rises */
   /* The overlay is the last child of the navigation container, so it is above
@@ -7510,19 +7600,19 @@ surahCard:{width:'100%',minHeight:64,backgroundColor:C.card,borderRadius:16,bord
   noteSheetArabic:{color:C.ink,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:17,lineHeight:30,textAlign:'right',marginBottom:12,direction:'rtl'} as any,
   noteSheetInput:{minHeight:104,maxHeight:170,backgroundColor:C.bg,borderRadius:18,padding:14,textAlignVertical:'top',fontFamily:'DMSans_400Regular',fontSize:14,color:C.ink,borderWidth:1,borderColor:C.line,outlineStyle:'none'} as any,
   noteSheetActions:{flexDirection:'row',alignItems:'center',gap:9,marginTop:14},
-mushafFrame:{backgroundColor:C.dark?'#211C2C':'#FFFDF8',borderRadius:8,borderWidth:1.6,borderColor:C.gold,padding:14,marginTop:4,...soft},
-mushafFrameInner:{borderRadius:4,borderWidth:.8,borderColor:C.gold,borderStyle:'solid',opacity:.999,paddingHorizontal:16,paddingVertical:24},
+mushafFrame:{backgroundColor:C.dark?'#211C2C':'#FFFDF8',borderRadius:8,borderWidth:MUSHAF_FRAME_BORDER,borderColor:C.gold,padding:MUSHAF_FRAME_PAD,marginTop:4,...soft,overflow:'hidden'},
+mushafFrameInner:{borderRadius:4,borderWidth:MUSHAF_INNER_BORDER,borderColor:C.gold,borderStyle:'solid',opacity:.999,paddingHorizontal:MUSHAF_INNER_PAD_H,paddingVertical:MUSHAF_INNER_PAD_V},
 mushafCorner:{position:'absolute',width:16,height:16,alignItems:'center',justifyContent:'center'},
 mushafCornerTL:{top:-9,left:-9},mushafCornerTR:{top:-9,right:-9},mushafCornerBL:{bottom:-9,left:-9},mushafCornerBR:{bottom:-9,right:-9},
 mushafCornerDiamond:{width:11,height:11,borderWidth:1.2,borderColor:C.gold,transform:[{rotate:'45deg'}]},
 mushafCornerDot:{position:'absolute',width:3.5,height:3.5,borderRadius:2,backgroundColor:C.gold},
-mushafSurahBand:{alignItems:'center',marginBottom:24,marginTop:4},
+mushafSurahBand:{alignItems:'center',marginBottom:10,marginTop:2},
 mushafBandRule:{height:1,width:'62%',backgroundColor:C.gold,opacity:.5},
-mushafSurahName:{color:C.green,fontFamily:'Newsreader_700Bold',fontSize:20,textAlign:'center',paddingVertical:11,paddingHorizontal:18,letterSpacing:.3},
+mushafSurahName:{color:C.green,fontFamily:'Newsreader_700Bold',fontSize:18,textAlign:'center',paddingVertical:7,paddingHorizontal:14,letterSpacing:.3},
 mushafOrnamentRow:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:10,marginVertical:16},
 mushafOrnamentRule:{height:1,flex:1,maxWidth:96},
-mushafPageNoRow:{alignItems:'center',marginTop:26},
-mushafPageNo:{width:42,height:42,borderRadius:21,borderWidth:1.4,borderColor:C.gold,alignItems:'center',justifyContent:'center',backgroundColor:C.mint},
+mushafPageNoRow:{alignItems:'center',marginTop:'auto',paddingTop:8},
+mushafPageNo:{width:34,height:34,borderRadius:17,borderWidth:1.2,borderColor:C.gold,alignItems:'center',justifyContent:'center',backgroundColor:C.mint},
 mushafPageNoText:{color:C.green,fontFamily:'Newsreader_700Bold',fontSize:16},mushafAyah:{paddingVertical:12,borderBottomWidth:1,borderColor:'#E9E1D5'},mushafSurah:{textAlign:'center',color:C.green,fontFamily:'Newsreader_600SemiBold',fontSize:20,backgroundColor:C.mint,borderRadius:16,paddingVertical:8,marginBottom:12},verseMarker:{color:C.gold,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:17},mushafTranslation:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:12,lineHeight:18,marginTop:8},sectionMarker:{flexDirection:'row',alignItems:'center',gap:10,marginTop:18,marginBottom:6},sectionRule:{flex:1,height:1,backgroundColor:C.line},sectionMarkerText:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10,textTransform:'uppercase',letterSpacing:1},mushafPageLine:{color:C.ink,textAlign:'center',writingDirection:'rtl'},topicGrid:{flexDirection:'row',flexWrap:'wrap',gap:12},topicWrap:{width:'48%'},topicCard:{minHeight:190,backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},vocabStats:{backgroundColor:C.mint,borderRadius:20,padding:16,marginBottom:12,flexDirection:'row',justifyContent:'space-between',alignItems:'center'},flashcard:{minHeight:330,backgroundColor:C.white,borderRadius:28,padding:24,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,...shadow},flashIndex:{position:'absolute',top:18,right:18,color:C.muted,fontFamily:'DMSans_600SemiBold',fontSize:10},flashArabic:{color:C.ink,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:58,lineHeight:86,textAlign:'center'},flashTransliteration:{color:C.green,fontFamily:'Newsreader_600SemiBold',fontSize:28,marginTop:12},flashMeaning:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:18,marginVertical:8,textAlign:'center'},flashHint:{color:C.muted,fontFamily:'DMSans_600SemiBold',fontSize:11,marginTop:16},tajweedPractice:{backgroundColor:C.card,borderRadius:24,padding:20,marginTop:16,borderWidth:1,borderColor:C.line,...surface},tajweedRule:{minHeight:72,flexDirection:'row',alignItems:'center',gap:12,padding:12,borderBottomWidth:1,borderColor:C.line},tajweedSwatch:{width:18,height:44,borderRadius:9},compareCard:{backgroundColor:C.card,borderRadius:20,padding:16,marginBottom:12,borderWidth:1,borderColor:C.line,...surface},
   tcRefBar:{flexDirection:'row',alignItems:'center',gap:10,marginBottom:14},
   tcVerse:{backgroundColor:C.mint,borderRadius:20,padding:16,marginTop:14,borderWidth:1,borderColor:C.line},
