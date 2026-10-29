@@ -14,6 +14,55 @@ export type QuranPreferences = {
   readingMode: 'cards' | 'continuous' | 'mushaf';
   /** Hides the reading chrome while you scroll down, so the page is all there is. */
   focusMode: boolean;
+
+  /* ---- the mushaf page view ---- */
+
+  /**
+   * Whether to show one page or two facing pages.
+   *
+   * 'auto' is two wherever the screen is genuinely wide enough for them —
+   * turned sideways, or on a tablet or an opened foldable — and one otherwise.
+   * The other two override that outright, for the person who always wants the
+   * spread or never does. It is a choice rather than a rule because people
+   * turn their devices sideways for different reasons: some want the spread,
+   * some only want the width.
+   */
+  spreadMode: 'auto' | 'always' | 'never';
+
+  /**
+   * Which of the division marks to print.
+   *
+   * All five are on by default because they are what makes a mushaf a mushaf,
+   * but somebody reading for meaning rather than by portion may want the page
+   * quiet, so each can be turned off on its own.
+   */
+  mushafMarkers: Record<'juz' | 'hizb' | 'rub' | 'nisf' | 'thuluth', boolean>;
+
+  /**
+   * Whether to flag a verse cut across a page turn.
+   *
+   * On by default: without it a sentence that simply stops looks like a fault
+   * in the app rather than the foot of a page.
+   */
+  showVerseConnections: boolean;
+
+  /**
+   * Whether the meaning appears on the mushaf page under the script.
+   *
+   * Off by default. A printed page carries no translation, and putting one on
+   * it changes what the page is for — but somebody still building their
+   * Arabic needs the meaning to hand, and opening a second screen to find it
+   * breaks the reading. So it is offered, and off until asked for.
+   */
+  mushafTranslation: boolean;
+
+  /**
+   * The translation's own size, separate from the Arabic.
+   *
+   * The script and the meaning are not read at the same speed or from the same
+   * distance, and one size for both forces a compromise that suits neither.
+   */
+  translationFontSize: number;
 };
 export type QuranBookmark = { verseKey: string; surahId: number; surahName: string; arabic: string; translation?: string; savedAt: number };
 export type QuranNote = QuranBookmark & { note: string; updatedAt: number };
@@ -25,7 +74,13 @@ const K = {
   position: '@deen/quran/position/v1', recent: '@deen/quran/recent/v1', searches: '@deen/quran/searches/v1',
   hifz: '@deen/quran/hifz/v1', plan: '@deen/quran/plan/v1', vocabulary: '@deen/quran/vocabulary/v1',
 };
-const DEFAULTS: QuranPreferences = { focusMode: false, translationEdition: 'en.sahih', translationName: 'Sahih International', translationLanguage: 'English', scriptEdition: 'quran-uthmani', scriptName: 'Uthmani', arabicFont: 'hafs', fontSize: 30, lineHeight: 1.9, showTranslation: true, readingMode: 'cards' };
+export const DEFAULTS: QuranPreferences = {
+  focusMode: false,
+  spreadMode: 'auto',
+  mushafMarkers: { juz: true, hizb: true, rub: true, nisf: true, thuluth: true },
+  showVerseConnections: true,
+  mushafTranslation: false,
+  translationFontSize: 16, translationEdition: 'en.sahih', translationName: 'Sahih International', translationLanguage: 'English', scriptEdition: 'quran-uthmani', scriptName: 'Uthmani', arabicFont: 'hafs', fontSize: 30, lineHeight: 1.9, showTranslation: true, readingMode: 'cards' };
 async function read<T>(key:string,fallback:T):Promise<T>{try{const v=await AsyncStorage.getItem(key);return v?JSON.parse(v):fallback}catch{return fallback}}
 const write=(key:string,value:unknown)=>AsyncStorage.setItem(key,JSON.stringify(value));
 
