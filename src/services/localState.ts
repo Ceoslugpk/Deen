@@ -14,7 +14,20 @@ export type WorshipSettings = {
   quranReminderEnabled: boolean;
   quranReminderTime: string;
   adhanReciter: string;
+  /**
+   * Which prayers the adhan sounds for. On for the five prayers by default —
+   * that is what a prayer app is for — but nothing sounds until permission has
+   * actually been granted, and each prayer keeps its own switch.
+   */
   adhanEnabled: Record<string, boolean>;
+  /** A nudge back to your reading, half an hour after each adhan. */
+  continueReadingReminder?: boolean;
+  /** One verse each morning. */
+  dailyVerseReminder?: boolean;
+  dailyVerseTime?: string;
+  /** One hadith each morning. */
+  dailyHadithReminder?: boolean;
+  dailyHadithTime?: string;
   /** Buzz on every press. Off means silent everywhere, not per-screen. */
   hapticsEnabled: boolean;
 };
@@ -30,8 +43,14 @@ export const DEFAULT_WORSHIP_SETTINGS: WorshipSettings = {
   prayerReminders: { Fajr: true, Dhuhr: true, Asr: true, Maghrib: true, Isha: true },
   quranReminderEnabled: false,
   quranReminderTime: '20:00',
-  adhanReciter: 'Makkah',
+  // The id of an entry in ADHAN_OPTIONS, not its label.
+  adhanReciter: 'makkah',
   adhanEnabled: { Fajr: true, Dhuhr: true, Asr: true, Maghrib: true, Isha: true },
+  continueReadingReminder: true,
+  dailyVerseReminder: false,
+  dailyVerseTime: '08:00',
+  dailyHadithReminder: false,
+  dailyHadithTime: '09:00',
   hapticsEnabled: true,
 };
 
@@ -151,6 +170,14 @@ export type OnboardingState = {
   text: string;
   /** The language of the voice under the recitation. */
   voice: string;
+  /**
+   * Whether the place has been put to the person. Location is asked once,
+   * here, and then never again — from then on it is a setting to change, not
+   * a question to answer. Skipping still counts as having been asked.
+   */
+  locationAsked?: boolean;
+  /** Whether notification permission has been put to them once. */
+  notificationsAsked?: boolean;
   /** When it was finished, as a Unix millisecond stamp. */
   at?: number;
 };

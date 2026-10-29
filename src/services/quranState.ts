@@ -12,6 +12,8 @@ export type QuranPreferences = {
   lineHeight: number;
   showTranslation: boolean;
   readingMode: 'cards' | 'continuous' | 'mushaf';
+  /** Hides the reading chrome while you scroll down, so the page is all there is. */
+  focusMode: boolean;
 };
 export type QuranBookmark = { verseKey: string; surahId: number; surahName: string; arabic: string; translation?: string; savedAt: number };
 export type QuranNote = QuranBookmark & { note: string; updatedAt: number };
@@ -23,7 +25,7 @@ const K = {
   position: '@deen/quran/position/v1', recent: '@deen/quran/recent/v1', searches: '@deen/quran/searches/v1',
   hifz: '@deen/quran/hifz/v1', plan: '@deen/quran/plan/v1', vocabulary: '@deen/quran/vocabulary/v1',
 };
-const DEFAULTS: QuranPreferences = { translationEdition: 'en.sahih', translationName: 'Sahih International', translationLanguage: 'English', scriptEdition: 'quran-uthmani', scriptName: 'Uthmani', arabicFont: 'hafs', fontSize: 30, lineHeight: 1.9, showTranslation: true, readingMode: 'cards' };
+const DEFAULTS: QuranPreferences = { focusMode: false, translationEdition: 'en.sahih', translationName: 'Sahih International', translationLanguage: 'English', scriptEdition: 'quran-uthmani', scriptName: 'Uthmani', arabicFont: 'hafs', fontSize: 30, lineHeight: 1.9, showTranslation: true, readingMode: 'cards' };
 async function read<T>(key:string,fallback:T):Promise<T>{try{const v=await AsyncStorage.getItem(key);return v?JSON.parse(v):fallback}catch{return fallback}}
 const write=(key:string,value:unknown)=>AsyncStorage.setItem(key,JSON.stringify(value));
 
@@ -68,6 +70,30 @@ async function migrateLegacySurahCache(){
   })();
   return legacyMigration;
 }
+/**
+ * The key a cached surah is stored under.
+ *
+ * Anything that fills the cache and anything that reads it must agree on this
+ * exactly, or the text lands on the device and the reader still cannot find
+ * it — which looks to the person using it exactly like no download happened.
+ * So the key is built here, once, and both sides call it.
+ *
+ * The juz, hizb and page slots stay in the key because the reader can be
+ * pointed at a juz or a page instead of a surah; a plain surah read sends the
+ * defaults, which is what `surahCacheKey` below does.
+ */
+export function readerCacheKey(options: {
+  section: string; chapterId: number; juz?: number; hizb?: number;
+  page?: number | null; script: string; translation: string;
+}): string {
+  return `${options.section}:${options.chapterId}:${options.juz ?? 1}:${options.hizb ?? 1}:${options.page ?? null}:${options.script}:${options.translation}`;
+}
+
+/** The key for one surah read on its own — what an offline download fills. */
+export function surahCacheKey(chapterId: number, script: string, translation: string): string {
+  return readerCacheKey({ section: 'surah', chapterId, script, translation });
+}
+
 export async function loadSurahCache(key:string){await migrateLegacySurahCache();return getCachedJson<unknown>('quran',key)}
 export async function saveSurahCache(key:string,value:unknown){await migrateLegacySurahCache();return setCachedJson('quran',key,value)}
 export async function loadSurahCacheIndex(){await migrateLegacySurahCache();return listCachedKeys('quran')}
