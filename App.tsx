@@ -558,16 +558,43 @@ type WorshipSettingsState={settings:WorshipSettings;hydrated:boolean;update:(pat
 const WorshipSettingsContext=createContext<WorshipSettingsState>({settings:DEFAULT_WORSHIP_SETTINGS,hydrated:false,update:async()=>{}});
 function WorshipSettingsProvider({children}:{children:React.ReactNode}){const[settings,setSettings]=useState(DEFAULT_WORSHIP_SETTINGS);const[hydrated,setHydrated]=useState(false);useEffect(()=>{loadWorshipSettings().then(value=>{setSettings(value);setHydrated(true)})},[]);const update=async(patch:Partial<WorshipSettings>)=>{const next={...settings,...patch};setSettings(next);await saveWorshipSettings(next)};useEffect(()=>{setHapticsEnabled(settings.hapticsEnabled)},[settings.hapticsEnabled]);return <WorshipSettingsContext.Provider value={{settings,hydrated,update}}>{children}</WorshipSettingsContext.Provider>}
 function useWorshipSettings(){return useContext(WorshipSettingsContext)}
-async function managedPrayerSnapshot(location:AppLocation,settings:WorshipSettings){try{const snapshot=await getPrayerSnapshot(location.latitude,location.longitude,{method:settings.calculationMethod,school:settings.madhab,timeFormat:settings.timeFormat});await savePrayerCache(location.latitude,location.longitude,settings.calculationMethod,settings.madhab,snapshot);return{snapshot,cached:false}}catch(error){const cached=await loadPrayerCache(location.latitude,location.longitude,settings.calculationMethod,settings.madhab);if(cached)return{snapshot:cached.snapshot,cached:true};throw error}}
-type AppLocation = { latitude: number; longitude: number; label: string };
+async function managedPrayerSnapshot(location:AppLocation,settings:WorshipSettings){try{const snapshot=await getPrayerSnapshot(location.latitude,location.longitude,{method:settings.calculationMethod,school:settings.madhab,timezone:location.timezone,timeFormat:settings.timeFormat});await savePrayerCache(location.latitude,location.longitude,settings.calculationMethod,settings.madhab,snapshot);return{snapshot,cached:false}}catch(error){const cached=await loadPrayerCache(location.latitude,location.longitude,settings.calculationMethod,settings.madhab);if(cached)return{snapshot:cached.snapshot,cached:true};throw error}}
+/** The IANA zone, when we know it, so times are read on the city's own clock. */
+type AppLocation = { latitude: number; longitude: number; label: string; timezone?: string };
+
+/**
+ * The zone the phone itself is set to, as an IANA name.
+ *
+ * Used as the default for a place whose zone we were not told: coordinates
+ * typed by hand or found by GPS are coordinates you are standing at, so your
+ * own clock is the one to read them on. Anything that cannot name its zone
+ * falls back to undefined, and the formatter then uses local time directly,
+ * which is the same answer.
+ */
+function deviceTimeZone(): string | undefined {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || undefined;
+  } catch {
+    return undefined;
+  }
+}
 type LocationState = { location: AppLocation | null; locating: boolean; useDevice: () => Promise<void>; useDubai: () => void; setManual: (location:AppLocation)=>void; clear: () => void };
 const LocationContext = createContext<LocationState | null>(null);
 function LocationProvider({children}:{children:React.ReactNode}) {
   const {rtl}=useLanguage();
   const [location,setLocation]=useState<AppLocation|null>(null); const [locating,setLocating]=useState(false);
   useEffect(()=>{loadStoredLocation().then(saved=>saved&&setLocation(saved))},[]);
-  const commit=(next:AppLocation|null)=>{setLocation(next);saveStoredLocation(next).catch(()=>{})};
-  const useDubai=()=>commit({latitude:25.2048,longitude:55.2708,label:'Dubai, United Arab Emirates'});
+  /*
+   * A place is stored with the zone its times should be read in. When the
+   * caller knows it — a city from the bundled list — it is passed through.
+   * When they do not, it is the phone's own: you are standing at coordinates
+   * you just typed or just let the GPS find, so your clock is the right one.
+   */
+  const commit=(next:AppLocation|null)=>{
+    if(next&&!next.timezone) next={...next,timezone:deviceTimeZone()};
+    setLocation(next);saveStoredLocation(next).catch(()=>{})
+  };
+  const useDubai=()=>commit({latitude:25.2048,longitude:55.2708,label:'Dubai, United Arab Emirates',timezone:'Asia/Dubai'});
   const useDevice=async()=>{setLocating(true);try{const permission=await Location.requestForegroundPermissionsAsync();if(permission.status!=='granted'){Alert.alert(tx(rtl,'Location permission'),tx(rtl,'Location is used only when you request local prayer and Qibla information. You can select a manual location instead.'));return}const pos=await Location.getCurrentPositionAsync({accuracy:Location.Accuracy.Balanced});const places=await Location.reverseGeocodeAsync(pos.coords);const place=places[0];commit({latitude:pos.coords.latitude,longitude:pos.coords.longitude,label:[place?.city,place?.country].filter(Boolean).join(', ')||'Current location'});}catch(e:any){Alert.alert(tx(rtl,'Location unavailable'),tx(rtl,e.message))}finally{setLocating(false)}};
   return <LocationContext.Provider value={{location,locating,useDevice,useDubai,setManual:commit,clear:()=>commit(null)}}>{children}</LocationContext.Provider>;
 }
@@ -2095,7 +2122,7 @@ function PrayerScreen({navigation}:any) {
     const spill = new Date(now.getFullYear(), now.getMonth(), now.getDate()+6);
     if (spill.getMonth() !== now.getMonth()) months.push([spill.getFullYear(), spill.getMonth()+1]);
     Promise.all(months.map(([y,mo])=>getPrayerCalendar(location.latitude, location.longitude, mo, y,
-      { method: Number(settings.calculationMethod) || 8, school: settings.madhab, timeFormat: settings.timeFormat })))
+      { method: Number(settings.calculationMethod) || 8, school: settings.madhab, timeFormat: settings.timeFormat, timezone: location.timezone })))
       .then(parts => { if (alive) setCalendar(parts.flat()); })
       .catch(() => { if (alive) setCalendar([]); });
     return () => { alive = false; };
@@ -2103,9 +2130,9 @@ function PrayerScreen({navigation}:any) {
   const togglePrayer=(name:string)=>{if(name==='Sunrise')return;setCompleted(current=>{const next=current.includes(name)?current.filter(x=>x!==name):[...current,name];savePrayerCompletion(dateKey,next).catch(()=>{});return next})};
   const load=async()=>{if(!location)return;setError('');try{const value=await managedPrayerSnapshot(location,settings);setSnap(value.snapshot);setCached(value.cached);if(settings.remindersEnabled)schedulePrayerNotifications(value.snapshot,settings,rtl).catch(()=>{})}catch(e:any){setError(T(e.message))}}; useEffect(()=>{setSnap(null);load()},[location?.latitude,location?.longitude,settings.calculationMethod,settings.madhab,settings.timeFormat]);
   const next=snap?getNext(snap.prayers):undefined; const days=Array.from({length:7},(_,i)=>{const d=new Date();d.setDate(d.getDate()+i);return d;}); const done=completed.length;
-  /* AlAdhan keys its calendar by DD-MM-YYYY, so the week is matched against
-     it by formatted date rather than by index - the array starts at the first
-     of the month, not at today. */
+  /* Calendar days are keyed DD-MM-YYYY, so the week is matched against that
+     rather than by index - the array starts at the first of the month, not
+     at today. */
   const key=(d:Date)=>`${String(d.getDate()).padStart(2,'0')}-${String(d.getMonth()+1).padStart(2,'0')}-${d.getFullYear()}`;
   const chosen=days[dayIndex]||days[0];
   const chosenDay=calendar.find(c=>c.gregorian===key(chosen))||null;
@@ -4628,7 +4655,7 @@ function LocationSetupScreen({navigation}:any){const{rtl}=useLanguage();const T=
 
   const choose=(city:CityResult)=>{
     haptic('success');
-    loc.setManual({label:`${city.name}, ${city.countryName}`,latitude:city.latitude,longitude:city.longitude});
+    loc.setManual({label:`${city.name}, ${city.countryName}`,latitude:city.latitude,longitude:city.longitude,timezone:city.timezone});
     void rememberCity(city);
     navigation.goBack();
   };
@@ -4994,7 +5021,7 @@ function GuideDetailInner({route,navigation}:any){const{rtl}=useLanguage();const
  * kept, but the reports place it in the odd nights of the last ten, so the note
  * says so rather than pretending the 27th is certain.
  *
- * Sourced from AlAdhan's Hijri calendar for the conversion; the dates
+ * The conversion comes from the bundled Umm al-Qura table; the dates
  * themselves are fixed in the Hijri year and do not move.
  */
 type IslamicEvent = {
@@ -5052,7 +5079,7 @@ function HijriCalendarScreen({navigation}:any){
   const load=async()=>{
     if(!location)return; setError(''); setDays([]);
     try{
-      setDays(await getGregorianCalendar(location.latitude,location.longitude,now.getMonth()+1,now.getFullYear()));
+      setDays(await getGregorianCalendar(location.latitude,location.longitude,now.getMonth()+1,now.getFullYear(),{timezone:location.timezone}));
     }catch(e:any){setError(T(e.message))}
   };
   useEffect(()=>{load()},[location?.latitude,location?.longitude]);
@@ -6366,9 +6393,9 @@ const DATA_SOURCES: { name: string; ar: string; endpoint: string; detail: string
   { name: 'Islamic.app', ar: 'تطبيق إسلاميك', endpoint: 'api.islamic.app',
     detail: 'The Beautiful Names with their meanings, the adhkar and duas of Hisn al-Muslim, and the hadith collections with Arabic and English editions.',
     arDetail: 'الأسماء الحسنى ومعانيها، وأذكار ودعوات حصن المسلم، ومجموعات الحديث بنصّها العربي وترجمتها الإنجليزية.' },
-  { name: 'AlAdhan', ar: 'الأذان', endpoint: 'api.aladhan.com',
-    detail: 'Prayer times by calculation method for any coordinate, the Hijri calendar, and the Ramadan timetable for suhoor and iftar.',
-    arDetail: 'مواقيت الصلاة حسب طريقة الحساب لأي موقع، والتقويم الهجري، وجدول رمضان للإمساك والإفطار.' },
+  { name: 'On your device', ar: 'على جهازك', endpoint: 'no network request',
+    detail: 'Prayer times, the Hijri date and the Ramadan timetable are calculated on your device from your coordinates — the sun does not need the internet, and nothing about where you are is sent anywhere.',
+    arDetail: 'تُحسب مواقيت الصلاة والتاريخ الهجري وجدول رمضان على جهازك من إحداثياتك، فالشمس لا تحتاج إلى إنترنت، ولا يُرسل أي شيء عن موقعك إلى أي جهة.' },
   { name: 'Gold and silver prices', ar: 'أسعار الذهب والفضة', endpoint: 'api.gold-api.com', detail: 'Spot gold and silver prices per troy ounce, converted to a price per gram for the nisab threshold.', arDetail: 'أسعار الذهب والفضة الفورية للأوقية، وتحوّل إلى سعر الغرام لحساب النصاب.' }, { name: 'Exchange rates', ar: 'أسعار الصرف', endpoint: 'open.er-api.com', detail: 'Daily reference exchange rates, used to show Zakat figures in the currency you choose.', arDetail: 'أسعار صرف مرجعية يومية، تُستخدم لعرض أرقام الزكاة بالعملة التي تختارها.' }, { name: 'MP3Quran', ar: 'إم بي 3 قرآن', endpoint: 'mp3quran.net',
     detail: 'Complete Surah recitations from published reciters, used when you play a whole Surah rather than verse by verse.',
     arDetail: 'تلاوات كاملة للسور من القرّاء المنشورين، وتُستخدم عند تشغيل السورة كاملة.' },
@@ -7677,7 +7704,7 @@ function OnboardingLocation() {
 
   const choose = (city: CityResult) => {
     haptic('success');
-    loc.setManual({ label: `${city.name}, ${city.countryName}`, latitude: city.latitude, longitude: city.longitude });
+    loc.setManual({ label: `${city.name}, ${city.countryName}`, latitude: city.latitude, longitude: city.longitude, timezone: city.timezone });
     void rememberCity(city);
   };
 
