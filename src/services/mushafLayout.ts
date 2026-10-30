@@ -4,10 +4,12 @@ import { useWindowDimensions } from 'react-native';
 /**
  * How big one page of the mushaf should be.
  *
- * A page keeps the proportions of the printed Madinah mushaf: 14.8 cm across
- * for every 21 cm down. It is fitted to the room it is given the way a picture
- * is fitted rather than stretched — the width and the height are both tried and
- * the smaller of the two wins, so a page never overflows in either direction.
+ * A page keeps the proportions of the printed Madinah mushaf: fourteen
+ * centimetres across for every twenty-one down, which is the standard size the
+ * King Fahd Complex prints. It is fitted to the room it is given the way a
+ * picture is fitted rather than stretched — the width and the height are both
+ * tried and the smaller of the two wins, so a page never overflows in either
+ * direction.
  *
  * There is one page. Not two side by side, and not a spread that appears when
  * the screen happens to be wide enough: someone reading on a phone and someone
@@ -15,8 +17,16 @@ import { useWindowDimensions } from 'react-native';
  * shape with the device is not a page.
  */
 
-/** Width for each unit of height, taken from the printed page. */
-export const PAGE_ASPECT = 0.7;
+/** Width for each unit of height, taken from the printed page: 14 cm / 20 cm. */
+export const PAGE_ASPECT = 14 / 20;
+
+/**
+ * The same page in the taller size the Complex also prints: fourteen across
+ * for twenty-one down. Where a screen is taller than the standard page
+ * allows, this is the shape the page takes instead, and the script is the
+ * larger for it.
+ */
+export const PAGE_ASPECT_TALL = 14 / 21;
 
 /** Total pages in the Madinah Mushaf. */
 export const TOTAL_PAGES = 604;
@@ -35,9 +45,17 @@ export type MushafLayout = {
  * share, because a page sized to the full screen sits half under the top bar.
  */
 export function computeMushafLayout(availWidth: number, availHeight: number): MushafLayout {
-  const height = Math.min(availWidth / PAGE_ASPECT, availHeight);
+  /* Which of the two printed proportions the page takes.
+     A screen taller than the standard page allows leaves height beside the
+     page going unused, so the page takes the taller proportion and grows into
+     it. A screen stubbier than the page — a small phone held upright — is
+     already giving the page all the height it has, and asking for a taller
+     page there would only make it narrower, so it keeps the standard shape.
+     Either way the page is one the Complex prints. */
+  const aspect = Math.max(PAGE_ASPECT_TALL, Math.min(PAGE_ASPECT, availWidth / availHeight));
+  const height = Math.min(availWidth / aspect, availHeight);
   return {
-    pageWidth: Math.floor(height * PAGE_ASPECT),
+    pageWidth: Math.floor(height * aspect),
     pageHeight: Math.floor(height),
   };
 }
