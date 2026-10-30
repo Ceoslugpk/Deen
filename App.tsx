@@ -14,7 +14,7 @@ import {
   AccessibilityInfo, ActivityIndicator, Alert, Animated, BackHandler, Easing, Image, ImageBackground, Linking, Platform,
   Pressable as BarePressable,
   I18nManager, RefreshControl, SafeAreaView, ScrollView, Share, StatusBar, StyleSheet, Switch, Text, TextInput,
-  PanResponder, useColorScheme, useWindowDimensions, View,
+  PanResponder, useColorScheme, useWindowDimensions, View
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { haptic, isHapticsSupported, setHapticsEnabled, withHaptic, type HapticKind } from './src/services/haptics';
@@ -52,17 +52,17 @@ import {
   AudioEdition, Chapter, DailyAyah, DailyHadith, DivineName, getAyahEditions, getAyahOfDay, getChapters, getDailyHadith, getDuas, getQuranEditions,
   getAyahForDate, getCalendarSpan, getGregorianCalendar, getNameOfDay, getNames, getNearbyMosques, getPrayerCalendar, getPrayerSnapshot, getQibla, getRamadanCalendar,
   getHizbVerses, getJuzVerses, getPageVerses, getVerses, searchQuran, CalendarDay, Prayer, PrayerSnapshot, QuranEdition, QuranSearchResult, SurahReciter, Verse,
-  HajjCountdown, getHajjCountdown,
+  HajjCountdown, getHajjCountdown
 } from './src/services/api';
 import {
-  DEFAULT_WORSHIP_SETTINGS, loadDailyContent, loadPrayerCache, loadPrayerCompletion, loadPrayerHistory, loadQuickTasbih, loadStoredLocation, loadWorshipSettings,
+  DEFAULT_DAY_TOOLS, DEFAULT_WORSHIP_SETTINGS, loadDailyContent, loadPrayerCache, loadPrayerCompletion, loadPrayerHistory, loadQuickTasbih, loadStoredLocation, loadWorshipSettings,
   saveDailyContent, savePrayerCache, savePrayerCompletion, saveQuickTasbih, saveStoredLocation, saveWorshipSettings,
-  WorshipSettings, loadOnboarding, saveOnboarding, loadLanguage, saveLanguage,
+  WorshipSettings, loadOnboarding, saveOnboarding, loadLanguage, saveLanguage
 } from './src/services/localState';
 import {
   actionFromResponse, adhanOption, ADHAN_OPTIONS, cancelAllNotifications, getNotificationHealth, getScheduledCount,
   NotificationHealth, prayerFromNotification, requestNotificationPermission, schedulePrayerNotifications, sendTestNotification,
-  SLEEP_SURAH,
+  SLEEP_SURAH
 } from './src/services/notifications';
 import { addNotificationResponseReceivedListener, type NotificationResponse } from 'expo-notifications';
 import { getBatteryOptimizationState, requestBatteryExemption, type BatteryState } from './src/services/batteryOptimization';
@@ -76,13 +76,13 @@ import { addSearchHistory, clearSearchHistory, clearSurahCache, deleteNote, Hifz
 import {
   clearMemorization, confidenceOf, demoteVerse, getMemorization, hiddenIndexes, isWord,
   loadMemorization, MODE_LABELS, overallConfidence, pickNext, recentAttempts, recordAttempt,
-  saveMemSettings, splitWords, undoAttempt, unflagVerse, useMemorization, weakBank,
+  saveMemSettings, splitWords, undoAttempt, unflagVerse, useMemorization, weakBank
 } from './src/services/memorizationService';
 import type { Attempt, AttemptResult, MemorizationMode, VerseRecord } from './src/services/memorizationService';
 import {
   BackupSummary, BACKUP_RELOCK_OPTIONS, clearLastRestore, createBackup, getLastRestore, loadBackupSettings, lockBackup, readBackupSummary,
   removePassword, restoreBackup, saveRelock, setPassword as setBackupPassword, startBackupWatch, unlock,
-  useBackupSettings, useBackupUnlocked, useRestoreNonce,
+  useBackupSettings, useBackupUnlocked, useRestoreNonce
 } from './src/services/backupService';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
@@ -94,11 +94,11 @@ import { AudioSession, AudioSettings, AudioTrackKind, buildQueueForChapter, buil
 import { getHadithPage, getHadith, getLoadedCollections, getNeighbours, whenArabicReady, hadithReference, hadithSourceLabel, HADITH_COLLECTIONS, Hadith, HadithCollectionData, isHadithSaved, loadHadithCollection, loadHadithState, markHadithRead, removeHadithBookmark, searchLoadedCollections, toggleHadithSaved, useHadithState } from './src/services/hadithService';
 import {
   buildReportMailto, deleteReport, openReportEmail, saveReport, subscribeReports,
-  type CorrectionReport, type CorrectionIssue as ReportIssue,
+  type CorrectionReport, type CorrectionIssue as ReportIssue
 } from './src/services/reportService';
 import {
   editionForLanguage, loadOfflineSetup, offlineProgress, replanForLanguage, resumeSavedOfflineSetup,
-  startOfflineSetup, subscribeOfflineSetup, type OfflineSetup,
+  startOfflineSetup, subscribeOfflineSetup, type OfflineSetup
 } from './src/services/offlinePlan';
 import { rememberCity, searchCities, searchLocalCities, type CityResult } from './src/services/cities';
 import { loadDuaCategories, loadDuas } from './src/services/duaService';
@@ -119,7 +119,7 @@ const LANGUAGE_NAME_TO_CODE: Record<string, string> = {
   english: 'en', arabic: 'ar', urdu: 'ur', french: 'fr', turkish: 'tr',
   indonesian: 'id', russian: 'ru', chinese: 'zh', persian: 'fa',
   uzbek: 'uz', kazakh: 'kk', malay: 'my', german: 'de', spanish: 'es',
-  dutch: 'nl', italian: 'it', portuguese: 'pt', bengali: 'bn', hindi: 'hi',
+  dutch: 'nl', italian: 'it', portuguese: 'pt', bengali: 'bn', hindi: 'hi'
 };
 const languageOf = (identifier?: string, language?: string) => {
   const fromId = (identifier || '').split('.')[0];
@@ -161,7 +161,7 @@ const C_LIGHT: Record<string, string> = {
   yellow: '#F5F0E4', cyan: '#EEF3F2', gold: '#B49352', line: '#E7E2E5',
   coral: '#8B5960', white: '#FFFFFF',
   chevron: '#B9BEC9', onAccent: '#FFFFFF', onHero: '#FFE09B', accent: '#5146A4',
-  link: '#0B7891', success: '#3A8A72', heroA: '#2A2849', heroB: '#5146A4',
+  link: '#0B7891', success: '#3A8A72', heroA: '#2A2849', heroB: '#5146A4'
 };
 /** The dark palette: the same hues, resting on a deep warm ink. */
 const C_DARK: Record<string, string> = {
@@ -171,7 +171,7 @@ const C_DARK: Record<string, string> = {
   yellow: '#292518', cyan: '#1B2726', gold: '#D8BC80', line: '#2E2A3C',
   coral: '#D08F97', white: '#1B1926',
   chevron: '#7A768C', onAccent: '#F6F2EC', onHero: '#F3DCA8', accent: '#4B3F8F',
-  link: '#67C7DE', success: '#6FC5A8', heroA: '#191531', heroB: '#4B3F8F',
+  link: '#67C7DE', success: '#6FC5A8', heroA: '#191531', heroB: '#4B3F8F'
 };
 /** The palette in use. It is swapped in place when the theme changes. */
 /* The bottom tab bar is absolutely positioned, so it floats over the screen
@@ -241,7 +241,7 @@ let depth: any = {
   ambient: { shadowColor: '#3B3568', shadowOffset: { width: 0, height: 8 }, shadowOpacity: .09, shadowRadius: 20, elevation: 3 },
   contact: { shadowColor: '#292750', shadowOffset: { width: 0, height: 1 }, shadowOpacity: .10, shadowRadius: 2, elevation: 1 },
   edge: 'rgba(255,255,255,.9)',
-  veil: 'rgba(41,39,80,.035)',
+  veil: 'rgba(41,39,80,.035)'
 };
 /**
  * What a card is made of.
@@ -374,7 +374,7 @@ function applyPalette(dark: boolean) {
     ambient: { ...depth.ambient, shadowColor: dark ? '#000000' : '#3B3568', shadowOpacity: dark ? 0.45 : 0.09 },
     contact: { ...depth.contact, shadowColor: dark ? '#000000' : '#292750', shadowOpacity: dark ? 0.5 : 0.10 },
     edge: dark ? 'rgba(255,255,255,.07)' : 'rgba(255,255,255,.9)',
-    veil: dark ? 'rgba(255,255,255,.05)' : 'rgba(41,39,80,.035)',
+    veil: dark ? 'rgba(255,255,255,.05)' : 'rgba(41,39,80,.035)'
   };
   CARD_GREEN.backgroundColor = C.mint;
   CARD_GOLD.backgroundColor = C.peach;
@@ -701,7 +701,7 @@ const TOOL_IMAGES:Record<string,any>={
   'Prayer Reminders':require('./assets/tool-icons/prayer-reminders.png'),
   Istihada:require('./assets/tool-icons/istihada.png'),
   'Ramadan Planner':require('./assets/tool-icons/ramadan-planner.png'),
-  'These Days':require('./assets/tool-icons/these-days.png'),
+  'These Days':require('./assets/tool-icons/these-days.png')
 };
 /** The same icons, re-toned for the dark palette. */
 const TOOL_IMAGES_DARK:Record<string,any>={
@@ -793,7 +793,7 @@ const TOOL_IMAGES_DARK:Record<string,any>={
   'Hajj Live':require('./assets/tool-icons/hajj-live-dark.png'),
   'Madinah Live':require('./assets/tool-icons/madinah-live-dark.png'),
   'Makkah Live':require('./assets/tool-icons/holy-sites-dark.png'),
-  'Salah Tracker':require('./assets/tool-icons/prayer-fajr-dark.png'),
+  'Salah Tracker':require('./assets/tool-icons/prayer-fajr-dark.png')
 };
 function ToolGraphic({tool,size=58}:{tool:string;size?:number}){const{dark}=useTheme();const image=dark?(TOOL_IMAGES_DARK[tool]||TOOL_IMAGES[tool]):TOOL_IMAGES[tool];const enter=useRef(new Animated.Value(.78)).current;const fade=useRef(new Animated.Value(0)).current;useEffect(()=>{Animated.parallel([Animated.spring(enter,{toValue:1,friction:6,tension:75,useNativeDriver:true}),Animated.timing(fade,{toValue:1,duration:350,useNativeDriver:true})]).start()},[]);return <Animated.View accessibilityElementsHidden style={[s.graphicFrame,{width:size,height:size,opacity:fade,transform:[{scale:enter}]}]}>{image?<Image source={image} resizeMode="contain" style={{width:size-6,height:size-6}}/>:ico('sparkles-outline',size*.48,C.green)}</Animated.View>}
 /** Hadith bodies arrive with markup; the card shows them as plain text. */
@@ -826,9 +826,9 @@ function DepthCard({ children, onPress, style, cardStyle, bodyStyle, radius = RA
   </Animated.View>;
 }
 
-function MotionPress({ children, onPress, style, testID, accessibilityLabel }: { children: React.ReactNode; onPress?: () => void; style?: any; testID?: string; accessibilityLabel?: string }) {
+function MotionPress({ children, onPress, onLongPress, style, testID, accessibilityLabel }: { children: React.ReactNode; onPress?: () => void; onLongPress?: () => void; style?: any; testID?: string; accessibilityLabel?: string }) {
   const press = usePressDepth();
-  return <Animated.View style={[style, { transform: [{ scale: press.scale }] }]}><Pressable testID={testID} accessibilityLabel={accessibilityLabel} accessibilityRole={accessibilityLabel?'button':undefined} onPress={onPress} onPressIn={press.onPressIn} onPressOut={press.onPressOut}>{children}</Pressable></Animated.View>;
+  return <Animated.View style={[style, { transform: [{ scale: press.scale }] }]}><Pressable testID={testID} accessibilityLabel={accessibilityLabel} accessibilityRole={accessibilityLabel?'button':undefined} onPress={onPress} onLongPress={onLongPress} onPressIn={press.onPressIn} onPressOut={press.onPressOut}>{children}</Pressable></Animated.View>;
 }
 
 function Page({ children }: { children: React.ReactNode }) {
@@ -857,12 +857,12 @@ function TopBar({ overline, title, right }: { overline?: string; title: string; 
 const HEADER_LIGHT = {
   notifications: require('./assets/tool-icons/notifications.png'),
   theme: require('./assets/tool-icons/moon.png'),
-  settings: require('./assets/tool-icons/tab-settings.png'),
+  settings: require('./assets/tool-icons/tab-settings.png')
 };
 const HEADER_DARK = {
   notifications: require('./assets/tool-icons/notifications-dark.png'),
   theme: require('./assets/tool-icons/sunny-dark.png'),
-  settings: require('./assets/tool-icons/tab-settings-dark.png'),
+  settings: require('./assets/tool-icons/tab-settings-dark.png')
 };
 
 /**
@@ -1071,7 +1071,7 @@ const PRAYER_ICONS: Record<string, any> = {
   Dhuhr: require('./assets/tool-icons/prayer-dhuhr.png'),
   Asr: require('./assets/tool-icons/prayer-asr.png'),
   Maghrib: require('./assets/tool-icons/prayer-maghrib.png'),
-  Isha: require('./assets/tool-icons/prayer-isha.png'),
+  Isha: require('./assets/tool-icons/prayer-isha.png')
 };
 
 /** Honour the system setting: when reduce motion is on, everything sits still. */
@@ -1142,13 +1142,21 @@ const[quranPosition,setQuranPosition]=useState<any>(null);const[openReflection,s
     useEffect(()=>{const t=setInterval(()=>setHour(new Date().getHours()),60000);return()=>clearInterval(t)},[]);
   const hydrateLocal=()=>Promise.all([loadPrayerCompletion(dateKey).then(setCompleted),loadPrayerHistory().then(setHistory),loadQuickTasbih().then(setQuickCount),loadReadingPosition().then(setQuranPosition)]);useEffect(()=>{hydrateLocal()},[dateKey]);useFocusEffect(useCallback(()=>{void hydrateLocal()},[]));const togglePrayer=(name:string)=>setCompleted(current=>{const next=current.includes(name)?current.filter(x=>x!==name):[...current,name];savePrayerCompletion(dateKey,next).then(()=>loadPrayerHistory().then(setHistory));return next});const addQuick=async()=>{await tapTasbih();haptic('count')};const onRefresh=async()=>{setRefreshing(true);await Promise.all([data.load(),hydrateLocal()]);setRefreshing(false)};const weekTotal=Object.entries(history).filter(([key])=>Date.now()-new Date(key).getTime()<7*86400000).reduce((sum,[,items])=>sum+items.length,0);let streak=0;for(let i=0;i<60;i++){const d=new Date();d.setDate(d.getDate()-i);const key=d.toISOString().slice(0,10);if((history[key]||[]).length>=5)streak++;else if(i>0||completed.length<5)break}
   /* The adhkar sit in their own cards above, so "For your day" keeps the four
-     things you reach for most, as round icons rather than a row of cards. */
-  const dayTools = [
-    {label:'Quran',title:T('Quran'),onPress:()=>nav.navigate('Quran')},
-    {label:'Qibla',title:T('Qibla'),onPress:()=>nav.navigate('Tools',{screen:'Qibla',initial:false})},
-    {label:'Tasbih',title:T('Tasbih'),onPress:()=>nav.navigate('Tools',{screen:'Tasbih',initial:false})},
-    {label:'Audio',title:T('Audio'),onPress:()=>nav.navigate('Quran',{screen:'Quran Audio',initial:false})},
-  ];
+     things you reach for most, as round icons rather than a row of cards.
+     Which four is hers to say — the row is chosen, not handed over fixed. */
+  const { settings: worship, update: updateWorship } = useWorshipSettings();
+  const dayTools = resolveDayTools(worship.dayTools);
+  /* The sheet has two faces: the four slots it holds now, and, once one of
+     them is picked, everything that could go there instead. `null` shows the
+     first face, a number shows the second for that slot. */
+  const [dayToolOpen, setDayToolOpen] = useState(false);
+  const [dayToolSlot, setDayToolSlot] = useState<number | null>(null);
+  const replaceDayTool = (slot: number, id: string) => {
+    const next = dayTools.map((tool, index) => (index === slot ? id : tool.id));
+    void updateWorship({ dayTools: next });
+    setDayToolOpen(false);
+    setDayToolSlot(null);
+  };
   /* Morning gives way to evening as the day does. The hour is re-read every
      minute so the card turns over by itself rather than on the next render. */
   const morningTime = hour < 13;
@@ -1188,8 +1196,15 @@ const[quranPosition,setQuranPosition]=useState<any>(null);const[openReflection,s
     adhkarRef.current?.scrollTo({ x: adhkarOpen * contentWidth, y: 0, animated: false });
     setAdhkarIndex(adhkarOpen);
   }, [afterPrayer, contentWidth]);
-const reflectionCardWidth=wide?Math.min(310,(contentWidth-24)/3):Math.min(318,Math.max(260,width-66));
-  const reflections=[{id:'ayah'},{id:'name'},{id:'dua'},{id:'tasbih'}];
+  /* One reflection at a time rather than four in a sliding row. A verse is
+     read, not browsed, and a card narrow enough to fit three across leaves
+     the Arabic at a size nobody can comfortably recite from. The Quick
+     Tasbih counter has moved to "For your day", where it belongs: it is a
+     thing you do, not a thing you reflect on. */
+  const [reflectionKind,setReflectionKind]=useState<'ayah'|'name'|'dua'>('ayah');
+  const REFLECTION_TABS:{id:'ayah'|'name'|'dua';label:string}[]=[
+    {id:'ayah',label:'Ayah'},{id:'name',label:'Name'},{id:'dua',label:'Dua'},
+  ];
   /* Both of these are drawn by the overlay host, above the floating menu. */
   useOverlaySheet('home-hadith-report', !!reportHadith, () => reportHadith
     ? <CorrectionSheet target={{kind:'hadith',
@@ -1203,6 +1218,14 @@ const reflectionCardWidth=wide?Math.min(310,(contentWidth-24)/3):Math.min(318,Ma
         translationName={T(rtl?preferences.translationLanguage:preferences.translationName)}
         onClose={()=>setOpenReflection(null)}
         onOpenVerse={(verseKey:string,surahId:number,surahName:string)=>nav.navigate('Quran',{screen:'Reader',params:{chapter:{id:surahId,name_simple:surahName,name_arabic:'',verses_count:0},focusVerse:verseKey},initial:false})}/>
+    : null);
+
+  useOverlaySheet('home-day-tools', dayToolOpen, () => dayToolOpen
+    ? <DayToolSheet slot={dayToolSlot} chosen={dayTools} rtl={rtl} T={T}
+        onPickSlot={(index)=>setDayToolSlot(index)}
+        onReplace={replaceDayTool}
+        onClose={()=>{setDayToolOpen(false);setDayToolSlot(null)}}
+        onSeeAll={()=>{setDayToolOpen(false);nav.navigate('Tools')}}/>
     : null);
   return <Page><Animated.ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false} scrollEventThrottle={16} onScroll={Animated.event([{nativeEvent:{contentOffset:{y:scrollY}}}],{useNativeDriver:false})} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.green}/>}>
     <AppHeader/>
@@ -1268,16 +1291,43 @@ const reflectionCardWidth=wide?Math.min(310,(contentWidth-24)/3):Math.min(318,Ma
         {afterPrayer.map((_: any, i: number) => <View key={i} style={[s.adhkarDot, i === adhkarIndex && s.adhkarDotOn]} />)}
       </View>
     </>}
-    <Section title={T('For your day')} action={T('All tools')} onPress={()=>nav.navigate('Library')} />
-    <View style={s.roundRow}>{dayTools.map(tool=>(
-      <MotionPress key={tool.label} onPress={tool.onPress} style={s.roundItem}>
-        <View style={s.roundIcon}><ToolGraphic tool={tool.label} size={34}/></View>
-        <Text style={s.roundLabel} numberOfLines={2}>{tool.title}</Text>
+    <Section title={T('For your day')} action={T('Edit')} onPress={()=>{setDayToolSlot(null);setDayToolOpen(true)}} />
+    <View style={s.roundRow}>{dayTools.map((tool,index)=>(
+      <MotionPress key={tool.id}
+        accessibilityLabel={tool.id==='quick-tasbih'?`${T('Quick Tasbih')} ${todayTotal(tasbih)}. ${T('Tap to count')}`:T(tool.label)}
+        onPress={()=>{ if(tool.id==='quick-tasbih'){ void addQuick(); return; } tool.open?.(nav); }}
+        onLongPress={()=>{setDayToolSlot(index);setDayToolOpen(true)}}
+        style={s.roundItem}>
+        <View style={s.roundIcon}><ToolGraphic tool={tool.icon} size={34}/></View>
+        <Text style={s.roundLabel} numberOfLines={2}>{T(tool.label)}</Text>
       </MotionPress>
     ))}</View>
 
     <Section title={T('Daily reflection')} action={T('Refresh')} onPress={onRefresh}/>
-    <SlidingCards label={T('Daily reflections')} items={reflections} cardWidth={reflectionCardWidth} renderItem={(item:any,_index:number,minHeight:number)=>item.id==='ayah'?<Pressable accessibilityRole="button" accessibilityLabel={`${T('AYAH OF THE DAY')}. ${T('Open the full verse and its source')}`} onPress={()=>setOpenReflection('ayah')} style={({pressed}:any)=>[s.reflectionSlide,minHeight?{minHeight}:null,pressed&&{opacity:.72}]}><Text style={s.dailyKicker}>{T('AYAH OF THE DAY')}</Text><Text numberOfLines={3} style={s.dailyArabic}>{data.ayah?.arabic||T('Loading verified Quran text…')}</Text>{!rtl && <Text numberOfLines={4} style={s.dailyBody}>{data.ayah?.translation}</Text>}<Text style={s.dataMeta}>{rtl ? data.ayah?.arabicReference || data.ayah?.reference : data.ayah?.reference}</Text></Pressable>:item.id==='name'?<Pressable accessibilityRole="button" accessibilityLabel={`${T('NAME OF ALLAH')}. ${T('Open the full name and its source')}`} onPress={()=>setOpenReflection('name')} style={({pressed}:any)=>[s.reflectionSlide,minHeight?{minHeight}:null,pressed&&{opacity:.72}]}><Text style={s.dailyKicker}>{T('NAME OF ALLAH')}</Text><Text style={s.nameOfDay}>{data.name?.name}</Text>{rtl ? <Text style={s.dailyTitle}>{data.name?.name}</Text> : <Text style={s.dailyTitle}>{data.name?.transliteration}</Text>}{!rtl && <Text style={s.dailyBody}>{data.name?.meaning}</Text>}</Pressable>:item.id==='dua'?<Pressable accessibilityRole="button" accessibilityLabel={`${T('DUA OF THE DAY')}. ${T('Open the full supplication and its source')}`} onPress={()=>setOpenReflection('dua')} style={({pressed}:any)=>[s.reflectionSlide,minHeight?{minHeight}:null,pressed&&{opacity:.72}]}><Text style={s.dailyKicker}>{T('DUA OF THE DAY')}</Text><Text numberOfLines={3} style={s.dailyArabic}>{data.dua?.arabic||T('Loading verified dua…')}</Text>{!rtl && <Text numberOfLines={4} style={s.dailyBody}>{data.dua?.translation}</Text>}</Pressable>:<Pressable accessibilityRole="button" accessibilityLabel={`${T('Quick Tasbih')}: ${quickCount}. ${T('Tap to count')}`} onPress={addQuick} style={[s.reflectionSlide,s.quickTasbih,minHeight?{minHeight}:null]}><ToolGraphic tool="Tasbih" size={56}/><Text style={s.dailyKicker}>{T('QUICK TASBIH')}</Text><Text style={s.quickCount}>{todayTotal(tasbih)}</Text><Text style={s.dailyBody}>{rtl ? currentPhrase(tasbih).arabic : currentPhrase(tasbih).transliteration}{rtl ? ' · اضغط للعد' : ' · tap to count'}</Text></Pressable>}/>
+    <View style={s.homeReflectTabs}>{REFLECTION_TABS.map(tab=>(
+      <Pressable key={tab.id} accessibilityRole="tab" accessibilityState={{selected:reflectionKind===tab.id}}
+        onPress={()=>setReflectionKind(tab.id)} style={[s.homeReflectTab,reflectionKind===tab.id&&s.homeReflectTabOn]}>
+        <Text style={[s.homeReflectTabText,reflectionKind===tab.id&&s.homeReflectTabTextOn]} numberOfLines={1}>{T(tab.label)}</Text>
+      </Pressable>
+    ))}</View>
+    <Pressable accessibilityRole="button"
+      accessibilityLabel={`${T(REFLECTION_LABEL[reflectionKind])}. ${T('Open the full reflection')}`}
+      onPress={()=>setOpenReflection(reflectionKind)} style={({pressed}:any)=>[s.homeReflectHero,pressed&&{opacity:.72}]}>
+      <Text style={s.dailyKicker}>{T(REFLECTION_LABEL[reflectionKind])}</Text>
+      {reflectionKind==='ayah'?<>
+        <Text style={s.homeReflectArabic}>{data.ayah?.arabic||T('Loading verified Quran text…')}</Text>
+        {!rtl && <Text style={s.homeReflectBody}>{data.ayah?.translation}</Text>}
+        <Text style={s.dataMeta}>{rtl ? data.ayah?.arabicReference || data.ayah?.reference : data.ayah?.reference}</Text>
+      </>:reflectionKind==='name'?<>
+        <Text style={s.homeReflectName}>{data.name?.name}</Text>
+        <Text style={s.homeReflectBody}>{rtl ? data.name?.meaning : data.name?.transliteration}</Text>
+        {!rtl && <Text style={s.homeReflectBody}>{data.name?.meaning}</Text>}
+      </>:<>
+        <Text style={s.homeReflectArabic}>{data.dua?.arabic||T('Loading verified dua…')}</Text>
+        {!rtl && <Text style={s.homeReflectBody}>{data.dua?.translation}</Text>}
+      </>}
+      <View style={s.homeReflectFoot}><Text style={s.homeReflectFootText}>{T('Read the full reflection')}</Text>{ico('arrow-forward',15,C.green)}</View>
+    </Pressable>
     <DepthCard index={0} radius={RADIUS.xl} style={s.weekWrap} cardStyle={s.weekSurface}
       bodyStyle={s.weekBody}
       onPress={()=>nav.navigate('Tools',{screen:'Weekly Summary',initial:false})}><View><Text style={s.weekSummaryTitle}>{T('This week')}</Text><Text style={s.weekSummaryBody}>{rtl ? `${weekTotal} من 35 صلاة مؤداة · ${streak} ${arNoun(streak,'يوم متتابع','يومان متتابعان','أيام متتابعة','يومًا متتابعًا')}` : `${weekTotal} of 35 prayers marked · ${streak} day streak`}</Text></View>{ico('arrow-forward',18,C.white)}</DepthCard>
@@ -1355,6 +1405,185 @@ const TOOL_GROUPS: ToolGroup[] = [
  * What to take for Umrah. Grouped in the order you would think of it, not
  * alphabetically, and ticked off on the device rather than on a web page.
  */
+/**
+ * Everything that can be put under "For your day" on the Home screen.
+ *
+ * A shortcut and a Tools card are not the same thing, which is why this is
+ * written out rather than derived from TOOL_GROUPS. A Tools card names a
+ * screen inside the tab it already sits in; a shortcut has to work from
+ * Home, which means naming the tab and the screen both. Deriving one from
+ * the other would quietly produce shortcuts that lead nowhere.
+ *
+ * `open` is left unset for Quick Tasbih, which counts where it stands
+ * rather than taking you anywhere.
+ */
+type DayTool = { id: string; label: string; icon: string; open?: (nav: any) => void };
+
+const DAY_TOOL_POOL: DayTool[] = [
+  { id: 'quran', label: 'Quran', icon: 'Quran',
+    open: (n) => n.navigate('Quran') },
+  { id: 'qibla', label: 'Qibla', icon: 'Qibla',
+    open: (n) => n.navigate('Tools', { screen: 'Qibla', initial: false }) },
+  { id: 'tasbih', label: 'Tasbih', icon: 'Tasbih',
+    open: (n) => n.navigate('Tools', { screen: 'Tasbih', initial: false }) },
+  { id: 'audio', label: 'Audio', icon: 'Audio',
+    open: (n) => n.navigate('Quran', { screen: 'Quran Audio', initial: false }) },
+  { id: 'quick-tasbih', label: 'Quick Tasbih', icon: 'Tasbih' },
+  { id: 'prayer', label: 'Salah Tracker', icon: 'Prayer',
+    open: (n) => n.navigate('Prayer') },
+  { id: 'adhkar', label: 'Adhkar', icon: 'Adhkar',
+    open: (n) => n.navigate('Library', { screen: 'Adhkar', initial: false }) },
+  { id: 'duas', label: 'Duas', icon: 'Duas',
+    open: (n) => n.navigate('Library', { screen: 'Duas', initial: false }) },
+  { id: 'hadith', label: 'Hadith', icon: 'Hadith',
+    open: (n) => n.navigate('Library', { screen: 'Hadith', initial: false }) },
+  { id: 'names', label: '99 Names', icon: '99 Names',
+    open: (n) => n.navigate('Library', { screen: '99 Names', initial: false }) },
+  { id: 'vocabulary', label: 'Vocabulary', icon: 'Quran Vocabulary',
+    open: (n) => n.navigate('Library', { screen: 'Quran Vocabulary', initial: false }) },
+  { id: 'mushaf', label: 'Mushaf', icon: 'Mushaf Pages',
+    open: (n) => n.navigate('Quran', { screen: 'Reader', initial: false }) },
+  { id: 'search', label: 'Search', icon: 'Quran Search',
+    open: (n) => n.navigate('Quran', { screen: 'Quran Search', initial: false }) },
+  { id: 'tafsir', label: 'Tafsir', icon: 'Tafsir',
+    open: (n) => n.navigate('Quran', { screen: 'Tafsir Compare', initial: false }) },
+  { id: 'bookmarks', label: 'Bookmarks', icon: 'Bookmarks',
+    open: (n) => n.navigate('Quran', { screen: 'Bookmarks', initial: false }) },
+  { id: 'plans', label: 'Reading Plans', icon: 'Reading Plans',
+    open: (n) => n.navigate('Quran', { screen: 'Reading Plans', initial: false }) },
+  { id: 'memorize', label: 'Memorize', icon: 'Hifz',
+    open: (n) => n.navigate('Quran', { screen: 'Memorize', initial: false }) },
+  { id: 'fasting', label: 'Fasting', icon: 'Fasting',
+    open: (n) => n.navigate('Tools', { screen: 'Fasting', initial: false }) },
+  { id: 'zakat', label: 'Zakat', icon: 'Zakat',
+    open: (n) => n.navigate('Tools', { screen: 'Zakat', initial: false }) },
+  { id: 'qada', label: 'Qada Fasts', icon: 'Qada Fasts',
+    open: (n) => n.navigate('Tools', { screen: 'Qada', initial: false }) },
+  { id: 'hijri', label: 'Hijri Calendar', icon: 'Hijri Calendar',
+    open: (n) => n.navigate('Tools', { screen: 'Hijri Calendar', initial: false }) },
+  { id: 'mosques', label: 'Mosques', icon: 'Mosques',
+    open: (n) => n.navigate('Tools', { screen: 'Mosques', initial: false }) },
+  { id: 'weekly', label: 'Weekly Summary', icon: 'Weekly Summary',
+    open: (n) => n.navigate('Tools', { screen: 'Weekly Summary', initial: false }) },
+  { id: 'guides', label: 'Worship Guides', icon: 'Worship guides',
+    open: (n) => n.navigate('Library', { screen: 'Worship Guides', initial: false }) },
+];
+
+const DAY_TOOL_BY_ID = new Map(DAY_TOOL_POOL.map((tool) => [tool.id, tool]));
+
+/** Four. It is what the row was drawn for: one line on every phone, and each
+    icon keeps a comfortable target to press. */
+const DAY_TOOL_SLOTS = 4;
+
+/**
+ * Turn whatever was saved into a full row of four.
+ *
+ * Ids this build no longer knows are dropped rather than shown as blanks,
+ * the same id is never repeated, and the tail is filled from the defaults so
+ * the row is never short. A saved choice that has gone stale should settle
+ * back into the row everybody starts with, not into a hole.
+ */
+function resolveDayTools(saved: string[] | undefined): DayTool[] {
+  const out: DayTool[] = [];
+  for (const id of saved || []) {
+    const tool = DAY_TOOL_BY_ID.get(id);
+    if (tool && !out.some((chosen) => chosen.id === tool.id)) out.push(tool);
+    if (out.length === DAY_TOOL_SLOTS) break;
+  }
+  for (const id of DEFAULT_DAY_TOOLS) {
+    if (out.length === DAY_TOOL_SLOTS) break;
+    if (out.some((chosen) => chosen.id === id)) continue;
+    const tool = DAY_TOOL_BY_ID.get(id);
+    if (tool) out.push(tool);
+  }
+  return out;
+}
+
+/** The three reflections, named the way the card names them. */
+const REFLECTION_LABEL: Record<'ayah' | 'name' | 'dua', string> = {
+  ayah: 'AYAH OF THE DAY',
+  name: 'NAME OF ALLAH',
+  dua: 'DUA OF THE DAY'
+};
+
+/**
+ * Choosing what sits under "For your day".
+ *
+ * Two faces, because the two ways into it want different things. Opening it
+ * from the section header is a decision about the row as a whole, so it
+ * lists the four slots and lets you pick one. Long-pressing an icon is
+ * already a decision about that icon, so it goes straight to the list of
+ * replacements.
+ *
+ * A slot is filled rather than emptied: four is what the row is drawn for,
+ * and a row with a hole in it is not a choice anybody asked to make.
+ */
+function DayToolSheet({ slot, chosen, rtl, T, onPickSlot, onReplace, onClose, onSeeAll }: {
+  slot: number | null;
+  chosen: DayTool[];
+  rtl: boolean;
+  T: (text: string) => string;
+  onPickSlot: (index: number) => void;
+  onReplace: (index: number, id: string) => void;
+  onClose: () => void;
+  onSeeAll: () => void;
+}) {
+  const { height: windowH } = useWindowDimensions();
+  const rise = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.spring(rise, { toValue: 1, friction: 9, tension: 130, useNativeDriver: true }).start();
+  }, [rise]);
+
+  const replacing = slot !== null ? chosen[slot] : null;
+
+  return <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+    <Pressable accessibilityRole="button" accessibilityLabel={T('Close')} onPress={onClose} style={s.sheetScrim} />
+    <Animated.View style={[s.verseSheet, { maxHeight: Math.round(windowH * 0.86) }, {
+      transform: [{ translateY: rise.interpolate({ inputRange: [0, 1], outputRange: [420, 0] }) }],
+      opacity: rise
+    }]}>
+      <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
+        <View style={s.sheetGrip} />
+        <Text style={s.sheetTitle}>{replacing ? T('Replace with') : T('For your day')}</Text>
+        <Text style={s.sheetSub}>
+          {replacing ? T('Choose what takes its place.') : T('Four shortcuts, and which four is yours to say. Pick one to change it.')}
+        </Text>
+
+        {replacing === null ? chosen.map((tool, index) => (
+          <Pressable key={tool.id} accessibilityRole="button"
+            accessibilityLabel={`${T('Change')} ${T(tool.label)}`}
+            onPress={() => onPickSlot(index)}
+            style={[s.setting, index === chosen.length - 1 && { borderBottomWidth: 0 }]}>
+            <View style={s.dayToolIcon}><ToolGraphic tool={tool.icon} size={34} /></View>
+            <View style={{ flex: 1 }}>
+              <Text style={s.settingName}>{T(tool.label)}</Text>
+              <Text style={s.meta}>{T(tool.open ? 'Opens a screen' : 'Counts where it stands')}</Text>
+            </View>
+            {ico(rtl ? 'arrow-back' : 'arrow-forward', 18, C.green)}
+          </Pressable>
+        )) : DAY_TOOL_POOL.map((tool, index) => {
+          const isCurrent = tool.id === replacing.id;
+          return <Pressable key={tool.id} accessibilityRole="radio" accessibilityState={{ selected: isCurrent }}
+            onPress={() => (isCurrent ? onClose() : onReplace(slot as number, tool.id))}
+            style={[s.setting, index === DAY_TOOL_POOL.length - 1 && { borderBottomWidth: 0 }]}>
+            <View style={s.dayToolIcon}><ToolGraphic tool={tool.icon} size={34} /></View>
+            <View style={{ flex: 1 }}>
+              <Text style={s.settingName}>{T(tool.label)}</Text>
+              <Text style={s.meta}>{T(isCurrent ? 'Already here' : tool.open ? 'Opens a screen' : 'Counts where it stands')}</Text>
+            </View>
+            {ico(isCurrent ? 'checkmark-circle' : 'ellipse-outline', 20, isCurrent ? C.green : C.muted)}
+          </Pressable>;
+        })}
+
+        {replacing === null && (
+          <Pressable accessibilityRole="button" accessibilityLabel={T('See all tools')} onPress={onSeeAll} style={s.secondary}>
+            <Text style={s.secondaryText}>{T('See all tools')}</Text>
+          </Pressable>
+        )}
+      </ScrollView>
+    </Animated.View>
+  </View>;
+}
 const PACKING_GROUPS: { title: string; items: string[] }[] = [
   { title: 'Documents and money', items: [
     'Passport with at least six months left on it',
@@ -1564,7 +1793,7 @@ function makeHajjStyles() { return StyleSheet.create({
   noteText: { color: C.body, fontSize: 12.5, fontFamily: 'DMSans_400Regular', lineHeight: 19 },
   action: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.heroA, borderRadius: 18, padding: 15, marginBottom: 10 },
   actionText: { flex: 1, color: C.white, fontSize: 14, fontFamily: 'DMSans_600SemiBold' },
-  actionSub: { color: 'rgba(255,255,255,.7)', fontSize: 11.5, fontFamily: 'DMSans_400Regular', marginTop: 2 },
+  actionSub: { color: 'rgba(255,255,255,.7)', fontSize: 11.5, fontFamily: 'DMSans_400Regular', marginTop: 2 }
 
 });}
 let hajjStyles: Record<string, any> = makeHajjStyles();
@@ -1754,7 +1983,7 @@ function makeConsistency() { return StyleSheet.create({
   pctLabel: { fontFamily: 'DMSans_600SemiBold', fontSize: 10.5, color: C.muted, letterSpacing: .3 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 12 },
   cell: { width: '8.6%', aspectRatio: 1, borderRadius: 4, margin: '0.7%' },
-  note: { fontFamily: 'DMSans_400Regular', fontSize: 11.5, color: C.muted, lineHeight: 17 },
+  note: { fontFamily: 'DMSans_400Regular', fontSize: 11.5, color: C.muted, lineHeight: 17 }
 
 });}
 let consistency: Record<string, any> = makeConsistency();
@@ -2235,7 +2464,7 @@ function CorrectionSheet({ target, rtl, T, appLanguage, onClose }: {
     const saved = await saveReport({
       kind: target.kind, issue, reference: target.reference, source: target.source,
       arabic: target.arabic, text: target.text, edition: target.edition,
-      note, appLanguage,
+      note, appLanguage
     });
     const opened = await openReportEmail(saved);
     if (opened) setSent(true); else { setNoMail(true); setBusy(false); }
@@ -2248,7 +2477,7 @@ function CorrectionSheet({ target, rtl, T, appLanguage, onClose }: {
     await saveReport({
       kind: target.kind, issue, reference: target.reference, source: target.source,
       arabic: target.arabic, text: target.text, edition: target.edition,
-      note, appLanguage,
+      note, appLanguage
     });
     onClose();
   };
@@ -2276,7 +2505,7 @@ function CorrectionSheet({ target, rtl, T, appLanguage, onClose }: {
     <Pressable accessibilityRole="button" accessibilityLabel={T('Close')} onPress={onClose} style={s.sheetScrim} />
     <Animated.View style={[s.verseSheet, { maxHeight: Math.round(windowH * 0.86) }, {
       transform: [{ translateY: rise.interpolate({ inputRange: [0, 1], outputRange: [420, 0] }) }],
-      opacity: rise,
+      opacity: rise
     }]}>
       {/* Without `keyboardShouldPersistTaps` the first tap on Send only puts the
           keyboard away, which is most of why this sheet felt unresponsive: you
@@ -2366,7 +2595,7 @@ function ReflectionDetail({ kind, data, rtl, T, translationName, onClose, onOpen
         [T('This meaning'), translationName],
         [T('The Arabic'), T('Uthmani script, as printed in the Madinah Mushaf')],
       ],
-      action: refSurah ? { label: T('Open in the reader'), go: () => onOpenVerse(`${refSurah}:${refKey![2]}`, refSurah, refName) } : null,
+      action: refSurah ? { label: T('Open in the reader'), go: () => onOpenVerse(`${refSurah}:${refKey![2]}`, refSurah, refName) } : null
     }
     : kind === 'name'
       ? {
@@ -2378,7 +2607,7 @@ function ReflectionDetail({ kind, data, rtl, T, translationName, onClose, onOpen
           [T('Which one'), data?.name?.number ? `${data.name.number} ${T('of 99')}` : '—'],
           [T('Where it is from'), T('Islamic.app Asma al-Husna, drawn from the Quran and Sunnah')],
         ],
-        action: null,
+        action: null
       }
       : {
         kicker: T('DUA OF THE DAY'),
@@ -2391,14 +2620,14 @@ function ReflectionDetail({ kind, data, rtl, T, translationName, onClose, onOpen
              to show, so it is shown in full rather than trimmed to fit. */
           [T('The narration it belongs to'), data?.dua?.reference || T('Islamic.app dhikr collection')],
         ],
-        action: null,
+        action: null
       };
 
   return <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
     <Pressable accessibilityRole="button" accessibilityLabel={T('Close')} onPress={onClose} style={s.sheetScrim} />
     <Animated.View style={[s.verseSheet, {
       transform: [{ translateY: rise.interpolate({ inputRange: [0, 1], outputRange: [420, 0] }) }],
-      opacity: rise,
+      opacity: rise
     }]}>
       <View style={s.sheetGrip} />
       <Text style={s.sheetKicker}>{body.kicker}</Text>
@@ -2461,7 +2690,7 @@ function VerseNoteSheet({ verse, chapter, rtl, T, onClose }: {
       translation: verse.translation,
       note: body,
       savedAt: Date.now(),
-      updatedAt: Date.now(),
+      updatedAt: Date.now()
     });
     onClose();
   };
@@ -2470,7 +2699,7 @@ function VerseNoteSheet({ verse, chapter, rtl, T, onClose }: {
     <Pressable accessibilityRole="button" accessibilityLabel={T('Close')} onPress={onClose} style={s.sheetScrim} />
     <Animated.View style={[s.verseSheet, {
       transform: [{ translateY: rise.interpolate({ inputRange: [0, 1], outputRange: [340, 0] }) }],
-      opacity: rise,
+      opacity: rise
     }]}>
       <View style={s.sheetGrip} />
       <View style={s.noteSheetHead}>
@@ -2525,12 +2754,12 @@ function VerseShareSheet({ verse, chapter, rtl, T, onClose }: {
     reference: verse.verse_key,
     surahName: chapter.name_simple,
     translationName: T(rtl ? preferences.translationLanguage : preferences.translationName),
-    arabicFontFamily: quranFont(preferences.arabicFont),
+    arabicFontFamily: quranFont(preferences.arabicFont)
   };
 
   const asText = async () => {
     await Share.share({
-      message: `${verse.text_uthmani}\n\n${verse.translation || ''}\n\nQuran ${verse.verse_key} · ${chapter.name_simple}\n${preferences.translationName}`,
+      message: `${verse.text_uthmani}\n\n${verse.translation || ''}\n\nQuran ${verse.verse_key} · ${chapter.name_simple}\n${preferences.translationName}`
     });
     onClose();
   };
@@ -2559,7 +2788,7 @@ function VerseShareSheet({ verse, chapter, rtl, T, onClose }: {
     <Pressable accessibilityRole="button" accessibilityLabel={T('Close')} onPress={onClose} style={s.sheetScrim} />
     <Animated.View style={[s.verseSheet, {
       transform: [{ translateY: rise.interpolate({ inputRange: [0, 1], outputRange: [340, 0] }) }],
-      opacity: rise,
+      opacity: rise
     }]}>
       <View style={s.sheetGrip} />
       <Text style={s.sheetTitle}>{T('Share verse')} {verse.verse_key}</Text>
@@ -2583,7 +2812,7 @@ function VerseShareSheet({ verse, chapter, rtl, T, onClose }: {
 }
 
 function MushafVerseMenu({
-  T, rtl, saved, marked, onPlay, onBookmark, onMark, onNote,
+  T, rtl, saved, marked, onPlay, onBookmark, onMark, onNote
 }: {
   T: (t: string) => string; rtl: boolean; saved: boolean; marked: boolean;
   onPlay: () => void; onBookmark: () => void; onMark: () => void; onNote: () => void;
@@ -3095,7 +3324,7 @@ function VerseActionsSheet({ verse, chapter, rtl, T, navigation, onClose }: {
     reference: verse.verse_key,
     surahName: chapter.name_simple,
     translationName: T(rtl ? preferences.translationLanguage : preferences.translationName),
-    arabicFontFamily: quranFont(preferences.arabicFont),
+    arabicFontFamily: quranFont(preferences.arabicFont)
   };
 
   const mark: QuranBookmark = { verseKey: verse.verse_key, surahId: chapter.id, surahName: chapter.name_simple, arabic: verse.text_uthmani, translation: verse.translation || '', savedAt: Date.now() };
@@ -3143,7 +3372,7 @@ function VerseActionsSheet({ verse, chapter, rtl, T, navigation, onClose }: {
     <Pressable accessibilityRole="button" accessibilityLabel={T('Close')} onPress={onClose} style={s.sheetScrim} />
     <Animated.View style={[s.verseSheet, {
       transform: [{ translateY: rise.interpolate({ inputRange: [0, 1], outputRange: [420, 0] }) }],
-      opacity: rise,
+      opacity: rise
     }]}>
       <View style={s.sheetGrip} />
       <Text style={s.sheetTitle}>{T('Verse')} {verse.verse_key}</Text>
@@ -3410,7 +3639,7 @@ function MemorizeTestScreen({ navigation, route }: any) {
             verseKey: item.verse_key, surahId,
             surahName: item.surah_name || scopeLabel,
             ayah: Number(item.verse_key.split(':')[1]) || 0,
-            attempts: 0, correct: 0, wrong: 0, streak: 0,
+            attempts: 0, correct: 0, wrong: 0, streak: 0
           });
         });
       } else {
@@ -3684,7 +3913,7 @@ const DUA_SHORTCUT_LABELS: Record<string, string> = {
   anxiety: 'Anxiety and distress',
   protection: 'Protection',
   forgiveness: 'Forgiveness',
-  hajj: 'Hajj and Umrah',
+  hajj: 'Hajj and Umrah'
 };
 
 function DuaCard({ dua }: { dua: Dua }) {const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);
@@ -3756,14 +3985,14 @@ function DownloadsScreen({ route, navigation }: any) {
     chapterName: focusName,
     edition,
     label: rtl ? `${editionLabel} · السورة كاملة` : `${editionLabel} · full Surah`,
-    url,
+    url
   }));
   const keepText = () => run('text', () => downloadSurahText({
     chapterId: focusId as number,
     chapterName: focusName,
     script: preferences.scriptEdition === 'quran-indopak' ? 'quran-uthmani' : preferences.scriptEdition,
     translation: preferences.translationEdition,
-    label: `${preferences.scriptName} · ${preferences.translationName}`,
+    label: `${preferences.scriptName} · ${preferences.translationName}`
   }));
   const used = totalDownloadBytes();
   return <Page><ToolBar title={T('Downloads')} navigation={navigation} />
@@ -4689,7 +4918,7 @@ function GuideReferences({ guide, navigation }: { guide: WorshipGuide; navigatio
           key={ref.ref}
           onPress={() => navigation.navigate('Quran', { screen: 'Reader', params: {
             chapter: { id: v.surah, name_simple: v.name, name_arabic: v.nameArabic, verses_count: v.versesCount },
-            focusVerse: `${v.surah}:${v.verses[0].n}`,
+            focusVerse: `${v.surah}:${v.verses[0].n}`
           }})}
           style={s.evidenceCard}
         >
@@ -4734,7 +4963,7 @@ type IslamicEvent = {
 };
 
 const EVENT_COLOURS: Record<IslamicEvent['kind'], string> = {
-  fast: C.success, eid: C.gold, night: C.gold, hajj: C.teal, newyear: C.green,
+  fast: C.success, eid: C.gold, night: C.gold, hajj: C.teal, newyear: C.green
 };
 
 const ISLAMIC_EVENTS: IslamicEvent[] = [
@@ -4792,7 +5021,7 @@ function HijriCalendarScreen({navigation}:any){
   useEffect(()=>{
     if(!location)return; let alive=true;
     getCalendarSpan(location.latitude,location.longitude,12,{
-      method:Number(settings.calculationMethod)||8, school:settings.madhab, timeFormat:settings.timeFormat,
+      method:Number(settings.calculationMethod)||8, school:settings.madhab, timeFormat:settings.timeFormat
     }).then((next:CalendarDay[])=>{if(alive)setSpan(next)}).catch(()=>{if(alive)setSpan([])});
     return()=>{alive=false};
   },[location?.latitude,location?.longitude,settings.calculationMethod,settings.madhab,settings.timeFormat]);
@@ -5147,7 +5376,7 @@ const RAMADAN_CELL = StyleSheet.create({
   cell: {
     flexGrow: 1, flexShrink: 1, flexBasis: '13%', maxWidth: 52, aspectRatio: 1,
     borderRadius: 12, alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: C.line,
+    borderWidth: 1, borderColor: C.line
   },
   cellLikely: { backgroundColor: C.gold, borderColor: C.gold },
   cellPossible: { backgroundColor: C.yellow, borderColor: C.gold },
@@ -5161,7 +5390,7 @@ const RAMADAN_CELL = StyleSheet.create({
   statRow: { flexDirection: 'row', marginTop: 14, gap: 10 },
   stat: { flex: 1, backgroundColor: C.mint, borderRadius: 14, padding: 11 },
   statValue: { color: C.green, fontSize: 16, fontFamily: 'DMSans_700Bold', marginTop: 2 },
-  statLabel: { color: C.muted, fontSize: 10, fontFamily: 'DMSans_700Bold', letterSpacing: 0.6 },
+  statLabel: { color: C.muted, fontSize: 10, fontFamily: 'DMSans_700Bold', letterSpacing: 0.6 }
 });
 
 function RamadanPlannerScreen({ navigation }: any) {
@@ -5351,7 +5580,7 @@ function TheseDaysScreen({ navigation }: any) {
     meaning: () => navigation.navigate('Quran', { screen: 'Tafsir Compare', initial: false }),
     vocabulary: () => navigation.navigate('Library', { screen: 'Quran Vocabulary', initial: false }),
     dhikr: () => navigation.navigate('Tasbih'),
-    dua: () => navigation.navigate('Library', { screen: 'Duas', initial: false }),
+    dua: () => navigation.navigate('Library', { screen: 'Duas', initial: false })
   };
 
   const onFlow = stats.status === 'flow' || stats.status === 'spotting' || nifas.active;
@@ -6612,11 +6841,11 @@ import { DEFAULT_RECITER, LANGUAGES, Language, LanguageCode, languageByCode, isR
 const navigationRef = createNavigationContainerRef<any>();
 const AUDIO_LANGUAGES: Record<string, string> = {
   en: 'English', ur: 'Urdu', zh: 'Chinese', fr: 'French', ru: 'Russian',
-  kk: 'Kazakh', tr: 'Turkish', fa: 'Persian', uz: 'Uzbek', my: 'Burmese',
+  kk: 'Kazakh', tr: 'Turkish', fa: 'Persian', uz: 'Uzbek', my: 'Burmese'
 };
 const AUDIO_LANGUAGES_AR: Record<string, string> = {
   en: 'الإنجليزية', ur: 'الأردية', zh: 'الصينية', fr: 'الفرنسية', ru: 'الروسية',
-  kk: 'الكازاخية', tr: 'التركية', fa: 'الفارسية', uz: 'الأوزبكية', my: 'البورمية',
+  kk: 'الكازاخية', tr: 'التركية', fa: 'الفارسية', uz: 'الأوزبكية', my: 'البورمية'
 };
 const languageName = (code: string, rtl: boolean) =>
   (rtl ? AUDIO_LANGUAGES_AR : AUDIO_LANGUAGES)[code] || code;
@@ -6646,7 +6875,7 @@ function LevelBar({ value, onValue, label, tint = C.green }: {
       const next = clamp(event.nativeEvent.locationX / (width.current || 1));
       setDrag(null);
       onValue(next);
-    },
+    }
   })).current;
 
   return <View accessibilityRole="adjustable" accessibilityLabel={label} accessibilityValue={{ now: Math.round(shown * 100), min: 0, max: 100 }}
@@ -6669,7 +6898,7 @@ function SeekBar({ position, duration, onSeek }: { position: number; duration: n
     onMoveShouldSetPanResponder: () => true,
     onPanResponderGrant: (event) => setDrag(clamp(event.nativeEvent.locationX / (width.current || 1))),
     onPanResponderMove: (event) => setDrag(clamp(event.nativeEvent.locationX / (width.current || 1))),
-    onPanResponderRelease: (event) => { const next = clamp(event.nativeEvent.locationX / (width.current || 1)); setDrag(null); onSeek(next * duration); },
+    onPanResponderRelease: (event) => { const next = clamp(event.nativeEvent.locationX / (width.current || 1)); setDrag(null); onSeek(next * duration); }
   })).current;
   return <View accessibilityRole="adjustable" accessibilityLabel={tx(rtl,'Seek within the recitation')} onLayout={(event) => { width.current = event.nativeEvent.layout.width; }} {...responder.panHandlers} style={s.seekTrack}>
     <View style={[s.seekFill, { width: `${value * 100}%` }]} />
@@ -6777,7 +7006,7 @@ function AudioCenterScreen({ navigation }: any) {
         reciter: session.edition,
         translationEdition: session.translationEdition,
         sequential: session.sequential,
-        translationAudioEnabled: session.sequential,
+        translationAudioEnabled: session.sequential
       });
       await playQueue(queue, session.index);
       if (session.position > 1) await seekTo(session.position);
@@ -7180,7 +7409,7 @@ function FloatingTabBar({ state, navigation }: any) {
   }, [hidden, drop]);
   return <Animated.View pointerEvents="box-none" style={[s.floatBarWrap, {
     opacity: drop,
-    transform: [{ translateY: drop.interpolate({ inputRange: [0, 1], outputRange: [110, 0] }) }],
+    transform: [{ translateY: drop.interpolate({ inputRange: [0, 1], outputRange: [110, 0] }) }]
   }]}>
     <View style={[s.floatBar, { width: barWidth, flexDirection: rtl ? 'row-reverse' : 'row' }]}>
       {state.routes.map((route: any, index: number) => (
@@ -7771,11 +8000,11 @@ function AppShell() {
             id: data.surah,
             name_simple: SLEEP_SURAH.name,
             name_arabic: SLEEP_SURAH.nameAr,
-            verses_count: SLEEP_SURAH.verses,
+            verses_count: SLEEP_SURAH.verses
           },
-          mode: 'both',
+          mode: 'both'
         },
-        initial: false,
+        initial: false
       });
       return;
     }
@@ -7793,11 +8022,11 @@ function AppShell() {
               id: position.surahId,
               name_simple: position.surahName,
               name_arabic: '',
-              verses_count: 0,
+              verses_count: 0
             },
-            focusVerse: position.verseKey,
+            focusVerse: position.verseKey
           },
-          initial: false,
+          initial: false
         });
         return;
       }
@@ -7867,7 +8096,7 @@ function AppShell() {
     per: settings?.prayerReminders, verse: settings?.dailyVerseReminder,
     verseAt: settings?.dailyVerseTime, hadith: settings?.dailyHadithReminder,
     hadithAt: settings?.dailyHadithTime, cont: settings?.continueReadingReminder,
-    sleep: settings?.sleepReminderEnabled, sleepAt: settings?.sleepReminderTime,
+    sleep: settings?.sleepReminderEnabled, sleepAt: settings?.sleepReminderTime
   })]);
 
   return <View style={s.shellRoot}>
@@ -8017,8 +8246,8 @@ roundLabel:{color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:11,lineHeight:1
 depthCard:{backgroundColor:C.card,borderWidth:1,borderColor:C.line,borderTopColor:depth.edge,...depth.ambient},
 depthBody:{overflow:'hidden'},
 depthVeil:{position:'absolute',top:0,left:0,right:0,bottom:0,backgroundColor:depth.veil},railCheck:{position:'absolute',top:-2,right:-2,width:16,height:16,borderRadius:8,backgroundColor:C.accent,alignItems:'center',justifyContent:'center',borderWidth:1.5,borderColor:C.white},railName:{color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:10},railTime:{color:C.ink,textAlign:'center',fontFamily:'DMSans_600SemiBold',fontSize:10,lineHeight:11,marginTop:2},
- sliderContent:{gap:12,paddingRight:28},sliderControls:{minHeight:48,flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingTop:8},sliderHint:{color:C.muted,fontFamily:'DMSans_600SemiBold',fontSize:10},sliderButtons:{flexDirection:'row',gap:8},sliderButton:{width:44,height:44,borderRadius:20,alignItems:'center',justifyContent:'center',backgroundColor:C.card,borderWidth:1,borderColor:C.line},sliderButtonDisabled:{opacity:.32},essentialSlide:{height:174,backgroundColor:C.card,borderRadius:24,padding:16,borderWidth:1,borderColor:C.line,...surface},essentialTop:{flexDirection:'row',alignItems:'flex-start',justifyContent:'space-between'},essentialArrow:{width:34,height:34,borderRadius:17,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},essentialTitle:{color:C.ink,fontFamily:'Newsreader_600SemiBold',fontSize:21,marginTop:4},essentialBody:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:12,lineHeight:18,marginTop:4},reflectionSlide:{minHeight:220,backgroundColor:C.card,borderRadius:24,padding:16,borderWidth:1,borderColor:C.line,...surface},tool:{width:'33.33%',paddingVertical:12},
- homeProgress:{marginHorizontal:8,backgroundColor:C.card,borderBottomLeftRadius:20,borderBottomRightRadius:20,padding:12,flexDirection:'row',alignItems:'center',justifyContent:'space-between',borderWidth:1,borderTopWidth:0,borderColor:C.line},homeProgressRing:{width:43,height:43,borderRadius:24,backgroundColor:C.mint,alignItems:'center',justifyContent:'center',borderWidth:3,borderColor:'#D7CFFF'},dailyKicker:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10,letterSpacing:1.1,marginTop:4},dailyArabic:{color:C.ink,fontFamily:'KFGQPCUthmanicHafs',fontSize:22,lineHeight:36,textAlign:'right',marginTop:8},dailyBody:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:10,lineHeight:15,marginTop:4},dailyTitle:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:14,marginTop:8},nameOfDay:{color:C.green,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:34,textAlign:'right',marginTop:12},quickTasbih:{alignItems:'center'},quickCount:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:38,marginTop:4},weekWrap:{marginTop:12},
+ sliderContent:{gap:12,paddingRight:28},sliderControls:{minHeight:48,flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingTop:8},sliderHint:{color:C.muted,fontFamily:'DMSans_600SemiBold',fontSize:10},sliderButtons:{flexDirection:'row',gap:8},sliderButton:{width:44,height:44,borderRadius:20,alignItems:'center',justifyContent:'center',backgroundColor:C.card,borderWidth:1,borderColor:C.line},sliderButtonDisabled:{opacity:.32},essentialSlide:{height:174,backgroundColor:C.card,borderRadius:24,padding:16,borderWidth:1,borderColor:C.line,...surface},essentialTop:{flexDirection:'row',alignItems:'flex-start',justifyContent:'space-between'},essentialArrow:{width:34,height:34,borderRadius:17,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},essentialTitle:{color:C.ink,fontFamily:'Newsreader_600SemiBold',fontSize:21,marginTop:4},essentialBody:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:12,lineHeight:18,marginTop:4},tool:{width:'33.33%',paddingVertical:12},
+ homeProgress:{marginHorizontal:8,backgroundColor:C.card,borderBottomLeftRadius:20,borderBottomRightRadius:20,padding:12,flexDirection:'row',alignItems:'center',justifyContent:'space-between',borderWidth:1,borderTopWidth:0,borderColor:C.line},homeProgressRing:{width:43,height:43,borderRadius:24,backgroundColor:C.mint,alignItems:'center',justifyContent:'center',borderWidth:3,borderColor:'#D7CFFF'},dailyKicker:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10,letterSpacing:1.1,marginTop:4},dailyArabic:{color:C.ink,fontFamily:'KFGQPCUthmanicHafs',fontSize:22,lineHeight:36,textAlign:'right',marginTop:8},weekWrap:{marginTop:12},
 weekSurface:{backgroundColor:C.deep,borderColor:'transparent',borderTopColor:'rgba(255,255,255,.16)'},
 weekBody:{padding:16,flexDirection:'row',alignItems:'center',justifyContent:'space-between'},weekSummaryTitle:{color:C.onAccent,fontFamily:'Newsreader_600SemiBold',fontSize:19},weekSummaryBody:{color:'#D9D3F3',fontSize:10,marginTop:4},weekStatValue:{color:C.green,fontSize:29,fontFamily:'DMSans_700Bold',marginTop:8},weekBar:{flex:1,height:8,borderRadius:4,backgroundColor:'#EAE6F0',overflow:'hidden',marginHorizontal:8},weekBarFill:{height:'100%',borderRadius:4,backgroundColor:C.green},weekScoreBody:{color:'#D9D3F3',fontSize:10,marginTop:4},readWrap:{height:205},
 readSurface:{borderColor:'transparent'},
@@ -8397,6 +8626,18 @@ backupInput:{backgroundColor:C.bg,borderWidth:1,borderColor:C.line,borderRadius:
 backupPaste:{backgroundColor:C.bg,borderWidth:1,borderColor:C.line,borderRadius:16,padding:14,fontSize:11,color:C.ink,minHeight:120,textAlignVertical:'top',marginTop:8,outlineStyle:'none'} as any,
 backupLink:{alignSelf:'flex-start',paddingVertical:10},
 backupLinkText:{color:C.green,fontSize:11,fontFamily:'DMSans_600SemiBold'},
-backupActions:{flexDirection:'row',flexWrap:'wrap',alignItems:'center',gap:8,marginTop:12}});
+backupActions:{flexDirection:'row',flexWrap:'wrap',alignItems:'center',gap:8,marginTop:12},
+homeReflectTabs:{flexDirection:'row',backgroundColor:C.mint,borderRadius:16,padding:4,marginBottom:12,borderWidth:1,borderColor:C.line},
+homeReflectTab:{flex:1,alignItems:'center',justifyContent:'center',paddingVertical:10,paddingHorizontal:6,borderRadius:12},
+homeReflectTabOn:{backgroundColor:C.card,borderWidth:1,borderColor:C.line},
+homeReflectTabText:{color:C.muted,fontFamily:'DMSans_600SemiBold',fontSize:12},
+homeReflectTabTextOn:{color:C.green,fontFamily:'DMSans_700Bold'},
+homeReflectHero:{backgroundColor:C.card,borderRadius:24,padding:20,borderWidth:1,borderColor:C.line,...surface},
+homeReflectArabic:{color:C.ink,fontFamily:'KFGQPCUthmanicHafs',fontSize:28,lineHeight:46,textAlign:'right',marginTop:12},
+homeReflectName:{color:C.green,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:40,textAlign:'right',marginTop:14},
+homeReflectBody:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:13.5,lineHeight:21,marginTop:10},
+homeReflectFoot:{flexDirection:'row',alignItems:'center',gap:6,marginTop:16,paddingTop:14,borderTopWidth:1,borderTopColor:C.line},
+homeReflectFootText:{color:C.green,fontFamily:'DMSans_600SemiBold',fontSize:12,flex:1},
+dayToolIcon:{width:52,height:52,borderRadius:26,backgroundColor:C.mint,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:'#DDD6FF',marginRight:12}});
   return themeDark ? remapStyles(created) : created;
 }

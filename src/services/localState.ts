@@ -40,7 +40,20 @@ export type WorshipSettings = {
   sleepReminderTime?: string;
   /** Buzz on every press. Off means silent everywhere, not per-screen. */
   hapticsEnabled: boolean;
+  /**
+   * Which four shortcuts sit under "For your day" on the Home screen.
+   *
+   * Stored as ids only. The labels, icons and destinations live with the
+   * screen that draws them, so a tool can be renamed or moved without
+   * stranding a saved choice. Anything unrecognised is dropped when the
+   * row is built, and gaps are filled from the defaults — a saved list that
+   * no longer matches anything must never leave a hole in the row.
+   */
+  dayTools?: string[];
 };
+
+/** The four shortcuts a first-time opening shows. Ids, not labels. */
+export const DEFAULT_DAY_TOOLS = ['quran', 'qibla', 'tasbih', 'audio'];
 export type StoredLocation = { latitude: number; longitude: number; label: string };
 
 export const DEFAULT_WORSHIP_SETTINGS: WorshipSettings = {
@@ -64,6 +77,7 @@ export const DEFAULT_WORSHIP_SETTINGS: WorshipSettings = {
   sleepReminderEnabled: false,
   sleepReminderTime: '22:30',
   hapticsEnabled: true,
+  dayTools: DEFAULT_DAY_TOOLS,
 };
 
 const KEYS = {
