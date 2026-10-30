@@ -127,3 +127,31 @@ export function languageLabel(code: LanguageCode, inRtl = false): string {
  * translation voice for Arabic — the recitation is the point.
  */
 export const DEFAULT_RECITER = { identifier: 'ar.alafasy', name: 'Mishary Rashid Alafasy' };
+
+/** A minimal shape, so this helper does not depend on the API module. */
+export type EditionLike = { id: string; language: string; author?: string | null; displayName?: string | null };
+
+/**
+ * The edition to offer first for a language.
+ *
+ * The server carries ninety-seven languages and several editions of most of
+ * them — fifty-seven in English alone — and reports no way to tell which is
+ * better: every edition claims all 6,236 verses. So this does not try to rank
+ * them. It takes the one already chosen by hand for this app where there is
+ * one, then falls back to the first edition with a named author, since
+ * "Unknown" tells a reader nothing about what they are about to download.
+ *
+ * It is only a starting point. The full list stays one tap away.
+ */
+export function pickEdition<T extends EditionLike>(editions: T[], language: string): T | null {
+  const inLanguage = editions.filter((e) => e.language === language);
+  if (!inLanguage.length) return null;
+
+  const curated = languageByCode(language)?.text?.identifier;
+  if (curated) {
+    const hit = inLanguage.find((e) => e.id === curated);
+    if (hit) return hit;
+  }
+  const named = inLanguage.filter((e) => e.author && !/unknown/i.test(e.author));
+  return named[0] || inLanguage[0];
+}

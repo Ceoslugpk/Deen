@@ -1,26 +1,33 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getChapters, getVerses } from './api';
-import { DEFAULT_TRANSLATION_EDITION, loadSurahCacheIndex, saveSurahCache, surahCacheKey } from './quranState';
-import { languageByCode, type LanguageCode } from './languages';
+import { getChapters as getWorkerChapters } from './islamicDataApi';
+import { getSurah, type IslamicCategory } from './islamicDataApi';
+import { DEFAULT_TRANSLATION_EDITION } from './quranState';
 import { loadDuaCategories, loadDuas } from './duaService';
 import { loadNames } from './namesService';
 import { loadHadithCollection } from './hadithService';
+import { flushCacheIndex } from './contentCache';
 
 /**
  * Getting the app ready to be used without a connection.
  *
- * The onboarding screen ends with two facts: which language the person reads,
- * and (from that) which translation or tafsir sits beside the Arabic. Those two
- * facts are enough to know exactly what to fetch, so the fetching should simply
- * happen — not wait behind a button on a screen most people never open.
+ * Onboarding ends with one fact that matters here: which translation the
+ * person reads beside the Arabic. But a single translation is not what most
+ * people want offline — someone who prays in Urdu and studies in English wants
+ * both, and the app should work on a plane either way. So the plan holds a
+ * *queue* of editions rather than one, and each can be added at any time.
  *
- * Two rules shape everything here.
+ * Three rules shape everything here.
  *
- * The Arabic is not optional. Whichever language is chosen, the Quran itself is
- * Arabic, so the Uthmani text is always in the plan and always downloads. The
- * translation rides along in the same request, because the reader fetches the
- * script and the translation together; caching them separately would double the
- * work for no gain.
+ * The Arabic is not optional. Whichever languages are chosen, the Quran itself
+ * is Arabic, so the script is always in the queue, always downloaded first,
+ * and — because a translation is meaningless without it — pinned so that a
+ * full device never evicts the Quran to make room for a translation of it.
+ *
+ * Each edition is cached on its own. Storing the Arabic and a translation
+ * together, which is how this used to work, meant downloading the same two
+ * megabytes of Arabic once per language: ninety-seven languages would have
+ * carried ninety-seven copies of it. Cached separately, the Arabic is fetched
+ * once and every language after it costs only its own text.
  *
  * Nothing here blocks. Every stage is resumable, every stage checks what is
  * already on the device before asking the network for it, and the whole plan
@@ -29,7 +36,7 @@ import { loadHadithCollection } from './hadithService';
  * unit, so restarting costs only what was never finished.
  */
 
-export type StageId = 'index' | 'quran' | 'duas' | 'names' | 'hadith';
+export type StageId = 'index' | 'script' | 'quran' | 'duas' | 'names' | 'hadith';
 
 export type OfflineStage = {
   id: StageId;
@@ -44,6 +51,22 @@ export type OfflineStage = {
   error?: string;
 };
 
+export type OfflineCategory = Extract<IslamicCategory, 'quran' | 'scripts' | 'tafsir'>;
+
+/** One thing the reader asked to keep on the device. */
+export type OfflineEdition = {
+  id: string;
+  name: string;
+  /** The language code, so the plan can be described in words. */
+  language: string;
+  category: OfflineCategory;
+  status: 'pending' | 'running' | 'done' | 'partial' | 'failed';
+  done: number;
+  total: number;
+  failed?: number;
+  error?: string;
+};
+
 export type OfflineSetup = {
   running: boolean;
   started: boolean;
@@ -51,12 +74,20 @@ export type OfflineSetup = {
   language: string;
   script: string;
   translation: string;
-  /** Which translation or tafsir, in words, for the settings screen. */
+  /** Which translation, in words, for the settings screen. */
   translationName: string;
+  /** Everything queued for offline, the Arabic script included. */
+  editions: OfflineEdition[];
   stages: OfflineStage[];
+  /**
+   * True when the device ran out of room and later languages could not be
+   * kept alongside earlier ones. Shown so that "Download all" is not a
+   * silent promise.
+   */
+  storageLimited?: boolean;
 };
 
-const KEY = '@deen/offline/setup/v1';
+const KEY = '@deen/offline/setup/v2';
 
 /** The collections worth having on the device. Small ones first. */
 const HADITH_FOR_OFFLINE = ['bukhari', 'muslim', 'riyadussalih'];
@@ -64,6 +95,7 @@ const HADITH_FOR_OFFLINE = ['bukhari', 'muslim', 'riyadussalih'];
 /** Attempts per surah before it is left for a later pass. */
 const RETRIES = 3;
 const DUA_CATEGORY_KEYS = ['morning', 'evening', 'after-prayer', 'prayer', 'mosque', 'sleep', 'waking'];
+const SURAHS = 114;
 
 let setup: OfflineSetup = blank();
 let hydrated = false;
@@ -73,8 +105,8 @@ const listeners = new Set<(next: OfflineSetup) => void>();
 function blank(): OfflineSetup {
   return {
     running: false, started: false, completedAt: null,
-    language: 'en', script: 'quran-uthmani', translation: DEFAULT_TRANSLATION_EDITION,
-    translationName: 'Saheeh International', stages: [],
+    language: 'en', script: 'qpc-hafs', translation: DEFAULT_TRANSLATION_EDITION,
+    translationName: 'Saheeh International', editions: [], stages: [],
   };
 }
 
@@ -94,7 +126,10 @@ export async function loadOfflineSetup(): Promise<OfflineSetup> {
   if (hydrated) return setup;
   try {
     const raw = await AsyncStorage.getItem(KEY);
-    if (raw) setup = { ...blank(), ...JSON.parse(raw) };
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      setup = { ...blank(), ...parsed, editions: parsed.editions || [] };
+    }
   } catch { /* start fresh */ }
   hydrated = true;
   publish(setup);
@@ -111,24 +146,6 @@ export function subscribeOfflineSetup(listener: (next: OfflineSetup) => void) {
   return () => { listeners.delete(listener); };
 }
 
-/**
- * The pair the reader will ask for: the Arabic script, and the translation or
- * tafsir that goes with the chosen language.
- *
- * A language with no text edition of its own (Kazakh, today) still gets the
- * Arabic, and falls back to English for the meaning rather than to nothing.
- */
-export function editionForLanguage(language: string, script = 'quran-uthmani') {
-  const entry = languageByCode(language as LanguageCode);
-  const text = entry?.text;
-  return {
-    script,
-    translation: text?.identifier || DEFAULT_TRANSLATION_EDITION,
-    translationName: text?.name || 'Saheeh International',
-    kind: text?.kind || 'translation',
-  };
-}
-
 function stage(id: StageId, label: string, detail: string, total: number): OfflineStage {
   return { id, label, detail, total, done: 0, status: 'pending' };
 }
@@ -137,52 +154,105 @@ function patchStage(next: OfflineSetup, id: StageId, changes: Partial<OfflineSta
   return { ...next, stages: next.stages.map((s) => (s.id === id ? { ...s, ...changes } : s)) };
 }
 
+function patchEdition(next: OfflineSetup, id: string, changes: Partial<OfflineEdition>): OfflineSetup {
+  return { ...next, editions: next.editions.map((e) => (e.id === id ? { ...e, ...changes } : e)) };
+}
+
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+/** A surah of one edition, or nothing if it could not be fetched. */
+async function fetchSurah(edition: OfflineEdition, surah: number): Promise<boolean> {
+  for (let attempt = 0; attempt < RETRIES; attempt += 1) {
+    try {
+      await getSurah(edition.category, edition.id, surah, { force: true });
+      return true;
+    } catch {
+      /* A single miss is usually a rate limit rather than a missing surah,
+         so it is worth waiting and asking again. 700ms, 1.6s. */
+      if (attempt < RETRIES - 1) await delay(700 * Math.pow(2.2, attempt));
+    }
+  }
+  return false;
+}
+
 /**
- * Runs the plan. Safe to call at any time: it skips whatever is already on the
- * device, so calling it again after a partial run only does the remainder.
+ * Runs the plan. Safe to call at any time: it skips whatever is already on
+ * the device, so calling it again after a partial run only does the remainder.
+ *
+ * `editions` is the complete queue, not an addition — the caller decides what
+ * should end up on the device and passes the whole list. The Arabic script is
+ * added here if the caller left it out, because nothing else is readable
+ * without it.
  */
-export async function startOfflineSetup(options: { language: string; script?: string }) {
-  const { script, translation, translationName } = editionForLanguage(options.language, options.script);
+export async function startOfflineSetup(options: {
+  language: string;
+  script?: string;
+  translation?: string;
+  translationName?: string;
+  editions?: Array<{ id: string; name: string; language: string; category: OfflineCategory }>;
+  /** Add to what is already queued instead of replacing it. */
+  append?: boolean;
+}) {
   await loadOfflineSetup();
 
-  // A second call for the same pair while one is in flight should not start a
-  // second download of the same thing.
-  if (setup.running && setup.script === script && setup.translation === translation) return;
+  const script = options.script || 'qpc-hafs';
+  const requested = options.editions && options.editions.length
+    ? options.editions
+    : [{ id: options.translation || DEFAULT_TRANSLATION_EDITION, name: options.translationName || 'Saheeh International', language: options.language, category: 'quran' as OfflineCategory }];
+
+  /* The Arabic is always present and always first: everything else is read
+     beside it, so it should be on the device before any of them. */
+  const scriptEntry = { id: script, name: 'The Quran in Arabic', language: 'ar', category: 'scripts' as OfflineCategory };
+  const merged = [scriptEntry, ...requested.filter((e) => e.id !== script)];
+
+  const previous = new Map((options.append ? setup.editions : []).map((e) => [e.id, e]));
+  const editions: OfflineEdition[] = merged.map((e) => {
+    const kept = previous.get(e.id);
+    return {
+      ...e,
+      status: kept?.status === 'done' ? 'done' : 'pending',
+      done: kept?.status === 'done' ? SURAHS : 0,
+      total: SURAHS,
+    };
+  });
 
   const run = ++generation;
-  const index = await loadSurahCacheIndex();
-  const quranTotal = 114;
-  const already = new Set(index.filter((k) => k.endsWith(`:${script}:${translation}`)));
-
   const fresh: OfflineSetup = {
     running: true, started: true, completedAt: null,
-    language: options.language, script, translation, translationName,
+    language: options.language, script,
+    translation: options.translation || DEFAULT_TRANSLATION_EDITION,
+    translationName: options.translationName || 'Saheeh International',
+    editions,
     stages: [
       // The index goes first: without the list of surahs, everything cached
       // afterwards is unreachable.
       stage('index', 'The list of surahs', 'All 114, so any of them can be opened', 1),
-      stage('quran', 'The Quran', `${translationName} with the Arabic`, quranTotal),
+      stage('script', 'The Quran in Arabic', 'The Arabic text, kept on its own', SURAHS),
+      stage('quran', 'Translations', `${editions.filter((e) => e.category !== 'scripts').length} language(s)`, SURAHS * Math.max(editions.filter((e) => e.category !== 'scripts').length, 1)),
       stage('duas', 'Duas and remembrance', 'Morning, evening, prayer and sleep', DUA_CATEGORY_KEYS.length),
       stage('names', 'The Beautiful Names', 'All ninety-nine', 1),
       stage('hadith', 'Hadith collections', 'Bukhari, Muslim, Riyad as-Salihin', HADITH_FOR_OFFLINE.length),
     ],
   };
-  // Anything already cached counts immediately, so the bar reflects reality.
-  fresh.stages = patchStage(fresh, 'quran', { done: Math.min(already.size, quranTotal) }).stages;
   await persist(fresh);
 
   const bump = async (id: StageId, changes: Partial<OfflineStage>) => {
     if (run !== generation) return;
     await persist(patchStage(setup, id, changes));
   };
+  const mark = async (id: string, changes: Partial<OfflineEdition>) => {
+    if (run !== generation) return;
+    await persist(patchEdition(setup, id, changes));
+  };
 
   try {
     // ---- 0. the index -----------------------------------------------------
+    /* The list of surahs comes from our own server. It used to come from the
+       public Quran API, which meant the one stage this plan refuses to
+       continue without was also the only one this app did not control. */
     await bump('index', { status: 'running' });
     try {
-      await getChapters();
+      await getWorkerChapters();
       await bump('index', { done: 1, status: 'done' });
     } catch (error: any) {
       // Without this the Quran cannot be browsed at all, so a failure here is
@@ -193,50 +263,61 @@ export async function startOfflineSetup(options: { language: string; script?: st
     }
     if (run !== generation) return;
 
-    // ---- 1. the Quran, surah by surah -------------------------------------
-    /* The public Quran API rate-limits bursts, and when it does it answers
-       without CORS headers — which the browser reports as a network failure
-       rather than a 429. So a single miss is not evidence that a surah is
-       unavailable; it is usually evidence that we asked too quickly. Each
-       surah therefore gets a few attempts with the gaps widening, and only a
-       surah that fails every attempt is left for later. */
-    await bump('quran', { status: 'running', failed: 0 });
-    let failures = 0;
-    for (let id = 1; id <= 114; id += 1) {
-      if (run !== generation) return;
-      const key = surahCacheKey(id, script, translation);
-      if (already.has(key)) continue;
+    // ---- 1. the Arabic, then each translation -----------------------------
+    let scriptDone = 0;
+    let quranDone = 0;
+    let quranFailed = 0;
+    let storageLimited = false;
 
-      let stored = false;
-      for (let attempt = 0; attempt < RETRIES && !stored; attempt += 1) {
+    for (const edition of editions) {
+      if (run !== generation) return;
+      const isScript = edition.category === 'scripts';
+      /* Already finished on an earlier run: count it and move on. */
+      if (edition.status === 'done') {
+        if (isScript) scriptDone += SURAHS; else quranDone += SURAHS;
+        continue;
+      }
+
+      const stageId: StageId = isScript ? 'script' : 'quran';
+      await bump(stageId, { status: 'running' });
+      await mark(edition.id, { status: 'running' });
+
+      let failures = 0;
+      for (let surah = 1; surah <= SURAHS; surah += 1) {
         if (run !== generation) return;
-        try {
-          const verses = await getVerses(id, { script, translation });
-          if (run !== generation) return;
-          await saveSurahCache(key, verses);
-          already.add(key);
-          stored = true;
-        } catch {
-          // Back off, then try once more. 700ms, 1.6s, 3.5s.
-          if (attempt < RETRIES - 1) await delay(700 * Math.pow(2.2, attempt));
+        const ok = await fetchSurah(edition, surah);
+        if (run !== generation) return;
+        if (ok) {
+          if (isScript) scriptDone += 1; else quranDone += 1;
+          await bump(stageId, { done: isScript ? scriptDone : quranDone });
+          await mark(edition.id, { done: surah });
+          // A steady pace keeps the device responsive and stays under the limit.
+          await delay(180);
+        } else {
+          failures += 1;
+          if (!isScript) quranFailed += 1;
+          await bump(stageId, { failed: failures });
+          await mark(edition.id, { failed: failures });
         }
       }
+      if (run !== generation) return;
 
-      if (stored) {
-        const done = setup.stages.find((s) => s.id === 'quran')?.done || 0;
-        await bump('quran', { done: done + 1 });
-        // A steady pace keeps the device responsive and stays under the limit.
-        await delay(220);
-      } else {
-        failures += 1;
-        await bump('quran', { failed: failures });
-      }
+      await mark(edition.id, {
+        status: failures ? 'partial' : 'done',
+        error: failures ? `${failures} surah${failures === 1 ? '' : 's'} could not be fetched this time.` : undefined,
+      });
+      await bump(stageId, {
+        status: failures ? 'partial' : 'done',
+        error: failures ? `${failures} surah${failures === 1 ? '' : 's'} could not be fetched this time.` : undefined,
+      });
+
+      /* If a translation came back empty for every surah the device is almost
+         certainly full rather than offline — the earlier languages were
+         evicted to make room. Better to say so than to report success. */
+      if (!isScript && failures >= SURAHS) { storageLimited = true; break; }
+      await flushCacheIndex();
     }
     if (run !== generation) return;
-    await bump('quran', {
-      status: failures ? 'partial' : 'done',
-      error: failures ? `${failures} surah${failures === 1 ? '' : 's'} could not be fetched this time.` : undefined,
-    });
 
     // ---- 2. duas -----------------------------------------------------------
     await bump('duas', { status: 'running' });
@@ -270,9 +351,12 @@ export async function startOfflineSetup(options: { language: string; script?: st
     await bump('hadith', { status: 'done' });
 
     if (run !== generation) return;
-    await persist({ ...setup, running: false, completedAt: Date.now() });
+    await flushCacheIndex();
+    await persist({ ...setup, running: false, completedAt: Date.now(), storageLimited });
   } catch (error: any) {
-    if (run === generation) await persist({ ...setup, running: false });
+    if (run === generation) {
+      await persist({ ...setup, running: false, stages: patchStage(setup, 'index', { status: 'failed', error: error?.message || 'Something went wrong.' }).stages });
+    }
   }
 }
 
@@ -286,9 +370,9 @@ export async function pauseOfflineSetup() {
  * the new pair, but what is already cached for the old one stays — storage is
  * reclaimed per surah only when space runs short.
  */
-export async function replanForLanguage(language: string, script?: string) {
+export async function replanForLanguage(language: string, script?: string, translation?: string, translationName?: string) {
   await pauseOfflineSetup();
-  void startOfflineSetup({ language, script });
+  void startOfflineSetup({ language, script, translation, translationName });
 }
 
 /**
@@ -304,23 +388,48 @@ export async function resumeSavedOfflineSetup() {
   const unfinished = setup.stages.some(
     (s) => s.status === 'running' || s.status === 'pending' || s.status === 'partial',
   );
-  if (unfinished) void startOfflineSetup({ language: setup.language, script: setup.script });
+  if (unfinished) {
+    void startOfflineSetup({
+      language: setup.language,
+      script: setup.script,
+      translation: setup.translation,
+      translationName: setup.translationName,
+      editions: setup.editions.map((e) => ({ id: e.id, name: e.name, language: e.language, category: e.category })),
+    });
+  }
 }
 
 /** Try again now, for the surahs that were missed. */
 export async function retryOfflineSetup() {
   await loadOfflineSetup();
-  void startOfflineSetup({ language: setup.language, script: setup.script });
+  void startOfflineSetup({
+    language: setup.language,
+    script: setup.script,
+    translation: setup.translation,
+    translationName: setup.translationName,
+    editions: setup.editions.map((e) => ({ id: e.id, name: e.name, language: e.language, category: e.category })),
+  });
+}
+
+/** The ids already on the device, for ticking rows in a list. */
+export function savedEditionIds(next: OfflineSetup = setup): string[] {
+  return next.editions.filter((e) => e.status === 'done').map((e) => e.id);
 }
 
 export function offlineProgress(next: OfflineSetup = setup) {
   const total = next.stages.reduce((sum, s) => sum + Math.max(s.total, 1), 0);
   const done = next.stages.reduce((sum, s) => sum + Math.min(s.done, s.total), 0);
   const quran = next.stages.find((s) => s.id === 'quran');
+  const editionsDone = next.editions.filter((e) => e.category !== 'scripts' && e.status === 'done').length;
+  const editionsTotal = next.editions.filter((e) => e.category !== 'scripts').length;
   return {
     percent: total ? Math.round((done / total) * 100) : 0,
     quranDone: quran?.done || 0,
     quranFailed: quran?.failed || 0,
+    /** How many of the chosen languages are fully on the device. */
+    editionsDone,
+    editionsTotal,
+    storageLimited: !!next.storageLimited,
     /** Complete means every surah is on the device, not merely that we tried. */
     complete: !!next.completedAt && !next.stages.some((s) => s.status === 'partial' && (s.failed || 0) > 0),
   };
