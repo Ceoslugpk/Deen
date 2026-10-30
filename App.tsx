@@ -96,7 +96,7 @@ import {
   type CorrectionReport, type CorrectionIssue as ReportIssue
 } from './src/services/reportService';
 import {
-  editionForLanguage, loadOfflineSetup, offlineProgress, replanForLanguage, resumeSavedOfflineSetup,
+  loadOfflineSetup, offlineProgress, replanForLanguage, resumeSavedOfflineSetup,
   startOfflineSetup, subscribeOfflineSetup, type OfflineSetup
 } from './src/services/offlinePlan';
 import { rememberCity, searchCities, searchLocalCities, type CityResult } from './src/services/cities';
@@ -6953,7 +6953,7 @@ function SettingsScreen({navigation}:any){
       </Pressable>
     </ScrollView>
   </Page>}
-import { DEFAULT_RECITER, LANGUAGES, Language, LanguageCode, languageByCode, isRtl } from './src/services/languages';
+import { DEFAULT_RECITER, LANGUAGES, Language, LanguageCode, languageByCode, isRtl, pickEdition } from './src/services/languages';
 
 const navigationRef = createNavigationContainerRef<any>();
 const AUDIO_LANGUAGES: Record<string, string> = {
@@ -7951,11 +7951,59 @@ function Onboarding({ onFinish }: { onFinish: () => void }) {
   const { update: updateWorship } = useWorshipSettings();
   const [step, setStep] = useState(0);
   const [app, setApp] = useState<LanguageCode>(language);
-  const [text, setText] = useState<LanguageCode>(language);
+  const [text, setText] = useState<string>(language);
   const [voice, setVoice] = useState<LanguageCode>(language);
   const [busy, setBusy] = useState(false);
   const { location } = useAppLocation();
   const slide = useRef(new Animated.Value(0)).current;
+
+  /* Every language the server carries, not the handful this app once listed
+     by hand. They arrive once and are shared with the step that asks which
+     meaning to read beside the Arabic. */
+  const [editions, setEditions] = useState<IslamicEdition[]>([]);
+  // Edition ids marked for offline. Nothing downloads until 'Begin'.
+  const [queued, setQueued] = useState<string[]>([]);
+  const [query, setQuery] = useState('');
+  useEffect(() => { getEditions('quran').then(setEditions).catch(() => undefined); }, []);
+
+  const languages = useMemo(
+    () => (editions.length ? languagesOf(editions) : []),
+    [editions],
+  );
+  /** The edition offered for the language being read. */
+  const textEdition = useMemo(() => pickEdition(editions, text), [editions, text]);
+
+  /* Whatever language is chosen is kept for offline without being asked:
+     someone who picked Urdu should be able to open the app on a plane. The
+     Arabic goes with it, always, and is added by the plan itself. */
+  useEffect(() => {
+    if (!textEdition) return;
+    setQueued((current) => (current.includes(textEdition.id) ? current : [...current, textEdition.id]));
+  }, [textEdition?.id]);
+
+  const recommended = useMemo(() => {
+    const map = new Map<string, IslamicEdition>();
+    for (const entry of languages) {
+      const edition = pickEdition(editions, entry.code);
+      if (edition) map.set(entry.code, edition);
+    }
+    return map;
+  }, [editions, languages]);
+
+  const everyId = useMemo(() => [...recommended.values()].map((e) => e.id), [recommended]);
+  const allQueued = everyId.length > 0 && everyId.every((id) => queued.includes(id));
+  /* Turning everything off returns to the default rather than to nothing:
+     the language being read is always kept, so the app always opens. */
+  const toggleAll = () => setQueued(allQueued ? (textEdition ? [textEdition.id] : []) : everyId);
+  const toggle = (id: string) => setQueued((current) => (current.includes(id) ? current.filter((x) => x !== id) : [...current, id]));
+
+  const visible = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    if (!needle) return languages;
+    return languages.filter(
+      (entry) => entry.label.toLowerCase().includes(needle) || entry.code.includes(needle),
+    );
+  }, [languages, query]);
 
   // Each step arrives from the side rather than simply appearing.
   useEffect(() => {
@@ -7965,8 +8013,8 @@ function Onboarding({ onFinish }: { onFinish: () => void }) {
 
   // One choice moves the rest with it.
   const chooseApp = (code: LanguageCode) => { setApp(code); setLanguage(code); setText(code); setVoice(code); };
-  const chosen: LanguageCode = step === 0 ? app : step === 1 ? text : voice;
-  const pick = (code: LanguageCode) => { if (step === 0) chooseApp(code); else if (step === 1) setText(code); else setVoice(code); };
+  const chosen: string = step === 0 ? app : step === 1 ? text : voice;
+  const pick = (code: string) => { if (step === 0) chooseApp(code as LanguageCode); else if (step === 1) setText(code); else setVoice(code as LanguageCode); };
 
   const steps = [
     { title: T('How should the app speak to you?'), caption: T('This sets the words on every screen, and it carries the Quran text and the voice with it. You can change either of those next.') },
@@ -7994,21 +8042,40 @@ function Onboarding({ onFinish }: { onFinish: () => void }) {
     try {
       if (skipSleep) await updateWorship({ sleepReminderEnabled: false });
       setLanguage(app);
-      const textEntry = languageByCode(text);
       const voiceEntry = languageByCode(voice);
-      // The text read beside the Arabic.
-      if (textEntry?.text) await update({ translationEdition: textEntry.text.identifier, translationName: textEntry.text.name, translationLanguage: textEntry.english });
+      /* The edition for the chosen language. Most languages have several, so
+         it is read from the server's own list rather than from the short list
+         this app keeps for its interface. */
+      if (textEdition) await update({
+        translationEdition: textEdition.id,
+        translationName: editionDisplayName(textEdition),
+        translationLanguage: languageLabel(textEdition.language || text),
+      });
       // The voice heard under the recitation. Arabic has none: for Arabic the
       // audio *is* the recitation.
       await saveAudioSettings(voiceEntry?.voice
         ? { reciter: DEFAULT_RECITER.identifier, reciterName: DEFAULT_RECITER.name, translationAudioEnabled: true, translationEdition: voiceEntry.voice.identifier, translationName: voiceEntry.voice.name }
         : { reciter: DEFAULT_RECITER.identifier, reciterName: DEFAULT_RECITER.name, translationAudioEnabled: false });
       await saveOnboarding({ completed: true, app, text, voice, locationAsked: true, notificationsAsked: true, at: Date.now() });
-      /* The choices are made, so the content they imply can start arriving.
-         This runs in the background and is resumable: the person is already
+      /* Everything marked for offline starts arriving now, along with the
+         Arabic the plan always adds. Marking a language only recorded the
+         choice — the download waits for this moment so that it never competes
+         with onboarding for attention or bandwidth.
+
+         It runs in the background and is resumable: the person is already
          using the app while the Quran comes down, and if they close it the
          plan picks up where it stopped next time. */
-      void startOfflineSetup({ language: text });
+      const queue = queued
+        .map((id) => editions.find((e) => e.id === id))
+        .filter((e): e is IslamicEdition => !!e)
+        .map((e) => ({ id: e.id, name: editionDisplayName(e), language: e.language || text, category: 'quran' as const }));
+      void startOfflineSetup({
+        language: text,
+        script: 'qpc-hafs',
+        translation: textEdition?.id,
+        translationName: textEdition ? editionDisplayName(textEdition) : undefined,
+        editions: queue,
+      });
       onFinish();
     } catch { setBusy(false); }
   };
@@ -8023,7 +8090,73 @@ function Onboarding({ onFinish }: { onFinish: () => void }) {
         <Text style={s.h1}>{active.title}</Text>
         <Text style={s.onbCaption}>{active.caption}</Text>
       </Animated.View>
-      {step < 3 ? <View style={s.onbList} key={step}>
+      {step === 1 ? <View style={s.onbList} key="languages">
+        {/* Keeping everything is the plainest way to say what this does, and
+            the number is stated rather than implied: nobody should tick ninety
+            seven boxes expecting nine to survive on a full phone. */}
+        <View style={s.onbAllBar}>
+          <View style={s.onbAllText}>
+            <Text style={s.onbAllTitle}>{T('Download all languages')}</Text>
+            <Text style={s.onbAllSub}>{T('Every translation the server carries, kept on this device. Needs about 130 MB of free space.')}</Text>
+          </View>
+          <MotionPress
+            accessibilityLabel={allQueued ? T('Remove all languages from offline') : T('Select all languages for offline')}
+            onPress={toggleAll}
+            style={[s.onbAllBtn, allQueued && s.onbAllBtnOn]}>
+            {ico(allQueued ? 'checkmark' : 'download-outline', 16, C.onAccent)}
+            <Text style={s.onbAllBtnText}>{T('All')}</Text>
+          </MotionPress>
+        </View>
+
+        <View style={s.onbSearch}>
+          {ico('search-outline', 16, C.muted)}
+          <TextInput
+            value={query}
+            onChangeText={setQuery}
+            placeholder={T('Search a language')}
+            placeholderTextColor={C.muted}
+            style={s.onbSearchInput}
+            accessibilityLabel={T('Search a language')}
+          />
+          {!!query && <Pressable accessibilityLabel={T('Clear search')} onPress={() => setQuery('')}>{ico('close', 16, C.muted)}</Pressable>}
+        </View>
+
+        {!editions.length && <Spinner />}
+        {editions.length > 0 && !visible.length && <Text style={s.onbCardNote}>{T('No language matches that.')}</Text>}
+
+        {visible.map((entry, index) => {
+          const selected = chosen === entry.code;
+          const edition = recommended.get(entry.code);
+          const saved = !!edition && queued.includes(edition.id);
+          return <RiseIn key={entry.code} delay={Math.min(index, 14) * 26}>
+            <MotionPress style={[s.onbCard, selected && s.onbCardOn]} onPress={() => pick(entry.code)}>
+              <View style={s.onbCardTop}>
+                <Text style={s.onbFlag}>{languageFlag(entry.code)}</Text>
+                <View style={s.onbCardText}>
+                  <Text style={s.onbCardName}>{entry.label}</Text>
+                  <Text style={s.onbCardSub}>
+                    {entry.count === 1 ? T('1 version') : `${entry.count} ${T('versions')}`}
+                  </Text>
+                </View>
+                {/* Marking only records the choice. Nothing downloads until
+                    the last step, so onboarding stays quick. */}
+                {edition ? <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={saved ? `${T('Stop keeping')} ${entry.label} ${T('offline')}` : `${T('Keep')} ${entry.label} ${T('for offline')}`}
+                  onPress={() => toggle(edition.id)}
+                  style={[s.onbDl, saved && s.onbDlOn]}>
+                  {ico(saved ? 'checkmark' : 'download-outline', 17, saved ? C.onAccent : C.ink)}
+                </Pressable> : null}
+                <View style={[s.onbTick, selected && s.onbTickOn]}>{selected && ico('checkmark', 16, C.onAccent)}</View>
+              </View>
+              {saved && <View style={s.onbSavedRow}>
+                {ico('cloud-done-outline', 12, C.success)}
+                <Text style={s.onbSavedText}>{T('Saved for offline')}</Text>
+              </View>}
+            </MotionPress>
+          </RiseIn>;
+        })}
+      </View> : step < 3 ? <View style={s.onbList} key={step}>
         {LANGUAGES.map((entry, index) => {
           const selected = chosen === entry.code;
           const note = hint(entry);
@@ -8286,6 +8419,23 @@ function makeStyles() {
  onbCardNote:{color:C.muted,fontSize:11,fontFamily:'DMSans_400Regular',marginTop:8},
  onbTick:{width:26,height:26,borderRadius:13,backgroundColor:C.blue,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line},
  onbTickOn:{backgroundColor:C.green,borderColor:C.green},
+ /* --- offline downloads on the language step --- */
+ onbAllBar:{flexDirection:'row',alignItems:'center',gap:12,backgroundColor:C.mint,borderRadius:18,padding:14,borderWidth:1,borderColor:C.line,marginBottom:12},
+ onbAllText:{flex:1,gap:2},
+ onbAllTitle:{color:C.ink,fontSize:15,fontFamily:'DMSans_600SemiBold'},
+ onbAllSub:{color:C.muted,fontSize:11,fontFamily:'DMSans_400Regular',lineHeight:16},
+ onbAllBtn:{flexDirection:'row',alignItems:'center',gap:6,backgroundColor:C.green,borderRadius:14,paddingHorizontal:12,paddingVertical:9},
+ onbAllBtnOn:{backgroundColor:C.success},
+ onbAllBtnText:{color:C.onAccent,fontSize:12,fontFamily:'DMSans_600SemiBold'},
+ onbCount:{color:C.muted,fontSize:11,fontFamily:'DMSans_400Regular'},
+ onbDl:{width:34,height:34,borderRadius:17,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,backgroundColor:C.blue},
+ onbDlOn:{backgroundColor:C.success,borderColor:C.success},
+ onbDlBusy:{backgroundColor:C.blue,borderColor:C.green},
+ onbFlag:{fontSize:20,marginRight:10},
+ onbSearch:{flexDirection:'row',alignItems:'center',gap:8,backgroundColor:C.card,borderRadius:14,paddingHorizontal:12,paddingVertical:10,borderWidth:1,borderColor:C.line,marginBottom:10},
+ onbSearchInput:{flex:1,color:C.ink,fontSize:14,fontFamily:'DMSans_400Regular',padding:0},
+ onbSavedRow:{flexDirection:'row',alignItems:'center',gap:6,marginTop:6},
+ onbSavedText:{color:C.success,fontSize:11,fontFamily:'DMSans_500Medium'},
  onbFoot:{paddingHorizontal:20,paddingTop:12,paddingBottom:24,gap:14,borderTopWidth:1,borderColor:C.line,backgroundColor:C.bg},
  onbDots:{flexDirection:'row',justifyContent:'center',gap:6},
  onbDot:{width:7,height:7,borderRadius:4,backgroundColor:C.line},
