@@ -7,7 +7,7 @@ function ExploreStack(){return <Stack.Navigator screenOptions={{headerShown:fals
  */
 function PrayerStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="Prayer" component={PrayerScreen}/><Stack.Screen name="Adhan" component={AdhanScreen}/><Stack.Screen name="Ramadan" component={RamadanScreen}/></Stack.Navigator>}
 /** The tools tab: what you calculate, look up, travel for, or record. */
-function ToolsStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="ToolsHome" component={ToolsHomeScreen}/><Stack.Screen name="Zakat" component={ZakatScreen}/><Stack.Screen name="Mosques" component={DataTool}/><Stack.Screen name="Holy site channels" component={HolyChannelsScreen}/><Stack.Screen name="Women" component={WomenHubScreen}/><Stack.Screen name="Istihada" component={IstihadaScreen}/><Stack.Screen name="Ramadan Planner" component={RamadanPlannerScreen}/><Stack.Screen name="Cycle" component={CycleScreen}/><Stack.Screen name="Qada" component={QadaScreen}/><Stack.Screen name="Women Guides" component={WomenGuidesScreen}/><Stack.Screen name="Privacy Lock" component={PrivacyLockScreen}/><Stack.Screen name="Fasting" component={FastingScreen}/><Stack.Screen name="Weekly Summary" component={WeeklySummaryScreen}/><Stack.Screen name="Qibla" component={QiblaScreen}/><Stack.Screen name="Location Setup" component={LocationSetupScreen}/><Stack.Screen name="Notifications" component={NotificationScreen}/><Stack.Screen name="Hijri Calendar" component={HijriCalendarScreen}/><Stack.Screen name="Tasbih" component={TasbihScreen}/><Stack.Screen name="Umrah Packing" component={UmrahPackingScreen}/><Stack.Screen name="Hajj Live" component={HajjLiveScreen}/></Stack.Navigator>}
+function ToolsStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="ToolsHome" component={ToolsHomeScreen}/><Stack.Screen name="Zakat" component={ZakatScreen}/><Stack.Screen name="Mosques" component={DataTool}/><Stack.Screen name="Holy site channels" component={HolyChannelsScreen}/><Stack.Screen name="Women" component={WomenHubScreen}/><Stack.Screen name="Istihada" component={IstihadaScreen}/><Stack.Screen name="Ramadan Planner" component={RamadanPlannerScreen}/><Stack.Screen name="These Days" component={TheseDaysScreen}/><Stack.Screen name="Cycle" component={CycleScreen}/><Stack.Screen name="Qada" component={QadaScreen}/><Stack.Screen name="Women Guides" component={WomenGuidesScreen}/><Stack.Screen name="Privacy Lock" component={PrivacyLockScreen}/><Stack.Screen name="Fasting" component={FastingScreen}/><Stack.Screen name="Weekly Summary" component={WeeklySummaryScreen}/><Stack.Screen name="Qibla" component={QiblaScreen}/><Stack.Screen name="Location Setup" component={LocationSetupScreen}/><Stack.Screen name="Notifications" component={NotificationScreen}/><Stack.Screen name="Hijri Calendar" component={HijriCalendarScreen}/><Stack.Screen name="Tasbih" component={TasbihScreen}/><Stack.Screen name="Umrah Packing" component={UmrahPackingScreen}/><Stack.Screen name="Hajj Live" component={HajjLiveScreen}/></Stack.Navigator>}
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -133,7 +133,7 @@ import { completeJourney, clearJourney, journeyMeta, JOURNEY_META, JOURNEY_STEPS
 import { HOLY_CHANNELS, openChannel } from './src/services/holyChannels';
 import { clearFastDay, FastType, labelForEntry, loadFastingState, missedReasons, MISSED_REASONS, MissedReason, recordFast, readableDate, setFastingOwed, summariseFasting, useFasting, setFastingDateLocale } from './src/services/fastingService';
 import { buildWeeklySummary, loadActivity, logHifzReview, logMushafPage, logSurahOpen, logVerseRead, useActivity, setActivityDateLocale } from './src/services/activityService';
-import { addDays, addQada, ADVISORY, assessBleeding, BISMILLAH_ARABIC, BLEEDING_GUIDANCE, cycleStats, dayKey, daysBetween, deleteCycle, deleteNifas, deleteQada, endCycle, endNifas, EXPLANATIONS, FLOW_LEVELS, formatDay, formatLongDay, GHUSL_FARD, GHUSL_SUNNAH, LIMITS, loadWomensState, logPurity, nifasStats, NIYYAH_ARABIC, NIYYAH_MEANING, NIYYAH_TRANSLITERATION, PurityStatus, QadaReason, QADA_REASONS, qadaStats, RAMADAN_ADVISORY, RAMADAN_NOTES, RAMADAN_STATE_LABEL, ramadanPlan, RamadanPlanDay, recentPurity, REFERENCES, SCHOOL_NOTE, setFlow, setOptedIn, startCycle, startNifas, toggleQada, TUHR_SIGNS, useWomens, WORSHIP_GUIDANCE } from './src/services/womensService';
+import { addDays, addQada, ADVISORY, assessBleeding, BISMILLAH_ARABIC, BLEEDING_GUIDANCE, cycleStats, dayKey, daysBetween, deleteCycle, deleteNifas, deleteQada, endCycle, endNifas, EXPLANATIONS, FLOW_LEVELS, formatDay, formatLongDay, GHUSL_FARD, GHUSL_SUNNAH, LIMITS, loadWomensState, logPurity, nifasStats, NIYYAH_ARABIC, NIYYAH_MEANING, NIYYAH_TRANSLITERATION, PurityStatus, QadaReason, QADA_REASONS, qadaStats, RAMADAN_ADVISORY, RAMADAN_NOTES, RAMADAN_STATE_LABEL, ramadanPlan, RamadanPlanDay, recentPurity, REFERENCES, SCHOOL_NOTE, setFlow, setOptedIn, startCycle, startNifas, THESE_DAYS_ACTS, THESE_DAYS_ADVISORY, THESE_DAYS_ANCHOR, THESE_DAYS_DISPUTED, TheseDaysAct, toggleQada, TUHR_SIGNS, useWomens, WORSHIP_GUIDANCE } from './src/services/womensService';
 import { BiometricInfo, biometricInfo, checkPin, removePin, RELOCK_OPTIONS, setPin, startLockWatch, unlockSession, unlockWithBiometric, updateLockSettings, useIsLocked, useLockConfig, loadLockConfig } from './src/services/privacyService';
 import { CURRENCIES, clearHistory, computeZakat, currencySymbol, deleteCalculation, formatMoney, livePrices, loadZakatState, marketIsFresh, NISAB_GOLD_GRAMS, NISAB_SILVER_GRAMS, refreshMarket, saveCalculation, setAssetAmount, setBasis, setCurrency, setLiabilityAmount, setMetalPrice, setMoneyLocale, useLiveMetalPrices, useMarket, useZakat } from './src/services/zakatService';
 import { arNoun, clockTime, prayerName, tx } from './src/services/arabicCopy';
@@ -701,6 +701,7 @@ const TOOL_IMAGES:Record<string,any>={
   'Prayer Reminders':require('./assets/tool-icons/prayer-reminders.png'),
   Istihada:require('./assets/tool-icons/istihada.png'),
   'Ramadan Planner':require('./assets/tool-icons/ramadan-planner.png'),
+  'These Days':require('./assets/tool-icons/these-days.png'),
 };
 /** The same icons, re-toned for the dark palette. */
 const TOOL_IMAGES_DARK:Record<string,any>={
@@ -710,6 +711,7 @@ const TOOL_IMAGES_DARK:Record<string,any>={
   'Prayer Reminders':require('./assets/tool-icons/prayer-reminders-dark.png'),
   Istihada:require('./assets/tool-icons/istihada-dark.png'),
   'Ramadan Planner':require('./assets/tool-icons/ramadan-planner-dark.png'),
+  'These Days':require('./assets/tool-icons/these-days-dark.png'),
 
   Quran:require('./assets/tool-icons/quran-dark.png'),
   Qibla:require('./assets/tool-icons/qibla-dark.png'),
@@ -1345,6 +1347,7 @@ const TOOL_GROUPS: ToolGroup[] = [
     { title: 'Cycle Tracker', caption: 'Period logging and predictions', route: 'Cycle' },
     { title: 'Istihada', caption: 'Bleeding that is not a period', route: 'Istihada' },
     { title: 'Ramadan Planner', caption: 'Which fasts your cycle may claim, and when they fall due', route: 'Ramadan Planner' },
+    { title: 'These Days', caption: 'What stays open when the prayer and the fast are lifted', route: 'These Days' },
   ]},
 ];
 
@@ -5317,6 +5320,105 @@ function RamadanPlannerScreen({ navigation }: any) {
 
       <View style={s.dataCard}><Text style={s.dataBody}>{T(RAMADAN_ADVISORY)}</Text></View>
       <View style={s.dataCard}><Text style={s.dataBody}>{T(ADVISORY)}</Text></View>
+    </ScrollView>
+  </Page></PrivateArea>;
+}
+
+/**
+ * Keeping going through these days.
+ *
+ * The temptation in an app like this is to dim the screen — to show a woman
+ * what she cannot do. That has the month backwards. Two worships are lifted
+ * in these days and they are lifted as a mercy. Almost everything else she
+ * does is untouched by them, and every one of those things already lives
+ * somewhere in this app.
+ *
+ * So the screen is mostly a set of doors. It opens with what is open, names
+ * the one genuine disagreement without settling it, and says plainly that the
+ * prayer streak resting is not ground lost.
+ */
+function TheseDaysScreen({ navigation }: any) {
+  const { rtl } = useLanguage();
+  const T = (text: string) => tx(rtl, text);
+  const womens = useWomens();
+  const stats = cycleStats(womens);
+  const nifas = nifasStats(womens);
+
+  /* Where each open act actually lives in the app. Kept here, next to the
+     screen, because routing is the screen's business and not the service's. */
+  const GO: Record<TheseDaysAct['id'], () => void> = {
+    listen: () => navigation.navigate('Quran', { screen: 'Audio Player', initial: false }),
+    meaning: () => navigation.navigate('Quran', { screen: 'Tafsir Compare', initial: false }),
+    vocabulary: () => navigation.navigate('Library', { screen: 'Quran Vocabulary', initial: false }),
+    dhikr: () => navigation.navigate('Tasbih'),
+    dua: () => navigation.navigate('Library', { screen: 'Duas', initial: false }),
+  };
+
+  const onFlow = stats.status === 'flow' || stats.status === 'spotting' || nifas.active;
+  const dayLine = nifas.active
+    ? T(`Day ${nifas.day} of post-natal bleeding`)
+    : stats.active
+      ? T(`Day ${stats.dayOfCycle} of this cycle`)
+      : null;
+
+  return <PrivateArea navigation={navigation}><Page><ToolBar title={T('These Days')} navigation={navigation} />
+    <ScrollView contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
+      <ToolGraphic tool="These Days" size={78} />
+      <Text style={s.dataTitle}>{T('Keeping going through these days')}</Text>
+      <Text style={s.intro}>{T('Two worships are lifted in these days — the prayer and the fast — and they are lifted as a mercy, not held back as a loss. Nearly everything else you do is untouched by them: the remembrance, the listening, the study, the asking. All of it is still yours, and all of it is already here.')}</Text>
+
+      {onFlow && (
+        <View style={s.dataCard}>
+          <Text style={s.dataMeta}>{T('WHERE YOU ARE')}</Text>
+          <Text style={s.dataName}>{dayLine}</Text>
+          <Text style={s.meta}>{T('Everything below is open to you today.')}</Text>
+        </View>
+      )}
+
+      <View style={s.dataCard}>
+        <Text style={s.dataBody}>{T(THESE_DAYS_ANCHOR)}</Text>
+      </View>
+
+      <Section title={T('Open to you')} />
+      <View style={s.settings}>
+        {THESE_DAYS_ACTS.map((act, index) => (
+          <Pressable
+            key={act.id}
+            accessibilityRole="button"
+            onPress={GO[act.id]}
+            style={[s.setting, { minHeight: 76, alignItems: 'flex-start', paddingTop: 12 }, index === THESE_DAYS_ACTS.length - 1 && { borderBottomWidth: 0 }]}
+          >
+            <View style={{ flex: 1 }}>
+              <Text style={s.settingName}>{T(act.title)}</Text>
+              <Text style={s.meta}>{T(act.body)}</Text>
+            </View>
+            {ico('arrow-forward', 18, C.green)}
+          </Pressable>
+        ))}
+      </View>
+
+      <Section title={T('Where the scholars differ')} />
+      <View style={s.dataCard}>
+        {THESE_DAYS_DISPUTED.map((note, index) => (
+          <View key={index} style={[s.packingRow, { alignItems: 'flex-start' }, index === THESE_DAYS_DISPUTED.length - 1 && { borderBottomWidth: 0 }]}>
+            <Text style={[s.dataMeta, { minWidth: 22, marginTop: 0 }]}>{index + 1}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={[s.dataName, { marginTop: 0 }]}>{T(note.title)}</Text>
+              <Text style={s.dataBody}>{T(note.body)}</Text>
+            </View>
+          </View>
+        ))}
+      </View>
+
+      <Section title={T('On the streak')} />
+      <View style={s.dataCard}>
+        <Text style={s.dataBody}>{T('The streak on the Home tab counts days on which all five prayers were marked. In these days it rests, because the prayer itself is lifted — and a counter that measures a worship you have been excused from is measuring the wrong thing. Nothing is lost by it. These are not blank days. They are simply counted a different way.')}</Text>
+      </View>
+
+      <Section title={T('Which position this uses')} />
+      <View style={s.dataCard}><Text style={s.dataBody}>{T(SCHOOL_NOTE)}</Text></View>
+
+      <View style={s.dataCard}><Text style={s.dataBody}>{T(THESE_DAYS_ADVISORY)}</Text></View>
     </ScrollView>
   </Page></PrivateArea>;
 }

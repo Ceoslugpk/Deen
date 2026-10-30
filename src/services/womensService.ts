@@ -890,3 +890,78 @@ export const RAMADAN_NOTES: { title: string; body: string }[] = [
 
 export const RAMADAN_ADVISORY =
   'This is arithmetic on your own recorded pattern, not knowledge of what the month will bring. A cycle that comes early, a period that runs long, or bleeding that starts in the last minutes before Maghrib all change the count. The ruling follows what happens, not what was projected — so treat this as a shape to prepare around, and settle each day as it actually comes.';
+
+/* ---------------------------------------------------- these days --- */
+
+/**
+ * What remains open in the days of hayd and nifas.
+ *
+ * The instinct in an app like this is to grey things out - to show a woman
+ * what she cannot do. That gets the month backwards. Two worships are lifted
+ * in these days, and they are lifted as a mercy, not held back as a loss.
+ * Almost everything else she does is untouched by them.
+ *
+ * The one place the screen slows down is where the scholars genuinely differ.
+ * There the range is given rather than a position chosen, because the app
+ * does not know which school she follows and has no business deciding for
+ * her. A difference of opinion is not a problem to be solved by picking a
+ * default; it is something she takes to someone she trusts.
+ */
+
+export type TheseDaysAct = {
+  id: 'listen' | 'meaning' | 'vocabulary' | 'dhikr' | 'dua';
+  title: string;
+  body: string;
+};
+
+/** The acts on which there is no dispute at all. */
+export const THESE_DAYS_ACTS: TheseDaysAct[] = [
+  {
+    id: 'listen',
+    title: 'Listening to the recitation',
+    body: 'Open to you without question — no school disputes it. Put a reciter on and let the day be filled with the sound of it. Listening is not a lesser substitute for reciting; it is its own worship, and these are often the days a woman listens most.',
+  },
+  {
+    id: 'meaning',
+    title: 'Studying the meaning',
+    body: 'Translation and tafsir are not the Quran in the sense that recitation is — they are the study of it, and study is not closed to you. Many women find these days become the most attentive reading of their month, precisely because the pace slows and the hurry goes out of it.',
+  },
+  {
+    id: 'vocabulary',
+    title: 'Learning the words',
+    body: 'A word at a time, and every root learned is a door that stays open long after these days have passed. Ten days of ten words is a hundred words carried into the rest of the year.',
+  },
+  {
+    id: 'dhikr',
+    title: 'Dhikr, tasbih and istighfar',
+    body: 'The tongue is not restrained from the remembrance of Allah at any hour. Subhan Allah, alhamdulillah, la ilaha illa Allah, Allahu akbar — and asking His forgiveness — are yours in every one of these days, in whatever measure you wish.',
+  },
+  {
+    id: 'dua',
+    title: 'Asking',
+    body: 'Dua is worship, and it is never closed. The days in which the prayer is lifted from a woman are, by many accounts, days in which her asking is especially her own — nothing stands between her and it.',
+  },
+];
+
+/** Where the difference genuinely lies, given as a range and not resolved. */
+export const THESE_DAYS_DISPUTED: { title: string; body: string }[] = [
+  {
+    title: 'Reciting the Arabic',
+    body: 'The scholars differ, and the difference is old and real. The majority hold that a woman in hayd or nifas does not recite the Quran, and this is the position most commonly taught. Others permit it — among them the Maliki school, a view within the Hanbali school, and a number of later scholars — particularly for one who fears losing what she has memorised, or for whom recitation has become a form of remembrance. Both sides reason from the same sources.',
+  },
+  {
+    title: 'Touching the mushaf',
+    body: 'The well-known position rests on the verse that none touch it but the purified, so the majority restrict handling the physical mushaf to one in a state of purity. Reading from a screen is a newer question: a phone is not a mushaf, and many therefore permit it while still holding back from reciting the Arabic aloud. Others draw no such distinction.',
+  },
+  {
+    title: 'What both sides agree on',
+    body: 'Everyone agrees that listening, studying the meaning, dhikr, dua, charity and seeking knowledge remain open. Where the disagreement falls, it falls on a narrow question — and a narrow question should not be allowed to swallow the whole month.',
+  },
+];
+
+/** The hadith the whole screen leans on, given for its meaning rather than as a proof text. */
+export const THESE_DAYS_ANCHOR =
+  'When ‘A’ishah began to menstruate on the pilgrimage, the Prophet ﷺ told her to do everything the pilgrim does, and to leave only the circling of the House until she was pure. Every worship of the Hajj stayed hers; one was held back. That is the shape of these days — nearly everything stays, and the thing held back is held back by the One who gave it.';
+
+export const THESE_DAYS_ADVISORY =
+  'Two worships are lifted in these days, and they are lifted as a mercy rather than taken as a loss. Nothing here is owed back, and nothing needs to be made up except the fasts. Where the scholars differ, the difference is described rather than settled — take it to someone you trust, and do not let it become a weight. This app records and explains; it does not rule.';
