@@ -209,14 +209,16 @@ const READER_PAD = 16;
 /** How a mushaf page is put together: the frame, and the border it carries. */
 const MUSHAF_FRAME_PAD = 10;
 const MUSHAF_FRAME_BORDER = 1.6;
-const MUSHAF_INNER_PAD_H = 12;
-const MUSHAF_INNER_PAD_V = 16;
+const MUSHAF_INNER_PAD_H = 10;
+const MUSHAF_INNER_PAD_V = 12;
 const MUSHAF_INNER_BORDER = 0.8;
 /** Bounds the fitted script is allowed to land between. */
 const MUSHAF_MIN_SIZE = 9;
 const MUSHAF_MAX_SIZE = 52;
 /** Leading, as a proportion of the script size. */
-const MUSHAF_LEAD = 1.55;
+const MUSHAF_LEAD = 1.48;
+/** How much of the page's room the text is asked to fill. */
+const MUSHAF_FILL = 0.97;
 
 let C: Record<string, string> = { ...C_LIGHT };
 /** True while the dark palette is the one in use. */
@@ -2725,11 +2727,12 @@ function MushafPage({ page, verses, width, height, preferences, rtl, T, bookmark
      the script is, so they are whatever the column measures minus what the
      text measures. */
   const chromeH = Math.max(0, totalH - textH);
-  /* How full the page should be. The reader's size preference moves this: at
-     the default the page keeps a little margin at the foot, as a printed page
-     does, and asking for larger script takes that margin back. It cannot go
-     past full, because the page itself cannot grow. */
-  const fill = Math.min(1, 0.92 * Math.max(0.6, (preferences.fontSize || 30) / 30));
+  /* How full the page should be. The page is a fixed object, so this is a
+     near-constant: it keeps the small margin at the foot that a printed page
+     keeps. The reader's size preference is allowed to move it a little, but
+     only a little — it belongs to the card reader, and letting it run free
+     could leave a page of the Quran half empty. */
+  const fill = MUSHAF_FILL * Math.min(1, Math.max(0.85, (preferences.fontSize || 30) / 30));
   const budget = Math.max(40, (contentH - chromeH) * fill);
 
   const [settledH, setSettledH] = useState(0);
@@ -7588,13 +7591,13 @@ mushafCorner:{position:'absolute',width:16,height:16,alignItems:'center',justify
 mushafCornerTL:{top:-9,left:-9},mushafCornerTR:{top:-9,right:-9},mushafCornerBL:{bottom:-9,left:-9},mushafCornerBR:{bottom:-9,right:-9},
 mushafCornerDiamond:{width:11,height:11,borderWidth:1.2,borderColor:C.gold,transform:[{rotate:'45deg'}]},
 mushafCornerDot:{position:'absolute',width:3.5,height:3.5,borderRadius:2,backgroundColor:C.gold},
-mushafSurahBand:{alignItems:'center',marginBottom:10,marginTop:2},
+mushafSurahBand:{alignItems:'center',marginBottom:7,marginTop:2},
 mushafBandRule:{height:1,width:'62%',backgroundColor:C.gold,opacity:.5},
-mushafSurahName:{color:C.green,fontFamily:'Newsreader_700Bold',fontSize:18,textAlign:'center',paddingVertical:7,paddingHorizontal:14,letterSpacing:.3},
+mushafSurahName:{color:C.green,fontFamily:'Newsreader_700Bold',fontSize:16,textAlign:'center',paddingVertical:5,paddingHorizontal:14,letterSpacing:.3},
 mushafOrnamentRow:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:10,marginVertical:16},
 mushafOrnamentRule:{height:1,flex:1,maxWidth:96},
-mushafPageNoRow:{alignItems:'center',marginTop:10},
-mushafPageNo:{width:34,height:34,borderRadius:17,borderWidth:1.2,borderColor:C.gold,alignItems:'center',justifyContent:'center',backgroundColor:C.mint},
+mushafPageNoRow:{alignItems:'center',marginTop:6},
+mushafPageNo:{width:30,height:30,borderRadius:15,borderWidth:1.2,borderColor:C.gold,alignItems:'center',justifyContent:'center',backgroundColor:C.mint},
 mushafPageNoText:{color:C.green,fontFamily:'Newsreader_700Bold',fontSize:16},mushafAyah:{paddingVertical:12,borderBottomWidth:1,borderColor:'#E9E1D5'},mushafSurah:{textAlign:'center',color:C.green,fontFamily:'Newsreader_600SemiBold',fontSize:20,backgroundColor:C.mint,borderRadius:16,paddingVertical:8,marginBottom:12},verseMarker:{color:C.gold,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:17},mushafTranslation:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:12,lineHeight:18,marginTop:8},sectionMarker:{flexDirection:'row',alignItems:'center',gap:10,marginTop:18,marginBottom:6},sectionRule:{flex:1,height:1,backgroundColor:C.line},sectionMarkerText:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10,textTransform:'uppercase',letterSpacing:1},mushafPageLine:{color:C.ink,textAlign:'center',writingDirection:'rtl'},topicGrid:{flexDirection:'row',flexWrap:'wrap',gap:12},topicWrap:{width:'48%'},topicCard:{minHeight:190,backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},vocabStats:{backgroundColor:C.mint,borderRadius:20,padding:16,marginBottom:12,flexDirection:'row',justifyContent:'space-between',alignItems:'center'},flashcard:{minHeight:330,backgroundColor:C.white,borderRadius:28,padding:24,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,...shadow},flashIndex:{position:'absolute',top:18,right:18,color:C.muted,fontFamily:'DMSans_600SemiBold',fontSize:10},flashArabic:{color:C.ink,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:58,lineHeight:86,textAlign:'center'},flashTransliteration:{color:C.green,fontFamily:'Newsreader_600SemiBold',fontSize:28,marginTop:12},flashMeaning:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:18,marginVertical:8,textAlign:'center'},flashHint:{color:C.muted,fontFamily:'DMSans_600SemiBold',fontSize:11,marginTop:16},tajweedPractice:{backgroundColor:C.card,borderRadius:24,padding:20,marginTop:16,borderWidth:1,borderColor:C.line,...surface},tajweedRule:{minHeight:72,flexDirection:'row',alignItems:'center',gap:12,padding:12,borderBottomWidth:1,borderColor:C.line},tajweedSwatch:{width:18,height:44,borderRadius:9},compareCard:{backgroundColor:C.card,borderRadius:20,padding:16,marginBottom:12,borderWidth:1,borderColor:C.line,...surface},
   tcRefBar:{flexDirection:'row',alignItems:'center',gap:10,marginBottom:14},
   tcVerse:{backgroundColor:C.mint,borderRadius:20,padding:16,marginTop:14,borderWidth:1,borderColor:C.line},
