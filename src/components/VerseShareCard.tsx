@@ -93,7 +93,7 @@ export function VerseShareCard({
       <View style={cardStyles.footer}>
         <Text style={cardStyles.footerLeft}>{translationName}</Text>
         <View style={cardStyles.brand}>
-          <Text style={cardStyles.footerRight}>Deen Companion</Text>
+          <Text style={cardStyles.footerRight}>Islamic</Text>
           <Image source={BRAND_MARK} resizeMode="contain" style={cardStyles.brandMark} />
         </View>
       </View>

@@ -1,4 +1,4 @@
-# Deen Companion — Premium Design & Islamic App Structure Research
+# Islamic — Premium Design & Islamic App Structure Research
 
 **Date:** 26 October 2026  
 **Scope:** Research and product direction only. This document defines what should be designed before another implementation pass.
@@ -9,7 +9,7 @@
 
 A premium Islamic app should not look like a generic dashboard decorated with crescents. It should feel **calm, trustworthy, reverent, precise, and effortless at the moment of worship**.
 
-The strongest direction for Deen Companion is:
+The strongest direction for Islamic is:
 
 - **Editorial, not ornamental:** strong typography, quiet spacing, carefully framed imagery, and fewer competing cards.
 - **Polychromatic but controlled:** midnight indigo as the brand anchor, with teal, saffron, coral, and plum assigned semantic roles—not random colors per tile.
@@ -35,7 +35,7 @@ The recommended primary navigation remains five destinations, but with clearer j
 
 Apple’s current design guidance emphasizes expressing hierarchy through layout and grouping rather than unnecessary backgrounds and borders. Material 3 similarly uses typography, tonal palettes, shape, and purposeful motion to establish hierarchy. Both directions point away from “every item is a colorful card” and toward a more disciplined visual system.
 
-### Apply this to Deen Companion
+### Apply this to Islamic
 
 - One dominant visual moment per screen.
 - One obvious primary action per screen.
@@ -691,7 +691,7 @@ Used by Zakat and advanced prayer settings.
 
 # Final design brief
 
-Deen Companion should look like a **private digital prayer companion and reading room**, not a commercial lifestyle super-app.
+Islamic should look like a **private digital prayer companion and reading room**, not a commercial lifestyle super-app.
 
 Its premium quality should come from:
 

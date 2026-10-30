@@ -56,7 +56,7 @@ const COPY = {
     channelAdhan: 'Adhan',
     channelDaily: 'Daily reminder',
     testTitle: 'Prayer reminders are ready',
-    testBody: 'Deen Companion can now notify you at the times you choose.',
+    testBody: 'Islamic can now notify you at the times you choose.',
     quranTitle: 'Your Quran time',
     quranBody: 'Continue your reading with a few mindful verses.',
     webUnsupported: 'System notifications require the installed iOS or Android app.',

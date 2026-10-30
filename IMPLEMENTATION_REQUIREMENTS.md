@@ -1,4 +1,4 @@
-# Deen Companion — Implementation Requirements
+# Islamic — Implementation Requirements
 
 Scope: wiring the Islamic Data Quran provider into the app, and specifying the
 Hadith API to build on the same Cloudflare Worker.

@@ -300,7 +300,7 @@ async function renderWeb(data: VerseCardData): Promise<Blob> {
   ctx.textAlign = 'right';
   ctx.fillStyle = 'rgba(247,243,234,0.62)';
   ctx.font = font(26, 600, UI_STACK);
-  ctx.fillText('Deen Companion', mark ? W - PAD - MARK - 16 : W - PAD, H - PAD - 6);
+  ctx.fillText('Islamic', mark ? W - PAD - MARK - 16 : W - PAD, H - PAD - 6);
   if (mark) {
     // centred on the text baseline rather than sitting on it
     ctx.drawImage(mark, W - PAD - MARK, H - PAD - 6 - 13 - MARK / 2, MARK, MARK);

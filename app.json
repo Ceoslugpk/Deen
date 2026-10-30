@@ -1,25 +1,26 @@
 {
   "expo": {
-    "name": "Deen Companion",
-    "slug": "deen-companion",
+    "name": "Islamic",
+    "slug": "islamic-companion",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
-      "backgroundColor": "#F8F5EC",
-      "resizeMode": "contain"
+      "backgroundColor": "#2A2849",
+      "resizeMode": "contain",
+      "image": "./assets/splash-icon.png"
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "app.deen.companion",
+      "bundleIdentifier": "com.qashi.islamic",
       "icon": {
         "light": "./assets/ios-icon-light.png",
         "dark": "./assets/ios-icon-dark.png"
       }
     },
     "android": {
-      "package": "app.deen.companion",
+      "package": "com.qashi.islamic",
       "adaptiveIcon": {
         "backgroundColor": "#211A56",
         "foregroundImage": "./assets/android-icon-foreground.png",

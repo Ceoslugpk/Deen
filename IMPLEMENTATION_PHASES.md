@@ -1,4 +1,4 @@
-# Deen Companion — Five-Phase Delivery Plan
+# Islamic — Five-Phase Delivery Plan
 
 Source scope: `SALAH_FEATURES_5_SECTIONS.md` (976 lines), reviewed in full on 26 October 2026.
 

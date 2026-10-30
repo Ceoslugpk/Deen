@@ -456,9 +456,9 @@ export async function restoreBackup(text: string, password: string): Promise<Res
   try {
     parsed = JSON.parse(text);
   } catch {
-    throw new Error('That file is not a Deen backup.');
+    throw new Error('That file is not an Islamic backup.');
   }
-  if (!parsed || parsed.format !== FORMAT) throw new Error('That file is not a Deen backup.');
+  if (!parsed || parsed.format !== FORMAT) throw new Error('That file is not an Islamic backup.');
   if (Number(parsed.version) > VERSION) throw new Error('That backup was made by a newer version of the app.');
 
   const header = {
