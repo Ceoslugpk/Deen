@@ -7739,52 +7739,107 @@ function AppShell() {
     return () => clearTimeout(timer);
   }, []);
 
-  /* The two buttons on the adhan.
-     Somebody mid-prayer should not have to unlock their phone to silence it,
-     and somebody who has just prayed should be able to record that from the
-     lock screen without opening the app and hunting for the toggle. */
+  /**
+   * Answering a notification.
+   *
+   * There are two kinds of answer and they want different things.
+   *
+   * The two buttons on the adhan do a job and then stay out of the way:
+   * somebody mid-prayer should not have to unlock their phone to silence
+   * it, and somebody who has just prayed should be able to record that
+   * from the lock screen without opening the app and hunting for the
+   * toggle. Neither of those should drag her into the app.
+   *
+   * A tap on the notification itself is the other thing. It is a request
+   * to be taken somewhere, and every notification this app schedules says
+   * where it meant to go. That promise used to be written and never kept:
+   * only the sleep reminder was handled, so tapping an adhan, a pre-adhan,
+   * a nudge to carry on reading, or either of the daily cards did nothing
+   * at all. The route is now read for what it is.
+   */
+  const openFromNotification = async (data: any) => {
+    if (!navigationRef.isReady()) return;
+    const go = (name: string, params?: any) => (navigationRef as any).navigate(name, params);
+
+    /* The sleep reminder opens the surah itself. A reminder to read Al-Mulk
+       that lands you on the home screen has done half a job. */
+    if (data?.kind === 'sleep' && data?.surah) {
+      go('Quran', {
+        screen: 'Reader',
+        params: {
+          chapter: {
+            id: data.surah,
+            name_simple: SLEEP_SURAH.name,
+            name_arabic: SLEEP_SURAH.nameAr,
+            verses_count: SLEEP_SURAH.verses,
+          },
+          mode: 'both',
+        },
+        initial: false,
+      });
+      return;
+    }
+
+    /* "Back to your reading" picks up where she left off. Opening the Quran
+       tab and leaving her to find her own place again is not the same thing
+       as carrying on. */
+    if (data?.kind === 'continue') {
+      const position = await loadReadingPosition().catch(() => null);
+      if (position?.surahId) {
+        go('Quran', {
+          screen: 'Reader',
+          params: {
+            chapter: {
+              id: position.surahId,
+              name_simple: position.surahName,
+              name_arabic: '',
+              verses_count: 0,
+            },
+            focusVerse: position.verseKey,
+          },
+          initial: false,
+        });
+        return;
+      }
+      /* Nothing saved yet - fall through and open the Quran tab instead. */
+    }
+
+    /* Everything else names a tab. Only the five real ones are followed:
+       a name the navigator does not know is swallowed with a console
+       warning, and the tap would feel exactly as dead as it did before. */
+    const route = data?.route;
+    if (route === 'Home' || route === 'Prayer' || route === 'Quran' || route === 'Library' || route === 'Tools') {
+      go(route);
+    }
+  };
+
   useEffect(() => {
     if (Platform.OS === 'web') return;
     const subscription = addNotificationResponseReceivedListener((response: NotificationResponse) => {
       const data: any = response?.notification?.request?.content?.data;
       const action = actionFromResponse(response);
 
-      /* Tapped, rather than a button pressed. Go where the notification
-         promised: the sleep reminder opens Al-Mulk itself, because a reminder
-         to read a surah that lands you on the home screen has done half a
-         job. */
-      if (!action && data?.kind === 'sleep' && data?.surah) {
-        if (navigationRef.isReady()) {
-          (navigationRef as any).navigate('Quran', {
-            screen: 'Reader',
-            params: {
-              chapter: {
-                id: data.surah,
-                name_simple: SLEEP_SURAH.name,
-                name_arabic: SLEEP_SURAH.nameAr,
-                verses_count: SLEEP_SURAH.verses,
-              },
-              mode: 'both',
-            },
-          });
-        }
-        return;
-      }
-      if (!action) return;
-      const prayer = prayerFromNotification(data);
+      /* Buttons first. They act, and they do not navigate. */
       if (action === 'mute') {
         // Silence whatever is playing, and anything queued behind it.
         void stopPlayback();
         return;
       }
-      if (action === 'prayed' && prayer) {
-        const key = new Date().toISOString().slice(0, 10);
-        void loadPrayerCompletion(key).then((current) => {
-          if (current.includes(prayer)) return;
-          const next = [...current, prayer];
-          return savePrayerCompletion(key, next);
-        });
+      if (action === 'prayed') {
+        const prayer = prayerFromNotification(data);
+        if (prayer) {
+          const key = new Date().toISOString().slice(0, 10);
+          void loadPrayerCompletion(key).then((current) => {
+            if (current.includes(prayer)) return;
+            const next = [...current, prayer];
+            return savePrayerCompletion(key, next);
+          });
+        }
+        return;
       }
+
+      /* A plain tap. Go where the notification said it would. */
+      void openFromNotification(data);
     });
     return () => subscription.remove();
   }, []);
