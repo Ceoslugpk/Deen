@@ -45,7 +45,6 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import CustomIcon, { iconTheme } from './src/components/CustomIcon';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle, Defs, Ellipse, Path, RadialGradient, Stop } from 'react-native-svg';
-import * as Location from 'expo-location';
 import { StatusBar as ExpoStatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import {
@@ -566,10 +565,10 @@ type AppLocation = { latitude: number; longitude: number; label: string; timezon
  * The zone the phone itself is set to, as an IANA name.
  *
  * Used as the default for a place whose zone we were not told: coordinates
- * typed by hand or found by GPS are coordinates you are standing at, so your
- * own clock is the one to read them on. Anything that cannot name its zone
- * falls back to undefined, and the formatter then uses local time directly,
- * which is the same answer.
+ * typed by hand are coordinates you are standing at, so your own clock is the
+ * one to read them on. Anything that cannot name its zone falls back to
+ * undefined, and the formatter then uses local time directly, which is the
+ * same answer.
  */
 function deviceTimeZone(): string | undefined {
   try {
@@ -578,25 +577,43 @@ function deviceTimeZone(): string | undefined {
     return undefined;
   }
 }
-type LocationState = { location: AppLocation | null; locating: boolean; useDevice: () => Promise<void>; useDubai: () => void; setManual: (location:AppLocation)=>void; clear: () => void };
+type LocationState = { location: AppLocation | null; useDubai: () => void; setManual: (location:AppLocation)=>void; clear: () => void };
+/**
+ * Where the app starts when nobody has chosen anywhere.
+ *
+ * Makkah is the one place every Muslim shares as a reference, so it is a
+ * truthful default rather than a placeholder: the times shown before a choice
+ * is made are real times for a real city. It is held in state only and never
+ * written to storage, so choosing your own city is never overridden later,
+ * while a fresh install still lands somewhere sensible.
+ *
+ * The coordinates are the ones in the bundled city list, so searching for
+ * Makkah returns exactly this.
+ */
+const DEFAULT_LOCATION: AppLocation = {
+  latitude: 21.43,
+  longitude: 39.83,
+  label: 'Makkah, Saudi Arabia',
+  timezone: 'Asia/Riyadh',
+};
+
 const LocationContext = createContext<LocationState | null>(null);
 function LocationProvider({children}:{children:React.ReactNode}) {
   const {rtl}=useLanguage();
-  const [location,setLocation]=useState<AppLocation|null>(null); const [locating,setLocating]=useState(false);
-  useEffect(()=>{loadStoredLocation().then(saved=>saved&&setLocation(saved))},[]);
+  const [location,setLocation]=useState<AppLocation|null>(null);
+  useEffect(()=>{loadStoredLocation().then(saved=>setLocation(saved||DEFAULT_LOCATION))},[]);
   /*
    * A place is stored with the zone its times should be read in. When the
    * caller knows it — a city from the bundled list — it is passed through.
    * When they do not, it is the phone's own: you are standing at coordinates
-   * you just typed or just let the GPS find, so your clock is the right one.
+   * you just typed in, so your clock is the right one.
    */
   const commit=(next:AppLocation|null)=>{
     if(next&&!next.timezone) next={...next,timezone:deviceTimeZone()};
     setLocation(next);saveStoredLocation(next).catch(()=>{})
   };
   const useDubai=()=>commit({latitude:25.2048,longitude:55.2708,label:'Dubai, United Arab Emirates',timezone:'Asia/Dubai'});
-  const useDevice=async()=>{setLocating(true);try{const permission=await Location.requestForegroundPermissionsAsync();if(permission.status!=='granted'){Alert.alert(tx(rtl,'Location permission'),tx(rtl,'Location is used only when you request local prayer and Qibla information. You can select a manual location instead.'));return}const pos=await Location.getCurrentPositionAsync({accuracy:Location.Accuracy.Balanced});const places=await Location.reverseGeocodeAsync(pos.coords);const place=places[0];commit({latitude:pos.coords.latitude,longitude:pos.coords.longitude,label:[place?.city,place?.country].filter(Boolean).join(', ')||'Current location'});}catch(e:any){Alert.alert(tx(rtl,'Location unavailable'),tx(rtl,e.message))}finally{setLocating(false)}};
-  return <LocationContext.Provider value={{location,locating,useDevice,useDubai,setManual:commit,clear:()=>commit(null)}}>{children}</LocationContext.Provider>;
+  return <LocationContext.Provider value={{location,useDubai,setManual:commit,clear:()=>commit(null)}}>{children}</LocationContext.Provider>;
 }
 function useAppLocation(){const value=useContext(LocationContext);if(!value)throw new Error('Location provider missing');return value}
 type AppLanguage=LanguageCode;
@@ -988,7 +1005,7 @@ function LiveBadge({ source }: { source: string }) {
  * Asking for a place.
  *
  * There are two shapes here on purpose. Before the person has been asked, the
- * full card: it explains why, and offers GPS or a manual choice. Once they
+ * full card: it explains why, and offers a city to search for. Once they
  * have been through onboarding — asked once, as promised — the same missing
  * information becomes a single quiet line with a link, because somebody who
  * already said "not now" does not want to be stopped at every screen.
@@ -1000,10 +1017,10 @@ if(asked)return <Pressable accessibilityRole="button" accessibilityLabel={T('Cho
   <View style={s.locationBannerIcon}>{ico('location-outline',17,C.green)}</View>
   <View style={{flex:1}}>
     <Text style={s.locationBannerTitle}>{T('No location set')}</Text>
-    <Text style={s.locationBannerBody}>{T('Prayer times, Qibla and fasting times need one. Tap to choose — by search, GPS or coordinates.')}</Text>
+    <Text style={s.locationBannerBody}>{T('Prayer times, Qibla and fasting times read from one place. Tap to choose a city or enter coordinates.')}</Text>
   </View>
   {ico('arrow-forward',17,C.muted)}
-</Pressable>;return <View style={[s.locationGate,width<370&&s.locationGateNarrow,compact&&{marginVertical: 12}]}><ToolGraphic tool="Location" size={54}/><View style={{flex:1,width:width<370?'100%':undefined}}><Text style={s.locationGateTitle}>{T('Choose your prayer location')}</Text><Text style={s.locationGateBody}>{T('No location is assumed. Use GPS once, select a city, or enter coordinates manually.')}</Text><View style={[s.locationActions,width<370&&s.locationActionsNarrow]}><Pressable accessibilityLabel={T('Use my current location')} onPress={loc.useDevice} style={s.primarySmall}><Text style={s.primaryText}>{T(loc.locating ? 'Locating…' : 'Use my location')}</Text></Pressable><Pressable accessibilityLabel={T('Choose prayer location manually')} onPress={manual} style={s.ghostSmall}><Text style={s.ghostText}>{T('Choose manually')}</Text></Pressable></View></View></View>}
+</Pressable>;return <View style={[s.locationGate,width<370&&s.locationGateNarrow,compact&&{marginVertical: 12}]}><ToolGraphic tool="Location" size={54}/><View style={{flex:1,width:width<370?'100%':undefined}}><Text style={s.locationGateTitle}>{T('Choose your prayer location')}</Text><Text style={s.locationGateBody}>{T('Makkah is shown until you choose. Search for your city, or enter coordinates by hand.')}</Text><View style={[s.locationActions,width<370&&s.locationActionsNarrow]}><Pressable accessibilityLabel={T('Choose prayer location manually')} onPress={manual} style={s.primarySmall}><Text style={s.primaryText}>{T('Choose a city')}</Text></Pressable></View></View></View>}
 
 function SlidingCards<T>({label,items,cardWidth,renderItem}:{label:string;items:T[];cardWidth:number;renderItem:(item:T,index:number,minHeight:number)=>React.ReactNode}){
   const ref=useRef<any>(null);const[active,setActive]=useState(0);const{rtl}=useLanguage();const stride=cardWidth+12;
@@ -1429,7 +1446,7 @@ const TOOL_GROUPS: ToolGroup[] = [
   { label: 'FIND', title: 'Utilities and location', items: [
     { title: 'Qibla', caption: 'Direction to the Ka‘bah', route: 'Qibla' },
     { title: 'Mosques', caption: 'Nearby prayer spaces, with directions', route: 'Mosques' },
-    { title: 'Location', caption: 'Automatic GPS, or coordinates you set', route: 'Location Setup' },
+    { title: 'Location', caption: 'Search for a city, or set coordinates', route: 'Location Setup' },
     { title: 'Hijri Calendar', caption: 'Islamic dates and the month grid', route: 'Hijri Calendar' },
     { title: 'Prayer Reminders', caption: 'Adhan alerts and their toggles', route: 'Notifications' },
     { title: 'Umrah Resources', caption: 'A packing checklist you can tick off', route: 'Umrah Packing' },
@@ -4674,10 +4691,6 @@ function LocationSetupScreen({navigation}:any){const{rtl}=useLanguage();const T=
       <Text style={s.dataTitle}>{T('Where are your prayer times?')}</Text>
       <Text style={s.intro}>{T('Prayer times, Qibla, Ramadan and nearby mosques all read from this one place. It is asked once and kept on this device.')}</Text>
 
-      <Pressable accessibilityLabel={T('Use current GPS location')} onPress={loc.useDevice} style={s.primary}>
-        <Text style={s.primaryText}>{loc.locating?T('Locating…'):T('Use my current location')}</Text>
-      </Pressable>
-
       {!!loc.location&&<View style={s.cityCurrent}>
         <View style={{flex:1}}>
           <Text style={s.cityCurrentLabel}>{T('Currently using')}</Text>
@@ -7709,11 +7722,6 @@ function OnboardingLocation() {
   };
 
   return <View style={s.onbList}>
-    <Pressable accessibilityLabel={T('Use my current location')} onPress={loc.useDevice} style={s.onbWideBtn}>
-      {ico('locate', 19, C.green)}
-      <Text style={s.onbWideBtnText}>{loc.locating ? T('Locating…') : T('Use my current location')}</Text>
-    </Pressable>
-
     {!!loc.location && <View style={s.onbChosen}>
       {ico('checkmark-circle', 18, C.green)}
       <Text style={s.onbChosenText}>{loc.location.label}</Text>

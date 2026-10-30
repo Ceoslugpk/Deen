@@ -12,17 +12,10 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "app.deen.companion",
-      "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Deen uses your location to calculate accurate prayer times and Qibla direction."
-      }
+      "bundleIdentifier": "app.deen.companion"
     },
     "android": {
       "package": "app.deen.companion",
-      "permissions": [
-        "ACCESS_COARSE_LOCATION",
-        "ACCESS_FINE_LOCATION"
-      ],
       "adaptiveIcon": {
         "backgroundColor": "#0C6B50",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -36,7 +29,6 @@
       "bundler": "metro"
     },
     "plugins": [
-      "expo-location",
       "expo-font",
       "expo-audio",
       "expo-notifications",
