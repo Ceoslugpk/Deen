@@ -1389,13 +1389,12 @@ type ToolGroup = { label: string; title: string; when?: 'womens'; items: ToolIte
  * here rather than leaving you in another tab.
  */
 /** Routes that exist only inside the women's area, hidden until it is opted into. */
-const WOMENS_ONLY_TOOLS = ['Women', 'Cycle'];
+const WOMENS_ONLY_TOOLS = ['Women', 'Cycle', 'Qada'];
 
 const TOOL_GROUPS: ToolGroup[] = [
   { label: 'TRACK', title: 'Trackers and calculators', items: [
     { title: 'Salah Tracker', caption: 'The five prayers, and the run you are on', route: 'Prayer' },
     { title: 'Fasting', caption: 'Ramadan, voluntary and missed fasts', route: 'Fasting' },
-    { title: 'Qada Fasts', caption: 'What you owe, and what you have made up', route: 'Qada' },
     { title: 'Zakat', caption: 'Gold, silver, cash and investments', route: 'Zakat' },
     { title: 'Tasbih', caption: 'A quiet, tactile dhikr counter', route: 'Tasbih' },
     { title: 'Weekly Summary', caption: 'Your past seven days at a glance', route: 'Weekly Summary' },
@@ -1421,6 +1420,7 @@ const TOOL_GROUPS: ToolGroup[] = [
     { title: 'Istihada', caption: 'Bleeding that is not a period', route: 'Istihada' },
     { title: 'Ramadan Planner', caption: 'Which fasts your cycle may claim, and when they fall due', route: 'Ramadan Planner' },
     { title: 'These Days', caption: 'What stays open when the prayer and the fast are lifted', route: 'These Days' },
+    { title: 'Qada Fasts', caption: 'What you owe, and what you have made up', route: 'Qada' },
   ]},
 ];
 
