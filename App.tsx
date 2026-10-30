@@ -2786,6 +2786,16 @@ function MushafPage({ page, verses, width, height, preferences, rtl, T, bookmark
   if (probeLines && probeLines * lineHeight > room) {
     lineHeight = Math.max(size * 1.2, room / probeLines);
   }
+  /* And where even the closest leading leaves the text past the foot of the
+     page — a size that landed one line too large, which is easily done on a
+     page carrying little, since one line there is a large step — the size
+     itself comes down. A smaller script cannot need more lines than a larger
+     one, so this cannot overshoot. */
+  let drawnSize = size;
+  if (probeLines && probeLines * size * 1.2 > room) {
+    drawnSize = Math.max(MUSHAF_MIN_SIZE, room / (probeLines * 1.2));
+    lineHeight = Math.max(drawnSize * 1.2, room / probeLines);
+  }
   /* Until the size has settled the page is measured, not shown, so the text is
      not seen jumping between sizes while it is being solved for. */
   const settled = settledFlag;
@@ -2809,14 +2819,14 @@ function MushafPage({ page, verses, width, height, preferences, rtl, T, bookmark
         ) : seg.kind === 'marker' ? (
           <MushafMarkerBand key={`m${idx}`} marker={seg.marker} width={contentW} />
         ) : (
-          <Text key={`t${idx}`} style={[s.mushafPageLine, { fontSize: size, lineHeight, width: contentW, opacity: settled ? 1 : 0 }]}
+          <Text key={`t${idx}`} style={[s.mushafPageLine, { fontSize: drawnSize, lineHeight, width: contentW, opacity: settled ? 1 : 0 }]}
             onLayout={e => setSegH(idx, e.nativeEvent.layout.height)}>
             {seg.verses.map((v: any) => <Text key={v.verse_key}
               onLongPress={() => setOpenVerse(openVerse === v.verse_key ? null : v.verse_key)}
               onPress={() => openVerse === v.verse_key && setOpenVerse(null)}
               accessibilityLabel={`${T('Verse')} ${v.verse_key}. ${T('Press and hold for actions')}`}
               style={openVerse === v.verse_key ? s.mushafVerseOpen : undefined}>
-              {v.text_uthmani} <Text style={{ fontSize: size * 0.72 }}>۝{v.verse_key.split(':')[1]}</Text>{' '}
+              {v.text_uthmani} <Text style={{ fontSize: drawnSize * 0.72 }}>۝{v.verse_key.split(':')[1]}</Text>{' '}
             </Text>)}
           </Text>
         ))}
