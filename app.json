@@ -17,7 +17,7 @@
     "android": {
       "package": "app.deen.companion",
       "adaptiveIcon": {
-        "backgroundColor": "#0C6B50",
+        "backgroundColor": "#211A56",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
