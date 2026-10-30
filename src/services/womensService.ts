@@ -466,3 +466,169 @@ export const REFERENCES: string[] = [
 
 export const ADVISORY =
   'This app records what you tell it and works out the arithmetic. It does not give rulings. The fiqh of hayd, nifas and istihadha turns on your own pattern, your madhab and your circumstances, so take the details to a scholar you trust. See a doctor as well for bleeding that is very heavy, that runs past fifteen days for hayd or forty for nifas, or that changes sharply from what is normal for you.';
+
+/* ------------------------------------------------------------ istihada --- */
+
+/**
+ * What a stretch of bleeding is, measured against her own pattern and
+ * against the limits that are widely cited.
+ *
+ * This is arithmetic, not a ruling. The app can hold a stretch of bleeding
+ * against two things it actually knows — how long she usually bleeds, and
+ * the outer limits — and say which side of them it falls on. It cannot weigh
+ * the details, and the schools differ on several of them, so every screen
+ * that shows this carries the advisory and says which position it applied.
+ */
+export type BleedingVerdict = 'hayd' | 'hayd-ended' | 'istihada' | 'nifas' | 'nifas-ended' | 'unclear';
+
+export type BleedingAssessment = {
+  verdict: BleedingVerdict;
+  /** Days the bleeding has run. */
+  days: number;
+  /** Her own usual length, taken from her history where there is enough. */
+  adah: number | null;
+  /** Clear days between the last bleeding and this one, as she gave it. */
+  purityBefore: number | null;
+  /** Longer than the outer maximum for hayd. */
+  pastMaximum: boolean;
+  /** Began before the minimum purity between two periods had passed. */
+  tooSoon: boolean;
+  /** Shorter than the minimum for hayd, where a minimum is set at all. */
+  belowMinimum: boolean;
+  /** Why it landed where it did, in the order the tests were applied. */
+  reasons: string[];
+};
+
+/** The two questions the screen asks. Both are things she knows directly. */
+export type BleedingAnswers = {
+  days: number;
+  purityBefore: number | null;
+};
+
+export function assessBleeding(
+  current: WomensState = state,
+  answers: BleedingAnswers,
+): BleedingAssessment {
+  const days = Math.max(1, Math.round(answers.days));
+  const purityBefore = answers.purityBefore === null ? null : Math.max(0, Math.round(answers.purityBefore));
+  const stats = cycleStats(current);
+  const adah = stats.averagePeriod || null;
+  const reasons: string[] = [];
+
+  const openNifas = current.nifas.find((entry) => entry.end === null) || null;
+  if (openNifas) {
+    if (days > LIMITS.nifasMaxDays) {
+      reasons.push(`This has run ${days} days, past the ${LIMITS.nifasMaxDays} commonly taken as the outer limit for post-natal bleeding.`);
+      reasons.push('Past that limit the extra days are treated as istihada rather than as nifas.');
+      return { verdict: 'nifas-ended', days, adah, purityBefore, pastMaximum: true, tooSoon: false, belowMinimum: false, reasons };
+    }
+    reasons.push('Post-natal bleeding is open, so bleeding in these days is counted as nifas and not as hayd.');
+    return { verdict: 'nifas', days, adah, purityBefore, pastMaximum: false, tooSoon: false, belowMinimum: false, reasons };
+  }
+
+  const tooSoon = purityBefore !== null && purityBefore < LIMITS.purityBetweenCycles;
+  const pastMaximum = days > LIMITS.haydMaxDays;
+  const belowMinimum = adah === null && days < LIMITS.haydMinDays;
+
+  if (tooSoon) {
+    reasons.push(`There were only ${purityBefore} clear days before it, and ${LIMITS.purityBetweenCycles} days of purity are commonly required between two periods.`);
+    reasons.push('Bleeding that begins inside that gap is not counted as a new period.');
+    return { verdict: 'istihada', days, adah, purityBefore, pastMaximum, tooSoon, belowMinimum, reasons };
+  }
+
+  if (pastMaximum) {
+    reasons.push(`This has run ${days} days, past the ${LIMITS.haydMaxDays} commonly taken as the outer limit for hayd.`);
+    if (adah) reasons.push(`Your own pattern is about ${adah} days, so hayd is taken as ending there and the days after it are not hayd.`);
+    else reasons.push('With no recorded pattern to measure against, the outer limit is what there is to go on.');
+    return { verdict: 'hayd-ended', days, adah, purityBefore, pastMaximum: true, tooSoon, belowMinimum, reasons };
+  }
+
+  if (adah && days > adah) {
+    reasons.push(`This has run ${days} days, past your own pattern of about ${adah}.`);
+    reasons.push('Hayd is taken as ending at your usual length, and what follows is counted as istihada.');
+    return { verdict: 'hayd-ended', days, adah, purityBefore, pastMaximum, tooSoon, belowMinimum, reasons };
+  }
+
+  if (belowMinimum) {
+    reasons.push(`This has run ${days} days, short of the ${LIMITS.haydMinDays} commonly taken as the minimum for hayd.`);
+    reasons.push('This is the point the schools differ on most: some set no minimum at all, and treat any bleeding as hayd once it has begun.');
+    return { verdict: 'unclear', days, adah, purityBefore, pastMaximum, tooSoon, belowMinimum, reasons };
+  }
+
+  if (adah) reasons.push(`This has run ${days} days, within your own pattern of about ${adah}.`);
+  else reasons.push(`This has run ${days} days, inside the limits commonly cited for hayd.`);
+  return { verdict: 'hayd', days, adah, purityBefore, pastMaximum, tooSoon, belowMinimum, reasons };
+}
+
+/** What each answer means for what she does next. Guidance, not rulings. */
+export const BLEEDING_GUIDANCE: Record<BleedingVerdict, { title: string; body: string; steps: string[] }> = {
+  hayd: {
+    title: 'Counted as hayd',
+    body: 'On what you have entered, this falls inside your own pattern and inside the limits commonly cited. Prayer and fasting are not due in these days.',
+    steps: [
+      'The prayers of these days are not prayed and are not made up afterwards.',
+      'Fast days that fall in them are not fasted, and are owed — the Qada screen will keep the count.',
+      'When the bleeding stops, ghusl, and then prayer resumes.',
+      'There is no set minimum number of days to wait before the ghusl; the end of the bleeding is the sign.',
+    ],
+  },
+  'hayd-ended': {
+    title: 'The hayd has ended — what follows is istihada',
+    body: 'The bleeding has run past the length that counts, so the hayd is taken as finished and the days after it do not carry its rules. That distinction is the whole point of this screen: the days after are days of prayer and fasting, not days off.',
+    steps: [
+      'Ghusl once, now — the major impurity of the hayd is lifted by it, and the bleeding that continues does not bring it back.',
+      'Prayer and fasting resume from here, and the fasts of these days count.',
+      'The continuing bleeding is treated as istihada: wudu is made for each prayer rather than ghusl.',
+      'Any fast already missed in the hayd portion is still owed, and belongs on the Qada screen.',
+    ],
+  },
+  istihada: {
+    title: 'Counted as istihada — not a period',
+    body: 'This is bleeding that is not menstrual. That changes almost everything: the prayer and the fast remain due, and the days are not days to be made up later. This is the case most often mistaken for a period, and the cost of getting it wrong is a week of prayer that was owed all along.',
+    steps: [
+      'Prayer is due in these days, and the prayer of each one is prayed.',
+      'Fasting is due, and a fast kept in them counts — it is not owed again.',
+      'Wudu is made for each prayer rather than once for the day, which is the practice commonly described for istihada.',
+      'Ghusl is not required by the bleeding itself; it is for the hayd that preceded it.',
+      'Record the bleeding on the Cycle screen so your own pattern stays accurate.',
+    ],
+  },
+  'nifas-ended': {
+    title: 'The post-natal bleeding has ended — what follows is istihada',
+    body: 'This has run past the outer limit for post-natal bleeding, so the nifas is taken as finished and the days after it do not carry its rules. What remains is istihada, and with it the prayer and the fast.',
+    steps: [
+      'Ghusl once, now — the days that follow are days of prayer, not days off.',
+      'Prayer and fasting resume from here, and a fast kept after the ghusl counts.',
+      'The continuing bleeding is treated as istihada: wudu for each prayer rather than ghusl.',
+      'The fasts missed during the nifas itself are still owed, and belong on the Qada screen.',
+    ],
+  },
+  nifas: {
+    title: 'Counted as post-natal bleeding (nifas)',
+    body: 'Bleeding after childbirth is counted as nifas while it lasts, up to the outer limit. Its rules follow those of hayd for the days it runs.',
+    steps: [
+      'Prayer and fasting are not due while it continues, and the fasts are owed.',
+      'When it stops — or at the outer limit, whichever comes first — ghusl, and prayer resumes.',
+      'Bleeding that continues past the outer limit is treated as istihada from that point.',
+      'The fasts missed are kept on the Qada screen.',
+    ],
+  },
+  unclear: {
+    title: 'Not settled by the numbers alone',
+    body: 'This sits in the range the schools disagree on, so the app will not settle it for you. The two positions are set out below so that you can take them to someone who can weigh them.',
+    steps: [
+      'One position sets a minimum length for hayd, so bleeding shorter than it is not a period and prayer remains due.',
+      'Another sets no minimum at all, and counts any bleeding as hayd once it has begun.',
+      'Either way, record the days on the Cycle screen so the pattern is there when you need it.',
+      'For what you do in these specific days, ask a scholar you trust.',
+    ],
+  },
+};
+
+/**
+ * Which position the arithmetic above applies, said out loud. The app holds
+ * one set of numbers, because a screen that hedged every figure would be
+ * useless — but which set it holds should never be a surprise.
+ */
+export const SCHOOL_NOTE =
+  'The figures used here are the ones most commonly cited: a minimum of three days and a maximum of fifteen for hayd, fifteen clear days between two periods, and forty for post-natal bleeding. Schools differ on several of them, and your own school may set them differently. Where the difference changes the answer, this screen says so rather than choosing for you.';

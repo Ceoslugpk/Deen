@@ -7,7 +7,7 @@ function ExploreStack(){return <Stack.Navigator screenOptions={{headerShown:fals
  */
 function PrayerStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="Prayer" component={PrayerScreen}/><Stack.Screen name="Adhan" component={AdhanScreen}/><Stack.Screen name="Ramadan" component={RamadanScreen}/></Stack.Navigator>}
 /** The tools tab: what you calculate, look up, travel for, or record. */
-function ToolsStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="ToolsHome" component={ToolsHomeScreen}/><Stack.Screen name="Zakat" component={ZakatScreen}/><Stack.Screen name="Mosques" component={DataTool}/><Stack.Screen name="Holy site channels" component={HolyChannelsScreen}/><Stack.Screen name="Women" component={WomenHubScreen}/><Stack.Screen name="Cycle" component={CycleScreen}/><Stack.Screen name="Qada" component={QadaScreen}/><Stack.Screen name="Women Guides" component={WomenGuidesScreen}/><Stack.Screen name="Privacy Lock" component={PrivacyLockScreen}/><Stack.Screen name="Fasting" component={FastingScreen}/><Stack.Screen name="Weekly Summary" component={WeeklySummaryScreen}/><Stack.Screen name="Qibla" component={QiblaScreen}/><Stack.Screen name="Location Setup" component={LocationSetupScreen}/><Stack.Screen name="Notifications" component={NotificationScreen}/><Stack.Screen name="Hijri Calendar" component={HijriCalendarScreen}/><Stack.Screen name="Tasbih" component={TasbihScreen}/><Stack.Screen name="Umrah Packing" component={UmrahPackingScreen}/><Stack.Screen name="Hajj Live" component={HajjLiveScreen}/></Stack.Navigator>}
+function ToolsStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="ToolsHome" component={ToolsHomeScreen}/><Stack.Screen name="Zakat" component={ZakatScreen}/><Stack.Screen name="Mosques" component={DataTool}/><Stack.Screen name="Holy site channels" component={HolyChannelsScreen}/><Stack.Screen name="Women" component={WomenHubScreen}/><Stack.Screen name="Istihada" component={IstihadaScreen}/><Stack.Screen name="Cycle" component={CycleScreen}/><Stack.Screen name="Qada" component={QadaScreen}/><Stack.Screen name="Women Guides" component={WomenGuidesScreen}/><Stack.Screen name="Privacy Lock" component={PrivacyLockScreen}/><Stack.Screen name="Fasting" component={FastingScreen}/><Stack.Screen name="Weekly Summary" component={WeeklySummaryScreen}/><Stack.Screen name="Qibla" component={QiblaScreen}/><Stack.Screen name="Location Setup" component={LocationSetupScreen}/><Stack.Screen name="Notifications" component={NotificationScreen}/><Stack.Screen name="Hijri Calendar" component={HijriCalendarScreen}/><Stack.Screen name="Tasbih" component={TasbihScreen}/><Stack.Screen name="Umrah Packing" component={UmrahPackingScreen}/><Stack.Screen name="Hajj Live" component={HajjLiveScreen}/></Stack.Navigator>}
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -133,7 +133,7 @@ import { completeJourney, clearJourney, journeyMeta, JOURNEY_META, JOURNEY_STEPS
 import { HOLY_CHANNELS, openChannel } from './src/services/holyChannels';
 import { clearFastDay, FastType, labelForEntry, loadFastingState, missedReasons, MISSED_REASONS, MissedReason, recordFast, readableDate, setFastingOwed, summariseFasting, useFasting, setFastingDateLocale } from './src/services/fastingService';
 import { buildWeeklySummary, loadActivity, logHifzReview, logMushafPage, logSurahOpen, logVerseRead, useActivity, setActivityDateLocale } from './src/services/activityService';
-import { addDays, addQada, ADVISORY, BISMILLAH_ARABIC, cycleStats, dayKey, daysBetween, deleteCycle, deleteNifas, deleteQada, endCycle, endNifas, EXPLANATIONS, FLOW_LEVELS, formatDay, formatLongDay, GHUSL_FARD, GHUSL_SUNNAH, LIMITS, loadWomensState, logPurity, nifasStats, NIYYAH_ARABIC, NIYYAH_MEANING, NIYYAH_TRANSLITERATION, PurityStatus, QadaReason, QADA_REASONS, qadaStats, recentPurity, REFERENCES, setFlow, setOptedIn, startCycle, startNifas, toggleQada, TUHR_SIGNS, useWomens, WORSHIP_GUIDANCE } from './src/services/womensService';
+import { addDays, addQada, ADVISORY, assessBleeding, BISMILLAH_ARABIC, BLEEDING_GUIDANCE, cycleStats, dayKey, daysBetween, deleteCycle, deleteNifas, deleteQada, endCycle, endNifas, EXPLANATIONS, FLOW_LEVELS, formatDay, formatLongDay, GHUSL_FARD, GHUSL_SUNNAH, LIMITS, loadWomensState, logPurity, nifasStats, NIYYAH_ARABIC, NIYYAH_MEANING, NIYYAH_TRANSLITERATION, PurityStatus, QadaReason, QADA_REASONS, qadaStats, recentPurity, REFERENCES, SCHOOL_NOTE, setFlow, setOptedIn, startCycle, startNifas, toggleQada, TUHR_SIGNS, useWomens, WORSHIP_GUIDANCE } from './src/services/womensService';
 import { BiometricInfo, biometricInfo, checkPin, removePin, RELOCK_OPTIONS, setPin, startLockWatch, unlockSession, unlockWithBiometric, updateLockSettings, useIsLocked, useLockConfig, loadLockConfig } from './src/services/privacyService';
 import { CURRENCIES, clearHistory, computeZakat, currencySymbol, deleteCalculation, formatMoney, livePrices, loadZakatState, marketIsFresh, NISAB_GOLD_GRAMS, NISAB_SILVER_GRAMS, refreshMarket, saveCalculation, setAssetAmount, setBasis, setCurrency, setLiabilityAmount, setMetalPrice, setMoneyLocale, useLiveMetalPrices, useMarket, useZakat } from './src/services/zakatService';
 import { arNoun, clockTime, prayerName, tx } from './src/services/arabicCopy';
@@ -699,6 +699,7 @@ const TOOL_IMAGES:Record<string,any>={
   'Cycle Tracker':require('./assets/tool-icons/cycle.png'),
   'Hijri Calendar':require('./assets/tool-icons/hijri.png'),
   'Prayer Reminders':require('./assets/tool-icons/prayer-reminders.png'),
+  Istihada:require('./assets/tool-icons/istihada.png'),
 };
 /** The same icons, re-toned for the dark palette. */
 const TOOL_IMAGES_DARK:Record<string,any>={
@@ -706,6 +707,7 @@ const TOOL_IMAGES_DARK:Record<string,any>={
   'Cycle Tracker':require('./assets/tool-icons/cycle-dark.png'),
   'Hijri Calendar':require('./assets/tool-icons/hijri-dark.png'),
   'Prayer Reminders':require('./assets/tool-icons/prayer-reminders-dark.png'),
+  Istihada:require('./assets/tool-icons/istihada-dark.png'),
 
   Quran:require('./assets/tool-icons/quran-dark.png'),
   Qibla:require('./assets/tool-icons/qibla-dark.png'),
@@ -1297,6 +1299,14 @@ let CARD_GREEN: any = { backgroundColor: C.mint }; let CARD_GOLD: any = { backgr
 type ToolItem = { title: string; caption: string; route: string; params?: any };
 
 /**
+ * `when` gates a whole group rather than the cards inside it. The women's
+ * area holds the most personal records in the app, so it is not listed in
+ * Tools at all until it has been turned on — a heading that appears and then
+ * asks to be unlocked has already told the wrong person it exists.
+ */
+type ToolGroup = { label: string; title: string; when?: 'womens'; items: ToolItem[] };
+
+/**
  * Tools is what you work out, keep track of, or watch. Three groups, and
  * every card opens a screen inside this stack so the back button returns
  * here rather than leaving you in another tab.
@@ -1304,13 +1314,12 @@ type ToolItem = { title: string; caption: string; route: string; params?: any };
 /** Routes that exist only inside the women's area, hidden until it is opted into. */
 const WOMENS_ONLY_TOOLS = ['Women', 'Cycle'];
 
-const TOOL_GROUPS: { label: string; title: string; items: ToolItem[] }[] = [
+const TOOL_GROUPS: ToolGroup[] = [
   { label: 'TRACK', title: 'Trackers and calculators', items: [
     { title: 'Salah Tracker', caption: 'The five prayers, and the run you are on', route: 'Prayer' },
     { title: 'Fasting', caption: 'Ramadan, voluntary and missed fasts', route: 'Fasting' },
     { title: 'Qada Fasts', caption: 'What you owe, and what you have made up', route: 'Qada' },
     { title: 'Zakat', caption: 'Gold, silver, cash and investments', route: 'Zakat' },
-    { title: 'Cycle Tracker', caption: 'Period logging and predictions', route: 'Cycle' },
     { title: 'Tasbih', caption: 'A quiet, tactile dhikr counter', route: 'Tasbih' },
     { title: 'Weekly Summary', caption: 'Your past seven days at a glance', route: 'Weekly Summary' },
   ]},
@@ -1326,6 +1335,13 @@ const TOOL_GROUPS: { label: string; title: string; items: ToolItem[] }[] = [
     { title: 'Makkah Live', caption: 'Al-Masjid al-Haram, around the clock', route: 'Holy site channels', params: { site: 'Makkah' } },
     { title: 'Madinah Live', caption: 'Al-Masjid an-Nabawi, around the clock', route: 'Holy site channels', params: { site: 'Madinah' } },
     { title: 'Hajj Live', caption: 'The days of Hajj, and the countdown to Arafah', route: 'Hajj Live' },
+  ]},
+  /* Last, and only once it has been turned on. The three cards here are the
+     hub, the record it is built on, and the question the record raises. */
+  { label: 'WOMEN’S WORSHIP', title: 'Kept on this device', when: 'womens', items: [
+    { title: 'Women’s worship', caption: 'Your cycle, purity and the fasts you owe', route: 'Women' },
+    { title: 'Cycle Tracker', caption: 'Period logging and predictions', route: 'Cycle' },
+    { title: 'Istihada', caption: 'Bleeding that is not a period', route: 'Istihada' },
   ]},
 ];
 
@@ -1626,7 +1642,7 @@ function ToolsHomeScreen({ navigation }: any) {
   /* The cycle tracker belongs to the women's area, so it stays out of
      Tools until that area is turned on - the same gate the area's own
      entry uses. Nobody who has not opted in is shown a period tracker. */
-  const shown = (group: typeof TOOL_GROUPS[number]) =>
+  const shown = (group: ToolGroup) =>
     group.items.filter((item) => !WOMENS_ONLY_TOOLS.includes(item.route) || womens.optedIn);
   /* The header belongs inside the scroller, as it is on the other four tabs.
      Left outside it sits flush to the screen edge with no padding, so Tools
@@ -1637,7 +1653,7 @@ function ToolsHomeScreen({ navigation }: any) {
       <Text style={s.dataTitle}>{T('Tools')}</Text>
       <Text style={s.dataArabic}>أَدَوَاتٌ لِلْعِبَادَةِ</Text>
       <Text style={s.dataBody}>{T('What you work out, look up, keep track of, or watch — apart from the flow of the day.')}</Text>
-      {TOOL_GROUPS.map((group) => <View key={group.label}>
+      {TOOL_GROUPS.filter((group) => group.when !== 'womens' || womens.optedIn).map((group) => <View key={group.label}>
         <Text style={s.libraryKicker}>{T(group.label)}</Text>
         <Text style={s.libraryHeading}>{T(group.title)}</Text>
         <View style={s.exploreGrid}>{shown(group).map((item) => <MotionPress key={item.title} onPress={() => navigation.navigate(item.route, item.params)} style={s.exploreCard}>
@@ -4985,6 +5001,123 @@ function PrivateArea({ navigation, children }: { navigation: any; children: Reac
   const { locked } = usePrivateGate();
   if (locked) return <PrivateLockScreen navigation={navigation} />;
   return <>{children}</>;
+}
+
+/**
+ * Istihada — bleeding that is not a period.
+ *
+ * The most consequential question in this area, and the one most often got
+ * wrong in the direction that costs the most. A woman who takes irregular
+ * bleeding for a period leaves the prayer and the fast for days she still
+ * owed them, and does not know it. Hayd is measured against her own pattern
+ * and against the outer limits; bleeding that falls outside them does not
+ * carry its rules, however much it looks like it does.
+ *
+ * So the screen asks the two things she knows and the app cannot guess — how
+ * long the bleeding has run, and how many clear days came before it — and
+ * holds them against what her own history says. It then names the position it
+ * applied, because the schools differ on these numbers and she is entitled to
+ * know which set she was just measured with.
+ */
+function IstihadaScreen({ navigation }: any) {
+  const { rtl } = useLanguage();
+  const T = (text: string) => tx(rtl, text);
+  const womens = useWomens();
+  const stats = cycleStats(womens);
+
+  /* Begin from what the app already holds. With a cycle open it knows the
+     first day, and therefore knows how long the bleeding has run — asking
+     for that again would be asking for a number it is already carrying. */
+  const openDays = stats.active ? Math.max(1, daysBetween(stats.active.start, dayKey()) + 1) : 0;
+  const [days, setDays] = useState(openDays || 4);
+  const [purity, setPurity] = useState<number | null>(null);
+
+  const assessment = assessBleeding(womens, { days, purityBefore: purity });
+  const guidance = BLEEDING_GUIDANCE[assessment.verdict];
+  const verdictColour = assessment.verdict === 'hayd' || assessment.verdict === 'nifas'
+    ? C.green
+    : assessment.verdict === 'unclear' ? C.muted : C.gold;
+  const headline = assessment.verdict === 'istihada' ? T('Prayer and fasting are due')
+    : assessment.verdict === 'hayd' || assessment.verdict === 'nifas' ? T('Prayer and fasting are not due in these days')
+    : assessment.verdict === 'unclear' ? T('Ask a scholar you trust')
+    : T('Prayer and fasting resume from here');
+
+  const stepper = (
+    value: number | null,
+    dec: () => void,
+    inc: () => void,
+    unit: string,
+  ) => (
+    <View style={s.stepper}>
+      <Pressable accessibilityLabel={T('Fewer')} onPress={dec} style={s.stepButton}>{ico('remove', 20, C.green)}</Pressable>
+      <Text style={s.settingName}>{value === null ? T('Not sure') : `${value} ${T(unit)}`}</Text>
+      <Pressable accessibilityLabel={T('More')} onPress={inc} style={s.stepButton}>{ico('add', 20, C.green)}</Pressable>
+    </View>
+  );
+
+  return <PrivateArea navigation={navigation}><Page><ToolBar title={T('Istihada')} navigation={navigation} />
+    <ScrollView contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
+      <ToolGraphic tool="Istihada" size={78} />
+      <Text style={s.dataTitle}>{T('Is this bleeding a period?')}</Text>
+      <Text style={s.intro}>{T('Bleeding is not always hayd, and the difference decides whether the prayer and the fast are due. Answer the two questions below and the app will hold them against your own pattern and against the limits commonly cited.')}</Text>
+
+      <View style={s.dataCard}>
+        <Text style={s.preferenceLabel}>{T('HOW LONG IT HAS RUN')}</Text>
+        {stepper(days, () => setDays(Math.max(1, days - 1)), () => setDays(Math.min(45, days + 1)), 'days')}
+        {!!openDays && <Text style={s.meta}>{T('Started from the cycle you have open.')}</Text>}
+      </View>
+
+      <View style={s.dataCard}>
+        <Text style={s.preferenceLabel}>{T('CLEAR DAYS BEFORE IT BEGAN')}</Text>
+        {stepper(
+          purity,
+          () => setPurity(purity === null ? null : purity <= 0 ? null : purity - 1),
+          () => setPurity(purity === null ? 0 : Math.min(40, purity + 1)),
+          'days',
+        )}
+        <Text style={s.meta}>{T('If you are not sure, leave it. The answer is firmer with it, but it is not required.')}</Text>
+      </View>
+
+      <View style={s.dataCard}>
+        <Text style={[s.dataMeta, { color: verdictColour }]}>{T(guidance.title)}</Text>
+        <Text style={s.dataTitle}>{headline}</Text>
+        <Text style={s.dataBody}>{T(guidance.body)}</Text>
+      </View>
+
+      <Section title={T('How it was worked out')} />
+      <View style={s.dataCard}>
+        {assessment.reasons.map((reason: string, index: number) => <Text key={index} style={[s.dataBody, index > 0 && { marginTop: 8 }]}>{T(reason)}</Text>)}
+        {assessment.adah !== null && <Text style={[s.meta, { marginTop: 10 }]}>{T(`Your recorded pattern: about ${assessment.adah} days.`)}</Text>}
+      </View>
+
+      <Section title={T('What to do')} />
+      <View style={s.dataCard}>
+        {guidance.steps.map((step: string, index: number) => (
+          <View key={index} style={[s.packingRow, index === guidance.steps.length - 1 && { borderBottomWidth: 0 }]}>
+            <Text style={[s.dataMeta, { minWidth: 22 }]}>{index + 1}</Text>
+            <Text style={[s.dataBody, { flex: 1 }]}>{T(step)}</Text>
+          </View>
+        ))}
+      </View>
+
+      <Section title={T('Keep the record straight')} />
+      <View style={s.settings}>
+        <Pressable onPress={() => navigation.navigate('Cycle')} style={s.setting}>
+          <View style={{ flex: 1 }}><Text style={s.settingName}>{T('Cycle Tracker')}</Text><Text style={s.meta}>{T('Record these days so your own pattern stays accurate.')}</Text></View>
+          {ico('arrow-forward', 18, C.green)}
+        </Pressable>
+        <Pressable onPress={() => navigation.navigate('Qada')} style={s.setting}>
+          <View style={{ flex: 1 }}><Text style={s.settingName}>{T('Qada Fasts')}</Text><Text style={s.meta}>{T('Fast days that fall in hayd or nifas are owed, and are kept here.')}</Text></View>
+          {ico('arrow-forward', 18, C.green)}
+        </Pressable>
+      </View>
+
+      <Section title={T('Which position this uses')} />
+      <View style={s.dataCard}><Text style={s.dataBody}>{T(SCHOOL_NOTE)}</Text></View>
+
+      <View style={s.dataCard}><Text style={s.dataBody}>{T(ADVISORY)}</Text></View>
+    </ScrollView>
+  </Page></PrivateArea>;
 }
 
 function WomenHubScreen({ navigation }: any) {
