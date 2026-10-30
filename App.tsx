@@ -7,7 +7,7 @@ function ExploreStack(){return <Stack.Navigator screenOptions={{headerShown:fals
  */
 function PrayerStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="Prayer" component={PrayerScreen}/><Stack.Screen name="Adhan" component={AdhanScreen}/><Stack.Screen name="Ramadan" component={RamadanScreen}/></Stack.Navigator>}
 /** The tools tab: what you calculate, look up, travel for, or record. */
-function ToolsStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="ToolsHome" component={ToolsHomeScreen}/><Stack.Screen name="Zakat" component={ZakatScreen}/><Stack.Screen name="Mosques" component={DataTool}/><Stack.Screen name="Holy site channels" component={HolyChannelsScreen}/><Stack.Screen name="Women" component={WomenHubScreen}/><Stack.Screen name="Istihada" component={IstihadaScreen}/><Stack.Screen name="Cycle" component={CycleScreen}/><Stack.Screen name="Qada" component={QadaScreen}/><Stack.Screen name="Women Guides" component={WomenGuidesScreen}/><Stack.Screen name="Privacy Lock" component={PrivacyLockScreen}/><Stack.Screen name="Fasting" component={FastingScreen}/><Stack.Screen name="Weekly Summary" component={WeeklySummaryScreen}/><Stack.Screen name="Qibla" component={QiblaScreen}/><Stack.Screen name="Location Setup" component={LocationSetupScreen}/><Stack.Screen name="Notifications" component={NotificationScreen}/><Stack.Screen name="Hijri Calendar" component={HijriCalendarScreen}/><Stack.Screen name="Tasbih" component={TasbihScreen}/><Stack.Screen name="Umrah Packing" component={UmrahPackingScreen}/><Stack.Screen name="Hajj Live" component={HajjLiveScreen}/></Stack.Navigator>}
+function ToolsStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="ToolsHome" component={ToolsHomeScreen}/><Stack.Screen name="Zakat" component={ZakatScreen}/><Stack.Screen name="Mosques" component={DataTool}/><Stack.Screen name="Holy site channels" component={HolyChannelsScreen}/><Stack.Screen name="Women" component={WomenHubScreen}/><Stack.Screen name="Istihada" component={IstihadaScreen}/><Stack.Screen name="Ramadan Planner" component={RamadanPlannerScreen}/><Stack.Screen name="Cycle" component={CycleScreen}/><Stack.Screen name="Qada" component={QadaScreen}/><Stack.Screen name="Women Guides" component={WomenGuidesScreen}/><Stack.Screen name="Privacy Lock" component={PrivacyLockScreen}/><Stack.Screen name="Fasting" component={FastingScreen}/><Stack.Screen name="Weekly Summary" component={WeeklySummaryScreen}/><Stack.Screen name="Qibla" component={QiblaScreen}/><Stack.Screen name="Location Setup" component={LocationSetupScreen}/><Stack.Screen name="Notifications" component={NotificationScreen}/><Stack.Screen name="Hijri Calendar" component={HijriCalendarScreen}/><Stack.Screen name="Tasbih" component={TasbihScreen}/><Stack.Screen name="Umrah Packing" component={UmrahPackingScreen}/><Stack.Screen name="Hajj Live" component={HajjLiveScreen}/></Stack.Navigator>}
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -133,7 +133,7 @@ import { completeJourney, clearJourney, journeyMeta, JOURNEY_META, JOURNEY_STEPS
 import { HOLY_CHANNELS, openChannel } from './src/services/holyChannels';
 import { clearFastDay, FastType, labelForEntry, loadFastingState, missedReasons, MISSED_REASONS, MissedReason, recordFast, readableDate, setFastingOwed, summariseFasting, useFasting, setFastingDateLocale } from './src/services/fastingService';
 import { buildWeeklySummary, loadActivity, logHifzReview, logMushafPage, logSurahOpen, logVerseRead, useActivity, setActivityDateLocale } from './src/services/activityService';
-import { addDays, addQada, ADVISORY, assessBleeding, BISMILLAH_ARABIC, BLEEDING_GUIDANCE, cycleStats, dayKey, daysBetween, deleteCycle, deleteNifas, deleteQada, endCycle, endNifas, EXPLANATIONS, FLOW_LEVELS, formatDay, formatLongDay, GHUSL_FARD, GHUSL_SUNNAH, LIMITS, loadWomensState, logPurity, nifasStats, NIYYAH_ARABIC, NIYYAH_MEANING, NIYYAH_TRANSLITERATION, PurityStatus, QadaReason, QADA_REASONS, qadaStats, recentPurity, REFERENCES, SCHOOL_NOTE, setFlow, setOptedIn, startCycle, startNifas, toggleQada, TUHR_SIGNS, useWomens, WORSHIP_GUIDANCE } from './src/services/womensService';
+import { addDays, addQada, ADVISORY, assessBleeding, BISMILLAH_ARABIC, BLEEDING_GUIDANCE, cycleStats, dayKey, daysBetween, deleteCycle, deleteNifas, deleteQada, endCycle, endNifas, EXPLANATIONS, FLOW_LEVELS, formatDay, formatLongDay, GHUSL_FARD, GHUSL_SUNNAH, LIMITS, loadWomensState, logPurity, nifasStats, NIYYAH_ARABIC, NIYYAH_MEANING, NIYYAH_TRANSLITERATION, PurityStatus, QadaReason, QADA_REASONS, qadaStats, RAMADAN_ADVISORY, RAMADAN_NOTES, RAMADAN_STATE_LABEL, ramadanPlan, RamadanPlanDay, recentPurity, REFERENCES, SCHOOL_NOTE, setFlow, setOptedIn, startCycle, startNifas, toggleQada, TUHR_SIGNS, useWomens, WORSHIP_GUIDANCE } from './src/services/womensService';
 import { BiometricInfo, biometricInfo, checkPin, removePin, RELOCK_OPTIONS, setPin, startLockWatch, unlockSession, unlockWithBiometric, updateLockSettings, useIsLocked, useLockConfig, loadLockConfig } from './src/services/privacyService';
 import { CURRENCIES, clearHistory, computeZakat, currencySymbol, deleteCalculation, formatMoney, livePrices, loadZakatState, marketIsFresh, NISAB_GOLD_GRAMS, NISAB_SILVER_GRAMS, refreshMarket, saveCalculation, setAssetAmount, setBasis, setCurrency, setLiabilityAmount, setMetalPrice, setMoneyLocale, useLiveMetalPrices, useMarket, useZakat } from './src/services/zakatService';
 import { arNoun, clockTime, prayerName, tx } from './src/services/arabicCopy';
@@ -700,6 +700,7 @@ const TOOL_IMAGES:Record<string,any>={
   'Hijri Calendar':require('./assets/tool-icons/hijri.png'),
   'Prayer Reminders':require('./assets/tool-icons/prayer-reminders.png'),
   Istihada:require('./assets/tool-icons/istihada.png'),
+  'Ramadan Planner':require('./assets/tool-icons/ramadan-planner.png'),
 };
 /** The same icons, re-toned for the dark palette. */
 const TOOL_IMAGES_DARK:Record<string,any>={
@@ -708,6 +709,7 @@ const TOOL_IMAGES_DARK:Record<string,any>={
   'Hijri Calendar':require('./assets/tool-icons/hijri-dark.png'),
   'Prayer Reminders':require('./assets/tool-icons/prayer-reminders-dark.png'),
   Istihada:require('./assets/tool-icons/istihada-dark.png'),
+  'Ramadan Planner':require('./assets/tool-icons/ramadan-planner-dark.png'),
 
   Quran:require('./assets/tool-icons/quran-dark.png'),
   Qibla:require('./assets/tool-icons/qibla-dark.png'),
@@ -1342,6 +1344,7 @@ const TOOL_GROUPS: ToolGroup[] = [
     { title: 'Women’s worship', caption: 'Your cycle, purity and the fasts you owe', route: 'Women' },
     { title: 'Cycle Tracker', caption: 'Period logging and predictions', route: 'Cycle' },
     { title: 'Istihada', caption: 'Bleeding that is not a period', route: 'Istihada' },
+    { title: 'Ramadan Planner', caption: 'Which fasts your cycle may claim, and when they fall due', route: 'Ramadan Planner' },
   ]},
 ];
 
@@ -5115,6 +5118,204 @@ function IstihadaScreen({ navigation }: any) {
       <Section title={T('Which position this uses')} />
       <View style={s.dataCard}><Text style={s.dataBody}>{T(SCHOOL_NOTE)}</Text></View>
 
+      <View style={s.dataCard}><Text style={s.dataBody}>{T(ADVISORY)}</Text></View>
+    </ScrollView>
+  </Page></PrivateArea>;
+}
+
+/**
+ * The Ramadan planner.
+ *
+ * It answers one question a woman asks quietly every year: which of these
+ * thirty days am I likely to lose, and how long do I have to make them up?
+ *
+ * The answer is drawn entirely from her own recorded pattern, and it is drawn
+ * on the device. Nothing about it leaves.
+ *
+ * The month is shown as a grid rather than a list because that is how Ramadan
+ * is actually held in the mind — thirty days, and the few that are in question.
+ * Days inside a projected period are marked one way, the days either side of
+ * it another, because the edge is where a fast is decided: bleeding that begins
+ * in the last minutes before Maghrib breaks that day, and no projection can
+ * know the minute.
+ */
+const RAMADAN_CELL = StyleSheet.create({
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 6 },
+  cell: {
+    flexGrow: 1, flexShrink: 1, flexBasis: '13%', maxWidth: 52, aspectRatio: 1,
+    borderRadius: 12, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: C.line,
+  },
+  cellLikely: { backgroundColor: C.gold, borderColor: C.gold },
+  cellPossible: { backgroundColor: C.yellow, borderColor: C.gold },
+  cellToday: { borderWidth: 2, borderColor: C.green },
+  cellNum: { fontFamily: 'DMSans_700Bold', fontSize: 13 },
+  legendRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 },
+  swatch: { width: 13, height: 13, borderRadius: 4, borderWidth: 1, borderColor: C.line },
+  legendText: { color: C.muted, fontSize: 12, fontFamily: 'DMSans_400Regular', flex: 1 },
+  heroOwed: { color: C.ink, fontSize: 40, fontFamily: 'DMSans_700Bold', marginTop: 6 },
+  heroUnit: { color: C.muted, fontSize: 13, fontFamily: 'DMSans_400Regular', marginTop: 2 },
+  statRow: { flexDirection: 'row', marginTop: 14, gap: 10 },
+  stat: { flex: 1, backgroundColor: C.mint, borderRadius: 14, padding: 11 },
+  statValue: { color: C.green, fontSize: 16, fontFamily: 'DMSans_700Bold', marginTop: 2 },
+  statLabel: { color: C.muted, fontSize: 10, fontFamily: 'DMSans_700Bold', letterSpacing: 0.6 },
+});
+
+function RamadanPlannerScreen({ navigation }: any) {
+  const { rtl } = useLanguage();
+  const T = (text: string) => tx(rtl, text);
+  const womens = useWomens();
+  const plan = ramadanPlan(womens);
+  const today = dayKey();
+
+  const owedText = !plan.hasPattern
+    ? T('—')
+    : plan.likelyCount === plan.owedHigh
+      ? `${plan.likelyCount}`
+      : `${plan.owedLow}–${plan.owedHigh}`;
+
+  const whenText = plan.finished
+    ? T('This Ramadan has ended')
+    : plan.started
+      ? T(`Ramadan is under way — day ${Math.min(30, Math.abs(daysBetween(plan.start, today)) + 1)}`)
+      : T(`Starts in ${plan.daysLeft} days`);
+
+  const confidenceText =
+    plan.confidence === 'good'
+      ? T('Your pattern is steady, so this should be close.')
+      : plan.confidence === 'fair'
+        ? T('Your cycle varies somewhat, so treat the outer days as a question mark.')
+        : plan.hasPattern
+          ? T('Your cycle has varied a good deal, so this is a rough shape rather than a forecast.')
+          : T('Not enough history yet to project from.');
+
+  const cell = (day: RamadanPlanDay) => {
+    const isToday = day.date === today;
+    const tone =
+      day.state === 'likely'
+        ? RAMADAN_CELL.cellLikely
+        : day.state === 'possible'
+          ? RAMADAN_CELL.cellPossible
+          : null;
+    const numColour = day.state === 'likely' ? C.card : day.state === 'possible' ? C.gold : C.muted;
+    return (
+      <View
+        key={day.date}
+        style={[RAMADAN_CELL.cell, tone, isToday && RAMADAN_CELL.cellToday]}
+        accessibilityLabel={T(`Day ${day.ramadanDay}, ${RAMADAN_STATE_LABEL[day.state]}`)}
+      >
+        <Text style={[RAMADAN_CELL.cellNum, { color: numColour }]}>{day.ramadanDay}</Text>
+      </View>
+    );
+  };
+
+  return <PrivateArea navigation={navigation}><Page><ToolBar title={T('Ramadan Planner')} navigation={navigation} />
+    <ScrollView contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
+      <ToolGraphic tool="Ramadan Planner" size={78} />
+      <Text style={s.dataTitle}>{T('Ramadan through your cycle')}</Text>
+      <Text style={s.intro}>{T('Thirty days, and the handful your cycle is likely to claim from them. The app counts forward from your own recorded pattern and marks the days it lands on, so the number you owe is known before the month begins rather than counted up at the end of it.')}</Text>
+
+      <View style={s.dataCard}>
+        <Text style={s.dataMeta}>{T(`Ramadan ${plan.hijriYear}`)}</Text>
+        <Text style={s.dataName}>{formatLongDay(plan.start)}{T(' — ')}{formatLongDay(plan.end)}</Text>
+        <Text style={s.meta}>{whenText}</Text>
+
+        <Text style={RAMADAN_CELL.heroOwed}>{owedText}</Text>
+        <Text style={RAMADAN_CELL.heroUnit}>
+          {plan.hasPattern
+            ? T(plan.owedHigh === plan.owedLow ? 'fasts likely to be owed' : 'fasts likely to be owed — the second figure if the timing shifts')
+            : T('no projection yet')}
+        </Text>
+
+        {plan.hasPattern && (
+          <Text style={[s.meta, { marginTop: 8 }]}>
+            {T(`To make up before ${formatDay(plan.deadline)} — ${plan.daysUntilDeadline} days away.`)}
+          </Text>
+        )}
+      </View>
+
+      {!plan.hasPattern && (
+        <View style={s.dataCard}>
+          <Text style={s.dataName}>{T('What it needs from you')}</Text>
+          <Text style={s.dataBody}>{T('This is counted from your own cycles, not from an average. Record two complete cycles — a start and an end for each — and the projection appears here. Until then the honest answer is no answer, and a number invented from someone else’s pattern would be worse than a blank.')}</Text>
+          <Pressable onPress={() => navigation.navigate('Cycle')} style={[s.setting, { marginTop: 8, borderBottomWidth: 0 }]}>
+            <View style={{ flex: 1 }}><Text style={s.settingName}>{T('Cycle Tracker')}</Text><Text style={s.meta}>{T('Record a start and an end for each cycle.')}</Text></View>
+            {ico('arrow-forward', 18, C.green)}
+          </Pressable>
+        </View>
+      )}
+
+      {plan.hasPattern && (
+        <View style={s.dataCard}>
+          <Text style={s.preferenceLabel}>{T('THE THIRTY DAYS')}</Text>
+          <View style={RAMADAN_CELL.grid}>{plan.days.map(cell)}</View>
+
+          <View style={RAMADAN_CELL.legendRow}>
+            <View style={[RAMADAN_CELL.swatch, { backgroundColor: C.gold, borderColor: C.gold }]} />
+            <Text style={RAMADAN_CELL.legendText}>{T('Likely — inside your projected days')}</Text>
+          </View>
+          <View style={RAMADAN_CELL.legendRow}>
+            <View style={[RAMADAN_CELL.swatch, { backgroundColor: C.yellow, borderColor: C.gold }]} />
+            <Text style={RAMADAN_CELL.legendText}>{T('Possible — either side of them')}</Text>
+          </View>
+          <View style={RAMADAN_CELL.legendRow}>
+            <View style={[RAMADAN_CELL.swatch, { backgroundColor: 'transparent' }]} />
+            <Text style={RAMADAN_CELL.legendText}>{T('No period expected')}</Text>
+          </View>
+        </View>
+      )}
+
+      {plan.hasPattern && (
+        <View style={s.dataCard}>
+          <View style={RAMADAN_CELL.statRow}>
+            <View style={RAMADAN_CELL.stat}>
+              <Text style={RAMADAN_CELL.statLabel}>{T('YOUR CYCLE')}</Text>
+              <Text style={RAMADAN_CELL.statValue}>{plan.averageCycle} {T('days')}</Text>
+            </View>
+            <View style={RAMADAN_CELL.stat}>
+              <Text style={RAMADAN_CELL.statLabel}>{T('YOUR PERIOD')}</Text>
+              <Text style={RAMADAN_CELL.statValue}>{plan.averagePeriod} {T('days')}</Text>
+            </View>
+            <View style={RAMADAN_CELL.stat}>
+              <Text style={RAMADAN_CELL.statLabel}>{T('VARIES BY')}</Text>
+              <Text style={RAMADAN_CELL.statValue}>{plan.variation} {T('days')}</Text>
+            </View>
+          </View>
+          <Text style={[s.meta, { marginTop: 12 }]}>{confidenceText}</Text>
+          <Text style={[s.meta, { marginTop: 6 }]}>{T(`Counted from your last ${plan.cycleCount} recorded cycles.`) }</Text>
+        </View>
+      )}
+
+      <Section title={T('What is worth knowing')} />
+      <View style={s.dataCard}>
+        {RAMADAN_NOTES.map((note, index) => (
+          <View key={index} style={[s.packingRow, { alignItems: 'flex-start' }, index === RAMADAN_NOTES.length - 1 && { borderBottomWidth: 0 }]}>
+            <Text style={[s.dataMeta, { minWidth: 22, marginTop: 0 }]}>{index + 1}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={[s.dataName, { marginTop: 0 }]}>{T(note.title)}</Text>
+              <Text style={s.dataBody}>{T(note.body)}</Text>
+            </View>
+          </View>
+        ))}
+      </View>
+
+      <Section title={T('Keep the record straight')} />
+      <View style={s.settings}>
+        <Pressable onPress={() => navigation.navigate('Cycle')} style={s.setting}>
+          <View style={{ flex: 1 }}><Text style={s.settingName}>{T('Cycle Tracker')}</Text><Text style={s.meta}>{T('The projection is only as good as the record it is built on.')}</Text></View>
+          {ico('arrow-forward', 18, C.green)}
+        </Pressable>
+        <Pressable onPress={() => navigation.navigate('Qada')} style={s.setting}>
+          <View style={{ flex: 1 }}><Text style={s.settingName}>{T('Qada Fasts')}</Text><Text style={s.meta}>{T('Once a day is actually missed, keep it here.')}</Text></View>
+          {ico('arrow-forward', 18, C.green)}
+        </Pressable>
+        <Pressable onPress={() => navigation.navigate('Istihada')} style={[s.setting, { borderBottomWidth: 0 }]}>
+          <View style={{ flex: 1 }}><Text style={s.settingName}>{T('Istihada')}</Text><Text style={s.meta}>{T('When bleeding runs past your pattern, this is the question it raises.')}</Text></View>
+          {ico('arrow-forward', 18, C.green)}
+        </Pressable>
+      </View>
+
+      <View style={s.dataCard}><Text style={s.dataBody}>{T(RAMADAN_ADVISORY)}</Text></View>
       <View style={s.dataCard}><Text style={s.dataBody}>{T(ADVISORY)}</Text></View>
     </ScrollView>
   </Page></PrivateArea>;
