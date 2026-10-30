@@ -1,5 +1,5 @@
 import { getCachedJson, setCachedJson } from './contentCache';
-import { daysOfHijriMonth } from './hijri';
+import { daysOfHijriMonth, gregorianForHijri, hijriForDate } from './hijri';
 import {
   computeDayTimes,
   hijriLabel,
@@ -598,32 +598,50 @@ function gregorianStamp(date: Date) {
 
 export async function getHajjCountdown(): Promise<HajjCountdown> {
   const now = new Date();
-  const pad = (n: number) => String(n).padStart(2, '0');
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-  const greg = (await json(`https://api.aladhan.com/v1/gToH?date=${pad(now.getDate())}-${pad(now.getMonth() + 1)}-${now.getFullYear()}`)) as any;
-  const hijri = greg.data?.hijri ?? greg.hijri;
-  const day = Number(hijri.day);
-  const month = Number(hijri.month.number);
-  let year = Number(hijri.year);
+  const h = hijriForDate(today);
+  const day = h?.day ?? 1;
+  const month = h?.month ?? 1;
+  let year = h?.year ?? 1448;
 
   // Hajj belongs to the coming Dhul-Hijjah. Once Tashriq is over we roll to
   // the next Hijri year, so the countdown never shows a negative or a zero.
   if (month > 12 || (month === 12 && day > 13)) year += 1;
 
-  const toGregorian = async (hijriDay: number) => {
-    const back = (await json(`https://api.aladhan.com/v1/hToG?date=${pad(hijriDay)}-12-${year}`)) as any;
-    const g = back.data?.gregorian ?? back.gregorian;
-    return new Date(Number(g.year), Number(g.month.number) - 1, Number(g.day));
+  /*
+   * The table hands back a day counted in UTC. The countdown is measured
+   * against midnight tonight, which is local, so the parts are taken in UTC
+   * and rebuilt as a local date — otherwise every count is short by the
+   * offset wherever the device is.
+   */
+  const toGregorian = (hijriDay: number) => {
+    const utc = gregorianForHijri(year, 12, hijriDay);
+    if (!utc) return null;
+    return new Date(utc.getUTCFullYear(), utc.getUTCMonth(), utc.getUTCDate());
   };
 
-  const tarwiyah = await toGregorian(8);
-  const arafah = await toGregorian(9);
-  const eid = await toGregorian(10);
+  const tarwiyah = toGregorian(8);
+  const arafah = toGregorian(9);
+  const eid = toGregorian(10);
+
+  // Outside the table's span the dates cannot be known, so say so rather
+  // than counting down to a day built by the arithmetic fallback.
+  if (!tarwiyah || !arafah || !eid) {
+    return {
+      todayHijri: `${day} ${h?.monthName || MONTHS[month - 1] || ''} ${year}`,
+      hijriYear: year,
+      daysToArafah: 0,
+      daysToTarwiyah: 0,
+      arafahGregorian: '',
+      tarwiyahGregorian: '',
+      eidGregorian: '',
+    };
+  }
   const nights = (target: Date) => Math.max(0, Math.round((target.getTime() - today.getTime()) / 86400000));
 
   return {
-    todayHijri: `${day} ${MONTHS[month - 1] || hijri.month.en} ${year}`,
+    todayHijri: `${day} ${h?.monthName || MONTHS[month - 1] || ''} ${year}`,
     hijriYear: year,
     daysToArafah: nights(arafah),
     daysToTarwiyah: nights(tarwiyah),
