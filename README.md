@@ -1,4 +1,4 @@
-# Deen Companion
+# Islamic
 
 A polished Expo + React Native Islamic companion app for iOS, Android, and web.
 

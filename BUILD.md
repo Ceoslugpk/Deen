@@ -1,9 +1,9 @@
-# Building Deen Companion for Android and iOS
+# Building Islamic for Android and iOS
 
 A complete, from-scratch guide to producing an installable **APK**, an uploadable
 **AAB** (Android App Bundle), and a signed **IPA** for TestFlight or the App Store.
 
-Deen Companion is an **Expo SDK 58** app (React Native 0.88, React 19.3) with no
+Islamic is an **Expo SDK 58** app (React Native 0.88, React 19.3) with no
 native code of its own. That matters: you never have to open Android Studio or
 Xcode to produce a store binary, because [EAS Build](https://docs.expo.dev/build/introduction/)
 compiles it on Expo's own macOS and Linux machines. Local builds are documented too,
@@ -91,8 +91,8 @@ export PATH=$PATH:$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator
 ## 3. One-time setup
 
 ```bash
-git clone <your-repo-url> deen-companion
-cd deen-companion
+git clone <your-repo-url> islamic-companion
+cd islamic-companion
 npm install                 # or: npm ci   (respects package-lock.json exactly)
 npm install -g eas-cli      # the build service CLI
 eas login                   # your Expo account
@@ -159,8 +159,8 @@ another full build.
 **1. Identifiers (must be unique and permanent — they cannot be changed after publishing):**
 
 ```json
-"ios":     { "bundleIdentifier": "app.deen.companion" },
-"android": { "package": "app.deen.companion" }
+"ios":     { "bundleIdentifier": "com.qashi.islamic" },
+"android": { "package": "com.qashi.islamic" }
 ```
 
 Already set. Own the domain or use a reverse-domain you control.
@@ -173,12 +173,12 @@ silently falls back to the device passcode and App Review will reject the build
 ```json
 "ios": {
   "infoPlist": {
-    "NSFaceIDUsageDescription": "Face ID unlocks Deen Companion so your private worship records stay private."
+    "NSFaceIDUsageDescription": "Face ID unlocks Islamic so your private worship records stay private."
   }
 },
 "plugins": [
   "expo-location",
-  ["expo-local-authentication", { "faceIDPermission": "Face ID unlocks Deen Companion so your private worship records stay private." }],
+  ["expo-local-authentication", { "faceIDPermission": "Face ID unlocks Islamic so your private worship records stay private." }],
   "expo-font",
   "expo-audio",
   "expo-notifications"
@@ -256,7 +256,7 @@ First run, answer the prompts:
 2. **App Store Connect API key** or Apple ID login — EAS will offer to set one up.
    An API key (App Store Connect → Users and Access → Keys) is more reliable than
    Apple ID + 2FA in CI.
-3. **Provisioning profile** — EAS creates and manages it for `app.deen.companion`.
+3. **Provisioning profile** — EAS creates and manages it for `com.qashi.islamic`.
 
 The result is an App Store-signed IPA, ready for the next step.
 

@@ -1,4 +1,4 @@
-# Deen Companion — Feature Gap & Privacy Report
+# Islamic — Feature Gap & Privacy Report
 
 **Purpose:** decide what to build next, under the constraint **no account, full privacy**.
 
@@ -17,7 +17,7 @@ Three findings, in order of importance:
    Operations Command [1](https://www.aljazeera.com/news/2020/11/18/muslim-pro-app-denies-selling-user-data-to-us-military)
    [3](https://www.middleeasteye.net/news/us-military-data-muslim-pro-app-denounced). The broker, X-Mode, was later
    the subject of a 2024 FTC settlement [10](https://deenytracker.app/). An entire
-   generation of privacy-first apps exists *because* of that. Deen Companion has
+   generation of privacy-first apps exists *because* of that. Islamic has
    **no ad SDK, no analytics SDK, no advertising ID, and no account** — verified
    in §4. That is a real, defensible, marketable position.
 
@@ -134,7 +134,7 @@ as the acceptance criteria for every feature that follows.
 
 ---
 
-## 4. Where Deen Companion stands
+## 4. Where Islamic stands
 
 ### Privacy audit — strong, with two things to tighten
 

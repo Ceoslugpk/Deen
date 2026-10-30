@@ -960,7 +960,7 @@ function AppHeader() {
       ? <IconButton name={rtl ? 'arrow-forward' : 'arrow-back'} onPress={() => navigation.goBack()} />
       : <View style={s.appHeaderBrand}>
         <Image source={dark ? LOGO_MARK_DARK : LOGO_MARK} resizeMode="contain" style={s.appLogo} />
-        <Text style={s.appName} numberOfLines={1}>{T('Deen Companion')}</Text>
+        <Text style={s.appName} numberOfLines={1}>{T('Islamic')}</Text>
       </View>}
     <View style={s.appHeaderActions}>
       <Pressable accessibilityRole="button" accessibilityLabel={T('Notifications')}
@@ -6587,7 +6587,7 @@ function BackupScreen({ navigation }: any) {
     let shared = false;
     try {
       if (saved && await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(uri, { mimeType: 'application/json', dialogTitle: T('Save your Deen backup') });
+        await Sharing.shareAsync(uri, { mimeType: 'application/json', dialogTitle: T('Save your Islamic backup') });
         shared = true;
       }
     } catch {
@@ -6601,7 +6601,7 @@ function BackupScreen({ navigation }: any) {
   const accept = (text: string) => {
     const summary = readBackupSummary(text);
     if (!summary) {
-      setError(T('That file is not a Deen backup.'));
+      setError(T('That file is not an Islamic backup.'));
       return;
     }
     setPending({ text, summary });
@@ -7666,8 +7666,8 @@ function Splash({ ready, onDone }: { ready: boolean; onDone: () => void }) {
         </Animated.View>
       </View>
       <Animated.View style={[s.splashWords, { opacity: words, transform: [{ translateY: words.interpolate({ inputRange: [0, 1], outputRange: [14, 0] }) }] }]}>
-        <Text style={s.splashName}>{T('Deen Companion')}</Text>
-        <Text style={s.splashTagline}>{T('Your day, kept with care')}</Text>
+        <Text style={s.splashName}>{T('Islamic')}</Text>
+        <Text style={s.splashTagline}>{T('Your Daily Companion')}</Text>
       </Animated.View>
     </View>
     <View style={s.splashTrack}>
