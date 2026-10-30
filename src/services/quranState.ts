@@ -73,16 +73,76 @@ const K = {
   position: '@deen/quran/position/v1', recent: '@deen/quran/recent/v1', searches: '@deen/quran/searches/v1',
   hifz: '@deen/quran/hifz/v1', plan: '@deen/quran/plan/v1', vocabulary: '@deen/quran/vocabulary/v1',
 };
+/**
+ * The translation everyone starts on.
+ *
+ * These are the Worker's own edition ids, not the third-party ones the app
+ * used to carry. `tr_en_saheeh_international` is the closest match to the
+ * Sahih International that was the previous default, so a person who never
+ * opened the translation screen reads the same book they were reading.
+ */
+export const WORKER_DEFAULT_TRANSLATION: {
+  translationEdition: string; translationName: string; translationLanguage: string;
+} = {
+  translationEdition: 'tr_en_saheeh_international',
+  translationName: 'Saheeh International',
+  translationLanguage: 'English',
+};
+
+/**
+ * The edition id on its own, for the modules that only need to name one.
+ *
+ * Every request that used to default to a third-party identifier now defaults
+ * here. Left as `en.sahih` in even one place, that place asks a server that
+ * has never heard of the id and quietly comes back with no meaning in it.
+ */
+export const DEFAULT_TRANSLATION_EDITION = WORKER_DEFAULT_TRANSLATION.translationEdition;
+
 export const DEFAULTS: QuranPreferences = {
   focusMode: false,
   mushafMarkers: { juz: true, hizb: true, rub: true, nisf: true, thuluth: true },
   showVerseConnections: true,
   mushafTranslation: false,
-  translationFontSize: 16, translationEdition: 'en.sahih', translationName: 'Sahih International', translationLanguage: 'English', scriptEdition: 'quran-uthmani', scriptName: 'Uthmani', arabicFont: 'hafs', fontSize: 30, lineHeight: 1.9, showTranslation: true, readingMode: 'cards' };
+  translationFontSize: 16, ...WORKER_DEFAULT_TRANSLATION, scriptEdition: 'quran-uthmani', scriptName: 'Uthmani', arabicFont: 'hafs', fontSize: 30, lineHeight: 1.9, showTranslation: true, readingMode: 'cards' };
 async function read<T>(key:string,fallback:T):Promise<T>{try{const v=await AsyncStorage.getItem(key);return v?JSON.parse(v):fallback}catch{return fallback}}
 const write=(key:string,value:unknown)=>AsyncStorage.setItem(key,JSON.stringify(value));
 
-export async function loadQuranPreferences(){return {...DEFAULTS,...await read<Partial<QuranPreferences>>(K.prefs,{})}}
+/**
+ * One-time move onto the Worker's edition ids.
+ *
+ * The stored preference used to hold a third-party identifier such as
+ * `en.sahih`. Those ids do not exist on the app's own server, so leaving them
+ * in place would have every reader quietly asking for an edition the server
+ * has never heard of. The choice made here is the plain one: put everyone on
+ * the default translation and let them pick again.
+ *
+ * It runs once, by flag, rather than by inspecting the id. Guessing at the
+ * shape of an id is how a migration ends up running twice on one person's
+ * device and not at all on another's, and the flag cannot be got wrong -
+ * either it has run or it has not.
+ */
+const MOVED_TO_WORKER_EDITIONS_KEY = '@deen/quran/moved-to-worker-editions/v1';
+
+export async function loadQuranPreferences(): Promise<QuranPreferences> {
+  const stored = await read<Partial<QuranPreferences>>(K.prefs, {});
+  const merged = { ...DEFAULTS, ...stored };
+  try {
+    const moved = await AsyncStorage.getItem(MOVED_TO_WORKER_EDITIONS_KEY);
+    if (!moved) {
+      await AsyncStorage.setItem(MOVED_TO_WORKER_EDITIONS_KEY, '1');
+      /* Only write back when there was something to move. A fresh install has
+         the Worker defaults already, and touching storage there is pointless. */
+      if (stored.translationEdition) {
+        const next = { ...merged, ...WORKER_DEFAULT_TRANSLATION };
+        await write(K.prefs, next);
+        return next;
+      }
+    }
+  } catch {
+    /* A migration that cannot record itself must not stop the app reading. */
+  }
+  return merged;
+}
 export async function saveQuranPreferences(value:QuranPreferences){return write(K.prefs,value)}
 export async function loadBookmarks(){return read<QuranBookmark[]>(K.bookmarks,[])}
 export async function toggleBookmark(bookmark:QuranBookmark){const all=await loadBookmarks();const exists=all.some(x=>x.verseKey===bookmark.verseKey);const next=exists?all.filter(x=>x.verseKey!==bookmark.verseKey):[bookmark,...all];await write(K.bookmarks,next);return next}

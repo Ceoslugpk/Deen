@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getCachedJson, listCachedKeys, setCachedJson } from './contentCache';
+import {
+  getHadithBook, getHadithCollection, HadithBook as WorkerBook,
+  HadithRecord, ISLAMIC_DATA_BASE_URL,
+} from './islamicDataApi';
 
 /**
  * Phase 3 — Hadith.
@@ -65,7 +69,7 @@ export function hadithSourceLabel(rtl: boolean, slug: string): string {
   return rtl ? known?.arabicName || slug : (known?.name || slug).toUpperCase();
 }
 
-const EDITION_BASE = 'https://cdn.jsdelivr.net/gh/fawazahmed0/hadith-api@1/editions';
+const EDITION_BASE = null; /* Retired: the app reads hadith from its own server now. */
 const STATE_KEY = 'hadith-state-v1';
 const MEMORY_LIMIT = 3;
 
@@ -97,27 +101,22 @@ function arabicMap(arabic: any) {
 }
 
 /**
- * The Arabic edition is fetched separately, after the English text is already on
- * screen. A 7,000-hadith collection is several megabytes per language, and waiting
- * for both before showing anything would make the library feel broken.
+ * No longer a second fetch.
+ *
+ * The old source published Arabic and English as two separate files, so the
+ * Arabic text had to be downloaded after the English was already on screen.
+ * The app's own server returns both languages in one record, so by the time
+ * anything is on screen the Arabic is already with it.
+ *
+ * Kept as a function because the screens still ask for it, and answering
+ * "already done" is cheaper than teaching every caller a new shape.
  */
 export async function hydrateHadithArabic(slug: string): Promise<HadithCollectionData | null> {
   const data = memory.get(slug);
-  if (!data || data.arabicReady) return data || null;
-  const arabic = await fetch(`${EDITION_BASE}/ara-${slug}.min.json`)
-    .then((response) => (response.ok ? response.json() : null))
-    .catch(() => null);
-  if (!arabic) {
-    const next = { ...data, arabicReady: true };
-    memory.set(slug, next);
-    return next;
-  }
-  const map = arabicMap(arabic);
-  const hadiths = data.hadiths.map((hadith) => (hadith.arabic || !map.has(hadith.number) ? hadith : { ...hadith, arabic: map.get(hadith.number) as string }));
-  const next = { ...data, hadiths, arabicReady: true };
+  if (!data) return null;
+  if (data.arabicReady) return data;
+  const next = { ...data, arabicReady: true };
   memory.set(slug, next);
-  void setCachedJson('hadith', `collection-${slug}`, next).catch(() => undefined);
-  void cacheBooks(next);
   return next;
 }
 
@@ -192,6 +191,65 @@ async function cacheBooks(data: HadithCollectionData) {
   }
 }
 
+/**
+ * One record from the app's own server, in the shape this service uses.
+ *
+ * The two sources disagree about where the Arabic lives. Ours returns the
+ * Arabic in `arabic` and the English in `text` when asked for English - so one
+ * request carries both, which is why nothing here fetches a second language.
+ */
+function toHadith(slug: string, row: HadithRecord, fallbackBookName: string | null): Hadith {
+  const number = toNumber(row.number);
+  return {
+    id: `${slug}:${number}`,
+    slug,
+    number,
+    arabicNumber: toNumber(row.arabicNumber) || number,
+    book: toNumber(row.book),
+    /* Three collections - Bukhari, Nasai, Malik - carry an unnamed book 0 for
+       narrations the source never filed. Naming it beats printing a blank. */
+    bookName: (row.bookTitle || '').trim() || (fallbackBookName || '').trim() || 'General',
+    english: typeof row.text === 'string' ? row.text.trim() : '',
+    arabic: typeof row.arabic === 'string' ? row.arabic.trim() : '',
+    grades: Array.isArray(row.grades) ? row.grades.filter((grade) => grade && grade.grade) : [],
+  };
+}
+
+/**
+ * Every hadith in one book, paged through the Worker.
+ *
+ * The server caps a page at 100 records and says how many are left, so a long
+ * book is read in as many pages as it takes. Pages already on the device are
+ * used as they are: a person reopening a collection should not re-download
+ * what they already have.
+ */
+async function fetchBook(slug: string, book: WorkerBook, force: boolean): Promise<Hadith[]> {
+  const cacheKey = `book-${slug}-${book.number}`;
+  if (!force) {
+    const cached = await getCachedJson<{ hadiths: Hadith[] }>('hadith', cacheKey).catch(() => null);
+    if (cached && Array.isArray(cached.hadiths) && cached.hadiths.length) return cached.hadiths;
+  }
+
+  const rows: Hadith[] = [];
+  const limit = 100;
+  let offset = 0;
+  for (;;) {
+    /* eslint-disable no-await-in-loop */
+    const page = await getHadithBook(slug, book.number, { language: 'en', limit, offset });
+    page.hadiths.forEach((row) => rows.push(toHadith(slug, row, book.name)));
+    if (!page.page?.hasMore || page.hadiths.length === 0) break;
+    offset += page.hadiths.length;
+    /* A server that reports hasMore but returns nothing would spin forever. */
+    if (offset > 20000) break;
+  }
+
+  if (rows.length) void setCachedJson('hadith', cacheKey, { book, hadiths: rows }).catch(() => undefined);
+  return rows;
+}
+
+/** How many books are read at once. Enough to be quick, few enough to be polite. */
+const BOOK_CONCURRENCY = 4;
+
 export async function loadHadithCollection(slug: string, force = false): Promise<HadithCollectionData> {
   const known = HADITH_COLLECTIONS.find((collection) => collection.slug === slug);
   if (!known) throw new Error('Unknown collection');
@@ -205,17 +263,42 @@ export async function loadHadithCollection(slug: string, force = false): Promise
       if (cached && Array.isArray(cached.hadiths) && cached.hadiths.length) data = cached;
     }
     if (!data) {
-      const english = await fetch(`${EDITION_BASE}/eng-${slug}.min.json`).then((response) => {
-        if (!response.ok) throw new Error(`Request failed (${response.status})`);
-        return response.json();
-      });
-      data = mergeEditions(slug, english, null);
-      if (!data.hadiths.length) throw new Error('The collection returned no hadith');
-      memory.set(slug, data);
+      const detail = await getHadithCollection(slug, 'en');
+      const books = (detail.books || []).filter((book) => book && typeof book.number === 'number');
+      if (!books.length) throw new Error('The collection listed no books');
+
+      const hadiths: Hadith[] = [];
+      /* Bounded rather than all at once: Bukhari is 98 books, and firing every
+         one at the server at the same time is how a phone on a weak connection
+         ends up waiting on all of them. */
+      for (let i = 0; i < books.length; i += BOOK_CONCURRENCY) {
+        const slice = books.slice(i, i + BOOK_CONCURRENCY);
+        // eslint-disable-next-line no-await-in-loop
+        const groups = await Promise.all(
+          slice.map((book) => fetchBook(slug, book, force).catch(() => [] as Hadith[])),
+        );
+        groups.forEach((group) => group.forEach((row) => hadiths.push(row)));
+      }
+      if (!hadiths.length) throw new Error('The collection returned no hadith');
+
+      /* Source order, not arrival order - the books finish in whatever order
+         the network delivers them. */
+      const bookOrder = new Map(books.map((book, index) => [book.number, index]));
+      hadiths.sort(
+        (a, b) =>
+          (bookOrder.get(a.book) ?? 0) - (bookOrder.get(b.book) ?? 0) || a.number - b.number,
+      );
+
+      data = {
+        slug,
+        name: detail.collection?.name || known.name || slug,
+        books: books.map((book) => ({ ...book, name: book.name || 'General' })),
+        hadiths,
+        loadedAt: Date.now(),
+        source: `${ISLAMIC_DATA_BASE_URL}/hadith/collections/${slug}`,
+        arabicReady: true,
+      };
       void setCachedJson('hadith', `collection-${slug}`, data).catch(() => undefined);
-      const hydration = hydrateHadithArabic(slug);
-      arabicInflight.set(slug, hydration);
-      void hydration.catch(() => null);
     }
     memory.set(slug, data);
     if (memory.size > MEMORY_LIMIT) {

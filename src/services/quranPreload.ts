@@ -1,12 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getVerses } from './api';
-import { clearSurahCache, loadReadingPosition, loadSurahCacheIndex, saveSurahCache, surahCacheKey } from './quranState';
+import { clearSurahCache, DEFAULT_TRANSLATION_EDITION, loadReadingPosition, loadSurahCacheIndex, saveSurahCache, surahCacheKey } from './quranState';
 import { getCacheUsage } from './contentCache';
 
 export type PreloadState={running:boolean;enabled:boolean;current:number;cached:number;error:string;usage:any|null;script:string;translation:string};
 type Options={script:string;translation:string};
 const CONFIG='@deen/quran/preload/v1';
-let state:PreloadState={running:false,enabled:false,current:0,cached:0,error:'',usage:null,script:'quran-uthmani',translation:'en.sahih'};
+let state:PreloadState={running:false,enabled:false,current:0,cached:0,error:'',usage:null,script:'quran-uthmani',translation:DEFAULT_TRANSLATION_EDITION};
 let generation=0;
 const listeners=new Set<(state:PreloadState)=>void>();
 const publish=(next:Partial<PreloadState>)=>{state={...state,...next};listeners.forEach(listener=>listener(state))};

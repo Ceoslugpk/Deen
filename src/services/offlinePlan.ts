@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getChapters, getVerses } from './api';
-import { loadSurahCacheIndex, saveSurahCache, surahCacheKey } from './quranState';
+import { DEFAULT_TRANSLATION_EDITION, loadSurahCacheIndex, saveSurahCache, surahCacheKey } from './quranState';
 import { languageByCode, type LanguageCode } from './languages';
 import { loadDuaCategories, loadDuas } from './duaService';
 import { loadNames } from './namesService';
@@ -73,7 +73,7 @@ const listeners = new Set<(next: OfflineSetup) => void>();
 function blank(): OfflineSetup {
   return {
     running: false, started: false, completedAt: null,
-    language: 'en', script: 'quran-uthmani', translation: 'en.sahih',
+    language: 'en', script: 'quran-uthmani', translation: DEFAULT_TRANSLATION_EDITION,
     translationName: 'Saheeh International', stages: [],
   };
 }
@@ -123,7 +123,7 @@ export function editionForLanguage(language: string, script = 'quran-uthmani') {
   const text = entry?.text;
   return {
     script,
-    translation: text?.identifier || 'en.sahih',
+    translation: text?.identifier || DEFAULT_TRANSLATION_EDITION,
     translationName: text?.name || 'Saheeh International',
     kind: text?.kind || 'translation',
   };
