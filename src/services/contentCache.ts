@@ -26,14 +26,23 @@ const WEB_STORE = 'payloads';
  * lives beside this cache rather than inside it, so a Quran cache that grew
  * without limit would crowd out the recitations a person had saved.
  *
- * `quran` is the large one on purpose. Offering every language the server
- * carries means the ceiling has to be able to hold all of them at once,
- * otherwise the oldest languages are quietly evicted as new ones arrive and
- * a person who downloaded twenty finds they now have six.
+ * `quran` and `tafsir` are the large ones on purpose, and they are sized
+ * apart from each other. Every translation the server carries comes to about
+ * 725 MB; every tafsir to about 1,058 MB, because commentary runs roughly
+ * eight times longer than a translation of the same verse. Sharing one
+ * ceiling, a person who wanted all the translations — a third of the space —
+ * would be competing with commentary they may never have asked for. Kept
+ * separate, taking every translation does not require taking a gigabyte of
+ * tafsir, and each can be offered on its own terms.
+ *
+ * Both are ceilings, not targets. Nobody is expected to hold 1.8 GB, and the
+ * real limit is still half the free space on the device. What these numbers
+ * buy is that a person who genuinely wants everything, on a phone with room
+ * for it, is not refused by a limit written when the app held one translation.
  */
 const LIMITS: Record<CacheNamespace, number> = Platform.OS === 'web'
-  ? { quran: 60e6, tafsir: 12e6, hadith: 30e6, daily: 3e6, 'audio-meta': 2e6 }
-  : { quran: 150e6, tafsir: 45e6, hadith: 70e6, daily: 6e6, 'audio-meta': 4e6 };
+  ? { quran: 300e6, tafsir: 400e6, hadith: 30e6, daily: 3e6, 'audio-meta': 2e6 }
+  : { quran: 800e6, tafsir: 1100e6, hadith: 70e6, daily: 6e6, 'audio-meta': 4e6 };
 const BASE_TOTAL = Object.values(LIMITS).reduce((sum, n) => sum + n, 0);
 
 export type CacheBudget = {
@@ -45,12 +54,66 @@ export type CacheBudget = {
 
 const NAMESPACES = Object.keys(LIMITS) as CacheNamespace[];
 
-let queue = Promise.resolve();
-const serial = <T>(operation: () => Promise<T>): Promise<T> => {
-  const next = queue.then(operation, operation);
-  queue = next.then(() => undefined, () => undefined);
-  return next;
+/* A readers-writer lock, not a single mutex.
+
+   It used to be one FIFO queue for everything. That was fine when a download
+   meant a couple of hundred writes. It stopped being fine the moment choosing
+   a language began queuing every edition in that language: one language is
+   ~6,600 surah writes, and every catalog read the UI made queued behind all
+   of them. The screens looked frozen while the download ran, because they
+   were - waiting their turn in a line that was twenty minutes long.
+
+   So reads now share the index with each other and only wait for a writer,
+   while writes still get it entirely to themselves. A writer never starts
+   while readers are inside, and once a writer is at the front of the queue
+   no new reader can slip ahead of it, so a steady stream of reads cannot
+   starve a write. */
+
+type LockKind = 'r' | 'w';
+type Waiter = { kind: LockKind; start: () => void };
+
+const lockQueue: Waiter[] = [];
+let activeReaders = 0;
+let writerRunning = false;
+
+const pump = (): void => {
+  if (writerRunning || lockQueue.length === 0) return;
+  if (lockQueue[0].kind === 'w') {
+    /* a writer is at the front: only run once every reader is out, and let
+       no reader in behind it. */
+    if (activeReaders > 0) return;
+    const next = lockQueue.shift()!;
+    writerRunning = true;
+    next.start();
+    return;
+  }
+  /* consecutive readers run together */
+  while (lockQueue.length > 0 && lockQueue[0].kind === 'r') {
+    const next = lockQueue.shift()!;
+    activeReaders += 1;
+    next.start();
+  }
 };
+
+const withLock = <T>(kind: LockKind, operation: () => Promise<T>): Promise<T> =>
+  new Promise<T>((resolve, reject) => {
+    lockQueue.push({
+      kind,
+      start: () => {
+        operation().then(resolve, reject).finally(() => {
+          if (kind === 'w') writerRunning = false;
+          else activeReaders -= 1;
+          pump();
+        });
+      },
+    });
+    pump();
+  });
+
+/** Exclusive. For anything that changes the index or writes a payload. */
+const serial = <T>(operation: () => Promise<T>): Promise<T> => withLock('w', operation);
+/** Shared. For anything that only looks. */
+const shared = <T>(operation: () => Promise<T>): Promise<T> => withLock('r', operation);
 
 /**
  * The index, held in memory.
@@ -68,6 +131,29 @@ const serial = <T>(operation: () => Promise<T>): Promise<T> => {
  * nothing more — the payloads themselves are already on disk.
  */
 let indexCache: CacheEntry[] | null = null;
+/**
+ * Bytes held per namespace, kept up to date as entries come and go.
+ *
+ * Every write needs to know whether it fits. Measuring that by walking the
+ * whole index costs one pass over every entry for every single surah — at
+ * sixty-five thousand entries, sixty-five thousand walks. Held as a running
+ * total instead, asking is free and only eviction, which is rare, scans.
+ */
+let nsTotals: Record<CacheNamespace, number> = NAMESPACES.reduce(
+  (acc, ns) => { acc[ns] = 0; return acc; }, {} as Record<CacheNamespace, number>,
+);
+let totalBytes = 0;
+
+function recount() {
+  nsTotals = NAMESPACES.reduce((acc, ns) => { acc[ns] = 0; return acc; }, {} as Record<CacheNamespace, number>);
+  totalBytes = 0;
+  for (const entry of indexCache || []) {
+    nsTotals[entry.namespace] = (nsTotals[entry.namespace] || 0) + entry.bytes;
+    totalBytes += entry.bytes;
+  }
+}
+const grandTotal = () => totalBytes;
+
 let dirty = false;
 let flushTimer: ReturnType<typeof setTimeout> | null = null;
 const FLUSH_DELAY = 1200;
@@ -78,6 +164,7 @@ async function ensureIndex(): Promise<CacheEntry[]> {
   try { loaded = JSON.parse((await AsyncStorage.getItem(INDEX_KEY)) || '[]'); }
   catch { loaded = []; }
   indexCache = Array.isArray(loaded) ? loaded : [];
+  recount();
   return indexCache;
 }
 
@@ -173,16 +260,22 @@ async function payloadDelete(fullKey:string){if(Platform.OS==='web')return webDe
  * write paid to plan an eviction it almost never performed.
  */
 async function evict(index: CacheEntry[], namespace: CacheNamespace, incomingBytes: number, limits: Record<CacheNamespace, number>, totalLimit: number) {
+  /* The common case is that there is room. That is decided from the running
+     totals, so it costs nothing and copies nothing — the index is only
+     duplicated when entries genuinely have to go. */
+  if (nsTotals[namespace] + incomingBytes <= limits[namespace] && grandTotal() + incomingBytes <= totalLimit) {
+    return index;
+  }
+
   let next = [...index];
+  let nsBytes = nsTotals[namespace];
+  let total = grandTotal();
   const remove = async (entry: CacheEntry) => {
     await payloadDelete(storageKey(entry.namespace, entry.key));
     next = next.filter(x => !(x.namespace === entry.namespace && x.key === entry.key));
   };
   /* Pinned entries are never candidates: see `pinned` on CacheEntry. */
   const evictable = () => next.filter(x => !x.pinned);
-  let nsBytes = next.filter(x => x.namespace === namespace).reduce((n, x) => n + x.bytes, 0);
-  let total = next.reduce((n, x) => n + x.bytes, 0);
-  if (nsBytes + incomingBytes <= limits[namespace] && total + incomingBytes <= totalLimit) return next;
 
   for (const entry of evictable().filter(x => x.namespace === namespace).sort((a, b) => a.lastAccess - b.lastAccess)) {
     if (nsBytes + incomingBytes <= limits[namespace]) break;
@@ -198,17 +291,10 @@ async function evict(index: CacheEntry[], namespace: CacheNamespace, incomingByt
   return next;
 }
 
-/** Bytes held per namespace, kept current as entries are added and removed. */
-function nsTotals(index: CacheEntry[]) {
-  const totals = NAMESPACES.reduce((acc, ns) => { acc[ns] = 0; return acc; }, {} as Record<CacheNamespace, number>);
-  for (const entry of index) totals[entry.namespace] = (totals[entry.namespace] || 0) + entry.bytes;
-  return totals;
-}
-
 function utf8Bytes(value:string){let bytes=0;for(let i=0;i<value.length;i++){const code=value.charCodeAt(i);if(code<0x80)bytes++;else if(code<0x800)bytes+=2;else if(code>=0xd800&&code<=0xdbff&&i+1<value.length&&value.charCodeAt(i+1)>=0xdc00&&value.charCodeAt(i+1)<=0xdfff){bytes+=4;i++}else bytes+=3}return bytes}
 
 export async function getCachedJson<T>(namespace:CacheNamespace,key:string):Promise<T|null>{
-  return serial(async()=>{
+  return shared(async()=>{
     const full=storageKey(namespace,key);
     const value=await payloadGet(full);
     if(!value)return null;
@@ -220,6 +306,7 @@ export async function getCachedJson<T>(namespace:CacheNamespace,key:string):Prom
     try{return JSON.parse(value) as T}
     catch{
       indexCache=index.filter(x=>x!==entry);
+      recount();
       await payloadDelete(full);
       markDirty();
       return null;
@@ -235,11 +322,17 @@ export async function setCachedJson(namespace:CacheNamespace,key:string,value:un
     const bytes=utf8Bytes(text);
     if(bytes>limits[namespace])throw new Error(`This item is larger than the ${namespace} offline-cache limit.`);
     const current=await ensureIndex();
-    let index=current.filter(x=>!(x.namespace===namespace&&x.key===key));
+    const existing=current.find(x=>x.namespace===namespace&&x.key===key);
+    let index=existing?current.filter(x=>!(x.namespace===namespace&&x.key===key)):current;
+    if(existing){nsTotals[namespace]-=existing.bytes;totalBytes-=existing.bytes}
     index=await evict(index,namespace,bytes,limits,totalLimit);
     await payloadSet(storageKey(namespace,key),text);
     index.push({key,namespace,bytes,lastAccess:Date.now(),createdAt:Date.now(),...(options.pinned?{pinned:true}:{})});
     indexCache=index;
+    /* After an eviction the running totals are only a lower bound, so they are
+       rebuilt from what is actually left. Rare, and cheaper than being wrong. */
+    if(index.length!==current.length-(existing?1:0)) recount();
+    else {nsTotals[namespace]+=bytes;totalBytes+=bytes}
     markDirty();
   });
 }
@@ -253,6 +346,7 @@ export async function clearCacheNamespace(namespace:CacheNamespace){
     const index=await ensureIndex();
     await Promise.all(index.filter(x=>x.namespace===namespace).map(x=>payloadDelete(storageKey(namespace,x.key))));
     indexCache=index.filter(x=>x.namespace!==namespace);
+    recount();
     dirty=true;
     await writeNow();
   });
@@ -264,7 +358,7 @@ export async function getCacheUsage(){
   return {
     totalBytes:index.reduce((n,x)=>n+x.bytes,0),
     limits:{...limits,total},
-    byNamespace:nsTotals(index),
+    byNamespace:{...nsTotals},
     constrained,
   };
 }

@@ -5,6 +5,15 @@ export type QuranPreferences = {
   translationEdition: string;
   translationName: string;
   translationLanguage: string;
+  /**
+   * A transliteration is the Arabic sounded out in Latin letters. It is not a
+   * translation and does not replace one: someone learning to recite wants it
+   * *and* the meaning, side by side. So it is its own setting, on its own
+   * switch, rather than a third option in the translation list.
+   */
+  transliterationEdition: string;
+  transliterationName: string;
+  showTransliteration: boolean;
   scriptEdition: string;
   scriptName: string;
   arabicFont: 'hafs' | 'scheherazade' | 'amiri-quran' | 'naskh' | 'kufi';
@@ -81,6 +90,12 @@ const K = {
  * Sahih International that was the previous default, so a person who never
  * opened the translation screen reads the same book they were reading.
  */
+/** The Arabic sounded out in Latin letters. Off until asked for. */
+export const DEFAULT_TRANSLITERATION = {
+  edition: 'translit_en_english_transliteration',
+  name: 'English Transliteration',
+} as { edition: string; name: string };
+
 export const WORKER_DEFAULT_TRANSLATION: {
   translationEdition: string; translationName: string; translationLanguage: string;
 } = {
@@ -103,7 +118,11 @@ export const DEFAULTS: QuranPreferences = {
   mushafMarkers: { juz: true, hizb: true, rub: true, nisf: true, thuluth: true },
   showVerseConnections: true,
   mushafTranslation: false,
-  translationFontSize: 16, ...WORKER_DEFAULT_TRANSLATION, scriptEdition: 'quran-uthmani', scriptName: 'Uthmani', arabicFont: 'hafs', fontSize: 30, lineHeight: 1.9, showTranslation: true, readingMode: 'cards' };
+  translationFontSize: 16, ...WORKER_DEFAULT_TRANSLATION,
+  transliterationEdition: DEFAULT_TRANSLITERATION.edition,
+  transliterationName: DEFAULT_TRANSLITERATION.name,
+  showTransliteration: false,
+  scriptEdition: 'quran-uthmani', scriptName: 'Uthmani', arabicFont: 'hafs', fontSize: 30, lineHeight: 1.9, showTranslation: true, readingMode: 'cards' };
 async function read<T>(key:string,fallback:T):Promise<T>{try{const v=await AsyncStorage.getItem(key);return v?JSON.parse(v):fallback}catch{return fallback}}
 const write=(key:string,value:unknown)=>AsyncStorage.setItem(key,JSON.stringify(value));
 

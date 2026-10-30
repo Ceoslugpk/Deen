@@ -38,6 +38,12 @@ export type EditionPickerProps = {
   searchPlaceholder?: string;
   /** Show only editions that have a surah route. */
   servableOnly?: boolean;
+  /**
+   * Hide the built-in language row, for a screen that chooses language some
+   * other way — a button that opens the alphabetical sheet, say. The picker
+   * then shows only the editions of `initialLanguage`.
+   */
+  hideLanguageRow?: boolean;
 };
 
 function LanguagePill({
@@ -75,7 +81,8 @@ function LanguagePill({
 }
 
 export default function EditionPicker({
-  C, editions, category, selectedId, initialLanguage, onPick, searchPlaceholder, servableOnly = true,
+  C, editions, category, selectedId, initialLanguage, onPick, searchPlaceholder,
+  servableOnly = true, hideLanguageRow = false,
 }: EditionPickerProps) {
   const pool = useMemo(
     () => (servableOnly ? servableEditions(editions, category) : editions),
@@ -112,7 +119,7 @@ export default function EditionPicker({
 
   return (
     <View>
-      <ScrollView
+      {!hideLanguageRow && <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ gap: 8, paddingRight: 4 }}
@@ -127,7 +134,7 @@ export default function EditionPicker({
             onPress={() => { setLanguage(entry.code); setQuery(''); }}
           />
         ))}
-      </ScrollView>
+      </ScrollView>}
 
       <View
         style={{

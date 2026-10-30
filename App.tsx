@@ -116,7 +116,7 @@ import {
   IslamicDataError, IslamicEdition, languageName as workerLanguageName,
   HadithBook, HadithRecord, servableEditions,
 } from './src/services/islamicDataApi';
-import { languageFlag, languageLabel, languagesOf } from './src/services/languageFlags';
+import { languageFlag, languageLabel, languagesOf, type LanguageEntry } from './src/services/languageFlags';
 
 /**
  * The language a Quran edition is written in, as a short code the flag can
@@ -3303,7 +3303,121 @@ function MushafPageView({page,verses,error,cached,retry,preferences,rtl,T,input,
   </View>;
 }
 
-function TranslationScreen({navigation}:any){const{preferences,update}=useQuranPreferences();const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);const[editions,setEditions]=useState<IslamicEdition[]>([]);const[error,setError]=useState('');const load=()=>getEditions('quran').then(setEditions).catch(e=>setError(T(e.message)));useEffect(()=>{load()},[]);return <Page><ToolBar title={T('Translation')} navigation={navigation}/><ScrollView contentContainerStyle={s.dataPage} keyboardShouldPersistTaps="handled"><ToolGraphic tool="Translations" size={76}/><Text style={s.dataTitle}>{T('Choose a translation')}</Text><Text style={s.intro}>{T('Translations explain meaning and do not replace the Arabic Quran. Edition attribution remains visible in the reader.')}</Text>{error?<ErrorState message={error} retry={load}/>:!editions.length?<Spinner/>:<EditionPicker C={C} editions={editions} category="quran" selectedId={preferences.translationEdition} initialLanguage="en" searchPlaceholder={T('Search translator or edition')} onPick={async(e)=>{   await update({     translationEdition:e.id,     translationName:editionDisplayName(e),     translationLanguage:languageLabel(e.language||'en'),   });   navigation.goBack(); }}/>}</ScrollView></Page>}
+/**
+ * Every language the server carries, A to Z, in a sheet.
+ *
+ * The picker normally orders languages by how many editions each has, which
+ * is the right order for browsing — the likely answer is at the front. But
+ * that order is only legible if you already know it is ordered that way, and
+ * someone looking for "Portuguese" has no way to guess whether it sits near
+ * the top or the bottom. Asked for by name, alphabetical is the order that
+ * lets you find a thing without already knowing where it is.
+ *
+ * So the same list is offered twice: by weight for browsing, and here, A to Z,
+ * for looking a language up.
+ */
+function LanguagePickerSheet({ rtl, T, entries, selected, onPick, onClose }: {
+  rtl: boolean; T: (t: string) => string; entries: LanguageEntry[];
+  selected?: string; onPick: (code: string) => void; onClose: () => void;
+}) {
+  const rise = useRef(new Animated.Value(0)).current;
+  const [query, setQuery] = useState('');
+  useEffect(() => {
+    Animated.spring(rise, { toValue: 1, friction: 9, tension: 130, useNativeDriver: true }).start();
+  }, [rise]);
+
+  const sorted = useMemo(
+    () => [...entries].sort((a, b) => a.label.localeCompare(b.label, 'en')),
+    [entries],
+  );
+  const shown = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    if (!needle) return sorted;
+    return sorted.filter((e) => e.label.toLowerCase().includes(needle) || e.code.includes(needle));
+  }, [sorted, query]);
+
+  return <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+    <Pressable accessibilityRole="button" accessibilityLabel={T('Close')} onPress={onClose} style={s.sheetScrim} />
+    <Animated.View style={[s.verseSheet, s.langSheet, {
+      transform: [{ translateY: rise.interpolate({ inputRange: [0, 1], outputRange: [420, 0] }) }],
+      opacity: rise,
+    }]}>
+      <View style={s.sheetGrip} />
+      <Text style={s.sheetTitle}>{T('Language')}</Text>
+      <Text style={s.sheetSub}>{entries.length} {T('languages, A to Z')}</Text>
+
+      <View style={s.onbSearch}>
+        <TextInput
+          value={query}
+          onChangeText={setQuery}
+          placeholder={T('Search a language')}
+          placeholderTextColor={C.muted}
+          style={s.onbSearchInput}
+          accessibilityLabel={T('Search a language')}
+        />
+        {!!query && <Pressable accessibilityLabel={T('Clear search')} onPress={() => setQuery('')}>{ico('close', 16, C.muted)}</Pressable>}
+      </View>
+
+      <ScrollView style={{ marginTop: 10 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        {!shown.length && <Text style={s.onbCardNote}>{T('No language matches that.')}</Text>}
+        {shown.map((entry) => {
+          const active = entry.code === selected;
+          return <Pressable key={entry.code}
+            accessibilityRole="button"
+            accessibilityState={{ selected: active }}
+            accessibilityLabel={`${entry.label}, ${entry.count} ${entry.count === 1 ? T('version') : T('versions')}`}
+            onPress={() => { onPick(entry.code); onClose(); }}
+            style={[s.langRow, active && s.langRowOn]}>
+            <Text style={s.langFlag}>{entry.flag}</Text>
+            <Text style={[s.langName, active && s.langNameOn]} numberOfLines={1}>{entry.label}</Text>
+            <Text style={s.langCount}>{entry.count}</Text>
+            {active && ico('checkmark', 16, C.green)}
+          </Pressable>;
+        })}
+        <View style={{ height: 8 }} />
+      </ScrollView>
+    </Animated.View>
+  </View>;
+}
+
+function TranslationScreen({navigation}:any){const{preferences,update}=useQuranPreferences();const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);const[editions,setEditions]=useState<IslamicEdition[]>([]);const[error,setError]=useState('');const[picking,setPicking]=useState(false);const load=()=>getEditions('quran').then(setEditions).catch(e=>setError(T(e.message)));useEffect(()=>{load()},[]);
+  /* The language is chosen from a sheet holding all ninety-seven in
+     alphabetical order, so the screen opens with one control: what language
+     am I reading. The editions of that language sit underneath it. */
+  const languages=useMemo(()=>languagesOf(editions),[editions]);
+  const currentCode=(editions.find(e=>e.id===preferences.translationEdition)?.language)||'en';
+  const current=useMemo(()=>languages.find(l=>l.code===currentCode),[languages,currentCode]);
+  const[language,setLanguage]=useState(currentCode);
+  useEffect(()=>{setLanguage(currentCode)},[currentCode]);
+
+  return <Page><ToolBar title={T('Translation')} navigation={navigation}/><ScrollView contentContainerStyle={s.dataPage} keyboardShouldPersistTaps="handled">
+    <ToolGraphic tool="Translations" size={76}/>
+    <Text style={s.dataTitle}>{T('Choose a translation')}</Text>
+    <Text style={s.intro}>{T('Translations explain meaning and do not replace the Arabic Quran. Edition attribution remains visible in the reader.')}</Text>
+
+    <Pressable accessibilityRole="button" accessibilityState={{expanded:picking}} accessibilityLabel={`${T('Language')}: ${current?current.label:currentCode}`}
+      onPress={()=>setPicking(true)} style={s.tsLangButton}>
+      <Text style={s.langFlag}>{languageFlag(language)}</Text>
+      <View style={{flex:1}}>
+        <Text style={s.preferenceLabel}>{T('LANGUAGE')}</Text>
+        <Text style={s.settingName}>{current?current.label:languageLabel(language)}</Text>
+      </View>
+      <Text style={s.langCount}>{current?current.count:0} {T(current&&current.count===1?'version':'versions')}</Text>
+      {ico('chevron-down',18,C.green)}
+    </Pressable>
+
+    {error?<ErrorState message={error} retry={load}/>:!editions.length?<Spinner/>:<EditionPicker C={C} editions={editions} category="quran" selectedId={preferences.translationEdition} initialLanguage={language} hideLanguageRow searchPlaceholder={T('Search translator or edition')} onPick={async(e)=>{
+      await update({
+        translationEdition:e.id,
+        translationName:editionDisplayName(e),
+        translationLanguage:languageLabel(e.language||'en'),
+      });
+      navigation.goBack();
+    }}/>}
+  </ScrollView>
+  {picking&&<LanguagePickerSheet rtl={rtl} T={T} entries={languages} selected={language}
+    onPick={(code)=>setLanguage(code)} onClose={()=>setPicking(false)}/>}
+</Page>}
 
 function QuranSearchScreen({route,navigation}:any){const{preferences}=useQuranPreferences();const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);const[query,setQuery]=useState(route.params?.initialQuery||'');const[results,setResults]=useState<QuranSearchResult[]>([]);const[history,setHistory]=useState<string[]>([]);const[error,setError]=useState('');const[loading,setLoading]=useState(false);useEffect(()=>{loadSearchHistory().then(setHistory);if(route.params?.initialQuery)run(route.params.initialQuery)},[]);const run=async(value=query)=>{const q=value.trim();if(q.length<2)return;setLoading(true);setError('');try{const edition=/[\u0600-\u06ff]/.test(q)?preferences.scriptEdition:preferences.translationEdition;setResults((await searchQuran(q,edition)).slice(0,100));setHistory(await addSearchHistory(q))}catch(e:any){setError(T(e.message))}finally{setLoading(false)}};const open=(r:QuranSearchResult)=>navigation.navigate('Reader',{chapter:{id:r.surahId,name_simple:r.surahName,name_arabic:'',verses_count:0},focusVerse:r.verseKey});return <Page><ToolBar title={T('Quran search')} navigation={navigation}/><ScrollView contentContainerStyle={s.dataPage} keyboardShouldPersistTaps="handled"><ToolGraphic tool="Quran Search" size={72}/><Text style={s.dataTitle}>{T('Search Arabic or translation')}</Text><View style={s.search}>{ico('search-outline',19,C.muted)}<TextInput autoFocus value={query} onChangeText={setQuery} onSubmitEditing={()=>run()} returnKeyType="search" style={s.searchInput} placeholder={T('Mercy, الصبر, or 2:255')}/><Pressable onPress={()=>run()}>{ico('arrow-forward-circle',22,C.green)}</Pressable></View>{history.length>0&&<><View style={s.historyHead}><Text style={s.preferenceLabel}>{T('RECENT SEARCHES')}</Text><Pressable onPress={async()=>{await clearSearchHistory();setHistory([])}}><Text style={s.sectionAction}>{T('Clear')}</Text></Pressable></View><View style={s.historyWrap}>{history.map(item=><Pressable key={item} onPress={()=>{setQuery(item);run(item)}} onLongPress={async()=>setHistory(await removeSearchHistory(item))} style={s.historyChip}><Text style={s.meta}>{item}</Text></Pressable>)}</View></>}{error?<ErrorState message={error} retry={()=>run()}/>:loading?<Spinner/>:<View>{results.map(r=><Pressable key={`${r.verseKey}-${r.edition}`} onPress={()=>open(r)} style={s.searchResult}><Text style={s.dataMeta}>{r.surahName} · {r.verseKey}</Text><Text numberOfLines={4} style={/[\u0600-\u06ff]/.test(r.text)?s.dataArabic:s.dataBody}>{r.text}</Text><Text style={s.meta}>{r.edition}</Text></Pressable>)}</View>}</ScrollView></Page>}
 
@@ -3326,64 +3440,171 @@ function needsPayload(Inner: any, title: string) {
 
 function NoteEditorScreen({route,navigation}:any){const verse:Verse=route.params.verse;const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);const chapter:Chapter=route.params.chapter;const[text,setText]=useState(route.params.verse.note||'');const save=async()=>{if(!text.trim()){if(route.params.verse.note){await deleteNote(verse.verse_key)}navigation.goBack();return}await saveNote({verseKey:verse.verse_key,surahId:chapter.id,surahName:chapter.name_simple,arabic:verse.text_uthmani,translation:verse.translation,note:text.trim(),savedAt:route.params.verse.savedAt||Date.now(),updatedAt:Date.now()});navigation.goBack()};return <Page><ToolBar title={`Note · ${verse.verse_key}`} navigation={navigation}/><View style={s.dataPage}><Text style={s.dataArabic}>{verse.text_uthmani}</Text><TextInput multiline autoFocus value={text} onChangeText={setText} placeholder={T('Write a private reflection…')} style={s.noteInput}/><View style={s.actionRow}><Pressable onPress={save} style={s.primary}><Text style={s.primaryText}>{T('Save note')}</Text></Pressable>{route.params.verse.note&&<Pressable onPress={async()=>{await deleteNote(verse.verse_key);navigation.goBack()}} style={s.dangerButton}><Text style={s.dangerText}>{T('Delete')}</Text></Pressable>}</View></View></Page>}
 
-function ReaderSettingsScreen({navigation}:any){const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);const{preferences,update}=useQuranPreferences();const{width:screenW,height:screenH}=useWindowDimensions();const scripts=[['quran-uthmani','Uthmani'],['quran-simple','Imla’i Simple'],['quran-indopak','IndoPak'],['quran-tajweed','Tajweed colour'],['quran-mushaf','Mushaf page']];
+/**
+ * How the Quran reads on this screen, as a sheet.
+ *
+ * This used to be a screen pushed on top of the reader. It is a sheet now, for
+ * the same reason the verse actions are: every control here changes the two
+ * lines of Arabic in front of you, and leaving the page to judge a type size
+ * means holding that size in your head across a navigation. Opened over the
+ * reader, the change is visible while it is being made.
+ *
+ * Translation and transliteration sit side by side because they answer
+ * different questions and a person often wants both. A translation is what the
+ * verse means; a transliteration is how it sounds. Someone learning to recite
+ * wants the sound and the sense together, so transliteration is its own
+ * setting with its own switch rather than a third entry in the translation
+ * list — choosing one should never silently cost you the other.
+ */
+function ReaderSettingsScreen({navigation}:any){
+  const{rtl}=useLanguage(); const T=(text:string)=>tx(rtl,text);
+  const{preferences,update}=useQuranPreferences();
+  const rise=useRef(new Animated.Value(0)).current;
+  const[picking,setPicking]=useState<null|'translation'|'transliteration'>(null);
+  const[editions,setEditions]=useState<IslamicEdition[]>([]);
+  const[transliterations,setTransliterations]=useState<IslamicEdition[]>([]);
+  const[translitLanguage,setTranslitLanguage]=useState('en');
+
+  useEffect(()=>{ Animated.spring(rise,{toValue:1,friction:9,tension:130,useNativeDriver:true}).start(); },[rise]);
+  useEffect(()=>{
+    getEditions('quran').then(setEditions).catch(()=>undefined);
+    getEditions('transliteration').then(setTransliterations).catch(()=>undefined);
+  },[]);
+
+  const scripts=[['quran-uthmani','Uthmani'],['quran-simple','Imla’i Simple'],['quran-indopak','IndoPak'],['quran-tajweed','Tajweed colour'],['quran-mushaf','Mushaf page']];
   /* Every control below is a setting of the same two lines of text, so the two
      lines sit at the top and change as the controls change. Reading about a
      type size is slower than seeing it. */
   const previewSize=Math.min(preferences.fontSize,32);
-  return <Page><ToolBar title={T('Reading settings')} navigation={navigation}/><ScrollView contentContainerStyle={s.dataPage}>
 
-      <Text style={s.rsEyebrow}>{T('HOW IT WILL READ')}</Text>
-      <View style={s.rsPreview}>
-        <Text style={[s.rsPreviewArabic,{fontFamily:quranFont(preferences.arabicFont),fontSize:previewSize,lineHeight:Math.round(previewSize*preferences.lineHeight)}]}>بِسْمِ ٱللَّٰهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ</Text>
-        {!!preferences.showTranslation && <Text style={[s.rsPreviewMeaning,{fontSize:Math.min(preferences.translationFontSize,20)}]}>{T('In the name of Allah, the Most Gracious, the Most Merciful.')}</Text>}
-        <View style={s.rsPreviewFoot}><Text style={s.rsPreviewMeta}>{T(preferences.scriptName)}</Text><Text style={s.rsPreviewMeta}>{preferences.fontSize}px · {preferences.lineHeight.toFixed(1)}×</Text></View>
-      </View>
+  const languages=useMemo(()=>languagesOf(editions),[editions]);
+  const currentCode=(editions.find(e=>e.id===preferences.translationEdition)?.language)||'en';
+  const current=useMemo(()=>languages.find(l=>l.code===currentCode),[languages,currentCode]);
+  const[language,setLanguage]=useState(currentCode);
+  useEffect(()=>{setLanguage(currentCode)},[currentCode]);
 
-      <View style={s.rsGroup}>
-        <Text style={s.rsGroupTitle}>{T('ARABIC SCRIPT')}</Text>
-        <View style={s.choiceGrid}>{scripts.map(([id,name])=><ChoicePill key={id} label={T(name)} selected={preferences.scriptEdition===id} onPress={()=>update({scriptEdition:id,scriptName:name})}/>)}</View>
-        <Text style={[s.meta,{marginTop: 8}]}>{T('Mushaf page lays the Quran out as printed pages, fifteen lines to a page, with no translation or verse numbers. Choose it here and the reader becomes a mushaf.')}</Text>
-        <View style={s.rsDivider}/>
-        <Text style={s.rsGroupTitle}>{T('ARABIC FONT')}</Text>
-        <View style={s.choiceGrid}>{QURAN_FONTS.map(font=><ChoicePill key={font.id} label={T(font.label)} selected={preferences.arabicFont===font.id} onPress={()=>{void ensureQuranFont(font.id);update({arabicFont:font.id})}}/>)}</View>
-        <Text style={[s.meta,{marginTop: 8}]}>{T(QURAN_FONTS.find(font=>font.id===preferences.arabicFont)?.detail || '')}</Text>
-      </View>
+  /* Only the transliterations with a surah route are offered; the rest exist
+     in the catalogue but answer nothing. */
+  const translitPool=useMemo(()=>servableEditions(transliterations,'transliteration'),[transliterations]);
+  const translitLanguages=useMemo(()=>languagesOf(translitPool),[translitPool]);
 
-      <View style={s.rsGroup}>
-        <Text style={s.rsGroupTitle}>{T('SIZE & SPACING')}</Text>
-        <Text style={s.preferenceLabel}>{T('ARABIC')}</Text>
-        <View style={s.stepper}><Pressable accessibilityLabel={T('Smaller Arabic')} onPress={()=>update({fontSize:Math.max(18,preferences.fontSize-2)})} style={s.stepButton}>{ico('remove',20,C.green)}</Pressable><Text style={[s.previewArabic,{fontSize:preferences.fontSize}]}>ٱلْقُرْآنُ</Text><Pressable accessibilityLabel={T('Larger Arabic')} onPress={()=>update({fontSize:Math.min(40,preferences.fontSize+2)})} style={s.stepButton}>{ico('add',20,C.green)}</Pressable></View>
-        <Text style={s.preferenceLabel}>{T('LINE SPACING')}</Text>
-        <View style={s.stepper}><Pressable accessibilityLabel={T('Tighter lines')} onPress={()=>update({lineHeight:Math.max(1.4,+(preferences.lineHeight-.1).toFixed(1))})} style={s.stepButton}>{ico('remove',20,C.green)}</Pressable><Text style={s.settingName}>{preferences.lineHeight.toFixed(1)}×</Text><Pressable accessibilityLabel={T('Looser lines')} onPress={()=>update({lineHeight:Math.min(3,+(preferences.lineHeight+.1).toFixed(1))})} style={s.stepButton}>{ico('add',20,C.green)}</Pressable></View>
-      </View>
+  const close=()=>navigation.goBack();
+  const Switch=({on,label,detail,glyph,onPress}:{on:boolean;label:string;detail:string;glyph:string;onPress:()=>void})=>(
+    <Pressable accessibilityRole="switch" accessibilityState={{checked:on}} onPress={onPress} style={s.setting}>
+      <MotionGlyph name={glyph} size={19}/>
+      <View style={{flex:1}}><Text style={s.settingName}>{T(label)}</Text><Text style={s.meta}>{T(detail)}</Text></View>
+      {ico(on?'toggle':'toggle-outline',22,on?C.green:C.muted)}
+    </Pressable>
+  );
 
-      <View style={s.rsGroup}>
-        <Text style={s.rsGroupTitle}>{T('THE MEANING')}</Text>
-        <Pressable onPress={()=>navigation.navigate('Translations')} style={s.referenceRow}><View style={{flex:1}}><Text style={s.settingName}>{T('Translation')}</Text><View style={s.metaRow}><Flag code={languageOf(preferences.translationEdition, preferences.translationLanguage)} size={12} /><Text style={s.meta}>{T(rtl ? preferences.translationLanguage : preferences.translationName)}</Text></View></View>{ico('arrow-forward',18,C.green)}</Pressable>
-        <Text style={s.preferenceLabel}>{T('TRANSLATION SIZE')}</Text>
-        <View style={s.stepper}><Pressable accessibilityLabel={T('Smaller translation')} onPress={()=>update({translationFontSize:Math.max(11,preferences.translationFontSize-1)})} style={s.stepButton}>{ico('remove',20,C.green)}</Pressable><Text style={[s.settingName,{fontSize:Math.min(preferences.translationFontSize,22)}]}>{T('The meaning beside the Arabic')}</Text><Pressable accessibilityLabel={T('Larger translation')} onPress={()=>update({translationFontSize:Math.min(26,preferences.translationFontSize+1)})} style={s.stepButton}>{ico('add',20,C.green)}</Pressable></View>
-        <Text style={s.meta}>{T('The script and the meaning are set apart, because they are not read at the same speed or from the same distance.')}</Text>
-      </View>
+  return <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+    <Pressable accessibilityRole="button" accessibilityLabel={T('Close')} onPress={close} style={s.sheetScrim}/>
+    <Animated.View style={[s.verseSheet,s.langSheet,{
+      transform:[{translateY:rise.interpolate({inputRange:[0,1],outputRange:[520,0]})}],
+      opacity:rise,
+    }]}>
+      <View style={s.sheetGrip}/>
+      <Text style={s.sheetTitle}>{T('Reading settings')}</Text>
+      <Text style={s.sheetSub}>{T('Everything here changes the page behind this sheet')}</Text>
 
-      <View style={s.rsGroup}>
-        <Text style={s.rsGroupTitle}>{T('READING MODE')}</Text>
-        <View style={s.settings}><Pressable accessibilityRole="switch" accessibilityState={{checked:preferences.focusMode}} onPress={()=>update({focusMode:!preferences.focusMode})} style={s.setting}><MotionGlyph name={preferences.focusMode?'eye':'eye-outline'} size={19}/><View style={{flex:1}}><Text style={s.settingName}>{T('Focus mode')}</Text><Text style={s.meta}>{T('Hide the top bar and the tab menu as you scroll. Tap a verse to bring them back.')}</Text></View>{ico(preferences.focusMode?'toggle':'toggle-outline',22,preferences.focusMode?C.green:C.muted)}</Pressable></View>
-        <View style={s.choiceGrid}><ChoicePill label={T('Ayah cards')} selected={preferences.readingMode==='cards'} onPress={()=>update({readingMode:'cards'})}/><ChoicePill label={T('Continuous')} selected={preferences.readingMode==='continuous'} onPress={()=>update({readingMode:'continuous'})}/></View>
-      </View>
-
-      {preferences.scriptEdition==='quran-mushaf'&&<View style={s.rsGroup}>
-        <Text style={s.rsGroupTitle}>{T('MUSHAF PAGE')}</Text>
-        <Text style={s.rsGroupTitle}>{T('ON THE PAGE')}</Text>
-        <View style={s.settings}>
-          <Pressable accessibilityRole="switch" accessibilityState={{checked:!!preferences.mushafTranslation}} onPress={()=>update({mushafTranslation:!preferences.mushafTranslation})} style={s.setting}><MotionGlyph name={preferences.mushafTranslation?'text':'text-outline'} size={19}/><View style={{flex:1}}><Text style={s.settingName}>{T('Show the meaning on the page')}</Text><Text style={s.meta}>{T('A printed page carries no translation. Turn this on to have the meaning under each verse.')}</Text></View>{ico(preferences.mushafTranslation?'toggle':'toggle-outline',22,preferences.mushafTranslation?C.green:C.muted)}</Pressable>
-          <Pressable accessibilityRole="switch" accessibilityState={{checked:preferences.showVerseConnections!==false}} onPress={()=>update({showVerseConnections:preferences.showVerseConnections===false})} style={s.setting}><MotionGlyph name="git-compare-outline" size={19}/><View style={{flex:1}}><Text style={s.settingName}>{T('Mark verses cut across a page')}</Text><Text style={s.meta}>{T('Notes where a verse runs on to the next page, so the sentence does not simply stop.')}</Text></View>{ico(preferences.showVerseConnections!==false?'toggle':'toggle-outline',22,preferences.showVerseConnections!==false?C.green:C.muted)}</Pressable>
+      <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{paddingBottom:12}}>
+        <Text style={s.rsEyebrow}>{T('HOW IT WILL READ')}</Text>
+        <View style={s.rsPreview}>
+          <Text style={[s.rsPreviewArabic,{fontFamily:quranFont(preferences.arabicFont),fontSize:previewSize,lineHeight:Math.round(previewSize*preferences.lineHeight)}]}>بِسْمِ ٱللَّٰهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ</Text>
+          {!!preferences.showTranslation && <Text style={[s.rsPreviewMeaning,{fontSize:Math.min(preferences.translationFontSize,20)}]}>{T('In the name of Allah, the Most Gracious, the Most Merciful.')}</Text>}
+          {!!preferences.showTransliteration && <Text style={[s.rsPreviewTranslit,{fontSize:Math.min(preferences.translationFontSize,18)}]}>bismi llāhi r-raḥmāni r-raḥīm</Text>}
+          <View style={s.rsPreviewFoot}><Text style={s.rsPreviewMeta}>{T(preferences.scriptName)}</Text><Text style={s.rsPreviewMeta}>{preferences.fontSize}px · {preferences.lineHeight.toFixed(1)}×</Text></View>
         </View>
-        <View style={s.rsDivider}/>
-        <Text style={s.rsGroupTitle}>{T('DIVISION MARKS')}</Text>
-        <View style={s.settings}>{MARKER_KINDS.map(kind=><Pressable key={kind} accessibilityRole="switch" accessibilityState={{checked:preferences.mushafMarkers?.[kind]!==false}} onPress={()=>update({mushafMarkers:{...preferences.mushafMarkers,[kind]:preferences.mushafMarkers?.[kind]===false}})} style={s.setting}><MotionGlyph name="bookmark-outline" size={19}/><View style={{flex:1}}><Text style={s.settingName}>{rtl?MARKER_LABELS[kind].ar:MARKER_LABELS[kind].en}</Text><Text style={s.meta}>{MARKER_NOTE[kind][rtl?'ar':'en']}</Text></View>{ico(preferences.mushafMarkers?.[kind]!==false?'toggle':'toggle-outline',22,preferences.mushafMarkers?.[kind]!==false?C.green:C.muted)}</Pressable>)}</View>
-      </View>}
-    </ScrollView></Page>}
+
+        <View style={s.rsGroup}>
+          <Text style={s.rsGroupTitle}>{T('ARABIC SCRIPT')}</Text>
+          <View style={s.choiceGrid}>{scripts.map(([id,name])=><ChoicePill key={id} label={T(name)} selected={preferences.scriptEdition===id} onPress={()=>update({scriptEdition:id,scriptName:name})}/>)}</View>
+          <Text style={[s.meta,{marginTop: 8}]}>{T('Mushaf page lays the Quran out as printed pages, fifteen lines to a page, with no translation or verse numbers. Choose it here and the reader becomes a mushaf.')}</Text>
+          <View style={s.rsDivider}/>
+          <Text style={s.rsGroupTitle}>{T('ARABIC FONT')}</Text>
+          <View style={s.choiceGrid}>{QURAN_FONTS.map(font=><ChoicePill key={font.id} label={T(font.label)} selected={preferences.arabicFont===font.id} onPress={()=>{void ensureQuranFont(font.id);update({arabicFont:font.id})}}/>)}</View>
+          <Text style={[s.meta,{marginTop: 8}]}>{T(QURAN_FONTS.find(font=>font.id===preferences.arabicFont)?.detail || '')}</Text>
+        </View>
+
+        <View style={s.rsGroup}>
+          <Text style={s.rsGroupTitle}>{T('SIZE & SPACING')}</Text>
+          <Text style={s.preferenceLabel}>{T('ARABIC')}</Text>
+          <View style={s.stepper}><Pressable accessibilityLabel={T('Smaller Arabic')} onPress={()=>update({fontSize:Math.max(18,preferences.fontSize-2)})} style={s.stepButton}>{ico('remove',20,C.green)}</Pressable><Text style={[s.previewArabic,{fontSize:preferences.fontSize}]}>ٱلْقُرْآنُ</Text><Pressable accessibilityLabel={T('Larger Arabic')} onPress={()=>update({fontSize:Math.min(40,preferences.fontSize+2)})} style={s.stepButton}>{ico('add',20,C.green)}</Pressable></View>
+          <Text style={s.preferenceLabel}>{T('LINE SPACING')}</Text>
+          <View style={s.stepper}><Pressable accessibilityLabel={T('Tighter lines')} onPress={()=>update({lineHeight:Math.max(1.4,+(preferences.lineHeight-.1).toFixed(1))})} style={s.stepButton}>{ico('remove',20,C.green)}</Pressable><Text style={s.settingName}>{preferences.lineHeight.toFixed(1)}×</Text><Pressable accessibilityLabel={T('Looser lines')} onPress={()=>update({lineHeight:Math.min(3,+(preferences.lineHeight+.1).toFixed(1))})} style={s.stepButton}>{ico('add',20,C.green)}</Pressable></View>
+        </View>
+
+        <View style={s.rsGroup}>
+          <Text style={s.rsGroupTitle}>{T('THE MEANING')}</Text>
+          {/* Showing the meaning is a reading choice, so it belongs with the
+              rest of the reading choices rather than out on the reader. */}
+          <View style={s.settings}>
+            <Switch on={preferences.showTranslation} glyph="text"
+              label={'Show the translation'} detail={'The meaning under the Arabic. Turn it off to read the Arabic alone.'}
+              onPress={()=>update({showTranslation:!preferences.showTranslation})}/>
+          </View>
+          {!!preferences.showTranslation && <>
+            <Pressable accessibilityRole="button" accessibilityState={{expanded:picking==='translation'}} accessibilityLabel={`${T('Language')}: ${current?current.label:currentCode}`}
+              onPress={()=>setPicking('translation')} style={s.tsLangButton}>
+              <Text style={s.langFlag}>{languageFlag(language)}</Text>
+              <View style={{flex:1}}>
+                <Text style={s.preferenceLabel}>{T('LANGUAGE')}</Text>
+                <Text style={s.settingName}>{current?current.label:languageLabel(language)}</Text>
+              </View>
+              <Text style={s.langCount}>{current?current.count:0} {T(current&&current.count===1?'version':'versions')}</Text>
+              {ico('chevron-down',18,C.green)}
+            </Pressable>
+            {!editions.length ? <Spinner/> : <EditionPicker C={C} editions={editions} category="quran"
+              selectedId={preferences.translationEdition} initialLanguage={language} hideLanguageRow
+              searchPlaceholder={T('Search translator or edition')}
+              onPick={(e)=>{void update({translationEdition:e.id,translationName:editionDisplayName(e),translationLanguage:languageLabel(e.language||'en')})}}/>}
+            <Text style={s.preferenceLabel}>{T('TRANSLATION SIZE')}</Text>
+            <View style={s.stepper}><Pressable accessibilityLabel={T('Smaller translation')} onPress={()=>update({translationFontSize:Math.max(11,preferences.translationFontSize-1)})} style={s.stepButton}>{ico('remove',20,C.green)}</Pressable><Text style={[s.settingName,{fontSize:Math.min(preferences.translationFontSize,22)}]}>{T('The meaning beside the Arabic')}</Text><Pressable accessibilityLabel={T('Larger translation')} onPress={()=>update({translationFontSize:Math.min(26,preferences.translationFontSize+1)})} style={s.stepButton}>{ico('add',20,C.green)}</Pressable></View>
+            <Text style={s.meta}>{T('The script and the meaning are set apart, because they are not read at the same speed or from the same distance.')}</Text>
+          </>}
+        </View>
+
+        <View style={s.rsGroup}>
+          <Text style={s.rsGroupTitle}>{T('TRANSLITERATION')}</Text>
+          <View style={s.settings}>
+            <Switch on={!!preferences.showTransliteration} glyph="mic-outline"
+              label={'Show the transliteration'} detail={'The Arabic sounded out in Latin letters. It is a guide to reciting, not a translation, and sits under the meaning.'}
+              onPress={()=>update({showTransliteration:!preferences.showTransliteration})}/>
+          </View>
+          {!!preferences.showTransliteration && (translitPool.length
+            ? <EditionPicker C={C} editions={translitPool} category="transliteration"
+                selectedId={preferences.transliterationEdition} initialLanguage={translitLanguage}
+                searchPlaceholder={T('Search a transliteration')}
+                onPick={(e)=>update({transliterationEdition:e.id,transliterationName:editionDisplayName(e)})}/>
+            : <Spinner/>)}
+        </View>
+
+        <View style={s.rsGroup}>
+          <Text style={s.rsGroupTitle}>{T('READING MODE')}</Text>
+          <View style={s.settings}><Pressable accessibilityRole="switch" accessibilityState={{checked:preferences.focusMode}} onPress={()=>update({focusMode:!preferences.focusMode})} style={s.setting}><MotionGlyph name={preferences.focusMode?'eye':'eye-outline'} size={19}/><View style={{flex:1}}><Text style={s.settingName}>{T('Focus mode')}</Text><Text style={s.meta}>{T('Hide the top bar and the tab menu as you scroll. Tap a verse to bring them back.')}</Text></View>{ico(preferences.focusMode?'toggle':'toggle-outline',22,preferences.focusMode?C.green:C.muted)}</Pressable></View>
+          <View style={s.choiceGrid}><ChoicePill label={T('Ayah cards')} selected={preferences.readingMode==='cards'} onPress={()=>update({readingMode:'cards'})}/><ChoicePill label={T('Continuous')} selected={preferences.readingMode==='continuous'} onPress={()=>update({readingMode:'continuous'})}/></View>
+        </View>
+
+        {preferences.scriptEdition==='quran-mushaf'&&<View style={s.rsGroup}>
+          <Text style={s.rsGroupTitle}>{T('MUSHAF PAGE')}</Text>
+          <Text style={s.rsGroupTitle}>{T('ON THE PAGE')}</Text>
+          <View style={s.settings}>
+            <Pressable accessibilityRole="switch" accessibilityState={{checked:!!preferences.mushafTranslation}} onPress={()=>update({mushafTranslation:!preferences.mushafTranslation})} style={s.setting}><MotionGlyph name={preferences.mushafTranslation?'text':'text-outline'} size={19}/><View style={{flex:1}}><Text style={s.settingName}>{T('Show the meaning on the page')}</Text><Text style={s.meta}>{T('A printed page carries no translation. Turn this on to have the meaning under each verse.')}</Text></View>{ico(preferences.mushafTranslation?'toggle':'toggle-outline',22,preferences.mushafTranslation?C.green:C.muted)}</Pressable>
+            <Pressable accessibilityRole="switch" accessibilityState={{checked:preferences.showVerseConnections!==false}} onPress={()=>update({showVerseConnections:preferences.showVerseConnections===false})} style={s.setting}><MotionGlyph name="git-compare-outline" size={19}/><View style={{flex:1}}><Text style={s.settingName}>{T('Mark verses cut across a page')}</Text><Text style={s.meta}>{T('Notes where a verse runs on to the next page, so the sentence does not simply stop.')}</Text></View>{ico(preferences.showVerseConnections!==false?'toggle':'toggle-outline',22,preferences.showVerseConnections!==false?C.green:C.muted)}</Pressable>
+          </View>
+          <View style={s.rsDivider}/>
+          <Text style={s.rsGroupTitle}>{T('DIVISION MARKS')}</Text>
+          <View style={s.settings}>{MARKER_KINDS.map(kind=><Pressable key={kind} accessibilityRole="switch" accessibilityState={{checked:preferences.mushafMarkers[kind]!==false}} onPress={()=>update({mushafMarkers:{...preferences.mushafMarkers,[kind]:preferences.mushafMarkers[kind]===false}})} style={s.setting}><MotionGlyph name="bookmark-outline" size={19}/><View style={{flex:1}}><Text style={s.settingName}>{rtl?MARKER_LABELS[kind].ar:MARKER_LABELS[kind].en}</Text></View>{ico(preferences.mushafMarkers[kind]!==false?'toggle':'toggle-outline',22,preferences.mushafMarkers[kind]!==false?C.green:C.muted)}</Pressable>)}</View>
+        </View>}
+      </ScrollView>
+    </Animated.View>
+
+    {picking==='translation'&&<LanguagePickerSheet rtl={rtl} T={T} entries={languages} selected={language}
+      onPick={(code)=>setLanguage(code)} onClose={()=>setPicking(null)}/>}
+    {picking==='transliteration'&&<LanguagePickerSheet rtl={rtl} T={T} entries={translitLanguages} selected={translitLanguage}
+      onPick={setTranslitLanguage} onClose={()=>setPicking(null)}/>}
+  </View>;
+}
 
 /**
  * Everything you can do to one verse, as a sheet.
@@ -3893,7 +4114,8 @@ function MemorizeTestScreen({ navigation, route }: any) {
   </Page>;
 }
 
-function QuranStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="QuranHome" component={QuranHome}/><Stack.Screen name="Downloads" component={DownloadsScreen}/><Stack.Screen name="Reader" component={ReaderScreen}/><Stack.Screen name="Translations" component={TranslationScreen}/><Stack.Screen name="Quran Search" component={QuranSearchScreen}/><Stack.Screen name="Bookmarks" component={BookmarkScreen}/><Stack.Screen name="Notes" component={NotesScreen}/><Stack.Screen name="Note Editor" component={needsPayload(NoteEditorScreen, 'Note')}/><Stack.Screen name="Reader Settings" component={ReaderSettingsScreen}/>{/* 'Ayah Actions' was a screen; it is the verse actions sheet now. The route is
+function QuranStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="QuranHome" component={QuranHome}/><Stack.Screen name="Downloads" component={DownloadsScreen}/><Stack.Screen name="Reader" component={ReaderScreen}/><Stack.Screen name="Translations" component={TranslationScreen}/><Stack.Screen name="Quran Search" component={QuranSearchScreen}/><Stack.Screen name="Bookmarks" component={BookmarkScreen}/><Stack.Screen name="Notes" component={NotesScreen}/><Stack.Screen name="Note Editor" component={needsPayload(NoteEditorScreen, 'Note')}/><Stack.Screen name="Reader Settings" component={ReaderSettingsScreen}
+      options={{presentation:'transparentModal',animation:'slide_from_bottom',contentStyle:{backgroundColor:'transparent'}}}/>{/* 'Ayah Actions' was a screen; it is the verse actions sheet now. The route is
     gone on purpose - a restored stack naming it is dropped by the navigator. */}<Stack.Screen name="Tafsir" component={TafsirScreen}/><Stack.Screen name="Tafsir Compare" component={TafsirCompareScreen}/><Stack.Screen name="Quran Topics" component={QuranTopicsScreen}/><Stack.Screen name="Topic Detail" component={TopicDetailScreen}/><Stack.Screen name="Juz Directory" component={JuzDirectoryScreen}/><Stack.Screen name="Hizb Directory" component={HizbDirectoryScreen}/><Stack.Screen name="Reading Plans" component={ReadingPlansScreen}/><Stack.Screen name="Quran Preload" component={QuranPreloadScreen}/><Stack.Screen name="Hifz" component={HifzScreen}/><Stack.Screen name="Memorize" component={MemorizeHubScreen}/><Stack.Screen name="Memorize Test" component={MemorizeTestScreen}/><Stack.Screen name="Quran Audio" component={AudioCenterScreen}/><Stack.Screen name="Audio Player" component={AudioPlayerScreen}/></Stack.Navigator>}
 
 /**
@@ -6780,7 +7002,8 @@ function BackupScreen({ navigation }: any) {
   </Page>;
 }
 
-function SettingsStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="Settings" component={SettingsScreen}/><Stack.Screen name="Data sources" component={DataSourcesScreen}/><Stack.Screen name="Reader Settings" component={ReaderSettingsScreen}/><Stack.Screen name="Privacy Lock" component={PrivacyLockScreen}/><Stack.Screen name="My Reports" component={ReportsScreen}/><Stack.Screen name="Backup" component={BackupScreen}/></Stack.Navigator>}
+function SettingsStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="Settings" component={SettingsScreen}/><Stack.Screen name="Data sources" component={DataSourcesScreen}/><Stack.Screen name="Reader Settings" component={ReaderSettingsScreen}
+      options={{presentation:'transparentModal',animation:'slide_from_bottom',contentStyle:{backgroundColor:'transparent'}}}/><Stack.Screen name="Privacy Lock" component={PrivacyLockScreen}/><Stack.Screen name="My Reports" component={ReportsScreen}/><Stack.Screen name="Backup" component={BackupScreen}/></Stack.Navigator>}
 
 /**
  * The header of a settings card: a tile, a name, and what the choice does.
@@ -6953,7 +7176,7 @@ function SettingsScreen({navigation}:any){
       </Pressable>
     </ScrollView>
   </Page>}
-import { DEFAULT_RECITER, LANGUAGES, Language, LanguageCode, languageByCode, isRtl, pickEdition } from './src/services/languages';
+import { DEFAULT_RECITER, editionsForLanguage, LANGUAGES, Language, LanguageCode, languageByCode, isRtl, pickEdition } from './src/services/languages';
 
 const navigationRef = createNavigationContainerRef<any>();
 const AUDIO_LANGUAGES: Record<string, string> = {
@@ -7272,7 +7495,11 @@ function AudioPlayerScreen({ navigation }: any) {
   const { preferences, update } = useQuranPreferences();
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [name, setName] = useState('');
-  const [editions, setEditions] = useState<QuranEdition[]>([]);
+  /* The translations that can actually be *played*. They are not the
+     translations shown beside the Arabic in the reader: those are texts, and
+     this list is voices. Offering the reader's list here meant picking a name
+     and hearing nothing change, because the audio was never re-pointed. */
+  const [audioEditions, setAudioEditions] = useState<AudioEdition[]>([]);
   const [pickingTranslation, setPickingTranslation] = useState(false);
   /* The settings object rather than the playback state: volume, repeat count
      and the range are settings that persist, and `useAudio` only carries what
@@ -7280,13 +7507,15 @@ function AudioPlayerScreen({ navigation }: any) {
   const [settings, setSettingsState] = useState<AudioSettings>(getAudioSettings());
   useEffect(() => { void loadAudioSettings().then(setSettingsState); }, []);
   useEffect(() => { void loadPlaylists().then(setPlaylists); }, []);
-  useEffect(() => { getQuranEditions().then(setEditions).catch(() => undefined); }, []);
+  useEffect(() => { loadAudioEditions().then((list) => setAudioEditions(list.translation)).catch(() => undefined); }, []);
   const track = audio.track;
   /* The player carries the translation switch because that is where you notice
-     you want a different one - mid-verse, when a wording does not land. It is
-     the same preference the reader uses, so changing it here changes it there
-     rather than being a second, separate setting. */
-  const shownEditions = editions.filter((e) => e.language === 'en').slice(0, 6);
+     you want a different one - mid-verse, when a wording does not land.
+
+     It points at the *audio* translation, which is a different thing from the
+     text beside the Arabic and is stored separately. Changing it here changes
+     what you hear; the words on the page are left alone. */
+  const shownEditions = audioEditions.slice(0, 8);
 
   if (!track) return <Page><ToolBar title={T('Audio player')} navigation={navigation} /><View style={s.dataPage}>
     <ToolGraphic tool="Recitations" size={78} />
@@ -7309,26 +7538,26 @@ function AudioPlayerScreen({ navigation }: any) {
     {!!track.text && <Text style={s.playerArabic}>{track.text}</Text>}
 
     <Pressable accessibilityRole="button" accessibilityState={{ expanded: pickingTranslation }}
-      accessibilityLabel={`${T('Translation')}: ${preferences.translationName}`}
+      accessibilityLabel={`${T('Translation')}: ${settings.translationName}`}
       onPress={() => setPickingTranslation((v) => !v)} style={s.playerTranslationRow}>
-      <Flag code={languageOf(preferences.translationEdition, preferences.translationLanguage)} size={18} />
+      <Flag code={languageOf(settings.translationEdition, '')} size={18} />
       <View style={{ flex: 1 }}>
         <Text style={s.settingName}>{T('Translation')}</Text>
-        <Text style={s.meta} numberOfLines={1}>{preferences.translationName}</Text>
+        <Text style={s.meta} numberOfLines={1}>{settings.translationName}</Text>
       </View>
       {ico(pickingTranslation ? 'chevron-up' : 'chevron-down', 18, C.green)}
     </Pressable>
     {!!pickingTranslation && <View style={s.playerTranslationList}>
       {shownEditions.map((e) => <Pressable key={e.identifier}
-        accessibilityRole="radio" accessibilityState={{ checked: preferences.translationEdition === e.identifier }}
-        onPress={() => { void update({ translationEdition: e.identifier, translationName: e.englishName, translationLanguage: 'English' }); setPickingTranslation(false); }}
-        style={[s.playerTranslationOption, preferences.translationEdition === e.identifier && s.playerTranslationOptionOn]}>
+        accessibilityRole="radio" accessibilityState={{ checked: settings.translationEdition === e.identifier }}
+        onPress={() => { void saveAudioSettings({ translationEdition: e.identifier, translationName: e.englishName, translationAudioEnabled: true }).then(setSettingsState); setPickingTranslation(false); }}
+        style={[s.playerTranslationOption, settings.translationEdition === e.identifier && s.playerTranslationOptionOn]}>
         <Flag code={languageOf(e.identifier, e.language)} size={16} />
         <Text style={[s.settingName, { flex: 1 }]} numberOfLines={1}>{e.englishName}</Text>
-        {preferences.translationEdition === e.identifier && ico('checkmark-circle', 18, C.green)}
+        {settings.translationEdition === e.identifier && ico('checkmark-circle', 18, C.green)}
       </Pressable>)}
       <Pressable accessibilityRole="button" accessibilityLabel={T('All translations')}
-        onPress={() => navigation.navigate('Translations')} style={s.playerTranslationOption}>
+        onPress={() => navigation.navigate('Quran Audio')} style={s.playerTranslationOptionLast}>
         <Text style={[s.settingName, { flex: 1, color: C.green }]}>{T('All translations')}</Text>
         {ico('arrow-forward', 18, C.green)}
       </Pressable>
@@ -7604,7 +7833,7 @@ function Root() {
   useBackIntegration(navigationRef);
   useEffect(() => { void loadNavState().then((state) => { setInitial(state); setReady(true); }); }, []);
   if (!ready) return <SafeAreaView style={s.safe}><Spinner /></SafeAreaView>;
-  return <NavigationContainer ref={navigationRef} key={(dark ? 'dark' : 'light') + ':' + tick} initialState={liveState.current ?? initial} onStateChange={(state: any) => { liveState.current = state; saveNavState(state); (globalThis as any).__DBG=(globalThis as any).__DBG||[]; (globalThis as any).__DBG.push('state:'+JSON.stringify(state?.routes?.[state?.index||0]?.name)); }}>
+  return <NavigationContainer ref={navigationRef} key={(dark ? 'dark' : 'light') + ':' + tick} initialState={liveState.current ?? initial} onStateChange={(state: any) => { liveState.current = state; saveNavState(state); }}>
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Main" component={Tabs} />
       <Stack.Screen name="Settings" component={SettingsStack} />
@@ -7970,32 +8199,49 @@ function Onboarding({ onFinish }: { onFinish: () => void }) {
     () => (editions.length ? languagesOf(editions) : []),
     [editions],
   );
-  /** The edition offered for the language being read. */
-  const textEdition = useMemo(() => pickEdition(editions, text), [editions, text]);
+  /** Every edition of the language being read, the recommended one first. */
+  const textEditions = useMemo(() => editionsForLanguage(editions, text), [editions, text]);
+  const textEdition = textEditions[0] || null;
+  const textEditionIds = useMemo(() => textEditions.map((e) => e.id), [textEditions]);
 
-  /* Whatever language is chosen is kept for offline without being asked:
-     someone who picked Urdu should be able to open the app on a plane. The
-     Arabic goes with it, always, and is added by the plan itself. */
+  /* Choosing a language keeps the whole language: every translation the
+     server holds for it, not just the one shown. Switching between Urdu
+     editions later should not need the network. The Arabic goes with it,
+     always, and is added by the plan itself. */
+  const textKey = textEditionIds.join(',');
   useEffect(() => {
-    if (!textEdition) return;
-    setQueued((current) => (current.includes(textEdition.id) ? current : [...current, textEdition.id]));
-  }, [textEdition?.id]);
+    if (!textEditionIds.length) return;
+    setQueued((current) => {
+      const missing = textEditionIds.filter((id) => !current.includes(id));
+      return missing.length ? [...current, ...missing] : current;
+    });
+  }, [textKey]);
 
-  const recommended = useMemo(() => {
-    const map = new Map<string, IslamicEdition>();
+  const byLanguage = useMemo(() => {
+    const map = new Map<string, IslamicEdition[]>();
     for (const entry of languages) {
-      const edition = pickEdition(editions, entry.code);
-      if (edition) map.set(entry.code, edition);
+      const list = editionsForLanguage(editions, entry.code);
+      if (list.length) map.set(entry.code, list);
     }
     return map;
   }, [editions, languages]);
 
-  const everyId = useMemo(() => [...recommended.values()].map((e) => e.id), [recommended]);
+  const everyId = useMemo(() => [...byLanguage.values()].flat().map((e) => e.id), [byLanguage]);
   const allQueued = everyId.length > 0 && everyId.every((id) => queued.includes(id));
   /* Turning everything off returns to the default rather than to nothing:
      the language being read is always kept, so the app always opens. */
-  const toggleAll = () => setQueued(allQueued ? (textEdition ? [textEdition.id] : []) : everyId);
-  const toggle = (id: string) => setQueued((current) => (current.includes(id) ? current.filter((x) => x !== id) : [...current, id]));
+  const toggleAll = () => setQueued(allQueued ? textEditionIds : everyId);
+  const hasLanguage = (code: string) => {
+    const list = byLanguage.get(code);
+    return !!list && list.every((e) => queued.includes(e.id));
+  };
+  /** Adds or removes a whole language — every edition it carries. */
+  const toggleLanguage = (code: string) => setQueued((current) => {
+    const ids = (byLanguage.get(code) || []).map((e) => e.id);
+    if (!ids.length) return current;
+    if (ids.every((id) => current.includes(id))) return current.filter((id) => !ids.includes(id));
+    return [...current, ...ids.filter((id) => !current.includes(id))];
+  });
 
   const visible = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -8097,7 +8343,7 @@ function Onboarding({ onFinish }: { onFinish: () => void }) {
         <View style={s.onbAllBar}>
           <View style={s.onbAllText}>
             <Text style={s.onbAllTitle}>{T('Download all languages')}</Text>
-            <Text style={s.onbAllSub}>{T('Every translation the server carries, kept on this device. Needs about 130 MB of free space.')}</Text>
+            <Text style={s.onbAllSub}>{everyId.length ? T('Every translation in every language, kept on this device. Around 725 MB of free space.') : T('Every translation in every language.')}</Text>
           </View>
           <MotionPress
             accessibilityLabel={allQueued ? T('Remove all languages from offline') : T('Select all languages for offline')}
@@ -8126,8 +8372,8 @@ function Onboarding({ onFinish }: { onFinish: () => void }) {
 
         {visible.map((entry, index) => {
           const selected = chosen === entry.code;
-          const edition = recommended.get(entry.code);
-          const saved = !!edition && queued.includes(edition.id);
+          const list = byLanguage.get(entry.code) || [];
+          const saved = hasLanguage(entry.code);
           return <RiseIn key={entry.code} delay={Math.min(index, 14) * 26}>
             <MotionPress style={[s.onbCard, selected && s.onbCardOn]} onPress={() => pick(entry.code)}>
               <View style={s.onbCardTop}>
@@ -8139,11 +8385,12 @@ function Onboarding({ onFinish }: { onFinish: () => void }) {
                   </Text>
                 </View>
                 {/* Marking only records the choice. Nothing downloads until
-                    the last step, so onboarding stays quick. */}
-                {edition ? <Pressable
+                    the last step, so onboarding stays quick. One tap keeps
+                    every edition this language carries. */}
+                {list.length ? <Pressable
                   accessibilityRole="button"
                   accessibilityLabel={saved ? `${T('Stop keeping')} ${entry.label} ${T('offline')}` : `${T('Keep')} ${entry.label} ${T('for offline')}`}
-                  onPress={() => toggle(edition.id)}
+                  onPress={() => toggleLanguage(entry.code)}
                   style={[s.onbDl, saved && s.onbDlOn]}>
                   {ico(saved ? 'checkmark' : 'download-outline', 17, saved ? C.onAccent : C.ink)}
                 </Pressable> : null}
@@ -8558,6 +8805,15 @@ surahCard:{width:'100%',minHeight:64,backgroundColor:C.card,borderRadius:16,bord
   sheetOptionIcon:{width:38,height:38,borderRadius:14,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},
   sheetOptionLabel:{color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:14},
   sheetOptionDetail:{color:C.muted,fontSize:11,marginTop:2},
+  langSheet:{maxHeight:'62%'},
+  langRow:{flexDirection:'row',alignItems:'center',gap:12,paddingHorizontal:12,paddingVertical:11,borderRadius:16,borderWidth:1,borderColor:C.line,backgroundColor:C.bg,marginBottom:7},
+  langRowOn:{backgroundColor:C.mint,borderColor:C.green},
+  langFlag:{fontSize:19,width:26,textAlign:'center'},
+  langName:{flex:1,color:C.ink,fontSize:14,fontFamily:'DMSans_600SemiBold'},
+  langNameOn:{color:C.green,fontFamily:'DMSans_700Bold'},
+  langCount:{color:C.muted,fontSize:11,fontFamily:'DMSans_400Regular'},
+  langIndex:{color:C.muted,fontSize:10,fontFamily:'DMSans_400Regular',width:16,textAlign:'center'},
+  tsLangButton:{flexDirection:'row',alignItems:'center',gap:12,backgroundColor:C.mint,borderRadius:18,padding:14,borderWidth:1,borderColor:C.line,marginBottom:14},
   sheetCancel:{alignItems:'center',paddingVertical:12,marginTop:4},
   sheetBtnBusy:{opacity:.55},
   sheetCancelText:{color:C.muted,fontFamily:'DMSans_600SemiBold',fontSize:13},
@@ -8614,6 +8870,7 @@ mushafPageNoText:{color:C.green,fontFamily:'Newsreader_700Bold',fontSize:16},mus
   rsEyebrow:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.2,marginBottom:10},
   rsPreview:{backgroundColor:C.card,borderRadius:24,padding:20,borderWidth:1,borderColor:C.line,...surface},
   rsPreviewArabic:{color:C.ink,textAlign:'right',writingDirection:'rtl'} as any,
+  rsPreviewTranslit:{color:C.muted,fontFamily:'DMSans_400Regular',fontStyle:'italic',marginTop:8,textAlign:'right'},
   rsPreviewMeaning:{color:C.muted,fontFamily:'DMSans_400Regular',lineHeight:22,marginTop:14},
   rsPreviewFoot:{flexDirection:'row',justifyContent:'space-between',marginTop:16,paddingTop:12,borderTopWidth:1,borderColor:C.line},
   rsPreviewMeta:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold'},
@@ -8676,7 +8933,8 @@ playerAura:{position:'absolute',width:300,height:300,top:-90,borderRadius:150,op
 playerArtRing:{width:150,height:150,borderRadius:75,alignItems:'center',justifyContent:'center',backgroundColor:'rgba(255,255,255,.13)',borderWidth:1,borderColor:'rgba(255,255,255,.28)'},
 playerTranslationRow:{flexDirection:'row',alignItems:'center',gap:12,backgroundColor:C.card,borderRadius:16,borderWidth:1,borderColor:C.line,padding:12,marginTop:16,...soft},
 playerTranslationList:{backgroundColor:C.card,borderRadius:16,borderWidth:1,borderColor:C.line,marginTop:8,overflow:'hidden'},
-playerTranslationOption:{flexDirection:'row',alignItems:'center',gap:10,paddingVertical:12,paddingHorizontal:14,borderBottomWidth:1,borderColor:C.line},
+playerTranslationOption:{flexDirection:'row',alignItems:'center',gap:12,paddingVertical:14,paddingHorizontal:14,borderBottomWidth:1,borderColor:C.line},
+  playerTranslationOptionLast:{flexDirection:'row',alignItems:'center',gap:12,paddingVertical:14,paddingHorizontal:14},
 playerTranslationOptionOn:{backgroundColor:C.mint},
   playerRow:{flexDirection:'row',alignItems:'center',gap:10,marginTop:20},
   playerSeek:{marginTop:10},
