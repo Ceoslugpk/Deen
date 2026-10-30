@@ -632,3 +632,261 @@ export const BLEEDING_GUIDANCE: Record<BleedingVerdict, { title: string; body: s
  */
 export const SCHOOL_NOTE =
   'The figures used here are the ones most commonly cited: a minimum of three days and a maximum of fifteen for hayd, fifteen clear days between two periods, and forty for post-natal bleeding. Schools differ on several of them, and your own school may set them differently. Where the difference changes the answer, this screen says so rather than choosing for you.';
+
+/* ------------------------------------------------------ ramadan plan --- */
+
+/**
+ * Which of the coming days of Ramadan the cycle is likely to fall on, and
+ * what that leaves to make up.
+ *
+ * Two things are kept separate throughout. The first is arithmetic the app can
+ * actually do: given her own recorded cycle length, count forward and see where
+ * the days land. The second is what actually happens, which no projection can
+ * know. A period that arrives early, or the arrival of bleeding in the last
+ * minutes before Maghrib, changes the answer. So the plan is always offered as
+ * a shape of the month to prepare around, never as a verdict on a day.
+ *
+ * Nothing here is transmitted. The Hijri dates are worked out on the device by
+ * the tabular calendar rather than fetched, so planning the month costs no
+ * network request and leaves no trace of what was asked.
+ */
+
+/** Tabular Islamic calendar, civil epoch. Verified against published dates for
+ *  the first of Ramadan across 1445-1450 AH: exact in every one of them. */
+const HIJRI_EPOCH_JD = 1948439;
+
+function hijriToJd(year: number, month: number, day: number) {
+  return (
+    day +
+    (29 * (month - 1) + Math.floor(month / 2)) +
+    (year - 1) * 354 +
+    Math.floor((3 + 11 * year) / 30) +
+    HIJRI_EPOCH_JD
+  );
+}
+
+function jdToGregorian(jd: number) {
+  let l = jd + 68569;
+  const n = Math.floor((4 * l) / 146097);
+  l = l - Math.floor((146097 * n + 3) / 4);
+  const i = Math.floor((4000 * (l + 1)) / 1461001);
+  l = l - Math.floor((1461 * i) / 4) + 31;
+  const j = Math.floor((80 * l) / 2447);
+  const d = l - Math.floor((2447 * j) / 80);
+  const k = Math.floor(j / 11);
+  return { year: 100 * (n - 49) + i + k, month: j + 2 - 12 * k, day: d };
+}
+
+function gregorianToJd(year: number, month: number, day: number) {
+  const a = Math.floor((month - 14) / 12);
+  return (
+    Math.floor((1461 * (year + 4800 + a)) / 4) +
+    Math.floor((367 * (month - 2 - 12 * a)) / 12) -
+    Math.floor((3 * Math.floor((year + 4900 + a) / 100)) / 4) +
+    day -
+    32075
+  );
+}
+
+/** 1 Ramadan of a given Hijri year, as a YYYY-MM-DD key. */
+export function ramadanStartForHijriYear(hijriYear: number) {
+  const g = jdToGregorian(hijriToJd(hijriYear, 9, 1));
+  const pad = (value: number) => String(value).padStart(2, '0');
+  return `${g.year}-${pad(g.month)}-${pad(g.day)}`;
+}
+
+/**
+ * The Ramadan that this month belongs to - the one still running if today falls
+ * inside it, otherwise the one coming next.
+ *
+ * The distinction matters more than it looks. A woman opening this on the tenth
+ * of Ramadan does not want next year's plan; she wants the month she is in.
+ * Only once the month has actually ended does the planner move on.
+ */
+export function nextRamadanHijriYear(today = dayKey()) {
+  const [y, m] = today.split('-').map(Number);
+  const jd = gregorianToJd(y, m, 1);
+  /* Search a window either side of the year the tabular calendar suggests. */
+  const guess = Math.floor(((jd - HIJRI_EPOCH_JD) * 30) / 10631) + 1;
+  for (let year = guess - 1; year <= guess + 2; year += 1) {
+    const start = ramadanStartForHijriYear(year);
+    const end = addDays(start, RAMADAN_LENGTH - 1);
+    /* Today is before or inside this Ramadan. */
+    if (daysBetween(today, end) >= 0) return year;
+  }
+  return guess;
+}
+
+/** Ramadan runs 29 or 30 days. The tabular calendar gives 30; the month is
+ *  never longer, so the thirtieth is included and is marked as the day that
+ *  depends on the sighting. */
+export const RAMADAN_LENGTH = 30;
+
+export type RamadanDayState = 'clear' | 'likely' | 'possible';
+
+export type RamadanPlanDay = {
+  date: string;
+  ramadanDay: number;
+  state: RamadanDayState;
+};
+
+export type RamadanConfidence = 'good' | 'fair' | 'weak';
+
+export type RamadanPlan = {
+  /** False until there is enough history to count forward from. */
+  hasPattern: boolean;
+  confidence: RamadanConfidence;
+  cycleCount: number;
+  averageCycle: number | null;
+  averagePeriod: number | null;
+  /** How far her cycle length has actually swung, in days. Drives the band. */
+  variation: number;
+  hijriYear: number;
+  start: string;
+  end: string;
+  days: RamadanPlanDay[];
+  likelyCount: number;
+  possibleCount: number;
+  owedLow: number;
+  owedHigh: number;
+  started: boolean;
+  finished: boolean;
+  daysLeft: number;
+  /** The next Ramadan after this one - the day the debt falls due. */
+  deadline: string;
+  daysUntilDeadline: number;
+};
+
+export function ramadanPlan(
+  current = state,
+  today = dayKey(),
+  ramadanStart?: string,
+): RamadanPlan {
+  const sorted = [...current.cycles].sort((a, b) => (a.start < b.start ? 1 : -1));
+  const completed = sorted.filter((entry) => entry.end !== null);
+
+  const lengths: number[] = [];
+  for (let i = 0; i < sorted.length - 1; i += 1) {
+    const gap = daysBetween(sorted[i + 1].start, sorted[i].start);
+    if (gap > 0 && gap < 90) lengths.push(gap);
+  }
+  const periods = completed
+    .map((entry) => daysBetween(entry.start, entry.end as string) + 1)
+    .filter((value) => value > 0 && value <= LIMITS.haydMaxDays + 5);
+
+  /* Two measured gaps is the least that counts as a pattern. One gap is a
+     single number, and a projection built on it would be a guess wearing the
+     clothes of her own history. */
+  const hasPattern = lengths.length >= 2 && average(periods.slice(0, 6)) > 0;
+  const averageCycle = average(lengths.slice(0, 6));
+  const averagePeriod = average(periods.slice(0, 6));
+  const variation = lengths.length
+    ? Math.max(...lengths.slice(0, 6)) - Math.min(...lengths.slice(0, 6))
+    : 0;
+
+  const hijriYear = nextRamadanHijriYear(today);
+  const start = ramadanStart || ramadanStartForHijriYear(hijriYear);
+  const end = addDays(start, RAMADAN_LENGTH - 1);
+
+  const days: RamadanPlanDay[] = [];
+  for (let i = 0; i < RAMADAN_LENGTH; i += 1) {
+    days.push({ date: addDays(start, i), ramadanDay: i + 1, state: 'clear' });
+  }
+
+  if (hasPattern) {
+    /* The band is half her own swing, so a regular cycle gets a tight band and
+       an irregular one gets a wide one. Capped, because past a certain width
+       the band stops being information and becomes a hedge. */
+    const band = Math.min(4, Math.max(1, Math.round(variation / 2)));
+    const lastStart = sorted[0].start;
+
+    /* Count forward from the last recorded start, one cycle at a time, and
+       stop once the projections have walked past the end of Ramadan. */
+    for (let k = 0; k < 40; k += 1) {
+      const cycleStart = addDays(lastStart, k * averageCycle);
+      if (daysBetween(cycleStart, end) < 0) break;
+      const cycleEnd = addDays(cycleStart, averagePeriod - 1);
+      for (const day of days) {
+        if (day.state !== 'clear') continue;
+        const withinPeriod =
+          daysBetween(cycleStart, day.date) >= 0 && daysBetween(day.date, cycleEnd) >= 0;
+        if (withinPeriod) {
+          day.state = 'likely';
+          continue;
+        }
+        /* Either side of the projected days - the spread her own history shows. */
+        const gapToPeriod = Math.min(
+          Math.abs(daysBetween(day.date, cycleStart)),
+          Math.abs(daysBetween(cycleEnd, day.date)),
+        );
+        if (gapToPeriod <= band) day.state = 'possible';
+      }
+    }
+    /* A day cannot be merely possible if it sits between two likely runs. */
+    for (let i = 1; i < days.length - 1; i += 1) {
+      if (days[i].state === 'possible' && days[i - 1].state === 'likely' && days[i + 1].state === 'likely') {
+        days[i].state = 'likely';
+      }
+    }
+  }
+
+  const likelyCount = days.filter((day) => day.state === 'likely').length;
+  const possibleCount = days.filter((day) => day.state === 'possible').length;
+
+  const confidence: RamadanConfidence =
+    !hasPattern ? 'weak' : lengths.length >= 4 && variation <= 7 ? 'good' : lengths.length >= 3 && variation <= 14 ? 'fair' : 'weak';
+
+  const deadline = ramadanStartForHijriYear(hijriYear + 1);
+
+  return {
+    hasPattern,
+    confidence,
+    cycleCount: sorted.length,
+    averageCycle: hasPattern ? averageCycle : null,
+    averagePeriod: hasPattern ? averagePeriod : null,
+    variation,
+    hijriYear,
+    start,
+    end,
+    days,
+    likelyCount,
+    possibleCount,
+    owedLow: likelyCount,
+    owedHigh: likelyCount + possibleCount,
+    started: daysBetween(start, today) >= 0,
+    finished: daysBetween(end, today) > 0,
+    daysLeft: Math.max(0, -daysBetween(start, today)),
+    deadline,
+    daysUntilDeadline: Math.max(0, daysBetween(today, deadline)),
+  };
+}
+
+/** Short lines for the three states, written for the day rows. */
+export const RAMADAN_STATE_LABEL: Record<RamadanDayState, string> = {
+  likely: 'Likely',
+  possible: 'Possible',
+  clear: 'No period expected',
+};
+
+/** What a woman most often needs to know, and what is most often got wrong. */
+export const RAMADAN_NOTES: { title: string; body: string }[] = [
+  {
+    title: 'The last minutes count',
+    body: 'A fast is broken by bleeding that begins even a moment before Maghrib, and that day is then owed. This is why the plan marks the days either side of the projected ones rather than only the days inside them — the edge of a period is where the day is decided.',
+  },
+  {
+    title: 'Made up, not paid off',
+    body: 'Days missed through hayd or nifas are made up one for one. There is no fidyah on them, because fidyah belongs to the one who cannot make the day up at all. A woman who can fast later fasts later.',
+  },
+  {
+    title: 'Before the next Ramadan',
+    body: 'The days are a debt with a date on it: they are due before the next Ramadan arrives. They do not have to be kept consecutively, and may be spread through the year — which is the whole reason to know the number early rather than in the last week of Shaban.',
+  },
+  {
+    title: 'Ghusl is for the prayer, not the fast',
+    body: 'If bleeding stops before Fajr and the fast is intended that night, the fast stands. Ghusl is required before the prayer; it is not a condition of the fast itself. A woman may wake in a state that defers Fajr and still hold a valid fast.',
+  },
+];
+
+export const RAMADAN_ADVISORY =
+  'This is arithmetic on your own recorded pattern, not knowledge of what the month will bring. A cycle that comes early, a period that runs long, or bleeding that starts in the last minutes before Maghrib all change the count. The ruling follows what happens, not what was projected — so treat this as a shape to prepare around, and settle each day as it actually comes.';
