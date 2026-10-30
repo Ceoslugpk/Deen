@@ -1,4 +1,11 @@
 import { getCachedJson, setCachedJson } from './contentCache';
+import { daysOfHijriMonth } from './hijri';
+import {
+  computeDayTimes,
+  hijriLabel,
+  methodName,
+  PRAYER_NAMES,
+} from './prayerTimes';
 
 export type Prayer = { name: string; time: string; raw: string };
 export type PrayerSnapshot = { prayers: Prayer[]; hijri: string; hijriAr?: string; hijriYear: number; hijriMonth: number; readable: string; timezone: string; method: string };
@@ -25,6 +32,15 @@ async function json(url: string) {
   return body.data;
 }
 
+/** The device's own IANA zone, as a fallback when a place has not named one. */
+function deviceZoneName(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+  } catch {
+    return '';
+  }
+}
+
 const cleanTime = (value: string) => value?.split(' ')[0] ?? '';
 const displayTime = (value: string, format: '12' | '24' = '12') => {
   const [h, m] = cleanTime(value).split(':').map(Number);
@@ -33,26 +49,52 @@ const displayTime = (value: string, format: '12' | '24' = '12') => {
   return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
 };
 
-export type PrayerRequestOptions = { method?: number; school?: 'shafi' | 'hanafi'; timeFormat?: '12' | '24' };
+/**
+ * `timezone` is an IANA name. Prayer times are instants; the zone says whose
+ * clock reads them. Without one we use the device's, which is right whenever
+ * the person is in the place they have selected.
+ */
+export type PrayerRequestOptions = {
+  method?: number;
+  school?: 'shafi' | 'hanafi';
+  timeFormat?: '12' | '24';
+  timezone?: string;
+};
 
+/**
+ * Today's times, worked out on the device.
+ *
+ * This used to call AlAdhan. It no longer does: the calculation is done here
+ * from the coordinates and the date, so it needs no connection, tells a third
+ * party nothing about where you are, and keeps working when the network does
+ * not. The Hijri line comes from the bundled Umm al-Qura table rather than
+ * the arithmetic approximation, because the month view matches events by
+ * Hijri date and a day either side of the first of Ramadan is not a rounding
+ * error.
+ */
 export async function getPrayerSnapshot(latitude = 25.2048, longitude = 55.2708, options: PrayerRequestOptions = {}): Promise<PrayerSnapshot> {
-  // AlAdhan resolves the timezone from coordinates and returns local clock times.
   const method = options.method ?? 8;
-  const school = options.school === 'hanafi' ? 1 : 0;
+  const school = options.school === 'hanafi' ? 'hanafi' : 'shafi';
   const timeFormat = options.timeFormat ?? '12';
-  const data = await json(`https://api.aladhan.com/v1/timings?latitude=${latitude}&longitude=${longitude}&method=${method}&school=${school}`);
-  const names = ['Fajr', 'Sunrise', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
-  const prayers = names.map(name => ({ name, raw: cleanTime(data.timings[name]), time: displayTime(data.timings[name], timeFormat) }));
-  const h = data.date.hijri;
+
+  const now = new Date();
+  const times = computeDayTimes(latitude, longitude, now, method, school, options.timezone);
+  const prayers = PRAYER_NAMES.map(name => ({
+    name,
+    raw: times[name],
+    time: displayTime(times[name], timeFormat),
+  }));
+
+  const h = hijriLabel(now);
   return {
     prayers,
-    hijri: `${h.day} ${h.month.en} ${h.year} AH`,
-    hijriAr: `${h.day} ${h.month.ar} ${h.year} هـ`,
-    hijriYear: Number(h.year),
-    hijriMonth: Number(h.month.number),
-    readable: data.date.readable,
-    timezone: data.meta.timezone,
-    method: data.meta.method?.name || 'Gulf Region',
+    hijri: h.hijri,
+    hijriAr: h.hijriAr,
+    hijriYear: h.hijriYear,
+    hijriMonth: h.hijriMonth,
+    readable: now.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+    timezone: options.timezone || deviceZoneName(),
+    method: methodName(method),
   };
 }
 
@@ -84,9 +126,21 @@ function calendarDay(row: any, timeFormat: '12' | '24' = '12'): CalendarDay {
   };
 }
 
-export async function getGregorianCalendar(latitude: number, longitude: number, month: number, year: number): Promise<CalendarDay[]> {
-  const data = await json(`https://api.aladhan.com/v1/calendar/${year}/${month}?latitude=${latitude}&longitude=${longitude}&method=8`);
-  return data.map(calendarDay);
+/**
+ * A Gregorian month of days, each with its times and its Hijri date.
+ *
+ * The calendar screen's month view. It now runs on the device for the same
+ * reason the day card does; it delegates to the month builder below rather
+ * than keeping its own copy of the arithmetic.
+ */
+export async function getGregorianCalendar(
+  latitude: number,
+  longitude: number,
+  month: number,
+  year: number,
+  options: PrayerRequestOptions = {},
+): Promise<CalendarDay[]> {
+  return getPrayerCalendar(latitude, longitude, month, year, { method: 8, ...options });
 }
 
 /**
@@ -105,13 +159,38 @@ export async function getPrayerCalendar(
   options: PrayerRequestOptions = {},
 ): Promise<CalendarDay[]> {
   const method = options.method ?? 8;
-  const school = options.school === 'hanafi' ? 1 : 0;
+  const school = options.school === 'hanafi' ? 'hanafi' : 'shafi';
   const timeFormat = options.timeFormat ?? '12';
-  const data = await json(
-    `https://api.aladhan.com/v1/calendar/${year}/${month}` +
-    `?latitude=${latitude}&longitude=${longitude}&method=${method}&school=${school}`,
-  );
-  return data.map((row: any) => calendarDay(row, timeFormat));
+
+  /*
+   * Built a day at a time rather than fetched a month at a time. Each day is
+   * an independent calculation, which is what makes a month of them instant
+   * and offline: there is no month-length request to wait on and no partially
+   * filled calendar when the connection drops halfway.
+   */
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const days: CalendarDay[] = [];
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    const date = new Date(year, month - 1, day);
+    const times = computeDayTimes(latitude, longitude, date, method, school, options.timezone);
+    const h = hijriLabel(date);
+    days.push({
+      gregorian: `${String(day).padStart(2, '0')}-${String(month).padStart(2, '0')}-${year}`,
+      weekday: date.toLocaleDateString('en', { weekday: 'long' }),
+      weekdayAr: date.toLocaleDateString('ar-u-nu-latn', { weekday: 'long' }),
+      hijriDay: h.hijriDay,
+      hijriMonth: h.hijriMonthName,
+      hijriMonthAr: h.hijriMonthNameAr,
+      hijriMonthNumber: h.hijriMonth,
+      hijriYear: h.hijriYear,
+      prayers: PRAYER_NAMES.map(name => ({
+        name,
+        raw: times[name],
+        time: displayTime(times[name], timeFormat),
+      })),
+    });
+  }
+  return days;
 }
 
 /**
@@ -149,9 +228,47 @@ export async function getCalendarSpan(
   return out;
 }
 
-export async function getRamadanCalendar(latitude: number, longitude: number, hijriYear: number): Promise<CalendarDay[]> {
-  const data = await json(`https://api.aladhan.com/v1/hijriCalendar/${hijriYear}/9?latitude=${latitude}&longitude=${longitude}&method=8`);
-  return data.map(calendarDay);
+/**
+ * The days of Ramadan, worked out on the device.
+ *
+ * Ramadan is a Hijri month, so finding it means knowing when that month
+ * begins in ordinary dates — which the bundled Umm al-Qura table answers
+ * directly. Each day is then calculated like any other. Nothing here needs a
+ * connection, which matters most for exactly this screen: a month of suhoor
+ * and iftar times is the thing you are most likely to want with no signal.
+ */
+export async function getRamadanCalendar(
+  latitude: number,
+  longitude: number,
+  hijriYear: number,
+  options: PrayerRequestOptions = {},
+): Promise<CalendarDay[]> {
+  const method = options.method ?? 8;
+  const school = options.school === 'hanafi' ? 'hanafi' : 'shafi';
+  const timeFormat = options.timeFormat ?? '12';
+
+  return daysOfHijriMonth(hijriYear, 9).map((date) => {
+    const times = computeDayTimes(latitude, longitude, date, method, school, options.timezone);
+    const h = hijriLabel(date);
+    const day = date.getUTCDate();
+    const month = date.getUTCMonth() + 1;
+    const year = date.getUTCFullYear();
+    return {
+      gregorian: `${String(day).padStart(2, '0')}-${String(month).padStart(2, '0')}-${year}`,
+      weekday: date.toLocaleDateString('en', { weekday: 'long', timeZone: 'UTC' }),
+      weekdayAr: date.toLocaleDateString('ar-u-nu-latn', { weekday: 'long', timeZone: 'UTC' }),
+      hijriDay: h.hijriDay,
+      hijriMonth: h.hijriMonthName,
+      hijriMonthAr: h.hijriMonthNameAr,
+      hijriMonthNumber: h.hijriMonth,
+      hijriYear: h.hijriYear,
+      prayers: PRAYER_NAMES.map(name => ({
+        name,
+        raw: times[name],
+        time: displayTime(times[name], timeFormat),
+      })),
+    };
+  });
 }
 
 /**

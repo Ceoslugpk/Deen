@@ -56,10 +56,31 @@ function table$(): Row[] {
     const countries = require('../data/countries.json');
     table = cities.cities as Row[];
     countryNames = countries.names as Record<string, string>;
+    buildFoldIndex();
   } catch {
     table = [];
   }
   return table || [];
+}
+
+/**
+ * Every row's names, already folded.
+ *
+ * Folding thirty-three thousand rows on every keystroke costs about fifty
+ * milliseconds, which is long enough to feel while typing. The folds never
+ * change once the table is parsed, so they are done once here instead.
+ */
+let folds: string[][] | null = null;
+
+function buildFoldIndex() {
+  const rows = table || [];
+  folds = rows.map((row) => [fold(row[0]), fold(row[1]), ...(row[7] || []).map(fold)]);
+}
+
+/** Folded names for a row, falling back to folding on the spot if unindexed. */
+function foldsFor(index: number, row: Row): string[] {
+  if (folds && folds[index]) return folds[index];
+  return [fold(row[0]), fold(row[1]), ...(row[7] || []).map(fold)];
 }
 
 export function countryName(code: string): string {
@@ -118,15 +139,15 @@ export async function rememberCity(city: CityResult) {
  * only then do we consider a match anywhere in the name. Population breaks
  * every tie, so "Springfield" means the biggest Springfield.
  */
-function score(row: Row, query: string): number {
+function score(row: Row, query: string, preFolded?: string[]): number {
   const pop = row[5] || 0;
-  const names = [row[0], row[1], ...(row[7] || [])];
+  const names = preFolded || [row[0], row[1], ...(row[7] || [])];
 
   // A match on the primary name outranks the same match on an alias: an alias
   // is how a place is known somewhere else, not what it is called.
   let best = 0;
   for (let index = 0; index < names.length; index += 1) {
-    const hay = fold(names[index]);
+    const hay = preFolded ? names[index] : fold(names[index]);
     if (!hay) continue;
     let rank = 0;
     if (hay === query) rank = 1_000_000;
@@ -145,9 +166,9 @@ export function searchLocalCities(query: string, limit = 12): CityResult[] {
   if (q.length < 2) return [];
   const rows = table$();
   const scored: { row: Row; rank: number }[] = [];
-  for (const row of rows) {
-    const rank = score(row, q);
-    if (rank > 0) scored.push({ row, rank });
+  for (let i = 0; i < rows.length; i += 1) {
+    const rank = score(rows[i], q, foldsFor(i, rows[i]));
+    if (rank > 0) scored.push({ row: rows[i], rank });
   }
   scored.sort((a, b) => b.rank - a.rank);
   return scored.slice(0, limit).map(({ row }) => ({

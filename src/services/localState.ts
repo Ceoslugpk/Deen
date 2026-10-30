@@ -54,7 +54,16 @@ export type WorshipSettings = {
 
 /** The four shortcuts a first-time opening shows. Ids, not labels. */
 export const DEFAULT_DAY_TOOLS = ['quran', 'qibla', 'tasbih', 'audio'];
-export type StoredLocation = { latitude: number; longitude: number; label: string };
+/**
+ * A place we remember.
+ *
+ * `timezone` arrived with on-device prayer times. The calculation produces an
+ * instant, not a time of day; which time of day it is depends on whose clock
+ * reads it. Keeping the zone with the coordinates means a city picked in
+ * Karachi still reads as Karachi time after the phone flies home, and it is
+ * one IANA string rather than anything clever.
+ */
+export type StoredLocation = { latitude: number; longitude: number; label: string; timezone?: string };
 
 export const DEFAULT_WORSHIP_SETTINGS: WorshipSettings = {
   calculationMethod: 8,
