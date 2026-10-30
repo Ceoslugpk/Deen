@@ -1221,8 +1221,7 @@ const[quranPosition,setQuranPosition]=useState<any>(null);const[openReflection,s
     : null);
 
   useOverlaySheet('home-day-tools', dayToolOpen, () => dayToolOpen
-    ? <DayToolSheet slot={dayToolSlot} chosen={dayTools} rtl={rtl} T={T}
-        onPickSlot={(index)=>setDayToolSlot(index)}
+    ? <DayToolSheet initialSlot={dayToolSlot} chosen={dayTools} rtl={rtl} T={T}
         onReplace={replaceDayTool}
         onClose={()=>{setDayToolOpen(false);setDayToolSlot(null)}}
         onSeeAll={()=>{setDayToolOpen(false);nav.navigate('Tools')}}/>
@@ -1518,12 +1517,15 @@ const REFLECTION_LABEL: Record<'ayah' | 'name' | 'dua', string> = {
  * A slot is filled rather than emptied: four is what the row is drawn for,
  * and a row with a hole in it is not a choice anybody asked to make.
  */
-function DayToolSheet({ slot, chosen, rtl, T, onPickSlot, onReplace, onClose, onSeeAll }: {
-  slot: number | null;
+function DayToolSheet({ initialSlot, chosen, rtl, T, onReplace, onClose, onSeeAll }: {
+  /**
+   * Which face to open on: null for the four slots, a number to go straight
+   * to replacing that one. Read once, when the sheet mounts.
+   */
+  initialSlot: number | null;
   chosen: DayTool[];
   rtl: boolean;
   T: (text: string) => string;
-  onPickSlot: (index: number) => void;
   onReplace: (index: number, id: string) => void;
   onClose: () => void;
   onSeeAll: () => void;
@@ -1533,6 +1535,14 @@ function DayToolSheet({ slot, chosen, rtl, T, onPickSlot, onReplace, onClose, on
   useEffect(() => {
     Animated.spring(rise, { toValue: 1, friction: 9, tension: 130, useNativeDriver: true }).start();
   }, [rise]);
+
+  /* Which slot is being replaced lives here rather than in the Home screen.
+     The overlay host only redraws when a sheet is opened or closed, so a
+     value held by the caller would change without ever reaching this
+     component — the sheet would open and then refuse to switch faces. State
+     the sheet owns re-renders it directly, which is how every other sheet in
+     the app keeps its own choices. */
+  const [slot, setSlot] = useState<number | null>(initialSlot);
 
   const replacing = slot !== null ? chosen[slot] : null;
 
@@ -1552,7 +1562,7 @@ function DayToolSheet({ slot, chosen, rtl, T, onPickSlot, onReplace, onClose, on
         {replacing === null ? chosen.map((tool, index) => (
           <Pressable key={tool.id} accessibilityRole="button"
             accessibilityLabel={`${T('Change')} ${T(tool.label)}`}
-            onPress={() => onPickSlot(index)}
+            onPress={() => setSlot(index)}
             style={[s.setting, index === chosen.length - 1 && { borderBottomWidth: 0 }]}>
             <View style={s.dayToolIcon}><ToolGraphic tool={tool.icon} size={34} /></View>
             <View style={{ flex: 1 }}>
