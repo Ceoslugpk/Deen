@@ -155,3 +155,21 @@ export function pickEdition<T extends EditionLike>(editions: T[], language: stri
   const named = inLanguage.filter((e) => e.author && !/unknown/i.test(e.author));
   return named[0] || inLanguage[0];
 }
+
+/**
+ * Every edition the server carries for one language.
+ *
+ * Choosing a language means choosing all of it: someone reading Turkish should
+ * be able to switch between the sixty Turkish translations later without the
+ * app having to go back to the network. `pickEdition` is the one to show;
+ * this is the set to keep.
+ *
+ * Ordered so the recommended one comes first — the reader sees their default
+ * at the top of the list rather than hunting for it.
+ */
+export function editionsForLanguage<T extends EditionLike>(editions: T[], language: string): T[] {
+  const inLanguage = editions.filter((e) => e.language === language);
+  const first = pickEdition(editions, language);
+  if (!first) return inLanguage;
+  return [first, ...inLanguage.filter((e) => e.id !== first.id)];
+}
