@@ -74,6 +74,25 @@ export type AudioSettings = {
   translationAudioEnabled: boolean;
   translationEdition: string;
   translationName: string;
+  /**
+   * The reading language the spoken translation was last matched to.
+   *
+   * Without it the sync runs again on every launch and on every re-render
+   * that touches preferences, and a person who deliberately chose a
+   * different voice in the player would find it silently put back.
+   */
+  translationSyncedLanguage: string | null;
+  /**
+   * Set when the sync switched the spoken translation off because nothing is
+   * spoken in the new language, and cleared when a language with a voice
+   * comes back.
+   *
+   * Without it, one move to a language with no audio would leave the switch
+   * off for good: the next language would find it off and take that for a
+   * preference, when in fact nobody had asked for it. Now only a mute this
+   * app performed is lifted, and a mute the person chose is left alone.
+   */
+  translationAutoMuted: boolean;
   sequential: boolean;
   repeat: RepeatMode;
   rate: number;
@@ -153,6 +172,8 @@ export const DEFAULT_AUDIO_SETTINGS: AudioSettings = {
   translationAudioEnabled: false,
   translationEdition: 'en.walk',
   translationName: 'Ibrahim Walk',
+  translationSyncedLanguage: null,
+  translationAutoMuted: false,
   sequential: true,
   repeat: 'all',
   rate: 1,
@@ -211,6 +232,66 @@ export async function loadAudioEditions(force = false): Promise<{ arabic: AudioE
   );
   const translation = editions.filter((edition) => edition.language !== 'ar');
   return { arabic: arabic.length ? arabic : editions.filter((edition) => edition.language === 'ar'), translation };
+}
+
+/**
+ * The spoken translation that belongs to a reading language, if there is one.
+ *
+ * Verse-by-verse wins over a whole-Surah file, because a verse-by-verse
+ * translation can be interleaved with the Arabic ayah by ayah, which is the
+ * only way the two are any use together. A single Surah-long file would have
+ * to be played after the recitation instead of alongside it.
+ */
+export function audioEditionForLanguage(
+  editions: AudioEdition[],
+  language: string,
+): AudioEdition | null {
+  const want = (language || '').toLowerCase();
+  if (!want) return null;
+  const pool = editions.filter((edition) => (edition.language || '').toLowerCase() === want);
+  if (!pool.length) return null;
+  return pool.find((edition) => edition.type === 'versebyverse') || pool[0];
+}
+
+/**
+ * Point the spoken translation at the language being read.
+ *
+ * The player used to keep reciting English to someone reading Urdu, because
+ * the choice lived only in the player: `translationEdition` was set once at
+ * the default and then only ever changed by hand, mid-verse. Changing the
+ * reading language never touched it.
+ *
+ * So the language being read now drives it. Where a voice exists in that
+ * language it is selected; where none exists the spoken translation is
+ * switched off and the recitation is left on its own, because reciting a
+ * language the person is not reading is worse than reciting none. Whether
+ * the spoken translation plays at all stays the person's own switch - this
+ * only decides which voice it uses when it is on.
+ */
+export async function syncAudioTranslationToLanguage(language: string): Promise<AudioSettings> {
+  const code = (language || '').toLowerCase();
+  if (!code || settings.translationSyncedLanguage === code) return settings;
+
+  const { translation } = await loadAudioEditions()
+    .catch(() => ({ arabic: [] as AudioEdition[], translation: [] as AudioEdition[] }));
+  const match = audioEditionForLanguage(translation, code);
+  const patch: Partial<AudioSettings> = { translationSyncedLanguage: code };
+
+  if (match) {
+    patch.translationEdition = match.identifier;
+    patch.translationName = match.englishName;
+    /* Lift only a mute this app applied. One the person chose is theirs. */
+    if (settings.translationAutoMuted) {
+      patch.translationAudioEnabled = true;
+      patch.translationAutoMuted = false;
+    }
+  } else {
+    /* Nothing is spoken in this language, so play the Arabic alone rather
+       than a translation in one the person did not choose. */
+    patch.translationAudioEnabled = false;
+    patch.translationAutoMuted = true;
+  }
+  return saveAudioSettings(patch);
 }
 
 export async function loadSurahReciters(force = false): Promise<SurahReciter[]> {

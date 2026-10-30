@@ -1,0 +1,511 @@
+openapi: 3.1.0
+info:
+  title: Quran Content Worker API
+  version: 1.0.0
+  summary: Quran text translations and recitation audio via AlQuran Cloud and UmmahAPI
+  description: >-
+    Deployed Worker script audio, active version d34c0b2e-9e10-4219-b225-c96b3feba20b,
+    at https://audio.islamicdata.uz. AlQuran Cloud and UmmahAPI JSON/audio routes
+    use fixed upstream allowlists. Existing Islamic Data Worker is not modified.
+servers:
+  - url: http://127.0.0.1:8787
+    description: Local Wrangler development only.
+  - url: https://audio.islamicdata.uz
+    description: Production custom domain; live.
+    x-release-status: production-verified
+security: []
+tags:
+  - name: Translations
+  - name: Audio
+paths:
+  /v1/translations/editions:
+    x-release-status: production-verified
+    get:
+      tags: [Translations]
+      operationId: listTranslationEditions
+      description: Returns AlQuran Cloud text editions filtered to type translation.
+      responses:
+        '200':
+          description: Translation-only catalog.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [sourceApi, data, total]
+                properties:
+                  sourceApi: {$ref: '#/components/schemas/SourceApi'}
+                  data:
+                    type: array
+                    items: {type: object, additionalProperties: true}
+                  total: {type: integer}
+                additionalProperties: true
+        '502': {$ref: '#/components/responses/Error'}
+    head:
+      tags: [Translations]
+      responses:
+        '200': {description: Same headers as GET; no body.}
+        '502': {$ref: '#/components/responses/Error'}
+    options:
+      tags: [Translations]
+      responses:
+        '204': {$ref: '#/components/responses/Preflight'}
+  /v1/translations/ayahs/{surah}/{ayah}/{edition}:
+    x-release-status: production-verified
+    parameters:
+      - name: surah
+        in: path
+        required: true
+        schema: {type: integer, minimum: 1, maximum: 114}
+      - name: ayah
+        in: path
+        required: true
+        description: Must exist in the requested surah.
+        schema: {type: integer, minimum: 1, maximum: 286}
+      - name: edition
+        in: path
+        required: true
+        description: Translation edition identifier from /v1/translations/editions.
+        schema: {type: string, minLength: 1, maxLength: 128}
+    get:
+      tags: [Translations]
+      operationId: getTranslatedAyah
+      responses:
+        '200': {$ref: '#/components/responses/JsonProxy'}
+        '400': {$ref: '#/components/responses/Error'}
+        '502': {$ref: '#/components/responses/Error'}
+    head:
+      tags: [Translations]
+      responses:
+        '200': {description: Same headers as GET; no body.}
+        '400': {$ref: '#/components/responses/Error'}
+        '502': {$ref: '#/components/responses/Error'}
+    options:
+      tags: [Translations]
+      responses:
+        '204': {$ref: '#/components/responses/Preflight'}
+  /v1/translations/surahs/{surah}/{edition}:
+    x-release-status: production-verified
+    parameters:
+      - name: surah
+        in: path
+        required: true
+        schema: {type: integer, minimum: 1, maximum: 114}
+      - name: edition
+        in: path
+        required: true
+        description: Translation edition identifier from /v1/translations/editions.
+        schema: {type: string, minLength: 1, maxLength: 128}
+    get:
+      tags: [Translations]
+      operationId: getTranslatedSurah
+      responses:
+        '200': {$ref: '#/components/responses/JsonProxy'}
+        '400': {$ref: '#/components/responses/Error'}
+        '502': {$ref: '#/components/responses/Error'}
+    head:
+      tags: [Translations]
+      responses:
+        '200': {description: Same headers as GET; no body.}
+        '400': {$ref: '#/components/responses/Error'}
+        '502': {$ref: '#/components/responses/Error'}
+    options:
+      tags: [Translations]
+      responses:
+        '204': {$ref: '#/components/responses/Preflight'}
+  /v1/audio/editions:
+    x-release-status: production-verified
+    get:
+      tags: [Audio]
+      operationId: listAudioEditions
+      responses:
+        '200': {$ref: '#/components/responses/JsonProxy'}
+        '502': {$ref: '#/components/responses/Error'}
+    head:
+      tags: [Audio]
+      responses:
+        '200': {description: Same headers as GET; no body.}
+        '502': {$ref: '#/components/responses/Error'}
+    options:
+      tags: [Audio]
+      responses:
+        '204': {$ref: '#/components/responses/Preflight'}
+  /v1/audio/ayahs/{surah}/{ayah}/{edition}:
+    x-release-status: production-verified
+    parameters:
+      - name: surah
+        in: path
+        required: true
+        schema: {type: integer, minimum: 1, maximum: 114}
+      - name: ayah
+        in: path
+        required: true
+        description: Must exist in the requested surah.
+        schema: {type: integer, minimum: 1, maximum: 286}
+      - name: edition
+        in: path
+        required: true
+        description: Audio edition identifier from /v1/audio/editions.
+        schema: {type: string, minLength: 1, maxLength: 128}
+    get:
+      tags: [Audio]
+      operationId: getRecitationAyah
+      responses:
+        '200': {$ref: '#/components/responses/JsonProxy'}
+        '400': {$ref: '#/components/responses/Error'}
+        '502': {$ref: '#/components/responses/Error'}
+    head:
+      tags: [Audio]
+      responses:
+        '200': {description: Same headers as GET; no body.}
+        '400': {$ref: '#/components/responses/Error'}
+        '502': {$ref: '#/components/responses/Error'}
+    options:
+      tags: [Audio]
+      responses:
+        '204': {$ref: '#/components/responses/Preflight'}
+  /v1/audio/surahs/{surah}/{edition}:
+    x-release-status: production-verified
+    parameters:
+      - name: surah
+        in: path
+        required: true
+        schema: {type: integer, minimum: 1, maximum: 114}
+      - name: edition
+        in: path
+        required: true
+        description: Audio edition identifier from /v1/audio/editions.
+        schema: {type: string, minLength: 1, maxLength: 128}
+    get:
+      tags: [Audio]
+      operationId: getRecitationSurah
+      responses:
+        '200': {$ref: '#/components/responses/JsonProxy'}
+        '400': {$ref: '#/components/responses/Error'}
+        '502': {$ref: '#/components/responses/Error'}
+    head:
+      tags: [Audio]
+      responses:
+        '200': {description: Same headers as GET; no body.}
+        '400': {$ref: '#/components/responses/Error'}
+        '502': {$ref: '#/components/responses/Error'}
+    options:
+      tags: [Audio]
+      responses:
+        '204': {$ref: '#/components/responses/Preflight'}
+  /v1/audio/media/{kind}/{bitrate}/{edition}/{asset}.mp3:
+    x-release-status: production-verified
+    parameters:
+      - name: kind
+        in: path
+        required: true
+        schema: {type: string, enum: [audio, audio-surah]}
+      - name: bitrate
+        in: path
+        required: true
+        schema: {type: integer, minimum: 1, maximum: 320}
+      - name: edition
+        in: path
+        required: true
+        schema: {type: string, minLength: 1, maxLength: 128}
+      - name: asset
+        in: path
+        required: true
+        description: Global ayah number 1–6,236 for audio; surah number 1–114 for audio-surah.
+        schema: {type: integer, minimum: 1, maximum: 6236}
+      - name: Range
+        in: header
+        required: false
+        schema: {type: string, example: 'bytes=0-1023'}
+    get:
+      tags: [Audio]
+      operationId: streamAudio
+      description: Streams the original MP3 from the fixed AlQuran Cloud CDN.
+      responses:
+        '200':
+          description: Complete audio file.
+          content:
+            audio/mpeg:
+              schema: {type: string, format: binary}
+        '206':
+          description: Requested byte range.
+          content:
+            audio/mpeg:
+              schema: {type: string, format: binary}
+        '400': {$ref: '#/components/responses/Error'}
+        '404': {description: Asset absent upstream.}
+        '416': {description: Requested byte range is not satisfiable.}
+        '502': {$ref: '#/components/responses/Error'}
+    head:
+      tags: [Audio]
+      responses:
+        '200': {description: Same headers as GET; no body.}
+        '206': {description: Same range headers as GET; no body.}
+        '400': {$ref: '#/components/responses/Error'}
+        '404': {description: Asset absent upstream.}
+        '416': {description: Requested byte range is not satisfiable.}
+        '502': {$ref: '#/components/responses/Error'}
+    options:
+      tags: [Audio]
+      responses:
+        '204': {$ref: '#/components/responses/Preflight'}
+  /v1/ummahapi/quran:
+    x-release-status: production-verified
+    get:
+      tags: [Translations]
+      operationId: getUmmahQuranOverview
+      responses:
+        '200': {$ref: '#/components/responses/JsonProxy'}
+        '502': {$ref: '#/components/responses/Error'}
+    head:
+      tags: [Translations]
+      responses:
+        '200': {description: Same headers as GET; no body.}
+        '502': {$ref: '#/components/responses/Error'}
+    options:
+      tags: [Translations]
+      responses:
+        '204': {$ref: '#/components/responses/Preflight'}
+  /v1/ummahapi/quran/reciters:
+    x-release-status: production-verified
+    get:
+      tags: [Audio]
+      operationId: listUmmahReciters
+      responses:
+        '200': {$ref: '#/components/responses/JsonProxy'}
+        '502': {$ref: '#/components/responses/Error'}
+    head:
+      tags: [Audio]
+      responses:
+        '200': {description: Same headers as GET; no body.}
+        '502': {$ref: '#/components/responses/Error'}
+    options:
+      tags: [Audio]
+      responses:
+        '204': {$ref: '#/components/responses/Preflight'}
+  /v1/ummahapi/quran/surahs/{surah}:
+    x-release-status: production-verified
+    parameters:
+      - name: surah
+        in: path
+        required: true
+        schema: {type: integer, minimum: 1, maximum: 114}
+      - name: translation
+        in: query
+        required: false
+        schema: {type: string, pattern: '^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$'}
+      - name: script
+        in: query
+        required: false
+        schema: {type: string, pattern: '^[A-Za-z0-9_-]{1,32}$'}
+      - name: reciter
+        in: query
+        required: false
+        schema: {type: integer, minimum: 1, maximum: 13}
+    get:
+      tags: [Translations, Audio]
+      operationId: getUmmahSurah
+      description: Arabic Quran text plus an optional written translation and reciter metadata; audio is recitation, not spoken translation.
+      responses:
+        '200': {$ref: '#/components/responses/JsonProxy'}
+        '400': {$ref: '#/components/responses/Error'}
+        '502': {$ref: '#/components/responses/Error'}
+    head:
+      tags: [Translations, Audio]
+      responses:
+        '200': {description: Same headers as GET; no body.}
+        '400': {$ref: '#/components/responses/Error'}
+        '502': {$ref: '#/components/responses/Error'}
+    options:
+      tags: [Translations, Audio]
+      responses:
+        '204': {$ref: '#/components/responses/Preflight'}
+  /v1/ummahapi/quran/audio/{surah}:
+    x-release-status: production-verified
+    parameters:
+      - name: surah
+        in: path
+        required: true
+        schema: {type: integer, minimum: 1, maximum: 114}
+    get:
+      tags: [Audio]
+      operationId: getUmmahSurahAudio
+      responses:
+        '200': {$ref: '#/components/responses/JsonProxy'}
+        '400': {$ref: '#/components/responses/Error'}
+        '502': {$ref: '#/components/responses/Error'}
+    head:
+      tags: [Audio]
+      responses:
+        '200': {description: Same headers as GET; no body.}
+        '400': {$ref: '#/components/responses/Error'}
+        '502': {$ref: '#/components/responses/Error'}
+    options:
+      tags: [Audio]
+      responses:
+        '204': {$ref: '#/components/responses/Preflight'}
+  /v1/ummahapi/quran/audio/{surah}/{ayah}:
+    x-release-status: production-verified
+    parameters:
+      - name: surah
+        in: path
+        required: true
+        schema: {type: integer, minimum: 1, maximum: 114}
+      - name: ayah
+        in: path
+        required: true
+        schema: {type: integer, minimum: 1, maximum: 286}
+    get:
+      tags: [Audio]
+      operationId: getUmmahAyahAudio
+      responses:
+        '200': {$ref: '#/components/responses/JsonProxy'}
+        '400': {$ref: '#/components/responses/Error'}
+        '502': {$ref: '#/components/responses/Error'}
+    head:
+      tags: [Audio]
+      responses:
+        '200': {description: Same headers as GET; no body.}
+        '400': {$ref: '#/components/responses/Error'}
+        '502': {$ref: '#/components/responses/Error'}
+    options:
+      tags: [Audio]
+      responses:
+        '204': {$ref: '#/components/responses/Preflight'}
+  /v1/ummahapi/audio/media/everyayah/data/{edition}/{file}.mp3:
+    x-release-status: production-verified
+    parameters:
+      - name: edition
+        in: path
+        required: true
+        schema: {type: string, pattern: '^[A-Za-z0-9._-]+$'}
+      - name: file
+        in: path
+        required: true
+        schema: {type: string, pattern: '^[A-Za-z0-9._-]+$'}
+      - name: Range
+        in: header
+        required: false
+        schema: {type: string, example: 'bytes=0-1023'}
+    get:
+      tags: [Audio]
+      operationId: streamUmmahEveryAyahAudio
+      responses:
+        '200': {description: Complete MP3, content: {audio/mpeg: {schema: {type: string, format: binary}}}}
+        '206': {description: Partial MP3, content: {audio/mpeg: {schema: {type: string, format: binary}}}}
+        '400': {$ref: '#/components/responses/Error'}
+        '404': {description: Asset absent upstream.}
+        '502': {$ref: '#/components/responses/Error'}
+    head:
+      tags: [Audio]
+      responses:
+        '200': {description: Same headers as GET; no body.}
+        '206': {description: Same range headers as GET; no body.}
+        '404': {description: Asset absent upstream.}
+    options:
+      tags: [Audio]
+      responses:
+        '204': {$ref: '#/components/responses/Preflight'}
+  /v1/ummahapi/audio/media/quranicaudio/quran/{reciter}/{file}.mp3:
+    x-release-status: production-verified
+    parameters:
+      - name: reciter
+        in: path
+        required: true
+        schema: {type: string, pattern: '^[A-Za-z0-9._-]+$'}
+      - name: file
+        in: path
+        required: true
+        schema: {type: string, pattern: '^[A-Za-z0-9._-]+$'}
+      - name: Range
+        in: header
+        required: false
+        schema: {type: string, example: 'bytes=0-1023'}
+    get:
+      tags: [Audio]
+      operationId: streamUmmahQuranicaudio
+      responses:
+        '200': {description: Complete MP3, content: {audio/mpeg: {schema: {type: string, format: binary}}}}
+        '206': {description: Partial MP3, content: {audio/mpeg: {schema: {type: string, format: binary}}}}
+        '400': {$ref: '#/components/responses/Error'}
+        '404': {description: Asset absent upstream.}
+        '502': {$ref: '#/components/responses/Error'}
+    head:
+      tags: [Audio]
+      responses:
+        '200': {description: Same headers as GET; no body.}
+        '206': {description: Same range headers as GET; no body.}
+        '404': {description: Asset absent upstream.}
+    options:
+      tags: [Audio]
+      responses:
+        '204': {$ref: '#/components/responses/Preflight'}
+  /v1/ummahapi/audio/media/mp3quran/buajan/{file}.mp3:
+    x-release-status: production-verified
+    parameters:
+      - name: file
+        in: path
+        required: true
+        schema: {type: string, pattern: '^[A-Za-z0-9._-]+$'}
+      - name: Range
+        in: header
+        required: false
+        schema: {type: string, example: 'bytes=0-1023'}
+    get:
+      tags: [Audio]
+      operationId: streamUmmahMp3Quran
+      responses:
+        '200': {description: Complete MP3, content: {audio/mpeg: {schema: {type: string, format: binary}}}}
+        '206': {description: Partial MP3, content: {audio/mpeg: {schema: {type: string, format: binary}}}}
+        '400': {$ref: '#/components/responses/Error'}
+        '404': {description: Asset absent upstream.}
+        '502': {$ref: '#/components/responses/Error'}
+    head:
+      tags: [Audio]
+      responses:
+        '200': {description: Same headers as GET; no body.}
+        '206': {description: Same range headers as GET; no body.}
+        '404': {description: Asset absent upstream.}
+    options:
+      tags: [Audio]
+      responses:
+        '204': {$ref: '#/components/responses/Preflight'}
+components:
+  schemas:
+    SourceApi:
+      type: string
+      const: Islamic - Your Daily Companion
+    Error:
+      type: object
+      required: [sourceApi, error]
+      properties:
+        sourceApi: {$ref: '#/components/schemas/SourceApi'}
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: {type: integer}
+            message: {type: string}
+      additionalProperties: true
+    JsonProxy:
+      type: object
+      required: [sourceApi]
+      properties:
+        sourceApi: {$ref: '#/components/schemas/SourceApi'}
+        data: {}
+      additionalProperties: true
+  responses:
+    Error:
+      description: Worker validation, upstream failure, or invalid upstream response.
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+    JsonProxy:
+      description: Provider JSON with app sourceApi brand. Audio URLs, when present, use this request origin.
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/JsonProxy'}
+    Preflight:
+      description: CORS preflight response.
+      headers:
+        Access-Control-Allow-Origin: {schema: {type: string}}
+        Access-Control-Allow-Methods: {schema: {type: string, example: 'GET, HEAD, OPTIONS'}}
