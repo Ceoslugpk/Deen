@@ -55,57 +55,56 @@ export const UI_READY: LanguageCode[] = ['en', 'ar'];
 export const LANGUAGES: Language[] = [
   {
     code: 'en', native: 'English', english: 'English', rtl: false, uiReady: true,
-    text: { identifier: 'en.sahih', name: 'Saheeh International', kind: 'translation' },
+    text: { identifier: 'tr_en_saheeh_international', name: 'Saheeh International', kind: 'translation' },
     voice: { identifier: 'en.walk', name: 'Ibrahim Walk' },
   },
   {
     code: 'ar', native: 'العربية', english: 'Arabic', rtl: true, uiReady: true,
-    text: { identifier: 'ar.muyassar', name: 'Tafsir al-Muyassar', kind: 'tafsir' },
+    text: { identifier: 'tafsir_ar_arabic_ar-tafsir-muyassar', name: 'Tafsir al-Muyassar', kind: 'tafsir' },
   },
   {
     code: 'ur', native: 'اردو', english: 'Urdu', rtl: true, uiReady: false,
-    text: { identifier: 'ur.jalandhry', name: 'Fateh Muhammad Jalandhry', kind: 'translation' },
+    text: { identifier: 'tr_ur_abul_ala_maududi', name: 'Abul Ala Maududi', kind: 'translation' },
     voice: { identifier: 'ur.khan', name: 'Shamshad Ali Khan' },
   },
   {
     code: 'fr', native: 'Français', english: 'French', rtl: false, uiReady: false,
-    text: { identifier: 'fr.hamidullah', name: 'Muhammad Hamidullah', kind: 'translation' },
+    text: { identifier: 'tr_fr_muhammad_hamidullah', name: 'Muhammad Hamidullah', kind: 'translation' },
     voice: { identifier: 'fr.leclerc', name: 'Youssouf Leclerc' },
   },
   {
     code: 'tr', native: 'Türkçe', english: 'Turkish', rtl: false, uiReady: false,
-    text: { identifier: 'tr.diyanet', name: 'Diyanet İşleri', kind: 'translation' },
+    text: { identifier: 'tr_tr_diyanet_isleri_3', name: 'Diyanet İşleri', kind: 'translation' },
     voice: { identifier: 'tr.vakfi-audio', name: 'Diyanet Vakfı' },
   },
   {
     code: 'ru', native: 'Русский', english: 'Russian', rtl: false, uiReady: false,
-    text: { identifier: 'ru.kuliev', name: 'Elmir Kuliev', kind: 'translation' },
+    text: { identifier: 'tr_ru_elmir_kuliev', name: 'Elmir Kuliev', kind: 'translation' },
     voice: { identifier: 'ru.kuliev-audio', name: 'Elmir Kuliev' },
   },
   {
     code: 'zh', native: '中文', english: 'Chinese', rtl: false, uiReady: false,
-    text: { identifier: 'zh.jian', name: 'Ma Jian', kind: 'translation' },
+    text: { identifier: 'tr_zh_ma_jian_latin_script', name: 'Ma Jian', kind: 'translation' },
     voice: { identifier: 'zh.chinese', name: 'Chinese' },
   },
   {
     code: 'fa', native: 'فارسی', english: 'Persian', rtl: true, uiReady: false,
-    text: { identifier: 'fa.fooladvand', name: 'Mohammad Mahdi Fooladvand', kind: 'translation' },
+    text: { identifier: 'tr_fa_baha_oddin_khorramshahi_2', name: 'Baha Oddin Khorramshahi', kind: 'translation' },
     voice: { identifier: 'fa.hedayatfarfooladvand', name: 'Fooladvand (Hedayatfar)' },
   },
   {
     code: 'uz', native: "Oʻzbekcha", english: 'Uzbek', rtl: false, uiReady: false,
-    text: { identifier: 'uz.sodik', name: 'Muhammad Sodik Yusuf', kind: 'translation' },
+    text: { identifier: 'tr_uz_muhammad_sodik_muhammad_yusuf', name: 'Muhammad Sodik Muhammad Yusuf', kind: 'translation' },
     voice: { identifier: 'uz.sodik-audio', name: 'Muhammad Sodik Yusuf' },
   },
   {
-    // Kazakh has an audio translation but no text edition on the API, so the
-    // Quran text stays where it is and only the voice follows the choice.
     code: 'kk', native: 'Қазақша', english: 'Kazakh', rtl: false, uiReady: false,
+    text: { identifier: 'tr_kk_khalifah_altai', name: 'Khalifah Altai', kind: 'translation' },
     voice: { identifier: 'kk.khalifahaltai-audio', name: 'Khalifah Altai' },
   },
   {
     code: 'my', native: 'မြန်မာ', english: 'Burmese', rtl: false, uiReady: false,
-    text: { identifier: 'my.ghazi', name: 'Ghazi Muhammed Hashim', kind: 'translation' },
+    text: { identifier: 'tr_my_translation_by_ghazi_muhammed_ha', name: 'Ghazi Muhammed Hashim', kind: 'translation' },
     voice: { identifier: 'my.hashimtinmyint', name: 'Hashim Tin Myint' },
   },
 ];

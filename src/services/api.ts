@@ -1,5 +1,7 @@
 import { getCachedJson, setCachedJson } from './contentCache';
 import { daysOfHijriMonth, gregorianForHijri, hijriForDate } from './hijri';
+import { getDailyHadith as getWorkerDailyHadith, getSurah, IslamicDataError } from './islamicDataApi';
+import { DEFAULT_TRANSLATION_EDITION } from './quranState';
 import {
   computeDayTimes,
   hijriLabel,
@@ -23,6 +25,54 @@ export type SurahReciter = { id: number; name: string; letter: string; server: s
 
 const ISLAMIC = 'https://api.islamic.app/v1';
 const QURAN = 'https://api.alquran.cloud/v1';
+
+/**
+ * The meaning of a verse, from the app's own server.
+ *
+ * `getVerses` and its siblings were written when there was one provider for
+ * everything, and they read the translation, the page number and the juz from
+ * the same response. The app's own Worker serves the meaning but carries no
+ * page index, so those two jobs have to come apart: the Arabic edition keeps
+ * supplying where a verse sits, and the Worker supplies what it means.
+ *
+ * Which provider answers is decided by trying the Worker first and falling
+ * back on a 404. It is not decided by inspecting the id, because an id that
+ * looks like one thing and is another is exactly the mistake that leaves a
+ * reader staring at a blank column, and a round trip tells you for certain.
+ *
+ * Results are held per surah for the session. Reading a surah touches this
+ * once, and paging through every surah touches it 114 times, which the Worker
+ * is happy to serve but a phone is not obliged to wait for twice.
+ */
+const workerSurahCache = new Map<string, Map<string, string> | null>();
+
+async function workerTexts(editionId: string, surahs: Iterable<string>): Promise<Map<string, string> | null> {
+  if (!editionId) return null;
+  const out = new Map<string, string>();
+  for (const surah of new Set(surahs)) {
+    const cacheKey = `${editionId}:${surah}`;
+    let rows = workerSurahCache.get(cacheKey);
+    if (rows === undefined) {
+      try {
+        const response = await getSurah('quran', editionId, Number(surah));
+        rows = new Map(response.rows.map((row) => [row.verseKey, row.text]));
+      } catch (error) {
+        /* A 404 means this is not one of ours, and the caller should ask the
+           other provider. Anything else - offline, timeout - is not an answer
+           either way, so it is not cached as one. */
+        if (error instanceof IslamicDataError && error.status === 404) {
+          workerSurahCache.set(cacheKey, null);
+          return null;
+        }
+        return null;
+      }
+      workerSurahCache.set(cacheKey, rows);
+    }
+    if (rows === null) return null;
+    for (const [key, value] of rows) out.set(key, value);
+  }
+  return out;
+}
 
 async function json(url: string) {
   const response = await fetch(url, { headers: { Accept: 'application/json' } });
@@ -311,32 +361,43 @@ export async function getChapters(): Promise<Chapter[]> {
 
 export async function getVerses(chapterId: number, options: { script?: string; translation?: string } = {}): Promise<Verse[]> {
   const script = options.script || 'quran-uthmani';
-  const translation = options.translation || 'en.sahih';
+  const translation = options.translation || DEFAULT_TRANSLATION_EDITION;
   const arabicRequest = script === 'quran-indopak'
     ? fetch(`https://quran-json.risanb.com/text/hafs-nastaliq/chapters/${chapterId}.json`).then(async response=>{if(!response.ok)throw new Error(`IndoPak text request failed (${response.status})`);return response.json()})
     : json(`${QURAN}/surah/${chapterId}/${script}`);
-  const [arabic, english, audio] = await Promise.all([
+  const [arabic, audio] = await Promise.all([
     arabicRequest,
-    json(`${QURAN}/surah/${chapterId}/${translation}`),
     json(`${QURAN}/surah/${chapterId}/ar.alafasy`),
   ]);
   const ayahs = script === 'quran-indopak' ? arabic.verses : arabic.ayahs;
+  const keys = ayahs.map((a: any, index: number) =>
+    `${chapterId}:${script === 'quran-indopak' ? index + 1 : a.numberInSurah}`);
+
+  /* The meaning comes from the app's own server when it has this edition, and
+     from the other provider when it does not. Either way the page and juz come
+     from the Arabic edition, which is the only place they are guaranteed. */
+  const worker = await workerTexts(translation, [String(chapterId)]);
+  const english = worker ? null : await json(`${QURAN}/surah/${chapterId}/${translation}`);
+
   return ayahs.map((a: any, index: number) => ({
     id: script === 'quran-indopak' ? index + 1 : a.number,
-    verse_key: `${chapterId}:${script === 'quran-indopak' ? index + 1 : a.numberInSurah}`,
+    verse_key: keys[index],
     text_uthmani: a.text,
-    translation: english.ayahs[index]?.text,
+    translation: worker ? worker.get(keys[index]) : english.ayahs[index]?.text,
     audio: audio.ayahs[index]?.audio,
-    page: english.ayahs[index]?.page,
-    juz: english.ayahs[index]?.juz,
+    page: a.page ?? english?.ayahs[index]?.page,
+    juz: a.juz ?? english?.ayahs[index]?.juz,
   }));
 }
 
 export async function getPageVerses(page: number, options: { script?: string; translation?: string } = {}): Promise<Verse[]> {
   const script = options.script === 'quran-indopak' ? 'quran-uthmani' : options.script || 'quran-uthmani';
-  const translation = options.translation || 'en.sahih';
-  const [arabic, translated] = await Promise.all([json(`${QURAN}/page/${page}/${script}`),json(`${QURAN}/page/${page}/${translation}`)]);
-  return arabic.ayahs.map((a:any,index:number)=>({id:a.number,verse_key:`${a.surah.number}:${a.numberInSurah}`,text_uthmani:a.text,translation:translated.ayahs[index]?.text,page:a.page,juz:a.juz,hizbQuarter:a.hizbQuarter,surah_name:a.surah.englishName}));
+  const translation = options.translation || DEFAULT_TRANSLATION_EDITION;
+  const arabic = await json(`${QURAN}/page/${page}/${script}`);
+  const keys = arabic.ayahs.map((a: any) => `${a.surah.number}:${a.numberInSurah}`);
+  const worker = await workerTexts(translation, keys.map((k: string) => k.split(':')[0]));
+  const translated = worker ? null : await json(`${QURAN}/page/${page}/${translation}`);
+  return arabic.ayahs.map((a:any,index:number)=>({id:a.number,verse_key:keys[index],text_uthmani:a.text,translation:worker?worker.get(keys[index]):translated.ayahs[index]?.text,page:a.page,juz:a.juz,hizbQuarter:a.hizbQuarter,surah_name:a.surah.englishName}));
 }
 
 export async function getAyahOfDay(): Promise<DailyAyah> {
@@ -354,32 +415,42 @@ export async function getAyahForDate(date: Date): Promise<DailyAyah> {
   const start = new Date(date.getFullYear(), 0, 0);
   const day = Math.floor((new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime() - start.getTime()) / 86400000);
   const ayahNumber = (day % 6236) + 1;
-  const [arabic, english] = await Promise.all([
-    json(`${QURAN}/ayah/${ayahNumber}/quran-uthmani`),
-    json(`${QURAN}/ayah/${ayahNumber}/en.sahih`),
-  ]);
+  /* The ayah is addressed by its global number, which only the third-party
+     index understands; the app's own server addresses one by surah and verse.
+     So the Arabic and the reference come from the index, and the meaning is
+     then asked for by the key that call just handed us. */
+  const arabic = await json(`${QURAN}/ayah/${ayahNumber}/quran-uthmani`);
+  const verseKey = `${arabic.surah.number}:${arabic.numberInSurah}`;
+  const worker = await workerTexts(DEFAULT_TRANSLATION_EDITION, [String(arabic.surah.number)]);
+  let translation = worker?.get(verseKey);
+  if (!translation) {
+    translation = await json(`${QURAN}/ayah/${ayahNumber}/en.sahih`).then((r: any) => r?.text).catch(() => '');
+  }
   return {
     reference: `${arabic.surah.englishName} ${arabic.surah.number}:${arabic.numberInSurah}`,
     arabicReference: `${arabic.surah.name} ${arabic.surah.number}:${arabic.numberInSurah}`,
     arabic: arabic.text,
-    translation: english.text,
+    translation: translation || '',
   };
 }
 
 export async function getJuzVerses(juz: number, options: { script?: string; translation?: string } = {}): Promise<Verse[]> {
   const script = options.script || 'quran-uthmani';
-  const translation = options.translation || 'en.sahih';
-  const [arabic, english, audio] = await Promise.all([
-    json(`${QURAN}/juz/${juz}/${script}`), json(`${QURAN}/juz/${juz}/${translation}`), json(`${QURAN}/juz/${juz}/ar.alafasy`),
+  const translation = options.translation || DEFAULT_TRANSLATION_EDITION;
+  const [arabic, audio] = await Promise.all([
+    json(`${QURAN}/juz/${juz}/${script}`), json(`${QURAN}/juz/${juz}/ar.alafasy`),
   ]);
-  return arabic.ayahs.map((a:any,index:number)=>({id:a.number,verse_key:`${a.surah.number}:${a.numberInSurah}`,text_uthmani:a.text,translation:english.ayahs[index]?.text,audio:audio.ayahs[index]?.audio,page:a.page,juz:a.juz,hizbQuarter:a.hizbQuarter,surah_name:a.surah.englishName} as Verse & {surah_name:string}));
+  const keys = arabic.ayahs.map((a: any) => `${a.surah.number}:${a.numberInSurah}`);
+  const worker = await workerTexts(translation, keys.map((k: string) => k.split(':')[0]));
+  const english = worker ? null : await json(`${QURAN}/juz/${juz}/${translation}`);
+  return arabic.ayahs.map((a:any,index:number)=>({id:a.number,verse_key:keys[index],text_uthmani:a.text,translation:worker?worker.get(keys[index]):english.ayahs[index]?.text,audio:audio.ayahs[index]?.audio,page:a.page,juz:a.juz,hizbQuarter:a.hizbQuarter,surah_name:a.surah.englishName} as Verse & {surah_name:string}));
 }
 
 export async function getHizbVerses(hizb: number, options: { script?: string; translation?: string } = {}): Promise<Verse[]> {
   const script = options.script === 'quran-indopak' ? 'quran-uthmani' : options.script || 'quran-uthmani';
-  const translation = options.translation || 'en.sahih';
+  const translation = options.translation || DEFAULT_TRANSLATION_EDITION;
   const quarters=Array.from({length:4},(_,i)=>(hizb-1)*4+i+1);
-  const groups=await Promise.all(quarters.map(async quarter=>{const[arabic,translated]=await Promise.all([json(`${QURAN}/hizbQuarter/${quarter}/${script}`),json(`${QURAN}/hizbQuarter/${quarter}/${translation}`)]);return arabic.ayahs.map((a:any,index:number)=>({id:a.number,verse_key:`${a.surah.number}:${a.numberInSurah}`,text_uthmani:a.text,translation:translated.ayahs[index]?.text,page:a.page,juz:a.juz,hizbQuarter:a.hizbQuarter,surah_name:a.surah.englishName}))}));
+  const groups=await Promise.all(quarters.map(async quarter=>{const arabic=await json(`${QURAN}/hizbQuarter/${quarter}/${script}`);const keys=arabic.ayahs.map((a:any)=>`${a.surah.number}:${a.numberInSurah}`);const worker=await workerTexts(translation,keys.map((k:string)=>k.split(':')[0]));const translated=worker?null:await json(`${QURAN}/hizbQuarter/${quarter}/${translation}`);return arabic.ayahs.map((a:any,index:number)=>({id:a.number,verse_key:keys[index],text_uthmani:a.text,translation:worker?worker.get(keys[index]):translated.ayahs[index]?.text,page:a.page,juz:a.juz,hizbQuarter:a.hizbQuarter,surah_name:a.surah.englishName}))}));
   const unique=new Map<string,Verse>();groups.flat().forEach((verse:any)=>unique.set(verse.verse_key,verse));return [...unique.values()];
 }
 
@@ -388,7 +459,7 @@ export async function getQuranEditions(type = 'translation'): Promise<QuranEditi
   return data.map((e:any)=>({identifier:e.identifier,language:e.language,englishName:e.englishName,name:e.name,type:e.type,direction:e.direction}));
 }
 
-export async function searchQuran(query: string, edition = 'en.sahih'): Promise<QuranSearchResult[]> {
+export async function searchQuran(query: string, edition = DEFAULT_TRANSLATION_EDITION): Promise<QuranSearchResult[]> {
   const data = await json(`${QURAN}/search/${encodeURIComponent(query)}/all/${edition}`);
   return (data.matches || []).map((m:any)=>({verseKey:`${m.surah.number}:${m.numberInSurah}`,surahId:m.surah.number,surahName:m.surah.englishName,ayah:m.numberInSurah,text:m.text,edition:m.edition?.englishName||edition}));
 }
@@ -398,9 +469,30 @@ export async function getAyahEditions(verseKey: string, editions: string[]): Pro
   return data.map((row:any)=>({edition:row.edition.identifier,name:row.edition.englishName,language:row.edition.language,text:row.text}));
 }
 
+/**
+ * The hadith of the day.
+ *
+ * Asked from the app's own server first, because it is deterministic there:
+ * the same date always returns the same narration, so a day can be cached
+ * whole and a person who opens the app twice sees the same hadith rather than
+ * whichever one was next in a rotation.
+ *
+ * The old host stays as a fallback. A failed day is a blank card on the home
+ * screen, and one request to a third party is worth avoiding that.
+ */
 export async function getDailyHadith(): Promise<DailyHadith> {
-  const data = await json(`${ISLAMIC}/hadith/today/bukhari`);
-  return { collection: data.collection, number: data.hadithNumber, text: data.en?.text || '', arabic: data.ar?.text };
+  try {
+    const data = await getWorkerDailyHadith();
+    return {
+      collection: data.collection?.slug || data.collection?.name || 'bukhari',
+      number: String(data.hadith?.number ?? ''),
+      text: data.hadith?.text || '',
+      arabic: data.hadith?.arabic || undefined,
+    };
+  } catch {
+    const data = await json(`${ISLAMIC}/hadith/today/bukhari`);
+    return { collection: data.collection, number: data.hadithNumber, text: data.en?.text || '', arabic: data.ar?.text };
+  }
 }
 
 export const NAME_LANGUAGES = [
