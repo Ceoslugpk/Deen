@@ -12,7 +12,11 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "app.deen.companion"
+      "bundleIdentifier": "app.deen.companion",
+      "icon": {
+        "light": "./assets/ios-icon-light.png",
+        "dark": "./assets/ios-icon-dark.png"
+      }
     },
     "android": {
       "package": "app.deen.companion",
