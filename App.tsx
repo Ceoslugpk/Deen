@@ -7748,10 +7748,14 @@ function PlayerAura() {
   </Animated.View>;
 }
 
+/* Tab icons are drawn for the navigation bar specifically: read at 23pt, they
+   are filled artwork rather than the stroked glyphs used elsewhere, so they
+   carry their own colour in both themes instead of being tinted at runtime.
+   Each is supplied as a 160px light and a 160px dark cut. */
 const TAB_ITEMS = [
   { name: 'Home', label: 'Home', ar: 'الرئيسية', icon: require('./assets/tool-icons/tab-home.png'), iconDark: require('./assets/tool-icons/tab-home-dark.png') },
-  { name: 'Prayer', label: 'Prayer', ar: 'الصلاة', icon: require('./assets/tool-icons/salah-guide.png'), iconDark: require('./assets/tool-icons/salah-guide-dark.png') },
-  { name: 'Quran', label: 'Quran', ar: 'القرآن', icon: require('./assets/tool-icons/quran.png'), iconDark: require('./assets/tool-icons/quran-dark.png') },
+  { name: 'Prayer', label: 'Prayer', ar: 'الصلاة', icon: require('./assets/tool-icons/tab-prayer.png'), iconDark: require('./assets/tool-icons/tab-prayer-dark.png') },
+  { name: 'Quran', label: 'Quran', ar: 'القرآن', icon: require('./assets/tool-icons/tab-quran.png'), iconDark: require('./assets/tool-icons/tab-quran-dark.png') },
   { name: 'Library', label: 'Library', ar: 'المكتبة', icon: require('./assets/tool-icons/tab-library.png'), iconDark: require('./assets/tool-icons/tab-library-dark.png') },
   { name: 'Tools', label: 'Tools', ar: 'الأدوات', icon: require('./assets/tool-icons/tab-tools.png'), iconDark: require('./assets/tool-icons/tab-tools-dark.png') },
 ];
