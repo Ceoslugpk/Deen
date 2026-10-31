@@ -566,6 +566,18 @@ function useOverlaySheet(key: string, active: boolean, render: () => React.React
     showOverlay(key, () => latest.current());
     return () => hideOverlay(key);
   }, [key, active]);
+  /* The host draws whatever the callback returned the last time *it* rendered,
+     and it only re-renders when a sheet opens or closes. So registering the
+     newest callback was not enough: anything that arrived after the sheet was
+     already on screen never reached it. The translations sheet opened, asked
+     for a ~200KB catalogue, and stayed on "Loading live data…" - the parent
+     re-rendered with all 484 editions and the host never heard, so the sheet
+     kept its first output until something else, toggling a switch, happened to
+     redraw it. Ask the host to redraw after every render while this sheet is
+     open. It never loops: redrawing the host does not re-render the owner. */
+  useEffect(() => {
+    if (active) emitOverlay();
+  });
 }
 
 /* The same defaults the service uses, so the two cannot drift: this is only
@@ -7319,8 +7331,18 @@ async function playFromReader(chapter: Chapter, verse: Verse, rtl = false) {
   try {
     const settings = getAudioSettings();
     const ayah = Number(String(verse.verse_key).split(':')[1] || 1);
-    const queue = await buildQueueForChapter(chapter.id, chapter.name_simple, settings);
-    const index = queue.findIndex((track) => track.kind === 'arabic' && track.ayahNumber === ayah);
+    let queue = await buildQueueForChapter(chapter.id, chapter.name_simple, settings);
+    let index = queue.findIndex((track) => track.kind === 'arabic' && track.ayahNumber === ayah);
+    // A full-Surah reciter is a single file covering the whole chapter, so it has no
+    // track for the tapped ayah. Fall back to per-ayah audio (verse mode) so tapping a
+    // verse plays that verse instead of restarting the Surah from the beginning.
+    if (index < 0) {
+      try {
+        const verseQueue = await buildQueueForChapter(chapter.id, chapter.name_simple, { ...settings, reciterMode: 'verse' });
+        const verseIndex = verseQueue.findIndex((track) => track.kind === 'arabic' && track.ayahNumber === ayah);
+        if (verseIndex >= 0) { queue = verseQueue; index = verseIndex; }
+      } catch { /* no per-ayah audio for this reciter — keep the queue we already have */ }
+    }
     await playQueue(queue, index < 0 ? 0 : index);
   } catch (e: any) { Alert.alert(tx(rtl,'Audio unavailable'),tx(rtl,e.message)); }
 }
