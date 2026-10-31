@@ -46,11 +46,6 @@ export type Language = {
 
 const RTL: LanguageCode[] = ['ar', 'ur', 'fa'];
 
-/**
- * Languages with a finished interface. Everything else is offered but reads
- * English until its copy is written.
- */
-export const UI_READY: LanguageCode[] = ['en', 'ar'];
 
 export const LANGUAGES: Language[] = [
   {

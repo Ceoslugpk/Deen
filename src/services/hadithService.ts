@@ -69,7 +69,6 @@ export function hadithSourceLabel(rtl: boolean, slug: string): string {
   return rtl ? known?.arabicName || slug : (known?.name || slug).toUpperCase();
 }
 
-const EDITION_BASE = null; /* Retired: the app reads hadith from its own server now. */
 const STATE_KEY = 'hadith-state-v1';
 const MEMORY_LIMIT = 3;
 
@@ -77,28 +76,10 @@ const memory = new Map<string, HadithCollectionData>();
 const inflight = new Map<string, Promise<HadithCollectionData>>();
 const arabicInflight = new Map<string, Promise<HadithCollectionData | null>>();
 
-type RawHadith = {
-  hadithnumber?: number | string;
-  arabicnumber?: number | string;
-  text?: string;
-  grades?: HadithGrade[];
-  reference?: { book?: number; hadith?: number };
-};
-
 const toNumber = (value: unknown) => {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
 };
-
-function arabicMap(arabic: any) {
-  const map = new Map<number, string>();
-  const rows: RawHadith[] = Array.isArray(arabic?.hadiths) ? arabic.hadiths : [];
-  rows.forEach((row) => {
-    const key = toNumber(row.hadithnumber);
-    if (key && typeof row.text === 'string') map.set(key, row.text.trim());
-  });
-  return map;
-}
 
 /**
  * No longer a second fetch.
@@ -118,77 +99,6 @@ export async function hydrateHadithArabic(slug: string): Promise<HadithCollectio
   const next = { ...data, arabicReady: true };
   memory.set(slug, next);
   return next;
-}
-
-function mergeEditions(slug: string, english: any, arabic: any): HadithCollectionData {
-  const sections: Record<string, string> = english?.metadata?.sections || {};
-  const details: Record<string, any> = english?.metadata?.section_details || {};
-  const englishRows: RawHadith[] = Array.isArray(english?.hadiths) ? english.hadiths : [];
-  const arabicRows: RawHadith[] = Array.isArray(arabic?.hadiths) ? arabic.hadiths : [];
-  const arabicByNumber = new Map<number, string>();
-  arabicRows.forEach((row) => {
-    const key = toNumber(row.hadithnumber);
-    if (key && typeof row.text === 'string') arabicByNumber.set(key, row.text);
-  });
-
-  const hadiths: Hadith[] = [];
-  englishRows.forEach((row) => {
-    const number = toNumber(row.hadithnumber);
-    if (!number) return;
-    const text = typeof row.text === 'string' ? row.text.trim() : '';
-    const arabic = (arabicByNumber.get(number) || '').trim();
-    if (!text && !arabic) return;
-    const book = toNumber(row.reference?.book);
-    hadiths.push({
-      id: `${slug}:${number}`,
-      slug,
-      number,
-      arabicNumber: toNumber(row.arabicnumber) || number,
-      book,
-      bookName: sections[String(book)] || 'General',
-      english: text,
-      arabic,
-      grades: Array.isArray(row.grades) ? row.grades.filter((grade) => grade && grade.grade) : [],
-    });
-  });
-
-  const books: HadithBook[] = Object.keys(sections)
-    .map((key) => toNumber(key))
-    .filter((number) => number > 0)
-    .sort((a, b) => a - b)
-    .map((number) => {
-      const detail = details[String(number)] || {};
-      const first = toNumber(detail.hadithnumber_first);
-      const last = toNumber(detail.hadithnumber_last);
-      const count = hadiths.filter((hadith) => hadith.book === number).length || Math.max(0, last - first + 1);
-      return { number, name: sections[String(number)] || `Book ${number}`, first, last, count };
-    })
-    .filter((book) => book.count > 0);
-
-  return {
-    slug,
-    name: english?.metadata?.name || slug,
-    books,
-    hadiths,
-    loadedAt: Date.now(),
-    source: `${EDITION_BASE}/eng-${slug}.min.json`,
-    arabicReady: !!arabic,
-  };
-}
-
-async function cacheBooks(data: HadithCollectionData) {
-  try {
-    const existing = new Set(await listCachedKeys('hadith'));
-    for (const book of data.books) {
-      const key = `book-${data.slug}-${book.number}`;
-      if (existing.has(key)) continue;
-      const rows = data.hadiths.filter((hadith) => hadith.book === book.number);
-      // eslint-disable-next-line no-await-in-loop
-      await setCachedJson('hadith', key, { book, hadiths: rows });
-    }
-  } catch {
-    /* caching is best effort — a failed write must not break browsing */
-  }
 }
 
 /**
@@ -408,9 +318,6 @@ function emit(next: HadithUserState) {
   listeners.forEach((listener) => listener(state));
 }
 
-export function getHadithState() {
-  return state;
-}
 
 export function subscribeHadith(listener: (next: HadithUserState) => void) {
   listeners.add(listener);

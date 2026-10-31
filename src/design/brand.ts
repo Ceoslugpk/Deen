@@ -28,7 +28,6 @@ export const BRAND = {
   pearl:       '#F9F2EB',
 } as const;
 
-export type BrandKey = keyof typeof BRAND;
 
 /* ------------------------------------------------------------------ *
  * Derivation helpers

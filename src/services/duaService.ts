@@ -62,5 +62,3 @@ export async function loadDuas(key: string, force = false): Promise<{ duas: Dua[
   }
 }
 
-/** Occasions that belong to the prayer itself, surfaced together on the duas screen. */
-export const PRAYER_OCCASIONS = ['after-prayer', 'prayer', 'mosque'];

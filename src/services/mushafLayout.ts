@@ -28,8 +28,6 @@ export const PAGE_ASPECT = 14 / 20;
  */
 export const PAGE_ASPECT_TALL = 14 / 21;
 
-/** Total pages in the Madinah Mushaf. */
-export const TOTAL_PAGES = 604;
 
 export type MushafLayout = {
   /** Width of the page in points. */

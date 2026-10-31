@@ -69,9 +69,6 @@ async function persist(next: TasbihState) {
   await AsyncStorage.setItem(KEY, JSON.stringify(next)).catch(() => undefined);
 }
 
-export function getTasbihState() {
-  return state;
-}
 
 export function subscribeTasbih(listener: (next: TasbihState) => void) {
   listeners.add(listener);

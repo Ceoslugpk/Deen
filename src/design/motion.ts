@@ -36,7 +36,6 @@ export const MOTION = {
 
 /** Easing that decelerates into place, so nothing arrives abruptly. */
 export const easeOut = Easing.out(Easing.cubic);
-export const easeInOut = Easing.inOut(Easing.sin);
 
 /**
  * Press depth.

@@ -73,9 +73,6 @@ async function persist(next: LockConfig) {
   await AsyncStorage.setItem(KEY, JSON.stringify(next)).catch(() => undefined);
 }
 
-export function getLockConfig() {
-  return config;
-}
 
 export function subscribeLockConfig(listener: (next: LockConfig) => void) {
   configListeners.add(listener);

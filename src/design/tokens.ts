@@ -37,9 +37,5 @@ export const CARD = {
   gap: 12,
 } as const;
 
-/** Section rhythm: a section title sits 32 above its group, cards 12 apart. */
-export const SECTION_GAP = 32;
 export const CARD_GAP = 12;
 
-/** Minimum comfortable touch target. */
-export const TOUCH = 44;

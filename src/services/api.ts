@@ -152,30 +152,6 @@ export async function getPrayerTimes(latitude = 25.2048, longitude = 55.2708): P
   return (await getPrayerSnapshot(latitude, longitude)).prayers;
 }
 
-/** The Arabic name of a weekday, built from a `DD-MM-YYYY` date. */
-function gregorianWeekday(date: string): string | undefined {
-  const [day, month, year] = String(date).split('-').map(Number);
-  if (!day || !month || !year) return undefined;
-  return new Date(year, month - 1, day).toLocaleDateString('ar-u-nu-latn', { weekday: 'long' });
-}
-
-function calendarDay(row: any, timeFormat: '12' | '24' = '12'): CalendarDay {
-  const names = ['Fajr', 'Sunrise', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
-  return {
-    gregorian: row.date.gregorian.date,
-    weekday: row.date.gregorian.weekday.en,
-    // AlAdhan's Gregorian block has no Arabic weekday, so it is built from the date
-    weekdayAr: gregorianWeekday(row.date.gregorian.date),
-    hijriDay: Number(row.date.hijri.day),
-    hijriMonth: row.date.hijri.month.en,
-    hijriMonthAr: row.date.hijri.month.ar,
-    // The number is what a fixed Hijri date can be matched against by name
-    hijriMonthNumber: Number(row.date.hijri.month.number),
-    hijriYear: Number(row.date.hijri.year),
-    prayers: names.map(name => ({ name, raw: cleanTime(row.timings[name]), time: displayTime(row.timings[name], timeFormat) })),
-  };
-}
-
 /**
  * A Gregorian month of days, each with its times and its Hijri date.
  *

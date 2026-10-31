@@ -158,13 +158,6 @@ async function persist(next: ZakatState) {
   await AsyncStorage.setItem(KEY, JSON.stringify(next)).catch(() => undefined);
 }
 
-export function getZakatState() {
-  return state;
-}
-
-export function getMarketData() {
-  return market;
-}
 
 export function subscribeZakat(listener: (next: ZakatState) => void) {
   listeners.add(listener);
