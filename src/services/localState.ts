@@ -190,8 +190,12 @@ export async function loadPrayerCompletion(dateKey: string): Promise<string[]> {
 export async function savePrayerCompletion(dateKey: string, completed: string[]) {
   const all = await readJson<Record<string, string[]>>(KEYS.prayerCompletion) || {};
   all[dateKey] = completed;
-  const keys = Object.keys(all).sort().slice(-60);
-  await writeJson(KEYS.prayerCompletion, Object.fromEntries(keys.map(key => [key, all[key]])));
+  /* Kept in full. This used to be trimmed to the last sixty days, which made a
+     heat map of the whole record impossible - anything older than two months
+     had already been deleted by the time you went looking for it. A year of
+     days is around 365 short entries, so keeping all of them costs little and
+     the record is the one thing here that cannot be recreated. */
+  await writeJson(KEYS.prayerCompletion, all);
 }
 
 export async function loadPrayerHistory(): Promise<Record<string, string[]>> {
