@@ -3,9 +3,11 @@
 Every external source the app uses, and every source it could use, with the
 result of a live check against each.
 
-The machine-readable version of this file is `src/services/sources.ts`, which
-is what the **Data sources** screen in the app reads. Change the registry, not
-the screen — the two must not drift apart.
+This is a record, not a registry: the **Data sources** screen keeps its own
+list in `App.tsx` (`DATA_SOURCES`). A machine-readable version used to live in
+`src/services/sources.ts`, but the screen stopped reading it and the two
+drifted, so it was removed. When a source's status changes, update the screen
+and this note together.
 
 **Last verified: 2026-10-28.** 28 sources: **20 live**, **7 available but not
 wired**, **1 broken**.
