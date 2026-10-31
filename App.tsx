@@ -5,7 +5,7 @@ function ExploreStack(){return <Stack.Navigator screenOptions={{headerShown:fals
  * reminders, the location they are worked out from, and the calendar and
  * fasts that hang on them.
  */
-function PrayerStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="Prayer" component={PrayerScreen}/><Stack.Screen name="Adhan" component={AdhanScreen}/><Stack.Screen name="Ramadan" component={RamadanScreen}/></Stack.Navigator>}
+function PrayerStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="Prayer" component={PrayerScreen}/><Stack.Screen name="Ramadan" component={RamadanScreen}/></Stack.Navigator>}
 /** The tools tab: what you calculate, look up, travel for, or record. */
 function ToolsStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="ToolsHome" component={ToolsHomeScreen}/><Stack.Screen name="Zakat" component={ZakatScreen}/><Stack.Screen name="Holy site channels" component={HolyChannelsScreen}/><Stack.Screen name="Women" component={WomenHubScreen}/><Stack.Screen name="Istihada" component={IstihadaScreen}/><Stack.Screen name="Ramadan Planner" component={RamadanPlannerScreen}/><Stack.Screen name="These Days" component={TheseDaysScreen}/><Stack.Screen name="Cycle" component={CycleScreen}/><Stack.Screen name="Qada" component={QadaScreen}/><Stack.Screen name="Women Guides" component={WomenGuidesScreen}/><Stack.Screen name="Privacy Lock" component={PrivacyLockScreen}/><Stack.Screen name="Fasting" component={FastingScreen}/><Stack.Screen name="Weekly Summary" component={WeeklySummaryScreen}/><Stack.Screen name="Qibla" component={QiblaScreen}/><Stack.Screen name="Location Setup" component={LocationSetupScreen}/><Stack.Screen name="Notifications" component={NotificationScreen}/><Stack.Screen name="Adhan" component={AdhanScreen}/><Stack.Screen name="Hijri Calendar" component={HijriCalendarScreen}/><Stack.Screen name="Tasbih" component={TasbihScreen}/><Stack.Screen name="Umrah Packing" component={UmrahPackingScreen}/><Stack.Screen name="Hajj Live" component={HajjLiveScreen}/></Stack.Navigator>}
 
@@ -18,7 +18,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { haptic, isHapticsSupported, setHapticsEnabled, withHaptic, type HapticKind } from './src/services/haptics';
-import { createNavigationContainerRef, NavigationContainer, useFocusEffect, useNavigation } from '@react-navigation/native';
+import { createNavigationContainerRef, NavigationContainer, StackActions, useFocusEffect, useNavigation } from '@react-navigation/native';
 const KFGQPCUthmanicHafs = require('./assets/fonts/KFGQPCUthmanicHafs.ttf');
 const IBMPlexSansArabic_400Regular = require('./assets/fonts/IBMPlexSansArabic-Regular.ttf');
 const IBMPlexSansArabic_600SemiBold = require('./assets/fonts/IBMPlexSansArabic-SemiBold.ttf');
@@ -437,20 +437,23 @@ function ThemeProvider({ children }: { children: React.ReactNode }) {
 
 function useTheme() { return useContext(ThemeContext); }
 
-/** Keeps the navigation state across the remount that a theme change needs. */
-// v2: Prayer became a tab and Settings left the tab bar for the header, so a
-// state saved by v1 names routes that no longer exist.
+/**
+ * The navigation state is not written to disk.
+ *
+ * It used to be, so that a theme change - which remounts the whole navigator,
+ * because the palette is a module-level object - could put the person back
+ * where they were. That was worth solving, but saving to disk solved more than
+ * that: it also meant the app *reopened* on whatever screen it was closed on.
+ * You put it down on a hadith page on Sunday and came back to that hadith page
+ * on Wednesday, with no way to know why you were there.
+ *
+ * The remount is handled in memory instead (see `liveState` in Root), which is
+ * the case that actually needs it. A fresh launch opens on Home, every time.
+ */
 const NAV_KEY = 'deen-nav-v2';
-async function loadNavState(): Promise<any> {
-  try {
-    const raw = await AsyncStorage.getItem(NAV_KEY);
-    return raw ? JSON.parse(raw) : undefined;
-  } catch {
-    return undefined;
-  }
-}
-function saveNavState(state: any) {
-  if (state) AsyncStorage.setItem(NAV_KEY, JSON.stringify(state)).catch(() => undefined);
+/** Older builds left a snapshot behind; nothing reads it now, so tidy it up. */
+function clearSavedNavState() {
+  AsyncStorage.removeItem(NAV_KEY).catch(() => undefined);
 }
 
 /**
@@ -518,12 +521,12 @@ function useChromeHidden() {
  * everything the app floats, and its scrim dims the whole screen - the tab bar
  * included - rather than fighting it for the same strip of pixels.
  */
-type OverlayEntry = { key: string; render: () => React.ReactNode };
+type OverlayEntry = { key: string; render: () => React.ReactNode; onDismiss?: () => void };
 let overlayEntries: OverlayEntry[] = [];
 const overlayListeners = new Set<() => void>();
 function emitOverlay() { overlayListeners.forEach((fn) => fn()); }
-function showOverlay(key: string, render: () => React.ReactNode) {
-  overlayEntries = [...overlayEntries.filter((entry) => entry.key !== key), { key, render }];
+function showOverlay(key: string, render: () => React.ReactNode, onDismiss?: () => void) {
+  overlayEntries = [...overlayEntries.filter((entry) => entry.key !== key), { key, render, onDismiss }];
   emitOverlay();
 }
 function hideOverlay(key: string) {
@@ -540,6 +543,20 @@ function useOverlayEntries() {
     return () => { overlayListeners.delete(listener); };
   }, []);
   return overlayEntries;
+}
+/**
+ * Closes the sheet on top, the same way its close button would.
+ *
+ * Entries are appended as sheets open, so the last one is the one on screen.
+ * A sheet with no dismisser is left alone: taking it away here would hide it
+ * while whatever opened it still believed it was open, and the next tap on
+ * that control would do nothing. Better to let back go to the screen behind.
+ */
+function dismissTopOverlay(): boolean {
+  const top = overlayEntries[overlayEntries.length - 1];
+  if (!top || !top.onDismiss) return false;
+  top.onDismiss();
+  return true;
 }
 /** Draws the registered sheets, in the order they were opened. */
 function OverlayHost() {
@@ -559,12 +576,16 @@ function OverlayHost() {
  * sheet: the keyboard pushes a re-render through on every keystroke, and a
  * remount would throw away whatever had been typed.
  */
-function useOverlaySheet(key: string, active: boolean, render: () => React.ReactNode) {
+function useOverlaySheet(key: string, active: boolean, render: () => React.ReactNode, onDismiss?: () => void) {
   const latest = useRef(render);
   latest.current = render;
+  /* Held in a ref so a parent that rebuilds its dismissal on every render
+     does not re-register the sheet and remount it mid-typing. */
+  const dismiss = useRef(onDismiss);
+  dismiss.current = onDismiss;
   useEffect(() => {
     if (!active) return;
-    showOverlay(key, () => latest.current());
+    showOverlay(key, () => latest.current(), () => dismiss.current?.());
     return () => hideOverlay(key);
   }, [key, active]);
   /* The host draws whatever the callback returned the last time *it* rendered,
@@ -979,6 +1000,19 @@ function useCanGoBack() {
   return can;
 }
 
+/**
+ * Opens the notification settings from the header.
+ *
+ * This goes through the root ref rather than the screen's own `navigation`.
+ * The header is worn by screens in several different stacks, and from inside
+ * one of them a nested navigate has to bubble up to the tab navigator to be
+ * understood - which works until the tab has just been reset, and then
+ * quietly does nothing. Starting from the root resolves top-down instead, so
+ * it lands the same way whichever screen the header is on.
+ */
+function openNotifications() {
+  navigateWhenReady('Tools', { screen: 'Notifications' });
+}
 function AppHeader() {
   const { rtl } = useLanguage();
   const { dark, setMode } = useTheme();
@@ -996,7 +1030,7 @@ function AppHeader() {
       </View>}
     <View style={s.appHeaderActions}>
       <Pressable accessibilityRole="button" accessibilityLabel={T('Notifications')}
-        onPress={() => navigation.navigate('Prayer', { screen: 'Notifications' })}
+        onPress={() => openNotifications()}
         style={({ pressed }) => [s.iconBtn, s.headerBtn, dark && s.iconBtnDark, pressed && s.press]}>
         <Image source={dark ? HEADER_DARK.notifications : HEADER_LIGHT.notifications} resizeMode="contain" style={{ width: 24, height: 24 }} />
       </Pressable>
@@ -1312,20 +1346,20 @@ const[quranPosition,setQuranPosition]=useState<any>(null);const[openReflection,s
         source:hadithSourceLabel(rtl, reportHadith.collection),
         arabic:stripTags(reportHadith.arabic||''), text:stripTags(reportHadith.text||'')}}
         rtl={rtl} T={T} appLanguage={rtl?'ar':'en'} onClose={()=>setReportHadith(null)}/>
-    : null);
+    : null, () => setReportHadith(null));
   useOverlaySheet('home-reflection', !!openReflection, () => openReflection
     ? <ReflectionDetail kind={openReflection} data={data} rtl={rtl} T={T}
         translationName={T(rtl?preferences.translationLanguage:preferences.translationName)}
         onClose={()=>setOpenReflection(null)}
         onOpenVerse={(verseKey:string,surahId:number,surahName:string)=>nav.navigate('Quran',{screen:'Reader',params:{chapter:{id:surahId,name_simple:surahName,name_arabic:'',verses_count:0},focusVerse:verseKey},initial:false})}/>
-    : null);
+    : null, () => setOpenReflection(null));
 
   useOverlaySheet('home-day-tools', dayToolOpen, () => dayToolOpen
     ? <DayToolSheet initialSlot={dayToolSlot} chosen={dayTools} rtl={rtl} T={T}
         onReplace={replaceDayTool}
         onClose={()=>{setDayToolOpen(false);setDayToolSlot(null)}}
         onSeeAll={()=>{setDayToolOpen(false);nav.navigate('Tools')}}/>
-    : null);
+    : null, () => { setDayToolOpen(false); setDayToolSlot(null); });
   return <Page><Animated.ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false} scrollEventThrottle={16} onScroll={Animated.event([{nativeEvent:{contentOffset:{y:scrollY}}}],{useNativeDriver:false})} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.green}/>}>
     <AppHeader/>
     <View style={s.greeting}><View><Text style={s.salam}>السَّلَامُ عَلَيْكُمْ</Text><Text style={s.greetingTitle}>{greeting}</Text></View></View>
@@ -2397,13 +2431,13 @@ function ReaderScreen({route,navigation}:any){
      mini player sit behind them instead of across their lower edge. */
   useOverlaySheet('verse-share', !!shareVerse, () => shareVerse
     ? <VerseShareSheet verse={shareVerse} chapter={full} rtl={rtl} T={T} onClose={()=>setShareVerse(null)}/>
-    : null);
+    : null, () => setShareVerse(null));
   useOverlaySheet('verse-note', !!noteVerse, () => noteVerse
     ? <VerseNoteSheet verse={noteVerse} chapter={full} rtl={rtl} T={T} onClose={()=>setNoteVerse(null)}/>
-    : null);
+    : null, () => setNoteVerse(null));
   useOverlaySheet('verse-actions', !!actionsVerse, () => actionsVerse
     ? <VerseActionsSheet verse={actionsVerse} chapter={full} rtl={rtl} T={T} navigation={navigation} onClose={()=>setActionsVerse(null)}/>
-    : null);
+    : null, () => setActionsVerse(null));
   return <Page><Animated.View style={[s.readerBar,{transform:[{translateY:chromeY}]}]}><IconButton name={rtl?'arrow-forward':'arrow-back'} onPress={()=>navigation.goBack()}/>{canStep(-1)?<Pressable accessibilityLabel={T('Previous section')} onPress={()=>step(-1)} style={s.surahStep}>{ico(rtl?'chevron-forward':'chevron-back',19,C.ink)}</Pressable>:<View style={s.surahStep}/>}<View style={{alignItems:'center',flex:1}}><Text style={s.readerName} numberOfLines={1}>{title}</Text><Text style={s.meta} numberOfLines={1}>{subtitle}</Text></View>{canStep(1)?<Pressable accessibilityLabel={T('Next section')} onPress={()=>step(1)} style={s.surahStep}>{ico(rtl?'chevron-back':'chevron-forward',19,C.ink)}</Pressable>:<View style={s.surahStep}/>}<View style={s.readerHeaderActions}>{section==='surah'&&<Pressable accessibilityLabel={T('Play this Surah')} onPress={()=>{void playSurahFromReader(full,rtl)}} style={s.iconBtn}>{ico('play-circle',20,C.ink)}</Pressable>}{section==='surah'&&<Pressable accessibilityLabel={T('Keep this Surah for offline')} onPress={()=>navigation.navigate('Downloads',{chapterId,surahName:full.name_simple})} style={s.iconBtn}>{ico('download-outline',20,C.ink)}</Pressable>}<Pressable accessibilityRole="switch" accessibilityState={{checked:focusOn}} accessibilityLabel={`${T('Focus mode')}: ${focusOn?T('On'):T('Off')}`} onPress={()=>update({focusMode:!focusOn})} style={s.iconBtn}>{ico(focusOn?'eye':'eye-outline',20,focusOn?C.gold:C.ink)}</Pressable><Pressable accessibilityLabel={T('Reader settings')} onPress={()=>navigation.navigate('Reader Settings')} style={s.iconBtn}>{ico('options-outline',20,C.ink)}</Pressable></View></Animated.View><View style={s.readerProgress}><View style={[s.preloadFill,{width:`${Math.round(progress*100)}%`} as any]}/></View>
   <ScrollView ref={scrollRef} contentContainerStyle={s.readerScroll} showsVerticalScrollIndicator={false} scrollEventThrottle={16} onScroll={e=>{const{layoutMeasurement,contentOffset,contentSize}=e.nativeEvent;if(focusOn){const dy=contentOffset.y-scrollY.current;if(dy>4&&chromeShown)setChromeShown(false)}scrollY.current=contentOffset.y;const span=contentSize.height-layoutMeasurement.height;const next=span>0?Math.min(1,Math.max(0,contentOffset.y/span)):0;if(Math.abs(next-progress)>0.005)setProgress(next)}}>
   {isMushaf?<MushafPageView page={page||1} verses={verses} error={error} cached={cached} retry={load} preferences={preferences} rtl={rtl} T={T} input={input} setInput={setInput} goPage={goPage} navigation={navigation} arStyle={arStyle} bookmarks={bookmarks} savedPosition={savedPosition} onBookmark={(v:any)=>{void bookmark(v)}} onMark={(v:any)=>{void mark(v)}} onPlay={(v:any)=>{void playFromReader(full,v,rtl)}} onNote={(v:any)=>setNoteVerse(v)}/>
@@ -3430,7 +3464,7 @@ function TranslationScreen({navigation}:any){const{preferences,update}=useQuranP
   useOverlaySheet('translations-language', picking, () => (
     <LanguagePickerSheet rtl={rtl} T={T} entries={languages} selected={language}
       onPick={(code)=>setLanguage(code)} onClose={()=>setPicking(false)}/>
-  ));
+  ), () => setPicking(false));
 
   return <Page><ToolBar title={T('Translation')} navigation={navigation}/><ScrollView contentContainerStyle={s.dataPage} keyboardShouldPersistTaps="handled">
     <ToolGraphic tool="Translations" size={85}/>
@@ -3670,7 +3704,7 @@ function ReaderSettingsScreen({navigation}:any){
       {picking==='transliteration'&&<LanguagePickerSheet rtl={rtl} T={T} entries={translitLanguages} selected={translitLanguage}
         onPick={setTranslitLanguage} onClose={()=>setPicking(null)}/>}
     </View>
-  ));
+  ), close);
   return null;
 }
 
@@ -3747,7 +3781,7 @@ function VerseActionsSheet({ verse, chapter, rtl, T, navigation, onClose }: {
     target={{ kind: 'ayah', reference: verse.verse_key, source: `${T('Surah')} ${chapter.name_simple}`,
       arabic: verse.text_uthmani, text: verse.translation,
       edition: T(rtl ? preferences.translationLanguage : preferences.translationName) }}
-    rtl={rtl} T={T} appLanguage={rtl ? 'ar' : 'en'} onClose={() => setReporting(false)} />);
+    rtl={rtl} T={T} appLanguage={rtl ? 'ar' : 'en'} onClose={() => setReporting(false)} />, () => setReporting(false));
 
   return <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
     {/* captured into a PNG on native; the web path draws on a canvas instead */}
@@ -6886,7 +6920,7 @@ function HadithDetailScreen({route,navigation}:any){const{rtl}=useLanguage();con
           source:collection?.name||'', arabic:hadith.arabic, text:hadith.english,
           edition:hadith.grades[0]?.grade}}
         rtl={rtl} T={T} appLanguage={rtl?'ar':'en'} onClose={()=>setReporting(false)}/>
-    : null);
+    : null, () => setReporting(false));
   return <Page><ToolBar title={rtl ? (collection?.arabicName || T('Hadith')) : (collection?.name || 'Hadith')} navigation={navigation}/>
     {!hadith&&!error&&<Spinner/>}
     {!!error&&<ErrorState message={error} retry={load}/>}
@@ -7538,6 +7572,32 @@ function SettingsScreen({navigation}:any){
 import { DEFAULT_RECITER, editionsForLanguage, LANGUAGES, Language, LanguageCode, languageByCode, isRtl, pickEdition, HADITH_LANGUAGES, hadithLanguage } from './src/services/languages';
 
 const navigationRef = createNavigationContainerRef<any>();
+/**
+ * Navigate, even when the tap that launched the app arrived before the
+ * navigator existed.
+ *
+ * A notification tapped on a cold start is handed over while Root is still
+ * mounting. Navigating a container ref that is not ready yet is dropped
+ * without complaint: the app opens on Home and the reminder the person tapped
+ * goes nowhere. So the intent is parked and replayed the moment the navigator
+ * reports a state, and only once - otherwise every later navigation would
+ * drag them back to it.
+ */
+function navigateWhenReady(name: string, params?: any) {
+  const nav: any = navigationRef;
+  if (nav.isReady?.()) { nav.navigate(name, params); return; }
+  let unsub: (() => void) | undefined;
+  let done = false;
+  const fire = () => {
+    if (done || !nav.isReady?.()) return;
+    done = true;
+    try { unsub?.(); } catch { /* already gone */ }
+    nav.navigate(name, params);
+  };
+  unsub = nav.addListener?.('state', fire);
+  /* It may have become ready between the check above and the subscribe. */
+  setTimeout(fire, 0);
+}
 const AUDIO_LANGUAGES: Record<string, string> = {
   en: 'English', ur: 'Urdu', zh: 'Chinese', fr: 'French', ru: 'Russian',
   kk: 'Kazakh', tr: 'Turkish', fa: 'Persian', uz: 'Uzbek', my: 'Burmese'
@@ -8096,7 +8156,7 @@ const TAB_ITEMS = [
  * One tab. A component of its own so each holds its own press value instead of
  * asking a hook to run inside a map.
  */
-function TabButton({ route, focused, navigation, dark, rtl }: any) {
+function TabButton({ route, focused, navigation, dark, rtl, state, index }: any) {
   const press = usePressDepth();
   const item = TAB_ITEMS.find((entry: any) => entry.name === route.name);
   const label = item ? (rtl ? item.ar : item.label) : route.name;
@@ -8105,7 +8165,21 @@ function TabButton({ route, focused, navigation, dark, rtl }: any) {
       onPressIn={press.onPressIn} onPressOut={press.onPressOut}
       onPress={() => {
         const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
-        if (!focused && !event.defaultPrevented) navigation.navigate(route.name);
+        if (event.defaultPrevented) return;
+        if (focused) {
+          /* Already here: unwind the tab's own stack in one press.
+             The action carries the child stack's key as its target, so it is
+             dispatched to that stack rather than to the tab bar. Navigating to
+             the tab's first screen by name also *looked* right, but it left
+             the stack in a state where the next cross-tab navigate into it
+             was silently dropped. */
+          const child = state?.routes?.[index]?.state;
+          if (child?.key && (child.index || 0) > 0) {
+            navigation.dispatch({ ...StackActions.popToTop(), target: child.key });
+          }
+          return;
+        }
+        navigation.navigate(route.name);
       }}>
       <Animated.View style={[s.floatPill, focused && s.floatPillActive]}>
         {item?.icon ? <Image source={dark ? item.iconDark || item.icon : item.icon} resizeMode="contain" style={{ width: 26, height: 26, opacity: focused ? 1 : 0.5 }} /> : ico('ellipse-outline', 20, focused ? C.green : C.chevron)}
@@ -8132,7 +8206,7 @@ function FloatingTabBar({ state, navigation }: any) {
     <View style={[s.floatBar, { width: barWidth, flexDirection: rtl ? 'row-reverse' : 'row' }]}>
       {state.routes.map((route: any, index: number) => (
         <TabButton key={route.key} route={route} focused={state.index === index}
-          navigation={navigation} dark={dark} rtl={rtl} />
+          navigation={navigation} dark={dark} rtl={rtl} state={state} index={index} />
       ))}
     </View>
   </Animated.View>;
@@ -8160,11 +8234,29 @@ function Tabs(){return <Tab.Navigator screenOptions={{headerShown:false,tabBarHi
  * inside the app deliberately add nothing: one press of back should mean one
  * screen back, however many screens deep the person went.
  */
+/* How long a second back press has to arrive to be counted as "yes, leave". */
+const EXIT_CONFIRM_WINDOW = 2000;
+
 function useBackIntegration(ref: any) {
   useEffect(() => {
     if (Platform.OS !== 'android') return;
+    let lastPress = 0;
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      if (!ref.isReady() || !ref.canGoBack()) return false; /* nothing to pop: let it close */
+      /* A sheet is not somewhere you came *from*, so the first press closes
+         it. Without this, back on a full-screen sheet skipped straight past
+         it to the screen underneath and left the sheet's own state behind. */
+      if (dismissTopOverlay()) return true;
+      if (!ref.isReady() || !ref.canGoBack()) {
+        /* Nothing left to pop. Leaving is almost never what someone meant by
+           one press on a root screen, so it takes two inside two seconds. */
+        const now = Date.now();
+        if (now - lastPress > EXIT_CONFIRM_WINDOW) {
+          lastPress = now;
+          showExitPrompt();
+          return true;
+        }
+        return false; /* second press: let the OS close the app */
+      }
       ref.goBack();
       return true;
     });
@@ -8176,16 +8268,62 @@ function useBackIntegration(ref: any) {
     const history = window.history;
     history.pushState({ deen: 'sentinel' }, '');
     const onPop = () => {
+      /* Sheets close before the screen behind them moves, same as Android. */
+      if (dismissTopOverlay()) {
+        history.pushState({ deen: 'sentinel' }, '');
+        return;
+      }
       if (ref.isReady() && ref.canGoBack()) {
         ref.goBack();
         history.pushState({ deen: 'sentinel' }, ''); /* leave one behind for the next press */
       }
       /* At the root there is nothing to go back to, so the press is allowed
-         to leave the app rather than being swallowed. */
+         to leave the site rather than being swallowed. */
     };
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
   }, [ref]);
+}
+
+/**
+ * "Press back again to leave."
+ *
+ * A small module-level emitter rather than a context, because the back handler
+ * is not inside the tree - it is a hardware-key listener created once in Root.
+ */
+const exitListeners = new Set<() => void>();
+function showExitPrompt() { exitListeners.forEach((fn) => fn()); }
+function useExitPrompt() {
+  const [visible, setVisible] = useState(false);
+  const timer = useRef<any>(null);
+  useEffect(() => {
+    const listener = () => {
+      setVisible(true);
+      if (timer.current) clearTimeout(timer.current);
+      timer.current = setTimeout(() => setVisible(false), EXIT_CONFIRM_WINDOW);
+    };
+    exitListeners.add(listener);
+    return () => {
+      exitListeners.delete(listener);
+      if (timer.current) clearTimeout(timer.current);
+    };
+  }, []);
+  return visible;
+}
+/** Sits above the tab bar so it reads as belonging to the app, not a screen. */
+function ExitPrompt() {
+  const visible = useExitPrompt();
+  const { rtl } = useLanguage();
+  const fade = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(fade, { toValue: visible ? 1 : 0, duration: 140, useNativeDriver: true }).start();
+  }, [visible, fade]);
+  if (!visible) return null;
+  return <Animated.View pointerEvents="none" style={[s.exitPrompt, { opacity: fade }]}>
+    <View style={s.exitPill}>
+      <Text style={s.exitText}>{tx(rtl, 'Press back again to leave')}</Text>
+    </View>
+  </Animated.View>;
 }
 
 /*
@@ -8193,24 +8331,22 @@ function useBackIntegration(ref: any) {
  */
 function Root() {
   const { dark, tick } = useTheme();
-  const [initial, setInitial] = useState<any>(undefined);
-  const [ready, setReady] = useState(false);
   /* The palette is a module-level object, so a theme change remounts the
      navigator (via `key` below) to make every screen repaint. That remount
-     re-runs `initialState`, which would otherwise restore the snapshot taken
-     at app start and teleport the person back to it - wiping the stack they
-     had built. Keeping the newest state in a ref means the remount restores
-     exactly where they were, back stack and all. */
+     re-runs `initialState`, so the newest state is held in a ref: the remount
+     restores exactly where the person was, back stack and all.
+
+     Nothing is read from or written to disk here. On a real cold start the ref
+     is empty and the app opens on Home. */
   const liveState = useRef<any>(undefined);
   useBackIntegration(navigationRef);
-  useEffect(() => { void loadNavState().then((state) => { setInitial(state); setReady(true); }); }, []);
-  if (!ready) return <SafeAreaView style={s.safe}><Spinner /></SafeAreaView>;
-  return <NavigationContainer ref={navigationRef} key={(dark ? 'dark' : 'light') + ':' + tick} initialState={liveState.current ?? initial} onStateChange={(state: any) => { liveState.current = state; saveNavState(state); }}>
+  useEffect(() => { clearSavedNavState(); }, []);
+  return <NavigationContainer ref={navigationRef} key={(dark ? 'dark' : 'light') + ':' + tick} initialState={liveState.current} onStateChange={(state: any) => { liveState.current = state; }}>
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Main" component={Tabs} />
       <Stack.Screen name="Settings" component={SettingsStack} />
     </Stack.Navigator>
-    <ExpoStatusBar style={dark ? 'light' : 'dark'} /><MiniPlayer /><OverlayHost />
+    <ExpoStatusBar style={dark ? 'light' : 'dark'} /><MiniPlayer /><OverlayHost /><ExitPrompt />
   </NavigationContainer>;
 }
 
@@ -8890,7 +9026,7 @@ function AppShell() {
    */
   const openFromNotification = async (data: any) => {
     if (!navigationRef.isReady()) return;
-    const go = (name: string, params?: any) => (navigationRef as any).navigate(name, params);
+    const go = (name: string, params?: any) => navigateWhenReady(name, params);
 
     /* The sleep reminder opens the surah itself. A reminder to read Al-Mulk
        that lands you on the home screen has done half a job. */
@@ -9204,6 +9340,9 @@ surahCard:{width:'100%',minHeight:64,backgroundColor:C.card,borderRadius:16,bord
      zIndex is belt and braces for the platforms that reorder on elevation. */
   overlayLayer:{position:'absolute',left:0,right:0,top:0,bottom:0,zIndex:9000,elevation:9000},
   sheetScrim:{position:'absolute',left:0,right:0,top:0,bottom:0,backgroundColor:'rgba(20,18,32,.42)'},
+  exitPrompt:{position:'absolute',left:0,right:0,bottom:0,alignItems:'center',paddingBottom:120,zIndex:9500,elevation:9500},
+  exitPill:{backgroundColor:'rgba(28,25,20,0.92)',paddingHorizontal:18,paddingVertical:11,borderRadius:999,maxWidth:'86%'},
+  exitText:{color:'#F6F1E7',fontSize:13.5,fontWeight:'600',textAlign:'center'},
   /* Sheets are drawn by the overlay host, which sits outside every SafeAreaView
      in the app, so the sheet has to clear the home indicator itself. */
   verseSheet:{position:'absolute',left:12,right:12,bottom:0,backgroundColor:C.card,borderTopLeftRadius:26,borderTopRightRadius:26,padding:18,paddingBottom:Platform.OS==='ios'?36:24,borderWidth:1,borderColor:C.line,...shadow},
