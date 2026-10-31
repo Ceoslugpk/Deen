@@ -1,15 +1,27 @@
 import React from 'react';
 import Svg, { Circle, G, Line, Path, Polyline, Rect } from 'react-native-svg';
+import { BRAND, mix } from '../design/brand';
 
-// A restrained semantic palette: every icon shares one quiet surface.
-// Meaning comes from the line color, not a rainbow of containers.
-const SURFACE = { bg: '#F3F0F7', border: '#E3DEE9', accent: '#B49352' };
+/**
+ * A restrained semantic palette: every icon shares one quiet surface, and
+ * meaning comes from the line colour rather than a rainbow of containers.
+ *
+ * The five line colours are all drawn from the brand — Royal Indigo through
+ * Lavender for the cool roles, Antique Gold and Bronze for the warm ones. The
+ * old teal and pink had no place in the palette, so the roles they carried now
+ * read as indigo and bronze instead.
+ */
+const SURFACE = {
+  bg: mix(BRAND.mist, BRAND.pearl, 0.30),        // was #F3F0F7
+  border: mix(BRAND.mist, BRAND.lavender, 0.22), // was #E3DEE9
+  accent: BRAND.antiqueGold,                     // was #B49352
+};
 export const ICON_THEMES = [
-  { fg: '#5146A4', ...SURFACE }, // worship / primary
-  { fg: '#2F6F73', ...SURFACE }, // direction / place
-  { fg: '#785A72', ...SURFACE }, // knowledge / reflection
-  { fg: '#8A6A32', ...SURFACE }, // time / calendar
-  { fg: '#8B5960', ...SURFACE }, // remembrance
+  { fg: BRAND.royalIndigo, ...SURFACE },                    // worship / primary
+  { fg: mix(BRAND.royalIndigo, BRAND.violet, 0.5), ...SURFACE }, // direction / place
+  { fg: BRAND.violet, ...SURFACE },                         // knowledge / reflection
+  { fg: BRAND.antiqueGold, ...SURFACE },                    // time / calendar
+  { fg: BRAND.bronze, ...SURFACE },                         // remembrance
 ];
 export function iconTheme(name: string) {
   const n = name.replace(/-outline$/, '');
