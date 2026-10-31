@@ -37,8 +37,8 @@
       "expo-font",
       "expo-audio",
       "expo-notifications",
-      "./plugins/withAdhanSounds.js",
       "./plugins/withBatteryExemption.js",
+      "./plugins/withAdhanAlarm.js",
       "expo-sharing"
     ]
   }

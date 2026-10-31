@@ -92,6 +92,7 @@ import { getCacheUsage, getCachedJson, setCachedJson } from './src/services/cont
 import { AudioSession, AudioSettings, AudioTrackKind, buildQueueForChapter, buildSurahQueue, loadSurahReciters, clearQueue, clearRecentPlays, deletePlaylist, formatClock, getAudioSettings, loadAudioEditions, loadAudioSession, loadAudioSettings, loadPlaylists, loadRecentPlays, nextTrack, playQueue, Playlist, previousTrack, RecentPlay, removeFromQueue, restoreSavedSession, saveAudioSettings, savePlaylist, seekTo, selectQueueItem, setAutoNextSurah, setRepeatCount, setRepeatMode, setRepeatRange, setResumeOnStart, setVolume, stepPlaybackRate, MAX_RATE, MIN_RATE, RATE_STEPS, REPEAT_COUNT_CHOICES, REPEAT_FOREVER, setPlaybackRate, reciterLabel, stopPlayback, syncAudioTranslationToLanguage, togglePlayback, useAudio } from './src/services/audioService';
 import {DEFAULT_HADITH_LANGUAGE, deviceHadithCount, downloadCollection, fetchHadithOne, getHadith, hadithDownloadProgress, searchDeviceHadith, useHadithLanguage, setHadithLanguage, hadithReference, hadithSourceLabel, HADITH_COLLECTIONS, Hadith, HadithOutline, isHadithSaved, loadHadithBook, loadHadithOutline, loadHadithState, markHadithRead, removeDownloadedCollection, removeHadithBookmark, subscribeHadithDownloads, toggleHadithSaved, useDownloadedCollections, useHadithState } from './src/services/hadithService';
 import { adhanTrack, ADHAN_TRACKS, AdhanTrack, DEFAULT_ADHAN_ID, DEFAULT_FAJR_ID, FAJR_TRACKS } from './src/services/adhanCatalog';
+import { adhanPlaybackSource, downloadAllAdhanTracks, getAdhanCacheState, refreshAdhanCache, subscribeAdhanCache, clearAdhanCache } from './src/services/adhanCache';
 import {
   buildReportMailto, deleteReport, openReportEmail, saveReport, subscribeReports,
   type CorrectionReport, type CorrectionIssue as ReportIssue
@@ -5331,8 +5332,8 @@ function NotificationScreen({navigation}:any){const{rtl}=useLanguage();const T=(
  * Fajr and the other five are different calls, so they are chosen separately
  * and previewed separately. Everything here is bundled in the app rather than
  * fetched, which is the only way a notification can play it at all - and it
- * means the adhan sounds at dawn with no network and no warm-up, whether or
- * not the app has been opened that day.
+ * means the adhan sounds at dawn with no network and no warm-up, once the
+ * recordings have been fetched after onboarding.
  *
  * The player is bound to whichever recording is selected, so tapping a
  * recording you have not selected cannot play it yet: the choice is committed
@@ -5342,7 +5343,9 @@ function NotificationScreen({navigation}:any){const{rtl}=useLanguage();const T=(
  */
 function AdhanTrackList({tracks,selectedId,onSelect}:{tracks:AdhanTrack[];selectedId:string;onSelect:(id:string)=>void}){
   const {rtl}=useLanguage(); const T=(text:string)=>tx(rtl,text);
-  const source=useMemo(()=>tracks.find(t=>t.id===selectedId)?.source, [tracks,selectedId]);
+  /* The local file once it has been fetched, the network address while it is
+     still arriving. Either way the preview works; only the wait differs. */
+  const source=useMemo(()=>{const t=tracks.find(x=>x.id===selectedId); return t?adhanPlaybackSource(t):undefined;}, [tracks,selectedId]);
   const player=useAudioPlayer(source);
   const status=useAudioPlayerStatus(player);
   const [pending,setPending]=useState(false);
@@ -8830,6 +8833,17 @@ function Onboarding({ onFinish }: { onFinish: () => void }) {
         translationName: textEdition ? editionDisplayName(textEdition) : undefined,
         editions: queue,
       });
+      /* The adhan recordings come down now too, for the same reason: they are
+         what sounds at the prayer times, so they have to be on the device
+         before the first one arrives, and they are far too large to ship
+         inside the app.
+
+         This is fire-and-forget on purpose. A person who has just finished
+         onboarding should not be made to watch a progress bar, and a
+         recording that fails here is fetched again the next time the adhan
+         screen is opened - the only consequence of a failure is that the
+         first prayer may fall back to a system tone. */
+      void downloadAllAdhanTracks().catch(() => undefined);
       onFinish();
     } catch { setBusy(false); }
   };

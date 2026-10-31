@@ -1,32 +1,35 @@
 /**
- * The adhan recordings that ship with the app.
+ * The adhan recordings the app can play.
  *
- * Every recording here lives in `assets/audio` and is copied into the native
- * project by the `withAdhanSounds` plugin, because a notification can only
- * play a sound compiled into the app - a file the app merely downloaded
- * cannot sound from a notification, on either platform. That is why these are
- * bundled rather than fetched: the adhan has to sound at Fajr whether or not
- * there is a network, and whether or not the app has been opened that day.
+ * None of these ship inside the app. They are fetched once, after onboarding,
+ * and kept in the app's own cache directory - 25 MB of audio in the install is
+ * a cost everybody pays for a feature only some people use.
  *
- * Fajr is separate. The dawn call is its own recitation, longer and recited
- * in its own manner, so choosing one does not touch the other five prayers.
- * Two recordings exist for it; eighteen for the rest of the day.
+ * Fajr is separate. The dawn call is its own recitation, longer and recited in
+ * its own manner, so choosing one does not touch the other five prayers. Two
+ * recordings exist for it; eighteen for the rest of the day.
  *
- * Each file was verified against the catalogue's published SHA-256 before it
- * was committed, so what is here is byte-identical to what the server serves.
+ * `sound` is kept only so older saved settings still resolve; the recording is
+ * no longer a compiled resource, so nothing asks the system to play it.
  */
-
 export type AdhanTrack = {
   /** `kind:id`, so a Fajr id and an adhan id can never be confused. */
   id: string;
   name: string;
   nameAr: string;
-  /** The native resource name the notification asks the system to play. */
+  /** Kept so settings saved by earlier builds still resolve. Unused now. */
   sound: string;
-  /** The bundled file, for previewing inside the app. */
-  source: any;
+  /** Where the recording is fetched from, once, into the cache. */
+  url: string;
+  /** Size of the download, for the cache screen and the progress row. */
   bytes: number;
 };
+
+/** Where a recording is served from. `id` is already `kind:name`. */
+function adhanAudioUrl(id: string): string {
+  const [kind, name] = String(id || '').split(':');
+  return `https://audio.islamicdata.uz/v1/${kind}/editions/${name}/audio`;
+}
 
 export const ADHAN_TRACKS: AdhanTrack[] = [
   {
@@ -34,7 +37,7 @@ export const ADHAN_TRACKS: AdhanTrack[] = [
     name: "Abdul Basit",
     nameAr: 'عبد الباسط',
     sound: 'adhan_abdul_basit',
-    source: require('../../assets/audio/adhan-abdul-basit.mp3'),
+    url: adhanAudioUrl('adhan:abdul-basit'),
     bytes: 207723,
   },
   {
@@ -42,7 +45,7 @@ export const ADHAN_TRACKS: AdhanTrack[] = [
     name: "Abdul Ghaffar",
     nameAr: 'عبد الغفار',
     sound: 'adhan_abdul_ghaffar',
-    source: require('../../assets/audio/adhan-abdul-ghaffar.mp3'),
+    url: adhanAudioUrl('adhan:abdul-ghaffar'),
     bytes: 188551,
   },
   {
@@ -50,7 +53,7 @@ export const ADHAN_TRACKS: AdhanTrack[] = [
     name: "Abdul Hakam",
     nameAr: 'عبد الحكم',
     sound: 'adhan_abdul_hakam',
-    source: require('../../assets/audio/adhan-abdul-hakam.mp3'),
+    url: adhanAudioUrl('adhan:abdul-hakam'),
     bytes: 192363,
   },
   {
@@ -58,7 +61,7 @@ export const ADHAN_TRACKS: AdhanTrack[] = [
     name: "Ahmad al-Nafees",
     nameAr: 'أحمد النفيس',
     sound: 'adhan_ahmad_al_nafees',
-    source: require('../../assets/audio/adhan-ahmad-al-nafees.mp3'),
+    url: adhanAudioUrl('adhan:ahmad-al-nafees'),
     bytes: 3418938,
   },
   {
@@ -66,7 +69,7 @@ export const ADHAN_TRACKS: AdhanTrack[] = [
     name: "Al-Hussaini",
     nameAr: 'الحسيني',
     sound: 'adhan_al_hussaini',
-    source: require('../../assets/audio/adhan-al-hussaini.mp3'),
+    url: adhanAudioUrl('adhan:al-hussaini'),
     bytes: 198580,
   },
   {
@@ -74,7 +77,7 @@ export const ADHAN_TRACKS: AdhanTrack[] = [
     name: "Bakir Bash",
     nameAr: 'باقر باش',
     sound: 'adhan_bakir_bash',
-    source: require('../../assets/audio/adhan-bakir-bash.mp3'),
+    url: adhanAudioUrl('adhan:bakir-bash'),
     bytes: 349567,
   },
   {
@@ -82,7 +85,7 @@ export const ADHAN_TRACKS: AdhanTrack[] = [
     name: "Hafez",
     nameAr: 'حافظ',
     sound: 'adhan_hafez',
-    source: require('../../assets/audio/adhan-hafez.mp3'),
+    url: adhanAudioUrl('adhan:hafez'),
     bytes: 168899,
   },
   {
@@ -90,7 +93,7 @@ export const ADHAN_TRACKS: AdhanTrack[] = [
     name: "Hafiz Murad",
     nameAr: 'حافظ مراد',
     sound: 'adhan_hafiz_murad',
-    source: require('../../assets/audio/adhan-hafiz-murad.mp3'),
+    url: adhanAudioUrl('adhan:hafiz-murad'),
     bytes: 104226,
   },
   {
@@ -98,7 +101,7 @@ export const ADHAN_TRACKS: AdhanTrack[] = [
     name: "Hafiz Mustafa Özcan from Turkey",
     nameAr: 'حافظ مصطفى أوزجان (تركيا)',
     sound: 'adhan_hafiz_mustafa_ozcan_from_turkey',
-    source: require('../../assets/audio/adhan-hafiz-mustafa-ozcan-from-turkey.mp3'),
+    url: adhanAudioUrl('adhan:hafiz-mustafa-ozcan-from-turkey'),
     bytes: 3805132,
   },
   {
@@ -106,7 +109,7 @@ export const ADHAN_TRACKS: AdhanTrack[] = [
     name: "Karl Jenkins",
     nameAr: 'كارل جينكينز',
     sound: 'adhan_karl_jenkins',
-    source: require('../../assets/audio/adhan-karl-jenkins.mp3'),
+    url: adhanAudioUrl('adhan:karl-jenkins'),
     bytes: 2999080,
   },
   {
@@ -114,7 +117,7 @@ export const ADHAN_TRACKS: AdhanTrack[] = [
     name: "Mansour Al-Zahrani",
     nameAr: 'منصور الزهراني',
     sound: 'adhan_mansour_al_zahrani',
-    source: require('../../assets/audio/adhan-mansour-al-zahrani.mp3'),
+    url: adhanAudioUrl('adhan:mansour-al-zahrani'),
     bytes: 3358625,
   },
   {
@@ -122,7 +125,7 @@ export const ADHAN_TRACKS: AdhanTrack[] = [
     name: "Minshawi",
     nameAr: 'المنشاوي',
     sound: 'adhan_minshawi',
-    source: require('../../assets/audio/adhan-minshawi.mp3'),
+    url: adhanAudioUrl('adhan:minshawi'),
     bytes: 237238,
   },
   {
@@ -130,7 +133,7 @@ export const ADHAN_TRACKS: AdhanTrack[] = [
     name: "Mishary Rashid Alafasy",
     nameAr: 'مشاري رشيد العفاسي',
     sound: 'adhan_mishary_rashid_alafasy',
-    source: require('../../assets/audio/adhan-mishary-rashid-alafasy.mp3'),
+    url: adhanAudioUrl('adhan:mishary-rashid-alafasy'),
     bytes: 4114842,
   },
   {
@@ -138,7 +141,7 @@ export const ADHAN_TRACKS: AdhanTrack[] = [
     name: "Naghshbandi",
     nameAr: 'النقشبندي',
     sound: 'adhan_naghshbandi',
-    source: require('../../assets/audio/adhan-naghshbandi.mp3'),
+    url: adhanAudioUrl('adhan:naghshbandi'),
     bytes: 164568,
   },
   {
@@ -146,7 +149,7 @@ export const ADHAN_TRACKS: AdhanTrack[] = [
     name: "Saber",
     nameAr: 'صابر',
     sound: 'adhan_saber',
-    source: require('../../assets/audio/adhan-saber.mp3'),
+    url: adhanAudioUrl('adhan:saber'),
     bytes: 151240,
   },
   {
@@ -154,7 +157,7 @@ export const ADHAN_TRACKS: AdhanTrack[] = [
     name: "Sharif Doman",
     nameAr: 'شريف دومان',
     sound: 'adhan_sharif_doman',
-    source: require('../../assets/audio/adhan-sharif-doman.mp3'),
+    url: adhanAudioUrl('adhan:sharif-doman'),
     bytes: 283218,
   },
   {
@@ -162,7 +165,7 @@ export const ADHAN_TRACKS: AdhanTrack[] = [
     name: "Traditional",
     nameAr: 'التقليدي',
     sound: 'adhan_traditional',
-    source: require('../../assets/audio/adhan-traditional.mp3'),
+    url: adhanAudioUrl('adhan:traditional'),
     bytes: 203440,
   },
   {
@@ -170,7 +173,7 @@ export const ADHAN_TRACKS: AdhanTrack[] = [
     name: "Yusuf Islam",
     nameAr: 'يوسف إسلام',
     sound: 'adhan_yusuf_islam',
-    source: require('../../assets/audio/adhan-yusuf-islam.mp3'),
+    url: adhanAudioUrl('adhan:yusuf-islam'),
     bytes: 101091,
   },
 ];
@@ -182,7 +185,7 @@ export const FAJR_TRACKS: AdhanTrack[] = [
     name: "Mansour Al-Zahrani",
     nameAr: 'منصور الزهراني',
     sound: 'fajr_mansour_al_zahrani',
-    source: require('../../assets/audio/fajr-mansour-al-zahrani.mp3'),
+    url: adhanAudioUrl('fajr:mansour-al-zahrani'),
     bytes: 3905851,
   },
   {
@@ -190,7 +193,7 @@ export const FAJR_TRACKS: AdhanTrack[] = [
     name: "Traditional",
     nameAr: 'التقليدي',
     sound: 'fajr_traditional',
-    source: require('../../assets/audio/fajr-traditional.mp3'),
+    url: adhanAudioUrl('fajr:traditional'),
     bytes: 1503337,
   },
 ];

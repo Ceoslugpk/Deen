@@ -3,7 +3,9 @@ import * as Notifications from 'expo-notifications';
 import { arNoun, clockTime, prayerName } from './arabicCopy';
 import type { PrayerSnapshot } from './api';
 import type { WorshipSettings } from './localState';
-import { ADHAN_TRACKS, FAJR_TRACKS } from './adhanCatalog';
+import { ADHAN_TRACKS, FAJR_TRACKS, adhanTrack, type AdhanTrack } from './adhanCatalog';
+import { isAdhanCached } from './adhanCache';
+import { isAdhanAlarmAvailable, scheduleAdhanAlarms, cancelAdhanAlarms } from './adhanAlarm';
 
 /**
  * Everything the app says out loud, and when it says it.
@@ -73,16 +75,37 @@ export function fajrOption(id: string) {
 }
 
 /**
- * Which sound a prayer asks for.
+ * Which recording a prayer asks for.
  *
  * Fajr is the only prayer with its own recording. Everything else — Dhuhr,
  * Asr, Maghrib, Isha — shares the one choice, so picking a noon adhan does
  * not quietly change what sounds at dawn.
  */
-export function adhanSoundFor(prayerName: string, settings: { adhanReciter?: string; adhanFajrReciter?: string }): string {
-  return prayerName === 'Fajr'
-    ? fajrOption(settings.adhanFajrReciter || '').sound
-    : adhanOption(settings.adhanReciter || '').sound;
+export function adhanTrackFor(prayerName: string, settings: { adhanReciter?: string; adhanFajrReciter?: string }): AdhanTrack {
+  const id = prayerName === 'Fajr'
+    ? fajrOption(settings.adhanFajrReciter || '').id
+    : adhanOption(settings.adhanReciter || '').id;
+  return adhanTrack(id, prayerName === 'Fajr' ? FAJR_TRACKS[0] : ADHAN_TRACKS[0]);
+}
+
+/**
+ * What the notification itself should sound like, which is no longer the
+ * adhan.
+ *
+ * The recordings are on the device now rather than compiled into the app, and
+ * a notification can only play a sound that was compiled in. So when an alarm
+ * will play the recording, the notification stays quiet and lets it; when no
+ * alarm can - iOS, the web, Expo Go, or a recording that has not finished
+ * downloading - it falls back to the device tone, so the reminder is still
+ * heard rather than arriving silently.
+ */
+export function adhanNotificationSound(
+  prayerName: string,
+  settings: { adhanReciter?: string; adhanFajrReciter?: string },
+): string | undefined {
+  const track = adhanTrackFor(prayerName, settings);
+  const alarmWillPlay = isAdhanAlarmAvailable() && isAdhanCached(track);
+  return alarmWillPlay ? undefined : 'default';
 }
 
 const COPY = {
@@ -285,6 +308,10 @@ export async function schedulePrayerNotifications(
   const now = new Date();
   let scheduled = 0;
   let adhans = 0;
+  /* Collected as the loop runs, then handed to the alarm in one call at the
+     end. An alarm per prayer is the only way the recording can sound, because
+     a notification cannot play a file the app is merely carrying. */
+  const alarmEntries: { at: number; prayerName: string; fajrId: string; adhanId: string; title: string }[] = [];
 
   const prayers = snapshot.prayers.filter((prayer) => prayer.name !== 'Sunrise');
 
@@ -295,7 +322,7 @@ export async function schedulePrayerNotifications(
 
     // ---- 1. the adhan itself ------------------------------------------
     if (settings.adhanEnabled?.[prayer.name]) {
-      const sound = adhanSoundFor(prayer.name, settings);
+      const sound = adhanNotificationSound(prayer.name, settings);
       if (at > now) {
         await Notifications.scheduleNotificationAsync({
           content: {
@@ -312,6 +339,13 @@ export async function schedulePrayerNotifications(
         });
         scheduled++;
         adhans++;
+        alarmEntries.push({
+          at: at.getTime(),
+          prayerName: prayer.name,
+          fajrId: settings.adhanFajrReciter || '',
+          adhanId: settings.adhanReciter || '',
+          title: name,
+        });
       }
 
       // ---- 2. back to your reading, half an hour later -----------------
@@ -404,12 +438,20 @@ export async function schedulePrayerNotifications(
     }
   }
 
+  /* Rescheduled every time, because the times, the city, and the person's
+     choice of recording all move. Any alarm already set is replaced. */
+  await scheduleAdhanAlarms(alarmEntries);
+
   return { scheduled, unsupported: false, adhans };
 }
 
 export async function cancelAllNotifications() {
   if (Platform.OS === 'web') return;
   await Notifications.cancelAllScheduledNotificationsAsync();
+  /* The alarms are not notifications, so cancelling one does not cancel the
+     other. Both have to go, or the adhan keeps sounding after being switched
+     off. */
+  await cancelAdhanAlarms();
 }
 
 /** What is currently queued, for the settings screen to be honest about. */
