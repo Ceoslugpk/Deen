@@ -7,7 +7,7 @@ function ExploreStack(){return <Stack.Navigator screenOptions={{headerShown:fals
  */
 function PrayerStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="Prayer" component={PrayerScreen}/><Stack.Screen name="Adhan" component={AdhanScreen}/><Stack.Screen name="Ramadan" component={RamadanScreen}/></Stack.Navigator>}
 /** The tools tab: what you calculate, look up, travel for, or record. */
-function ToolsStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="ToolsHome" component={ToolsHomeScreen}/><Stack.Screen name="Zakat" component={ZakatScreen}/> <Stack.Screen name="Holy site channels" component={HolyChannelsScreen}/><Stack.Screen name="Women" component={WomenHubScreen}/><Stack.Screen name="Istihada" component={IstihadaScreen}/><Stack.Screen name="Ramadan Planner" component={RamadanPlannerScreen}/><Stack.Screen name="These Days" component={TheseDaysScreen}/><Stack.Screen name="Cycle" component={CycleScreen}/><Stack.Screen name="Qada" component={QadaScreen}/><Stack.Screen name="Women Guides" component={WomenGuidesScreen}/><Stack.Screen name="Privacy Lock" component={PrivacyLockScreen}/><Stack.Screen name="Fasting" component={FastingScreen}/><Stack.Screen name="Weekly Summary" component={WeeklySummaryScreen}/><Stack.Screen name="Qibla" component={QiblaScreen}/><Stack.Screen name="Location Setup" component={LocationSetupScreen}/><Stack.Screen name="Notifications" component={NotificationScreen}/><Stack.Screen name="Hijri Calendar" component={HijriCalendarScreen}/><Stack.Screen name="Tasbih" component={TasbihScreen}/><Stack.Screen name="Umrah Packing" component={UmrahPackingScreen}/><Stack.Screen name="Hajj Live" component={HajjLiveScreen}/></Stack.Navigator>}
+function ToolsStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="ToolsHome" component={ToolsHomeScreen}/><Stack.Screen name="Zakat" component={ZakatScreen}/><Stack.Screen name="Holy site channels" component={HolyChannelsScreen}/><Stack.Screen name="Women" component={WomenHubScreen}/><Stack.Screen name="Istihada" component={IstihadaScreen}/><Stack.Screen name="Ramadan Planner" component={RamadanPlannerScreen}/><Stack.Screen name="These Days" component={TheseDaysScreen}/><Stack.Screen name="Cycle" component={CycleScreen}/><Stack.Screen name="Qada" component={QadaScreen}/><Stack.Screen name="Women Guides" component={WomenGuidesScreen}/><Stack.Screen name="Privacy Lock" component={PrivacyLockScreen}/><Stack.Screen name="Fasting" component={FastingScreen}/><Stack.Screen name="Weekly Summary" component={WeeklySummaryScreen}/><Stack.Screen name="Qibla" component={QiblaScreen}/><Stack.Screen name="Location Setup" component={LocationSetupScreen}/><Stack.Screen name="Notifications" component={NotificationScreen}/><Stack.Screen name="Hijri Calendar" component={HijriCalendarScreen}/><Stack.Screen name="Tasbih" component={TasbihScreen}/><Stack.Screen name="Umrah Packing" component={UmrahPackingScreen}/><Stack.Screen name="Hajj Live" component={HajjLiveScreen}/></Stack.Navigator>}
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -90,7 +90,7 @@ import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 import * as Clipboard from 'expo-clipboard';
 import { getCacheUsage, getCachedJson, setCachedJson } from './src/services/contentCache';
 import { AudioSession, AudioSettings, AudioTrackKind, buildQueueForChapter, buildSurahQueue, loadSurahReciters, clearQueue, clearRecentPlays, deletePlaylist, formatClock, getAudioSettings, loadAudioEditions, loadAudioSession, loadAudioSettings, loadPlaylists, loadRecentPlays, nextTrack, playQueue, Playlist, previousTrack, RecentPlay, removeFromQueue, restoreSavedSession, saveAudioSettings, savePlaylist, seekTo, selectQueueItem, setAutoNextSurah, setRepeatCount, setRepeatMode, setRepeatRange, setResumeOnStart, setVolume, stepPlaybackRate, MAX_RATE, MIN_RATE, RATE_STEPS, REPEAT_COUNT_CHOICES, REPEAT_FOREVER, setPlaybackRate, reciterLabel, stopPlayback, syncAudioTranslationToLanguage, togglePlayback, useAudio } from './src/services/audioService';
-import { getHadithPage, getHadith, getLoadedCollections, getNeighbours, whenArabicReady, hadithReference, hadithSourceLabel, HADITH_COLLECTIONS, Hadith, HadithCollectionData, isHadithSaved, loadHadithCollection, loadHadithState, markHadithRead, removeHadithBookmark, searchLoadedCollections, toggleHadithSaved, useHadithState } from './src/services/hadithService';
+import {deviceHadithCount, downloadCollection, fetchHadithOne, getHadith, hadithDownloadProgress, searchDeviceHadith, hadithReference, hadithSourceLabel, HADITH_COLLECTIONS, Hadith, HadithOutline, isHadithSaved, loadHadithBook, loadHadithOutline, loadHadithState, markHadithRead, removeDownloadedCollection, removeHadithBookmark, subscribeHadithDownloads, toggleHadithSaved, useDownloadedCollections, useHadithState } from './src/services/hadithService';
 import {
   buildReportMailto, deleteReport, openReportEmail, saveReport, subscribeReports,
   type CorrectionReport, type CorrectionIssue as ReportIssue
@@ -6501,28 +6501,51 @@ function HadithProgressBars(){
 function HadithScreen({navigation}:any){const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);
   const state=useHadithState();
   const [query,setQuery]=useState('');
-  const loaded=getLoadedCollections();
-  const results=query.trim().length>=3?searchLoadedCollections(query,60):[];
+  const [results,setResults]=useState<Hadith[]>([]);
+  const [searching,setSearching]=useState(false);
+  const [booksOnDevice,setBooksOnDevice]=useState(0);
+  const downloaded=useDownloadedCollections();
+  const [downloadTick,setDownloadTick]=useState(0);
+  useEffect(()=>subscribeHadithDownloads(()=>setDownloadTick(t=>t+1)) as any,[]);
+  useEffect(()=>{void deviceHadithCount().then(setBooksOnDevice)},[downloadTick]);
+
+  /* Search runs over what is on the device. There is no server-side search -
+     the endpoint accepts `q` and ignores it - so anything not read or
+     downloaded is simply not searchable, and the screen says so. */
+  useEffect(()=>{
+    if(query.trim().length<3){setResults([]);setSearching(false);return}
+    setSearching(true);
+    const timer=setTimeout(()=>{
+      void searchDeviceHadith(query,60).then(hits=>{setResults(hits);setSearching(false)});
+    },220);
+    return ()=>clearTimeout(timer);
+  },[query,downloadTick]);
+
+  const searching3=query.trim().length>=3;
   const open=(slug:string,number?:number)=>navigation.navigate(number?'Hadith Detail':'Hadith Collection',number?{slug,number}:{slug});
   return <Page><ToolBar title={T('Hadith')} navigation={navigation}/><ScrollView contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
     <ToolGraphic tool="Hadith" size={81}/>
     <Text style={s.dataTitle}>{T('Hadith')}</Text>
-    
-    <Text style={s.intro}>{T('Ten verified collections with matched Arabic and English texts. Grading is shown where the source publishes it—Sahih al-Bukhari and Sahih Muslim carry no separate grade because the collection itself is the grading.')}</Text>
 
-    <View style={s.search}>{ico('search',18,C.muted)}<TextInput accessibilityLabel={T('Search hadith in opened collections')} value={query} onChangeText={setQuery} style={s.searchInput} placeholder={T('Search opened collections')} placeholderTextColor={C.muted}/>{query.length>0&&<Pressable accessibilityLabel={T('Clear hadith search')} onPress={()=>setQuery('')}>{ico('close',16,C.muted)}</Pressable>}</View>
+    <Text style={s.intro}>{T('Ten verified collections with matched Arabic and English texts. Grading is shown where the source publishes it—Sahih al-Bukhari and Sahih Muslim carry no separate grade because their contents are accepted as sound.')}</Text>
 
-    {query.trim().length>=3?(results.length?<>
-      <Text style={s.meta}>{rtl?`${results.length} ${arNoun(results.length, 'نتيجة', 'نتيجتان', 'نتائج', 'نتيجة')} في ${loaded.length} ${arNoun(loaded.length, 'مجموعة مفتوحة', 'مجموعتين مفتوحتين', 'مجموعات مفتوحة', 'مجموعة مفتوحة')}`:`${results.length} match${results.length===1?'':'es'} in ${loaded.length} opened collection${loaded.length===1?'':'s'}`}</Text>
+    <View style={s.search}>{ico('search',18,C.muted)}<TextInput accessibilityLabel={T('Search hadith on this device')} value={query} onChangeText={setQuery} style={s.searchInput} placeholder={booksOnDevice?T('Search hadith you have opened or downloaded'):T('Search hadith')} placeholderTextColor={C.muted}/></View>
+
+    {searching3?(searching?<Spinner/>:results.length?<>
+      <Text style={s.meta}>{rtl?`${results.length} ${arNoun(results.length, 'نتيجة', 'نتيجتان', 'نتائج', 'نتيجة')}`:`${results.length} ${T('result')}${results.length===1?'':'s'}`}</Text>
       {results.map(hadith=>{const collection=HADITH_COLLECTIONS.find(item=>item.slug===hadith.slug);return <Pressable key={hadith.id} onPress={()=>open(hadith.slug,hadith.number)} style={s.dataCard}>
         <Text style={s.dataMeta}>{rtl ? collection?.arabicName || collection?.name : collection?.name} · {T('Hadith')} {hadith.number}</Text>
         <Text style={s.dataBody} numberOfLines={3}>{hadith.english||hadith.arabic}</Text>
       </Pressable>})}
-    </>:<View style={s.empty}><Text style={s.dataBody}>{loaded.length?'No match in the collections you have opened yet.':'Open a collection once to search inside it.'}</Text></View>):<>
+    </>:<View style={s.empty}>
+      <Text style={s.dataBody}>{booksOnDevice
+        ? T('No match in what is on this device. Search only covers books you have opened or downloaded.')
+        : T('Search covers books you have opened or downloaded. Open a collection, or download one to search it all.')}</Text>
+    </View>):<>
       {state.recent.length>0&&<>
         <Section title={T('Continue reading')}/>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap:10,paddingRight:20}}>
-          {state.recent.slice(0,8).map(item=>{const collection=HADITH_COLLECTIONS.find(entry=>entry.slug===item.slug);return <Pressable key={`${item.slug}-${item.number}`} onPress={()=>open(item.slug,item.number)} style={s.recentChipWide}>
+          {state.recent.slice(0,8).map(item=>{const collection=HADITH_COLLECTIONS.find(entry=>entry.slug===item.slug);return <Pressable key={`${item.slug}-${item.number}`} onPress={()=>open(item.slug,item.number)} style={s.dataCard}>
             <Text style={s.dataMeta}>{rtl ? collection?.arabicName || collection?.name : collection?.name}</Text>
             <Text style={s.recentChipTitle}>{T('Hadith')} {item.number}</Text>
           </Pressable>})}
@@ -6541,90 +6564,193 @@ function HadithScreen({navigation}:any){const{rtl}=useLanguage();const T=(text:s
         const total=state.totals[collection.slug]||0;
         const read=(state.read[collection.slug]||[]).length;
         const percent=total?Math.min(100,Math.round(read/total*100)):0;
-        return <Pressable key={collection.slug} accessibilityLabel={`${T('Open')} ${collection.name}`} onPress={()=>open(collection.slug)} style={s.hadithCollectionCard}>
-          <View style={s.hadithCollectionTop}>
-            <View style={{flex:1}}>
-              <Text style={s.dataName}>{collection.name}</Text>
-              <Text style={s.dataArabic}>{collection.arabicName}</Text>
-              <Text style={s.meta}>{T(collection.author)} · {T(collection.kind)}{collection.graded ? (rtl ? ' · مصنّف' : ' · graded') : ''}{total ? ` · ${total.toLocaleString()} ${T('hadith')}` : ''}</Text>
+        const isDownloaded=!!downloaded[collection.slug];
+        const progress=hadithDownloadProgress(collection.slug);
+        const pct=progress.booksTotal?Math.round(progress.booksDone/progress.booksTotal*100):0;
+        return <View key={collection.slug} style={s.hadithCollectionCard}>
+          <Pressable accessibilityLabel={`${T('Open')} ${collection.name}`} onPress={()=>open(collection.slug)}>
+            <View style={s.hadithCollectionTop}>
+              <View style={{flex:1}}>
+                <Text style={s.dataName}>{collection.name}</Text>
+                <Text style={s.dataArabic}>{collection.arabicName}</Text>
+                <Text style={s.meta}>{T(collection.author)} · {T(collection.kind)}{collection.graded ? (rtl ? ' · مصنّف' : ' · graded') : ''}{total ? ` · ${total.toLocaleString()} ${T('hadith')}` : ''}{isDownloaded ? (rtl ? ' · محمّل' : ' · downloaded') : ''}</Text>
+              </View>
+              {ico('chevron-forward',18,C.muted)}
             </View>
-            {ico('chevron-forward',18,C.muted)}
-          </View>
-          {percent>0&&<View style={s.hadithTrack}><View style={[s.hadithFill,{width:`${percent}%`}]}/></View>}
-        </Pressable>;
+          </Pressable>
+          {progress.phase==='downloading'&&<View style={s.hadithTrack}><View style={[s.hadithFill,{width:`${pct}%`}]}/></View>}
+          {progress.phase==='downloading'&&<Text style={s.meta}>{progress.booksDone} / {progress.booksTotal} {T('books')}</Text>}
+          {percent>0&&progress.phase!=='downloading'&&<View style={s.hadithTrack}><View style={[s.hadithFill,{width:`${percent}%`}]}/></View>}
+          {progress.phase!=='downloading'&&<Pressable accessibilityLabel={isDownloaded?T('Remove this collection from the device'):T('Download this collection for offline reading')}
+            onPress={()=>{void (isDownloaded?removeDownloadedCollection(collection.slug):downloadCollection(collection.slug)).catch(()=>undefined)}}
+            style={[s.secondary,{marginTop:10}]}>
+            <Text style={s.secondaryText}>{isDownloaded?T('Remove download'):T('Download for offline')}</Text></Pressable>}
+        </View>;
       })}
-      <View style={s.apiPanel}><Text style={s.apiTitle}>{T('Arabic and English together')}</Text><Text style={s.apiText}>{T('Each collection carries Arabic and English editions, so every hadith you read is shown in both. Nothing is paraphrased.')}</Text></View>
+      <View style={s.apiPanel}><Text style={s.apiTitle}>{T('Arabic and English together')}</Text><Text style={s.apiText}>{T('Each collection carries Arabic and English editions, so every hadith can be read in both. Collections are read on demand: opening one costs a single request for its list of books.')}</Text></View>
     </>}
   </ScrollView></Page>}
 
 function HadithCollectionScreen({route,navigation}:any){const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);
   const slug=route.params?.slug||'bukhari';
   const collection=HADITH_COLLECTIONS.find(item=>item.slug===slug);
-  const [data,setData]=useState<HadithCollectionData|null>(null);
-  const [error,setError]=useState('');
+  const [outline,setOutline]=useState<HadithOutline|null>(null);
   const [book,setBook]=useState<number|null>(null);
+  const [rows,setRows]=useState<Hadith[]>([]);
+  const [loadingBook,setLoadingBook]=useState(false);
+  const [error,setError]=useState('');
   const [query,setQuery]=useState('');
   const [limit,setLimit]=useState(20);
-  const load=()=>{setError('');return loadHadithCollection(slug).then(next=>{setData(next);void whenArabicReady(slug).then(ready=>ready&&setData(ready))}).catch((e:any)=>setError(T(e.message||'Please check your connection.')))};
+  const downloaded=useDownloadedCollections();
+  const progress=hadithDownloadProgress(slug);
+  const isDownloaded=!!downloaded[slug];
+  const [downloadTick,setDownloadTick]=useState(0);
+  const state=useHadithState();
+  const read=new Set(state.read[slug]||[]);
+
+  /* Re-render while a download runs - the progress lives outside React. */
+  useEffect(()=>subscribeHadithDownloads(()=>setDownloadTick(t=>t+1)) as any,[]);
+
+  const load=()=>{setError('');return loadHadithOutline(slug).then(next=>{setOutline(next)}).catch((e:any)=>setError(T(e.message||'Please check your connection.')))};
   useEffect(()=>{void load()},[slug]);
   useEffect(()=>{setLimit(20)},[book,query]);
-  const page=data?getHadithPage(data,{book,query,offset:0,limit}):{rows:[],total:0,offset:0,hasMore:false};
-  const read=new Set(useHadithState().read[slug]||[]);
+
+  /* A book is read only when it is opened, and then only once. */
+  useEffect(()=>{
+    if(book===null){setRows([]);return}
+    let alive=true;
+    setLoadingBook(true);setError('');
+    void loadHadithBook(slug,book)
+      .then(next=>{if(alive){setRows(next);setLoadingBook(false)}})
+      .catch((e:any)=>{if(alive){setError(T(e.message||'Please check your connection.'));setLoadingBook(false)}});
+    return ()=>{alive=false};
+  },[slug,book,downloadTick]);
+
+  const filtered=query.trim().length>=2
+    ? rows.filter(row=>(row.english||'').toLowerCase().includes(query.trim().toLowerCase())||(row.arabic||'').includes(query.trim()))
+    : rows;
+  const shown=filtered.slice(0,limit);
+  const totalInCollection=outline?.books.reduce((sum,entry)=>sum+entry.count,0)||0;
+  const booksDone=progress.booksDone, booksTotal=progress.booksTotal;
+  const pct=booksTotal?Math.round(booksDone/booksTotal*100):0;
+
   return <Page><ToolBar title={rtl ? (collection?.arabicName || T('Hadith')) : (collection?.name || 'Hadith')} navigation={navigation}/>
-    {!data&&!error&&<Spinner/>}
-    {!!error&&<ErrorState message={error} retry={load}/>}
-    {!!data&&<>
-      <View style={s.search}>{ico('search',18,C.muted)}<TextInput accessibilityLabel={T('Search this collection')} value={query} onChangeText={setQuery} style={s.searchInput} placeholder={T('Search Arabic, English or number')} placeholderTextColor={C.muted}/>{query.length>0&&<Pressable accessibilityLabel={T('Clear search')} onPress={()=>setQuery('')}>{ico('close',16,C.muted)}</Pressable>}</View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.choiceRow}>
-        <ChoicePill label={T('All books')} selected={book===null} onPress={()=>setBook(null)}/>
-        {data.books.map(entry=><ChoicePill key={entry.number} label={`${entry.number}. ${entry.name}`} selected={book===entry.number} onPress={()=>setBook(entry.number)}/>)}
-      </ScrollView>
-      <Text style={s.meta}>{rtl?`${page.total.toLocaleString()} ${arNoun(Number(page.total), 'حديث', 'حديثان', 'أحاديث', 'حديثًا')}${book!==null?' في هذا الكتاب':''} · يُعرض ${page.rows.length}${data.arabicReady?'':' · جارٍ تحميل النص العربي'}`:`${page.total.toLocaleString()} hadith${book!==null?' in this book':''} · showing ${page.rows.length}${data.arabicReady?'':' · Arabic text loading'}`}</Text>
-      <ScrollView contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
-        {page.rows.map(hadith=><Pressable key={hadith.id} accessibilityLabel={`${T('Hadith')} ${hadith.number}`} onPress={()=>navigation.navigate('Hadith Detail',{slug,number:hadith.number})} style={s.dataCard}>
+    {!outline&&!error&&<Spinner/>}
+    {!!error&&!outline&&<ErrorState message={error} retry={load}/>}
+    {!!outline&&<>
+      {book===null?<ScrollView contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
+        <Text style={s.dataTitle}>{collection?.name||outline.name}</Text>
+        <Text style={s.dataArabic}>{collection?.arabicName}</Text>
+        <Text style={s.intro}>{T(collection?.author||'')} · {T(collection?.kind||'')} · {totalInCollection.toLocaleString()} {T('hadith')} · {outline.books.length} {T('books')}</Text>
+
+        <View style={s.apiPanel}>
           <View style={s.hadithRowTop}>
-            <View style={s.hadithNumber}><Text style={s.hadithNumberText}>{hadith.number}</Text></View>
             <View style={{flex:1}}>
-              <Text style={s.dataMeta}>{hadith.book?(rtl?`الكتاب ${hadith.book} · ${hadith.bookName}`:`Book ${hadith.book} · ${hadith.bookName}`):hadith.bookName}{hadith.grades.length?` · ${hadith.grades[0].grade}`:''}{read.has(hadith.number)?(rtl?' · مقروء':' · read'):''}</Text>
-              {!!hadith.arabic&&<Text style={s.dataArabic} numberOfLines={2}>{hadith.arabic}</Text>}
-              <Text style={s.dataBody} numberOfLines={3}>{hadith.english}</Text>
+              <Text style={s.apiTitle}>{isDownloaded?T('Available offline'):T('Read offline')}</Text>
+              <Text style={s.apiText}>{isDownloaded
+                ? `${(downloaded[slug].count||0).toLocaleString()} ${T('hadith stored on this device')}.`
+                : T('Download this collection to read it without a connection.')}</Text>
             </View>
-            {ico('chevron-forward',16,C.muted)}
           </View>
-        </Pressable>)}
-        {!page.rows.length&&<View style={s.empty}><Text style={s.dataBody}>{T('No hadith matches this filter.')}</Text></View>}
-        {page.hasMore&&<Pressable accessibilityLabel={T('Load more hadith')} onPress={()=>setLimit(value=>value+20)} style={s.secondary}><Text style={s.secondaryText}>{T('Load more')}</Text></Pressable>}
-        <View style={s.apiPanel}><Text style={s.apiTitle}>{data.name}</Text><Text style={s.apiText}>{rtl?`${data.books.length} ${arNoun(data.books.length, 'كتاب', 'كتابان', 'كتب', 'كتابًا')} · ${data.hadiths.length.toLocaleString()} ${arNoun(data.hadiths.length, 'حديث', 'حديثان', 'أحاديث', 'حديثًا')}`:`${data.books.length} books · ${data.hadiths.length.toLocaleString()} hadith`}</Text></View>
-      </ScrollView>
+          {progress.phase==='downloading'&&<View style={s.hadithTrack}><View style={[s.hadithFill,{width:`${pct}%`}]}/></View>}
+          {progress.phase==='downloading'&&<Text style={s.meta}>{booksDone} / {booksTotal} {T('books')}</Text>}
+          <View style={{flexDirection:'row',gap:8,marginTop:12}}>
+            {!isDownloaded&&<Pressable accessibilityLabel={T('Download this collection for offline reading')}
+              onPress={()=>{void downloadCollection(slug).catch(()=>undefined)}}
+              style={[s.secondary,{flex:1,opacity:progress.phase==='downloading'?.5:1}]} disabled={progress.phase==='downloading'}>
+              <Text style={s.secondaryText}>{progress.phase==='downloading'?T('Downloading…'):T('Download for offline')}</Text></Pressable>}
+            {isDownloaded&&<Pressable accessibilityLabel={T('Remove this collection from the device')}
+              onPress={()=>{void removeDownloadedCollection(slug).catch(()=>undefined)}}
+              style={[s.secondary,{flex:1}]}>
+              <Text style={s.secondaryText}>{T('Remove download')}</Text></Pressable>}
+          </View>
+          {progress.phase==='error'&&<Text style={s.meta}>{T(progress.error||'Download failed')}</Text>}
+        </View>
+
+        <Section title={T('Books')}/>
+        {outline.books.map(entry=>{
+          const readInBook=rows.length?0:0;
+          return <Pressable key={entry.number} accessibilityLabel={`${T('Open book')} ${entry.number}`}
+            onPress={()=>setBook(entry.number)} style={s.dataCard}>
+            <View style={s.hadithRowTop}>
+              <View style={s.hadithNumber}><Text style={s.hadithNumberText}>{entry.number}</Text></View>
+              <View style={{flex:1}}>
+                <Text style={s.dataName}>{entry.name}</Text>
+                <Text style={s.dataMeta}>{entry.count.toLocaleString()} {T('hadith')}</Text>
+              </View>
+              {ico('chevron-forward',16,C.muted)}
+            </View>
+          </Pressable>})}
+      </ScrollView>:<>
+        <View style={{paddingHorizontal:20,paddingBottom:10}}>
+          <Pressable accessibilityLabel={T('Back to books')} onPress={()=>setBook(null)} style={[s.secondary,{alignSelf:'flex-start'}]}>
+            <Text style={s.secondaryText}>‹ {T('All books')}</Text></Pressable>
+        </View>
+        <View style={s.search}>{ico('search',18,C.muted)}<TextInput accessibilityLabel={T('Search this book')} value={query} onChangeText={setQuery} style={s.searchInput} placeholder={T('Search this book')} placeholderTextColor={C.muted}/></View>
+        <ScrollView contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
+          {loadingBook&&<Spinner/>}
+          {!!error&&<ErrorState message={error} retry={()=>setBook(book)}/>}
+          {!loadingBook&&<Text style={s.meta}>{filtered.length.toLocaleString()} {T('hadith')}{query.trim().length>=2?` · ${T('matching your search')}`:''}</Text>}
+          {shown.map(hadith=><Pressable key={hadith.id} accessibilityLabel={`${T('Hadith')} ${hadith.number}`} onPress={()=>navigation.navigate('Hadith Detail',{slug,number:hadith.number})} style={s.dataCard}>
+            <View style={s.hadithRowTop}>
+              <View style={s.hadithNumber}><Text style={s.hadithNumberText}>{hadith.number}</Text></View>
+              <View style={{flex:1}}>
+                {hadith.grades.length>0&&<Text style={s.dataMeta}>{hadith.grades.map(g=>g.grade).join(' · ')}</Text>}
+                {!!hadith.arabic&&<Text style={s.dataArabic} numberOfLines={2}>{hadith.arabic}</Text>}
+                <Text style={s.dataBody} numberOfLines={3}>{hadith.english}</Text>
+                {read.has(hadith.number)&&<Text style={[s.meta,{marginTop:6}]}>{T('Read')}</Text>}
+              </View>
+              {ico('chevron-forward',16,C.muted)}
+            </View>
+          </Pressable>)}
+          {!loadingBook&&!shown.length&&<View style={s.empty}><Text style={s.dataBody}>{query.trim().length>=2?T('No hadith matches this search.'):T('This book is empty.')}</Text></View>}
+          {limit<filtered.length&&<Pressable accessibilityLabel={T('Load more hadith')} onPress={()=>setLimit(value=>value+20)} style={s.secondary}><Text style={s.secondaryText}>{T('Load more')}</Text></Pressable>}
+        </ScrollView>
+      </>}
     </>}
   </Page>}
-
 function HadithDetailScreen({route,navigation}:any){const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);
   const slug=route.params?.slug||'bukhari';
   const number=Number(route.params?.number||1);
   const collection=HADITH_COLLECTIONS.find(item=>item.slug===slug);
-  const [data,setData]=useState<HadithCollectionData|null>(null);
   const [hadith,setHadith]=useState<Hadith|null>(null);
+  const [outline,setOutline]=useState<HadithOutline|null>(null);
+  const [neighbours,setNeighbours]=useState<{previous?:Hadith;next?:Hadith}>({});
   const [error,setError]=useState('');
   const [copied,setCopied]=useState(false);
   const [reporting,setReporting]=useState(false);
-  const state=useHadithState();
+  useHadithState();
   const saved=isHadithSaved(slug,number);
-  const total=data?.hadiths.length||0;
+  const total=outline?.books.reduce((sum,entry)=>sum+entry.count,0)||0;
+
+  /* One request for the narration, one for its book so the reader can walk
+     forward and back. The book is cached, so walking is free after the first
+     step. Reading a hadith never downloads the collection. */
   const load=async()=>{
     setError('');
     try{
-      const loaded=await loadHadithCollection(slug);
-      setData(loaded);
-      const apply=(source:HadithCollectionData)=>{const found=getHadith(source,number);if(found)setHadith(found)};
-      apply(loaded);
-      if(!loaded.arabicReady){const ready=await whenArabicReady(slug);if(ready){setData(ready);apply(ready)}}
-      else setError('This hadith is not in the loaded edition.');
-    }catch(e:any){setError(T(e.message||'Please check your connection.'))}
+      const record=await fetchHadithOne(slug,number);
+      setHadith(record);
+      const shape=await loadHadithOutline(slug).catch(()=>null);
+      if(shape)setOutline(shape);
+      if(record.book){
+        const rows=await loadHadithBook(slug,record.book).catch(()=>[] as Hadith[]);
+        if(rows.length){
+          const at=rows.findIndex(row=>row.number===number);
+          if(at>=0){
+            const previous=rows[at-1]; const next=rows[at+1];
+            setNeighbours({previous,next});
+            if(previous)await fetchHadithOne(slug,previous.number).then(r=>setNeighbours(n=>({...n,previous:r}))).catch(()=>undefined);
+            if(next)await fetchHadithOne(slug,next.number).then(r=>setNeighbours(n=>({...n,next:r}))).catch(()=>undefined);
+          }
+        }
+      }
+    }catch(e:any){
+      setError(T(e.message||'Please check your connection.'));
+    }
   };
-  useEffect(()=>{void load()},[slug,number]);
-  useEffect(()=>{if(data)void markHadithRead(slug,number,data.hadiths.length)},[data,slug,number]);
-  const neighbours=data?getNeighbours(data,number):{previous:undefined,next:undefined};
+  useEffect(()=>{setNeighbours({});void load()},[slug,number]);
+  useEffect(()=>{if(total)void markHadithRead(slug,number,total)},[total,slug,number]);
   const share=async()=>{
     if(!hadith)return;
     const text=`${hadithReference(collection,hadith)}\n\n${hadith.arabic}\n\n${hadith.english}`;

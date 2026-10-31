@@ -2,18 +2,27 @@ import { useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getCachedJson, listCachedKeys, setCachedJson } from './contentCache';
 import {
-  getHadithBook, getHadithCollection, HadithBook as WorkerBook,
-  HadithRecord, ISLAMIC_DATA_BASE_URL,
+  /* `getHadith` already names the local lookup at the bottom of this file, so
+     the network call is imported under the name the API gives it. */
+  getHadith as getHadithRecord, getHadithBook, getHadithCollection,
+  HadithBook as WorkerBook, HadithRecord, IslamicDataError, ISLAMIC_DATA_BASE_URL,
 } from './islamicDataApi';
 
 /**
  * Phase 3 — Hadith.
  *
- * Live source: the community hadith-api corpus (cdn.jsdelivr.net/gh/fawazahmed0/hadith-api),
- * which republishes the six major collections, the Muwatta and the three "Forty" books
- * with matched English and Arabic editions. Nothing is bundled and nothing is invented:
- * if a collection fails to load the screen says so, and if a hadith has no Arabic or no
- * grade in the source, those rows are simply absent rather than filled with placeholders.
+ * Live source: api.islamicdata.uz, our own server, which republishes the six
+ * major collections, the Muwatta and the three "Forty" books with matched
+ * English and Arabic editions. Nothing is bundled and nothing is invented: if a
+ * collection fails to load the screen says so, and if a hadith has no Arabic or
+ * no grade in the source, those rows are simply absent rather than filled with
+ * placeholders.
+ *
+ * Reading is on demand. Opening a collection costs one request for its book
+ * list, opening a book costs one request, opening a hadith costs one request.
+ * The whole collection is only fetched whole when someone asks for it, via
+ * `downloadCollection` — the app never downloads 7,589 narrations to let a
+ * person read one of them.
  */
 
 export type HadithGrade = { name: string; grade: string };
@@ -157,6 +166,142 @@ async function fetchBook(slug: string, book: WorkerBook, force: boolean): Promis
   return rows;
 }
 
+/* ==================== Reading on demand ==================== */
+
+const outlineMemory = new Map<string, HadithOutline>();
+
+export type HadithOutline = {
+  slug: string;
+  name: string;
+  books: HadithBook[];
+  loadedAt: number;
+  source: string;
+};
+
+/**
+ * The shape of a collection: its books, and how many narrations each holds.
+ *
+ * One request, whatever the size of the collection. This is what lets the
+ * reader open Bukhari without waiting on 7,589 narrations — the numbers are
+ * the table of contents, not the contents.
+ */
+export async function loadHadithOutline(slug: string, force = false): Promise<HadithOutline> {
+  const known = HADITH_COLLECTIONS.find((collection) => collection.slug === slug);
+  if (!known) throw new Error('Unknown collection');
+  if (!force && outlineMemory.has(slug)) return outlineMemory.get(slug) as HadithOutline;
+
+  const key = `outline-${slug}`;
+  if (!force) {
+    const cached = await getCachedJson<HadithOutline>('hadith', key).catch(() => null);
+    if (cached && Array.isArray(cached.books) && cached.books.length) {
+      outlineMemory.set(slug, cached);
+      return cached;
+    }
+  }
+
+  const detail = await getHadithCollection(slug, 'en');
+  const books: HadithBook[] = (detail.books || [])
+    .filter((book: any) => book && typeof book.number === 'number')
+    .map((book: any) => ({
+      number: book.number,
+      name: book.name || 'General',
+      first: Number(book.first ?? 0),
+      last: Number(book.last ?? 0),
+      count: Number(book.count ?? 0),
+    }))
+    .filter((book: HadithBook) => book.count > 0);
+  if (!books.length) throw new Error('The collection listed no books');
+
+  const outline: HadithOutline = {
+    slug,
+    name: detail.collection?.name || known.name || slug,
+    books,
+    loadedAt: Date.now(),
+    source: `${ISLAMIC_DATA_BASE_URL}/hadith/collections/${slug}`,
+  };
+  outlineMemory.set(slug, outline);
+  void setCachedJson('hadith', key, outline).catch(() => undefined);
+  return outline;
+}
+
+/**
+ * One book's narrations, read only when that book is opened.
+ *
+ * Cached per book, so reading a book a second time costs nothing, and a book
+ * that was pulled down for offline use is not fetched again.
+ */
+export async function loadHadithBook(
+  slug: string,
+  bookNumber: number,
+  force = false,
+): Promise<Hadith[]> {
+  const key = `book-${slug}-${bookNumber}`;
+  if (!force) {
+    const cached = await getCachedJson<{ hadiths: Hadith[] }>('hadith', key).catch(() => null);
+    if (cached && Array.isArray(cached.hadiths) && cached.hadiths.length) return cached.hadiths;
+  }
+
+  const outline = await loadHadithOutline(slug).catch(() => null);
+  const bookName = outline?.books.find((book) => book.number === bookNumber)?.name || 'General';
+
+  const rows: Hadith[] = [];
+  const limit = 100;
+  let offset = 0;
+  for (;;) {
+    /* eslint-disable no-await-in-loop */
+    const page = await getHadithBook(slug, bookNumber, { language: 'en', limit, offset });
+    page.hadiths.forEach((row) => rows.push(toHadith(slug, row, bookName)));
+    if (!page.page?.hasMore || page.hadiths.length === 0) break;
+    offset += page.hadiths.length;
+    /* A server that reports hasMore but returns nothing would spin forever. */
+    if (offset > 20000) break;
+  }
+
+  if (rows.length) void setCachedJson('hadith', key, { bookNumber, hadiths: rows }).catch(() => undefined);
+  return rows;
+}
+
+/**
+ * One hadith by its number, with the ambiguity resolved.
+ *
+ * Numbers repeat within a collection — the same number appears once per book
+ * in some editions. The server answers 409 and lists the readings it can see,
+ * so the retry is not a guess: it asks again with the first reading offered.
+ * Silently returning the wrong narration would be worse than failing, so if no
+ * reading is offered we let the error stand.
+ */
+export async function fetchHadithOne(
+  slug: string,
+  number: number,
+  disambiguate?: { book?: number; occurrence?: number },
+): Promise<Hadith> {
+  const key = `one-${slug}-${number}-${disambiguate?.book ?? 'x'}-${disambiguate?.occurrence ?? 'x'}`;
+  if (!disambiguate) {
+    const cached = await getCachedJson<{ hadith: Hadith }>('hadith', key).catch(() => null);
+    if (cached?.hadith) return cached.hadith;
+  }
+
+  let record: HadithRecord;
+  try {
+    record = await getHadithRecord(slug, number, { language: 'en', ...disambiguate });
+  } catch (error) {
+    const ambiguous = error instanceof IslamicDataError && error.kind === 'ambiguous';
+    const first = ambiguous ? (error.matches || [])[0] : undefined;
+    if (!first) throw error;
+    record = await getHadithRecord(slug, number, {
+      language: 'en',
+      book: first.book,
+      occurrence: first.occurrence,
+    });
+  }
+
+  const outline = await loadHadithOutline(slug).catch(() => null);
+  const bookName = outline?.books.find((book) => book.number === record.book)?.name || null;
+  const hadith = toHadith(slug, record, bookName);
+  void setCachedJson('hadith', key, { hadith }).catch(() => undefined);
+  return hadith;
+}
+
 /** How many books are read at once. Enough to be quick, few enough to be polite. */
 const BOOK_CONCURRENCY = 4;
 
@@ -238,6 +383,159 @@ export function whenArabicReady(slug: string): Promise<HadithCollectionData | nu
 export async function loadBookOffline(slug: string, book: number): Promise<Hadith[] | null> {
   const cached = await getCachedJson<{ hadiths: Hadith[] }>('hadith', `book-${slug}-${book}`).catch(() => null);
   return cached && Array.isArray(cached.hadiths) ? cached.hadiths : null;
+}
+
+/* ==================== Downloading for offline ==================== */
+
+export type DownloadPhase = 'idle' | 'listing' | 'downloading' | 'done' | 'error';
+export type DownloadProgress = { phase: DownloadPhase; booksDone: number; booksTotal: number; error?: string };
+
+const DOWNLOAD_MARKER = 'downloaded-v1';
+const downloadListeners = new Set<() => void>();
+let downloadProgress: Record<string, DownloadProgress> = {};
+
+export function subscribeHadithDownloads(listener: () => void) {
+  downloadListeners.add(listener);
+  return () => downloadListeners.delete(listener);
+}
+function emitDownloads() {
+  downloadListeners.forEach((listener) => listener());
+}
+function setProgress(slug: string, next: DownloadProgress) {
+  downloadProgress = { ...downloadProgress, [slug]: next };
+  emitDownloads();
+}
+export function hadithDownloadProgress(slug: string): DownloadProgress {
+  return downloadProgress[slug] || { phase: 'idle', booksDone: 0, booksTotal: 0 };
+}
+
+/** Which collections are already complete on the device. */
+export async function downloadedCollections(): Promise<Record<string, { at: number; count: number }>> {
+  try {
+    const raw = await AsyncStorage.getItem(`hadith:${DOWNLOAD_MARKER}`);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+export function useDownloadedCollections(): Record<string, { at: number; count: number }> {
+  const [state, setState] = useState<Record<string, { at: number; count: number }>>({});
+  useEffect(() => {
+    let alive = true;
+    void downloadedCollections().then((next) => alive && setState(next));
+    return subscribeHadithDownloads(() => {
+      void downloadedCollections().then((next) => { if (alive) setState(next); });
+    }) as unknown as void;
+  }, []);
+  return state;
+}
+
+/**
+ * Pull a whole collection down, on purpose.
+ *
+ * This is the only path that reads every book. It exists because reading
+ * offline is a real thing a person wants, but it should be a decision they
+ * make and watch, not something that happens because they tapped a hadith.
+ */
+export async function downloadCollection(slug: string): Promise<number> {
+  if (hadithDownloadProgress(slug).phase === 'downloading') return 0;
+  const known = HADITH_COLLECTIONS.find((collection) => collection.slug === slug);
+  if (!known) throw new Error('Unknown collection');
+  setProgress(slug, { phase: 'listing', booksDone: 0, booksTotal: 0 });
+  try {
+    const outline = await loadHadithOutline(slug, true);
+    const books = outline.books;
+    setProgress(slug, { phase: 'downloading', booksDone: 0, booksTotal: books.length });
+
+    let done = 0;
+    let count = 0;
+    for (let i = 0; i < books.length; i += BOOK_CONCURRENCY) {
+      const slice = books.slice(i, i + BOOK_CONCURRENCY);
+      /* eslint-disable no-await-in-loop */
+      const groups = await Promise.all(
+        slice.map((book) => loadHadithBook(slug, book.number, true).catch(() => [] as Hadith[])),
+      );
+      groups.forEach((group) => { count += group.length; });
+      done += slice.length;
+      setProgress(slug, { phase: 'downloading', booksDone: done, booksTotal: books.length });
+    }
+
+    if (!count) throw new Error('Nothing came back for this collection');
+    const all = await downloadedCollections();
+    all[slug] = { at: Date.now(), count };
+    await AsyncStorage.setItem(`hadith:${DOWNLOAD_MARKER}`, JSON.stringify(all)).catch(() => undefined);
+    setProgress(slug, { phase: 'done', booksDone: books.length, booksTotal: books.length });
+    emitDownloads();
+    return count;
+  } catch (error) {
+    setProgress(slug, {
+      phase: 'error',
+      booksDone: 0,
+      booksTotal: 0,
+      error: error instanceof Error ? error.message : 'Download failed',
+    });
+    throw error;
+  }
+}
+
+/** Give the space back. Books already read stay cached; the marker goes. */
+export async function removeDownloadedCollection(slug: string): Promise<void> {
+  const all = await downloadedCollections();
+  delete all[slug];
+  await AsyncStorage.setItem(`hadith:${DOWNLOAD_MARKER}`, JSON.stringify(all)).catch(() => undefined);
+  const keys = await listCachedKeys('hadith').catch(() => [] as string[]);
+  await Promise.all(
+    keys
+      .filter((key) => key.startsWith(`book-${slug}-`) || key === `outline-${slug}`)
+      .map((key) => AsyncStorage.removeItem(key).catch(() => undefined)),
+  );
+  setProgress(slug, { phase: 'idle', booksDone: 0, booksTotal: 0 });
+  emitDownloads();
+}
+
+/**
+ * Search what is actually on the device.
+ *
+ * The server has no cross-collection search — it accepts `q` and ignores it —
+ * so a search can only look through narrations already read or downloaded.
+ * That is the honest deal with on-demand reading, and the screen says so
+ * rather than implying the whole corpus was searched.
+ */
+export async function searchDeviceHadith(query: string, limit = 60): Promise<Hadith[]> {
+  const needle = query.trim().toLowerCase();
+  if (needle.length < 3) return [];
+  const keys = await listCachedKeys('hadith').catch(() => [] as string[]);
+  const bookKeys = keys.filter((key) => key.startsWith('book-'));
+
+  const seen = new Set<string>();
+  const hits: Hadith[] = [];
+  /* Small batches: a phone with every collection downloaded has ~350 books. */
+  for (let i = 0; i < bookKeys.length && hits.length < limit; i += 8) {
+    /* eslint-disable no-await-in-loop */
+    const slice = bookKeys.slice(i, i + 8);
+    const groups = await Promise.all(
+      slice.map((key) => getCachedJson<{ hadiths: Hadith[] }>('hadith', key).catch(() => null)),
+    );
+    for (const group of groups) {
+      for (const row of group?.hadiths || []) {
+        if (seen.has(row.id)) continue;
+        if ((row.english || '').toLowerCase().includes(needle) || (row.arabic || '').includes(query.trim())) {
+          seen.add(row.id);
+          hits.push(row);
+          if (hits.length >= limit) break;
+        }
+      }
+      if (hits.length >= limit) break;
+    }
+  }
+  return hits;
+}
+
+/** How many narrations are on the device in total, for an honest search prompt. */
+export async function deviceHadithCount(): Promise<number> {
+  const keys = await listCachedKeys('hadith').catch(() => [] as string[]);
+  return keys.filter((key) => key.startsWith('book-')).length;
 }
 
 export type HadithPage = { rows: Hadith[]; total: number; offset: number; hasMore: boolean };
