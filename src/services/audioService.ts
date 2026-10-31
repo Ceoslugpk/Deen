@@ -10,10 +10,13 @@ import { localAudioUri } from './downloadService';
  * Phase 3 — Quran audio foundation.
  *
  * Audio sources are live and attributed:
- *   - Reciter + translation-audio catalogue: Al Quran Cloud (api.alquran.cloud)
- *   - Audio files themselves: Islamic Network CDN (cdn.islamic.network), served by Al Quran Cloud ayah records
- * No audio is bundled and no placeholder URLs are generated. A track only exists
- * when the API returned a real URL for that ayah.
+ *   - Reciter + translation-audio catalogue: bundled with the app, every
+ *     entry checked against the CDN before shipping, so a reciter is never
+ *     offered whose audio will not play.
+ *   - Audio files themselves: Islamic Network CDN (cdn.islamic.network),
+ *     addressed by the ayah's position in the whole book.
+ * No placeholder URLs are generated: a track's URL is built from the reciter
+ * and the ayah number, and both are known before the track exists.
  */
 
 export type AudioTrackKind = 'arabic' | 'translation';

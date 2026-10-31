@@ -13,8 +13,8 @@
  * separately. Storing both means the citation stays recognisable while the
  * link into the library still lands on the right page.
  *
- * Pulled from the fawazahmed0 hadith collection and api.alquran.cloud - the
- * same two sources the Hadith Library and the Quran reader already use.
+ * Pulled from the app's own server, which is the same source the Hadith
+ * Library and the Quran reader use.
  */
 
 export type GuideHadith = {

@@ -6679,15 +6679,18 @@ function ChoicePill({label,selected,onPress}:{label:string;selected:boolean;onPr
   </Animated.View>;
 }
 const DATA_SOURCES: { name: string; ar: string; endpoint: string; detail: string; arDetail: string }[] = [
-  { name: 'Al Quran Cloud', ar: 'القرآن السحابي', endpoint: 'api.alquran.cloud',
-    detail: 'Arabic script editions — Uthmani, Imla’i simple, IndoPak and Tajweed — translations in many languages, Surah and Juz structure, and verse-by-verse audio editions.',
-    arDetail: 'نصوص القرآن بعدة روايات وترجمات بلغات متعددة، مع ترتيب السور والأجزاء وملفات الصوت لكل آية.' },
+  { name: 'Islamic Data', ar: 'البيانات الإسلامية', endpoint: 'api.islamicdata.uz',
+    detail: 'The app’s own server. Every Arabic script — Uthmani, Imla’i simple, IndoPak and Tajweed — all 484 translations and every Tafsir, the Surah, Juz and Hizb structure, and Quran search.',
+    arDetail: 'خادم التطبيق نفسه. كل الرسوم القرآنية — العثماني والإملائي البسيط والهندي والتجويد — وجميع الترجمات وكل التفاسير، وترتيب السور والأجزاء والأحزاب، والبحث في القرآن.' },
+  { name: 'Islamic Network CDN', ar: 'شبكة إسلاميك', endpoint: 'cdn.islamic.network',
+    detail: 'Verse-by-verse recitation, including recitations of the meaning rather than the Arabic.',
+    arDetail: 'تلاوة آية بآية، بما فيها تلاوات المعنى بدل النص العربي.' },
   { name: 'Islamic.app', ar: 'تطبيق إسلاميك', endpoint: 'api.islamic.app',
     detail: 'The Beautiful Names with their meanings, the adhkar and duas of Hisn al-Muslim, and the hadith collections with Arabic and English editions.',
     arDetail: 'الأسماء الحسنى ومعانيها، وأذكار ودعوات حصن المسلم، ومجموعات الحديث بنصّها العربي وترجمتها الإنجليزية.' },
   { name: 'On your device', ar: 'على جهازك', endpoint: 'no network request',
-    detail: 'Prayer times, the Hijri date and the Ramadan timetable are calculated on your device from your coordinates — the sun does not need the internet, and nothing about where you are is sent anywhere.',
-    arDetail: 'تُحسب مواقيت الصلاة والتاريخ الهجري وجدول رمضان على جهازك من إحداثياتك، فالشمس لا تحتاج إلى إنترنت، ولا يُرسل أي شيء عن موقعك إلى أي جهة.' },
+    detail: 'Prayer times, the Hijri date, the Ramadan timetable, and the 604-page Mushaf layout with the Juz and Hizb divisions — kept with the app rather than asked for, so a page of the Quran opens without a connection. The sun does not need the internet, and nothing about where you are is sent anywhere.',
+    arDetail: 'تُحسب مواقيت الصلاة والتاريخ الهجري وجدول رمضان على جهازك من إحداثياتك، كما يُحفظ ترتيب صفحات المصحف الـ604 مع تقسيم الأجزاء والأحزاب، فتُفتح صفحة القرآن بلا اتصال. فالشمس لا تحتاج إلى إنترنت، ولا يُرسل أي شيء عن موقعك إلى أي جهة.' },
   { name: 'Gold and silver prices', ar: 'أسعار الذهب والفضة', endpoint: 'api.gold-api.com', detail: 'Spot gold and silver prices per troy ounce, converted to a price per gram for the nisab threshold.', arDetail: 'أسعار الذهب والفضة الفورية للأوقية، وتحوّل إلى سعر الغرام لحساب النصاب.' }, { name: 'Exchange rates', ar: 'أسعار الصرف', endpoint: 'open.er-api.com', detail: 'Daily reference exchange rates, used to show Zakat figures in the currency you choose.', arDetail: 'أسعار صرف مرجعية يومية، تُستخدم لعرض أرقام الزكاة بالعملة التي تختارها.' }, { name: 'MP3Quran', ar: 'إم بي 3 قرآن', endpoint: 'mp3quran.net',
     detail: 'Complete Surah recitations from published reciters, used when you play a whole Surah rather than verse by verse.',
     arDetail: 'تلاوات كاملة للسور من القرّاء المنشورين، وتُستخدم عند تشغيل السورة كاملة.' },
