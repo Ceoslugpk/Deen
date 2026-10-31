@@ -2244,9 +2244,9 @@ function PrayerScreen({navigation}:any) {
       <View style={s.prayerProgress}><View style={{flex:1}}><Text style={s.sourceTitle}>{T('Today’s Salah')}</Text><Text style={s.sourceBody}>{rtl?`${done} من 5 صلوات مؤداة`:`${done} of 5 prayers marked complete`}</Text></View><View style={s.progressTrack}><View style={[s.progressFill,{width:`${done*20}%`} as any]}/></View><Text style={s.progressCount}>{done}/5</Text></View>
       <Section title={T('Your consistency')}/>
       <PrayerConsistency history={history} T={T}/>
-      <Section title={T('Today’s schedule')} action={rtl?`${PRAYER_METHODS.find(m=>m.id===settings.calculationMethod)?.ar||settings.calculationMethodName} · ${settings.madhab==='hanafi'?'الحنفي':'الشافعي'}`:`${settings.calculationMethodName} · ${T(settings.madhab==='hanafi'?'Hanafi':'Shafi')}`} onPress={()=>navigation.navigate('Settings')} />
+      <Section title={T('Today’s schedule')}/>
       <View style={s.prayerList}>{listedPrayers.map((p,i)=>{const checked=listingToday&&completed.includes(p.name);return <Pressable accessibilityRole={!listingToday||p.name==='Sunrise'?undefined:'checkbox'} accessibilityState={!listingToday||p.name==='Sunrise'?undefined:{checked}} onPress={()=>listingToday&&togglePrayer(p.name)} key={p.name} style={[s.prayerRow,p.name===next?.name&&s.prayerRowLive]}><View style={[s.prayerSymbol,checked&&s.prayerSymbolDone]}>{checked ? ico('checkmark',21,C.white) : p.name === 'Sunrise' ? ico('sunny-outline',21,C.green) : <Image source={prayerIconFor(p.name, dark)} resizeMode="contain" style={{width:32,height:32}}/>}</View><View style={{flex:1}}><Text style={s.prayerName}>{prayerName(rtl, p.name)}</Text><Text style={s.meta}>{T(p.name==='Sunrise'?'Solar event':checked?'Completed':!listingToday?'':p.name===next?.name?'Up next':'Tap to mark complete')}</Text></View><Text style={s.prayerValue}>{clockTime(rtl, p.time)}</Text>{p.name!=='Sunrise'&&ico(checked?'checkmark-circle':'ellipse-outline',18,checked?C.green:C.muted)}</Pressable>})}</View>
-      <View style={s.sourceCard}>{ico('shield-checkmark-outline',21,C.green)}<View style={{flex:1}}><Text style={s.sourceTitle}>{T(cached?'Saved prayer schedule':'Live calculation')}</Text><Text style={s.sourceBody}>{rtl?`${PRAYER_METHODS.find(m=>m.id===settings.calculationMethod)?.ar||snap.method} · ${snap.timezone} · ${settings.timeFormat} ساعة`:`${snap.method} · ${snap.timezone} · ${settings.timeFormat}-hour`}</Text></View></View><Section title={T('More in Prayer')}/><View style={s.prayerToolsTwo}>{[['volume-high-outline','Adhan','Adhan'],['moon-outline','Ramadan','Ramadan']].map(([icon,label,screen]:any)=><MotionPress key={label} onPress={()=>navigation.navigate(screen)} style={s.prayerToolTwo}><View style={s.prayerToolInner}><ToolGraphic tool={label} size={60}/><Text style={s.prayerToolText}>{T(label)}</Text></View></MotionPress>)}</View></>}
+          </>}
   </ScrollView></Page>;
 }
 
@@ -2337,8 +2337,10 @@ function ReaderScreen({route,navigation}:any){
   const{preferences,update}=useQuranPreferences();
   /* "Mushaf page" is a script like Uthmani or IndoPak, not a separate screen. */
   const isMushaf=preferences.scriptEdition==='quran-mushaf';
-  const[showArabic,setShowArabic]=useState(initial!=='english');
-  const[showEnglish,setShowEnglish]=useState(initial!=='arabic'&&preferences.showTranslation);
+  /* Arabic is always shown and the translation follows the preference, which
+     lives in Reading Settings. There used to be two buttons above the ayahs
+     for this; they duplicated what the settings screen already offered, and
+     hiding the Arabic in a Quran reader is not something anyone asked to do. */
   const[verses,setVerses]=useState<Verse[]>([]);
   const[page,setPage]=useState<number|null>(route.params?.page?Math.max(1,Math.min(604,Number(route.params.page))):null);
   const[input,setInput]=useState(String(route.params?.page||''));
@@ -2353,6 +2355,14 @@ function ReaderScreen({route,navigation}:any){
   const{rtl}=useLanguage();
   const T=(text:string)=>tx(rtl,text);
   const[target,setTarget]=useState<string|null>(focusVerse||null);
+  /* Where each ayah sits inside the scroll content, measured once per layout.
+     Measuring during a scroll would be far too expensive to repeat for every
+     verse on every frame, so the offsets are taken after the list settles and
+     then simply looked up. Anything that changes the height of the page -
+     turning the translation off, changing the font - makes them stale, so
+     they are retaken when any of that changes. */
+  const offsets=useRef<Record<string,number>>({});
+  const lastSavedVerse=useRef<string>('');
   const[savedPosition,setSavedPosition]=useState<ReadingPosition|null>(null);
   const[shareVerse,setShareVerse]=useState<Verse|null>(null);
   const[noteVerse,setNoteVerse]=useState<Verse|null>(null);
@@ -2415,11 +2425,53 @@ function ReaderScreen({route,navigation}:any){
   useEffect(()=>{getChapters().then(setChapters)},[]);
   useEffect(()=>{if(focusVerse){setTarget(focusVerse);return}let live=true;loadReadingPosition().then(pos=>{if(live&&pos&&pos.surahId===chapterId)setTarget(pos.verseKey)});return()=>{live=false}},[chapterId,focusVerse]);
   useEffect(()=>{if(page!==null)setInput(String(page))},[page]);
+  useEffect(()=>{
+    offsets.current={};
+    const take=()=>{
+      for(const v of verses){
+        const node=verseRefs.current[v.verse_key];
+        node?.measure?.((_x:number,_y:number,_w:number,_h:number,_px:number,py:number)=>{
+          offsets.current[v.verse_key]=py;
+        });
+      }
+    };
+    const timer=setTimeout(take,260);
+    return()=>clearTimeout(timer);
+  },[verses,preferences.arabicFont,preferences.fontSize,preferences.translationFontSize,preferences.showTranslation,preferences.showTransliteration]);
+
+  /* Keeping the reading position live.
+     Continuing used to resume wherever you last pressed "save reading
+     position" - which for most people is nowhere, because nothing ever
+     recorded where they actually were. The ayah nearest the top of the screen
+     is now saved as they read, so leaving a surah and coming back returns to
+     the verse they left instead of the beginning. */
+  const rememberTimer=useRef<any>(null);
+  const rememberPosition=useCallback(()=>{
+    const entries=Object.entries(offsets.current);
+    if(!entries.length||!verses.length)return;
+    const at=scrollY.current+96;
+    let bestKey='';let bestDelta=Infinity;
+    for(const[key,y]of entries){
+      const delta=Math.abs(y-at);
+      if(delta<bestDelta){bestDelta=delta;bestKey=key;}
+    }
+    if(!bestKey||bestKey===lastSavedVerse.current)return;
+    const v=verses.find(x=>x.verse_key===bestKey);
+    if(!v)return;
+    lastSavedVerse.current=bestKey;
+    void saveReadingPosition({
+      surahId:Number(v.verse_key.split(':')[0])||chapterId,
+      surahName:v.surah_name||full.name_simple,
+      verseKey:v.verse_key,
+      ayah:Number(v.verse_key.split(':')[1]),
+      page:v.page,updatedAt:Date.now(),
+    });
+  },[verses,chapterId,full?.name_simple]);
+
   const bookmark=async(v:Verse)=>setBookmarks(await toggleBookmark({verseKey:v.verse_key,surahId:Number(v.verse_key.split(':')[0])||chapterId,surahName:v.surah_name||full.name_simple,arabic:v.text_uthmani,translation:v.translation,savedAt:Date.now()}));
   const isMarked=(v:Verse)=>savedPosition?.verseKey===v.verse_key;
   const mark=async(v:Verse)=>{const surahId=Number(v.verse_key.split(':')[0])||chapterId;await saveReadingPosition({surahId,surahName:v.surah_name||full.name_simple,verseKey:v.verse_key,ayah:Number(v.verse_key.split(':')[1]),page:v.page,updatedAt:Date.now()});void logVerseRead(v.verse_key,surahId,v.page);setSavedPosition({surahId,surahName:v.surah_name||full.name_simple,verseKey:v.verse_key,ayah:Number(v.verse_key.split(':')[1]),page:v.page,updatedAt:Date.now()});Alert.alert(T('Reading position saved'),`${v.surah_name||full.name_simple} ${v.verse_key}`)};
   const share=(v:Verse)=>Share.share({message:`${v.text_uthmani}\n\n${v.translation||''}\n\nQuran ${v.verse_key} · ${preferences.translationName}`});
-  const toggle=(kind:'ar'|'en')=>{if(kind==='ar'){if(showArabic&&!showEnglish)return;setShowArabic(!showArabic)}else{if(showEnglish&&!showArabic)return;setShowEnglish(!showEnglish)}};
   const goPage=(value:number)=>setPage(Math.max(1,Math.min(604,value)));
   const title=section==='juz'?(rtl?`الجزء ${juz}`:`Juz ${juz}`):section==='hizb'?(rtl?`الحزب ${hizb}`:`Hizb ${hizb}`):section==='page'||isMushaf?(rtl?`صفحة المصحف ${page||1}`:`Mushaf page ${page||1}`):full.name_simple;
   const subtitle=(isMushaf||section==='page')?((cached?(rtl?'متاح دون اتصال · ':'Offline · '):'')+(verses.length?(verses[0].surah_name||''):'')):section==='juz'?(rtl?`الأرباع ${(juz-1)*8+1}–${juz*8}`:`HIZBS ${(juz-1)*2+1}–${juz*2}`):section==='hizb'?(rtl?`الأرباع ${(hizb-1)*4+1}–${hizb*4}`:`QUARTERS ${(hizb-1)*4+1}–${hizb*4}`):(cached?(rtl?'متاح دون اتصال · ':'Available offline · '):'')+`${full.verses_count}${rtl?' آية':' verses'}`;
@@ -2440,11 +2492,12 @@ function ReaderScreen({route,navigation}:any){
     ? <VerseActionsSheet verse={actionsVerse} chapter={full} rtl={rtl} T={T} navigation={navigation} onClose={()=>setActionsVerse(null)}/>
     : null, () => setActionsVerse(null));
   return <Page><Animated.View style={[s.readerBar,{transform:[{translateY:chromeY}]}]}><IconButton name={rtl?'arrow-forward':'arrow-back'} onPress={()=>navigation.goBack()}/>{canStep(-1)?<Pressable accessibilityLabel={T('Previous section')} onPress={()=>step(-1)} style={s.surahStep}>{ico(rtl?'chevron-forward':'chevron-back',19,C.ink)}</Pressable>:<View style={s.surahStep}/>}<View style={{alignItems:'center',flex:1}}><Text style={s.readerName} numberOfLines={1}>{title}</Text><Text style={s.meta} numberOfLines={1}>{subtitle}</Text></View>{canStep(1)?<Pressable accessibilityLabel={T('Next section')} onPress={()=>step(1)} style={s.surahStep}>{ico(rtl?'chevron-back':'chevron-forward',19,C.ink)}</Pressable>:<View style={s.surahStep}/>}<View style={s.readerHeaderActions}>{section==='surah'&&<Pressable accessibilityLabel={T('Play this Surah')} onPress={()=>{void playSurahFromReader(full,rtl)}} style={s.iconBtn}>{ico('play-circle',20,C.ink)}</Pressable>}{section==='surah'&&<Pressable accessibilityLabel={T('Keep this Surah for offline')} onPress={()=>navigation.navigate('Downloads',{chapterId,surahName:full.name_simple})} style={s.iconBtn}>{ico('download-outline',20,C.ink)}</Pressable>}<Pressable accessibilityRole="switch" accessibilityState={{checked:focusOn}} accessibilityLabel={`${T('Focus mode')}: ${focusOn?T('On'):T('Off')}`} onPress={()=>update({focusMode:!focusOn})} style={s.iconBtn}>{ico(focusOn?'eye':'eye-outline',20,focusOn?C.gold:C.ink)}</Pressable><Pressable accessibilityLabel={T('Reader settings')} onPress={()=>navigation.navigate('Reader Settings')} style={s.iconBtn}>{ico('options-outline',20,C.ink)}</Pressable></View></Animated.View><View style={s.readerProgress}><View style={[s.preloadFill,{width:`${Math.round(progress*100)}%`} as any]}/></View>
-  <ScrollView ref={scrollRef} contentContainerStyle={s.readerScroll} showsVerticalScrollIndicator={false} scrollEventThrottle={16} onScroll={e=>{const{layoutMeasurement,contentOffset,contentSize}=e.nativeEvent;if(focusOn){const dy=contentOffset.y-scrollY.current;if(dy>4&&chromeShown)setChromeShown(false)}scrollY.current=contentOffset.y;const span=contentSize.height-layoutMeasurement.height;const next=span>0?Math.min(1,Math.max(0,contentOffset.y/span)):0;if(Math.abs(next-progress)>0.005)setProgress(next)}}>
+  <ScrollView ref={scrollRef} contentContainerStyle={s.readerScroll} showsVerticalScrollIndicator={false} scrollEventThrottle={16} onScroll={e=>{const{layoutMeasurement,contentOffset,contentSize}=e.nativeEvent;if(focusOn){const dy=contentOffset.y-scrollY.current;if(dy>4&&chromeShown)setChromeShown(false)}scrollY.current=contentOffset.y;const span=contentSize.height-layoutMeasurement.height;const next=span>0?Math.min(1,Math.max(0,contentOffset.y/span)):0;if(Math.abs(next-progress)>0.005)setProgress(next)
+    if(rememberTimer.current)clearTimeout(rememberTimer.current);
+    rememberTimer.current=setTimeout(rememberPosition,700);}}>
   {isMushaf?<MushafPageView page={page||1} verses={verses} error={error} cached={cached} retry={load} preferences={preferences} rtl={rtl} T={T} input={input} setInput={setInput} goPage={goPage} navigation={navigation} arStyle={arStyle} bookmarks={bookmarks} savedPosition={savedPosition} onBookmark={(v:any)=>{void bookmark(v)}} onMark={(v:any)=>{void mark(v)}} onPlay={(v:any)=>{void playFromReader(full,v,rtl)}} onNote={(v:any)=>setNoteVerse(v)}/>
   :<>
   {section==='surah'&&<LinearGradient colors={[C.heroA,C.green]} style={s.surahHead}>{!!cached&&<LiveBadge source="SAVED ON DEVICE"/>}<Text style={s.surahHeadAr}>{full.name_arabic}</Text><Text style={s.surahHeadEn}>{chapter?.translated_name?.name}</Text><Text style={s.bismillah}>بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</Text></LinearGradient>}
-  {section!=='page'&&<View style={s.readerModes}><Pressable accessibilityRole="checkbox" accessibilityState={{checked:showArabic}} onPress={()=>toggle('ar')} style={[s.readerMode,showArabic&&s.readerModeActive]}><ToolGraphic tool="Arabic Quran" size={47}/><Text style={s.readerModeText}>{T('Arabic')}</Text></Pressable><Pressable accessibilityRole="checkbox" accessibilityState={{checked:showEnglish}} onPress={()=>toggle('en')} style={[s.readerMode,showEnglish&&s.readerModeActive]}><ToolGraphic tool="English meaning" size={47}/><Text style={s.readerModeText}>{T('Translation')}</Text></Pressable></View>}
   {error?<ErrorState message={error} retry={load}/>:!verses.length?<Spinner/>:verses.map((v,i)=>{const saved=bookmarks.some(x=>x.verseKey===v.verse_key);const prev=i>0?verses[i-1]:null;const newJuz=!!v.juz&&(!prev||prev.juz!==v.juz);const newHizb=!!hizbOf(v)&&(!prev||hizbOf(prev)!==hizbOf(v));return <View key={v.id||v.verse_key}>
   {newJuz&&<View style={s.sectionMarker}><View style={s.sectionRule}/><Text style={s.sectionMarkerText}>{rtl?`الجزء ${v.juz}`:`JUZ ${v.juz}`}</Text><View style={s.sectionRule}/></View>}
   {newHizb&&<View style={s.sectionMarker}><View style={s.sectionRule}/><Text style={s.sectionMarkerText}>{rtl?`الحزب ${hizbOf(v)}`:`HIZB ${hizbOf(v)}`}</Text><View style={s.sectionRule}/></View>}
@@ -2456,8 +2509,8 @@ function ReaderScreen({route,navigation}:any){
     <VerseActionButton label={`${T('Share')} ${T('verse')} ${v.verse_key}`} name="share-outline" size={19} onPress={()=>setShareVerse(v)}/>
     <VerseActionButton label={`${T('More actions for verse')} ${v.verse_key}`} name="ellipsis-horizontal-circle-outline" size={20} onPress={()=>setActionsVerse(v)}/>
   </View></View>
-  {(section!=='surah'||showArabic)&&(preferences.scriptEdition==='quran-tajweed'?<TajweedText text={v.text_uthmani} style={[s.ayahAr,...arStyle]}/>:<Text style={[s.ayahAr,...arStyle]}>{v.text_uthmani}</Text>)}
-  {(section!=='surah'||showEnglish)&&v.translation?<Text style={[s.ayahTranslation,(!showArabic||section!=='surah')&&{borderTopWidth:0,marginTop:8,paddingTop:0}]}>{v.translation}</Text>:null}
+  {preferences.scriptEdition==='quran-tajweed'?<TajweedText text={v.text_uthmani} style={[s.ayahAr,...arStyle]}/>:<Text style={[s.ayahAr,...arStyle]}>{v.text_uthmani}</Text>}
+  {preferences.showTranslation&&v.translation?<Text style={s.ayahTranslation}>{v.translation}</Text>:null}
   {section!=='surah'&&<Text style={s.dataMeta}>{v.surah_name}</Text>}
   <View style={s.ayahFooter}><Text style={s.ayahMeta}>{rtl?`الجزء ${v.juz} · صفحة ${v.page}`:`Juz ${v.juz} · Page ${v.page}`}{section==='hizb'?(rtl?` · الربع ${v.hizbQuarter}`:` · Quarter ${v.hizbQuarter}`):''} · {T(rtl?preferences.translationLanguage:preferences.translationName)}</Text></View></Pressable></View>})}
   </>}
@@ -5606,7 +5659,11 @@ function HijriCalendarScreen({navigation}:any){
       </View>
 
       {!!upcoming.length&&<>
-        <Section title={T('Coming up')} action={T('Next 12 months')}/>
+        {/* The list below already covers the next twelve months - `span` is a
+            twelve-month fetch - so there is nothing for a "next 12 months"
+            control to do. It used to be rendered as a link with no press
+            handler at all, which looked like a button and was not one. */}
+        <Section title={T('Next 12 months')}/>
         <View style={s.settings}>
           {upcoming.map(({event,date,days:away,day})=>(
             <Pressable key={`${event.title}-${day.hijriYear}`} accessibilityRole="button"

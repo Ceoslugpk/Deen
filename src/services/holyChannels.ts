@@ -21,7 +21,17 @@ export type HolyChannel = {
   detail: string;
   url: string;
   icon: string;
+  /** Present only where the broadcaster is a YouTube channel we can embed. */
+  channelId?: string;
+  /** YouTube embed for whatever that channel is streaming right now. */
+  embedUrl?: string;
 };
+
+/* YouTube resolves a channel's current livestream through this path, so the
+   app does not have to know the video id, which changes with every broadcast. */
+const liveEmbed = (channelId: string) =>
+  `https://www.youtube.com/embed/live_stream?channel=${channelId}&enablejsapi=1`;
+
 
 export const HOLY_CHANNELS: HolyChannel[] = [
   {
@@ -33,6 +43,8 @@ export const HOLY_CHANNELS: HolyChannel[] = [
     broadcaster: 'Saudi Broadcasting Authority',
     detail: 'The Ka‘bah, the Tawaf, the five daily prayers, Jumu‘ah, and Taraweeh — broadcast from Makkah, twenty-four hours a day.',
     url: 'https://www.youtube.com/channel/UCos52azQNBgW63_9uDJoPDA/live',
+    channelId: 'UCos52azQNBgW63_9uDJoPDA',
+    embedUrl: liveEmbed('UCos52azQNBgW63_9uDJoPDA'),
     icon: 'holy-sites',
   },
   {
@@ -54,7 +66,9 @@ export const HOLY_CHANNELS: HolyChannel[] = [
     channel: 'Sunnah TV',
     broadcaster: 'Saudi Broadcasting Authority',
     detail: 'The Prophet’s Mosque ﷺ: the five prayers with its imams, the Friday khutbah, and the Rawdah — from Madinah, twenty-four hours a day.',
-    url: 'https://makkahlive.net/madinalive.aspx',
+    url: 'https://www.youtube.com/channel/UCROKYPep-UuODNwyipe6JMw/live',
+    channelId: 'UCROKYPep-UuODNwyipe6JMw',
+    embedUrl: liveEmbed('UCROKYPep-UuODNwyipe6JMw'),
     icon: 'holy-sites',
   },
   {
