@@ -7,7 +7,7 @@ function ExploreStack(){return <Stack.Navigator screenOptions={{headerShown:fals
  */
 function PrayerStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="Prayer" component={PrayerScreen}/><Stack.Screen name="Adhan" component={AdhanScreen}/><Stack.Screen name="Ramadan" component={RamadanScreen}/></Stack.Navigator>}
 /** The tools tab: what you calculate, look up, travel for, or record. */
-function ToolsStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="ToolsHome" component={ToolsHomeScreen}/><Stack.Screen name="Zakat" component={ZakatScreen}/><Stack.Screen name="Mosques" component={DataTool}/><Stack.Screen name="Holy site channels" component={HolyChannelsScreen}/><Stack.Screen name="Women" component={WomenHubScreen}/><Stack.Screen name="Istihada" component={IstihadaScreen}/><Stack.Screen name="Ramadan Planner" component={RamadanPlannerScreen}/><Stack.Screen name="These Days" component={TheseDaysScreen}/><Stack.Screen name="Cycle" component={CycleScreen}/><Stack.Screen name="Qada" component={QadaScreen}/><Stack.Screen name="Women Guides" component={WomenGuidesScreen}/><Stack.Screen name="Privacy Lock" component={PrivacyLockScreen}/><Stack.Screen name="Fasting" component={FastingScreen}/><Stack.Screen name="Weekly Summary" component={WeeklySummaryScreen}/><Stack.Screen name="Qibla" component={QiblaScreen}/><Stack.Screen name="Location Setup" component={LocationSetupScreen}/><Stack.Screen name="Notifications" component={NotificationScreen}/><Stack.Screen name="Hijri Calendar" component={HijriCalendarScreen}/><Stack.Screen name="Tasbih" component={TasbihScreen}/><Stack.Screen name="Umrah Packing" component={UmrahPackingScreen}/><Stack.Screen name="Hajj Live" component={HajjLiveScreen}/></Stack.Navigator>}
+function ToolsStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="ToolsHome" component={ToolsHomeScreen}/><Stack.Screen name="Zakat" component={ZakatScreen}/> <Stack.Screen name="Holy site channels" component={HolyChannelsScreen}/><Stack.Screen name="Women" component={WomenHubScreen}/><Stack.Screen name="Istihada" component={IstihadaScreen}/><Stack.Screen name="Ramadan Planner" component={RamadanPlannerScreen}/><Stack.Screen name="These Days" component={TheseDaysScreen}/><Stack.Screen name="Cycle" component={CycleScreen}/><Stack.Screen name="Qada" component={QadaScreen}/><Stack.Screen name="Women Guides" component={WomenGuidesScreen}/><Stack.Screen name="Privacy Lock" component={PrivacyLockScreen}/><Stack.Screen name="Fasting" component={FastingScreen}/><Stack.Screen name="Weekly Summary" component={WeeklySummaryScreen}/><Stack.Screen name="Qibla" component={QiblaScreen}/><Stack.Screen name="Location Setup" component={LocationSetupScreen}/><Stack.Screen name="Notifications" component={NotificationScreen}/><Stack.Screen name="Hijri Calendar" component={HijriCalendarScreen}/><Stack.Screen name="Tasbih" component={TasbihScreen}/><Stack.Screen name="Umrah Packing" component={UmrahPackingScreen}/><Stack.Screen name="Hajj Live" component={HajjLiveScreen}/></Stack.Navigator>}
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -49,7 +49,7 @@ import { StatusBar as ExpoStatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import {
   AudioEdition, Chapter, DailyAyah, DailyHadith, DivineName, getAyahEditions, getAyahOfDay, getChapters, getDailyHadith, getDuas, getQuranEditions,
-  getAyahForDate, getCalendarSpan, getGregorianCalendar, getNameOfDay, getNames, getNearbyMosques, getPrayerCalendar, getPrayerSnapshot, getQibla, getRamadanCalendar,
+  getAyahForDate, getCalendarSpan, getGregorianCalendar, getNameOfDay, getNames, getPrayerCalendar, getPrayerSnapshot, getQibla, getRamadanCalendar,
   getHizbVerses, getJuzVerses, getPageVerses, getVerses, searchQuran, CalendarDay, Prayer, PrayerSnapshot, QuranEdition, QuranSearchResult, SurahReciter, Verse,
   HajjCountdown, getHajjCountdown
 } from './src/services/api';
@@ -156,12 +156,12 @@ import { currentPhrase, dhikrMeaning, DHIKR_PHRASES, loadTasbihState, removeTasb
 import { Dua, DuaCategory } from './src/services/api';
 import { clearPreparedQuran, getPreloadState, pauseQuranPreload, refreshPreload, resumeSavedQuranPreload, startQuranPreload, subscribePreload } from './src/services/quranPreload';
 
-const SCENE_QURAN = require('./assets/quran-scene.png');
-const SCENE_QURAN_DARK = require('./assets/quran-scene-dark.png');
-const SCENE_MOSQUE = require('./assets/hero-mosque-scene.png');
-const SCENE_MOSQUE_DARK = require('./assets/hero-mosque-scene-dark.png');
-const PRAYER_CARD_SCENE = require('./assets/prayer-card-scene.png');
-const PRAYER_CARD_SCENE_DARK = require('./assets/prayer-card-scene-dark.png');
+const SCENE_QURAN = require('./assets/quran-scene.webp');
+const SCENE_QURAN_DARK = require('./assets/quran-scene-dark.webp');
+const SCENE_MOSQUE = require('./assets/hero-mosque-scene.webp');
+const SCENE_MOSQUE_DARK = require('./assets/hero-mosque-scene-dark.webp');
+const PRAYER_CARD_SCENE = require('./assets/prayer-card-scene.webp');
+const PRAYER_CARD_SCENE_DARK = require('./assets/prayer-card-scene-dark.webp');
 /* One mark for both themes. A logo-mark-dark.png used to sit beside it, but it
    was byte-for-byte the same file, so the ternaries that picked between them
    were doing nothing. The mark carries its own colours and reads on either
@@ -719,7 +719,6 @@ const TOOL_IMAGES:Record<string,any>={
   '99 Names':require('./assets/tool-icons/names.png'),
   Zakat:require('./assets/tool-icons/zakat.png'),
   Fasting:require('./assets/tool-icons/fasting-tracker.png'),
-  Mosques:require('./assets/tool-icons/mosques.png'),
   Location:require('./assets/tool-icons/location.png'),
   Notifications:require('./assets/tool-icons/notifications.png'),
   Adhan:require('./assets/tool-icons/adhan.png'),
@@ -818,7 +817,6 @@ const TOOL_IMAGES_DARK:Record<string,any>={
   '99 Names':require('./assets/tool-icons/names-dark.png'),
   Zakat:require('./assets/tool-icons/zakat-dark.png'),
   Fasting:require('./assets/tool-icons/fasting-tracker-dark.png'),
-  Mosques:require('./assets/tool-icons/mosques-dark.png'),
   Location:require('./assets/tool-icons/location-dark.png'),
   Notifications:require('./assets/tool-icons/notifications-dark.png'),
   Adhan:require('./assets/tool-icons/adhan-dark.png'),
@@ -1490,7 +1488,6 @@ const TOOL_GROUPS: ToolGroup[] = [
   ]},
   { label: 'FIND', title: 'Utilities and location', items: [
     { title: 'Qibla', caption: 'Direction to the Ka‘bah', route: 'Qibla' },
-    { title: 'Mosques', caption: 'Nearby prayer spaces, with directions', route: 'Mosques' },
     { title: 'Location', caption: 'Search for a city, or set coordinates', route: 'Location Setup' },
     { title: 'Hijri Calendar', caption: 'Islamic dates and the month grid', route: 'Hijri Calendar' },
     { title: 'Prayer Reminders', caption: 'Adhan alerts and their toggles', route: 'Notifications' },
@@ -1573,8 +1570,6 @@ const DAY_TOOL_POOL: DayTool[] = [
     open: (n) => n.navigate('Tools', { screen: 'Qada', initial: false }) },
   { id: 'hijri', label: 'Hijri Calendar', icon: 'Hijri Calendar',
     open: (n) => n.navigate('Tools', { screen: 'Hijri Calendar', initial: false }) },
-  { id: 'mosques', label: 'Mosques', icon: 'Mosques',
-    open: (n) => n.navigate('Tools', { screen: 'Mosques', initial: false }) },
   { id: 'weekly', label: 'Weekly Summary', icon: 'Weekly Summary',
     open: (n) => n.navigate('Tools', { screen: 'Weekly Summary', initial: false }) },
   { id: 'guides', label: 'Worship Guides', icon: 'Worship guides',
@@ -4660,9 +4655,9 @@ function AdhkarScreen({ route, navigation }: any) {const{rtl}=useLanguage();cons
 
 function DataTool({route,navigation}:any){const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);
  const {location}=useAppLocation(); const title=route.name; const[items,setItems]=useState<any[]>([]); const[error,setError]=useState(''); const[loaded,setLoaded]=useState(false);
- const load=async()=>{setError('');setLoaded(false);try{if(title==='Duas')setItems(await getDuas('morning'));else if(title==='99 Names')setItems(await getNames());else if(title==='Hadith')setItems([await getDailyHadith()]);else if(title==='Mosques'){if(!location){setItems([]);return}setItems(await getNearbyMosques(location.latitude,location.longitude));}}catch(e:any){setError(T(e.message))}finally{setLoaded(true)}};
+ const load=async()=>{setError('');setLoaded(false);try{if(title==='Duas')setItems(await getDuas('morning'));else if(title==='99 Names')setItems(await getNames());else if(title==='Hadith')setItems([await getDailyHadith()]);}catch(e:any){setError(T(e.message))}finally{setLoaded(true)}};
  useEffect(()=>{load()},[title,location?.latitude,location?.longitude]);
- return <Page><ToolBar title={T(title)} navigation={navigation}/><ScrollView contentContainerStyle={s.dataPage}><Text style={s.dataTitle}>{title==='Duas'?T('Morning remembrance'):title==='99 Names'?'The Beautiful Names':title==='Hadith'?T('Hadith of the day'):T('Mosques near you')}</Text>{title==='Mosques'&&!location?<LocationPrompt compact/>:error?<ErrorState message={error} retry={load}/>:!loaded?<Spinner/>:!items.length?<View style={s.empty}><View style={s.errorIcon}>{ico('location-outline',24,C.green)}</View><Text style={s.errorTitle}>{T('No live records nearby')}</Text><Text style={s.errorText}>{T('The directory does not currently list a public mosque within 50 km of this location.')}</Text></View>:items.map((item:any,i)=><View key={item.number||item.slug||i} style={s.dataCard}>{title==='99 Names'?<><Text style={s.dataArabic}>{item.name}</Text><Text style={s.dataName}>{item.transliteration}</Text><Text style={s.dataBody}>{item.meaning}</Text></>:title==='Hadith'?<><Text style={s.dataBody}>{item.text}</Text><Text style={s.dataMeta}>{item.collection?.toUpperCase()} · {item.number}</Text></>:title==='Mosques'?<><Text style={s.dataName}>{item.name}</Text><Text style={s.dataBody}>{item.city}, {item.country}</Text><Text style={s.dataMeta}>{item.distance_km?.toFixed?.(1)} km · {item.source}</Text></>:<><Text style={s.dataArabic}>{item.arabic}</Text><Text style={s.dataBody}>{item.translation}</Text><Text style={s.dataMeta}>{item.category}</Text></>}</View>)}</ScrollView></Page>
+ return <Page><ToolBar title={T(title)} navigation={navigation}/><ScrollView contentContainerStyle={s.dataPage}><Text style={s.dataTitle}>{title==='Duas'?T('Morning remembrance'):title==='99 Names'?'The Beautiful Names':title==='Hadith'?T('Hadith of the day'):T(title)}</Text>{error?<ErrorState message={error} retry={load}/>:!loaded?<Spinner/>:!items.length?<View style={s.empty}><View style={s.errorIcon}>{ico('location-outline',24,C.green)}</View><Text style={s.errorTitle}>{T('No live records nearby')}</Text><Text style={s.errorText}>{T('The directory does not currently list a public mosque within 50 km of this location.')}</Text></View>:items.map((item:any,i)=><View key={item.number||item.slug||i} style={s.dataCard}>{title==='99 Names'?<><Text style={s.dataArabic}>{item.name}</Text><Text style={s.dataName}>{item.transliteration}</Text><Text style={s.dataBody}>{item.meaning}</Text></>:title==='Hadith'?<><Text style={s.dataBody}>{item.text}</Text><Text style={s.dataMeta}>{item.collection?.toUpperCase()} · {item.number}</Text></>:<><Text style={s.dataArabic}>{item.arabic}</Text><Text style={s.dataBody}>{item.translation}</Text><Text style={s.dataMeta}>{item.category}</Text></>}</View>)}</ScrollView></Page>
 }
 
 const formatJourneyDay = (iso: string) => {
@@ -6724,13 +6719,13 @@ const DATA_SOURCES: { name: string; ar: string; endpoint: string; detail: string
   { name: 'Islamic Data Audio', ar: 'الصوتيات — البيانات الإسلامية', endpoint: 'audio.islamicdata.uz',
     detail: 'Every recitation and every spoken translation, ayah by ayah, plus the full-Surah reciters drawn from all the providers behind one catalogue. Kept audio for a verse-by-verse reciter is the one thing still fetched whole from the Islamic Network CDN.',
     arDetail: 'كل التلاوات وكل تلاوات المعنى آية بآية، إضافة إلى قرّاء السورة كاملة من جميع المزوّدين في فهرس واحد. الصوت المحفوظ لقارئ آية بآية هو الشيء الوحيد الذي ما زال يُجلب كاملاً من شبكة إسلاميك.' },
-  { name: 'Islamic.app', ar: 'تطبيق إسلاميك', endpoint: 'api.islamic.app',
-    detail: 'The Beautiful Names with their meanings, the adhkar and duas of Hisn al-Muslim, and the hadith collections with Arabic and English editions.',
-    arDetail: 'الأسماء الحسنى ومعانيها، وأذكار ودعوات حصن المسلم، ومجموعات الحديث بنصّها العربي وترجمتها الإنجليزية.' },
+  { name: 'Islamic Data Misc', ar: 'متنوّعات — البيانات الإسلامية', endpoint: 'misc.islamicdata.uz',
+    detail: 'Gold and silver prices and the currency rates Zakat is worked out from, and city search when a place is not in the list kept on the device.',
+    arDetail: 'أسعار الذهب والفضة وأسعار العملات التي تُحسب منها الزكاة، والبحث عن المدن عندما لا يكون المكان في القائمة المحفوظة على الجهاز.' },
   { name: 'On your device', ar: 'على جهازك', endpoint: 'no network request',
     detail: 'Prayer times, the Hijri date, the Ramadan timetable, and the 604-page Mushaf layout with the Juz and Hizb divisions — kept with the app rather than asked for, so a page of the Quran opens without a connection. The sun does not need the internet, and nothing about where you are is sent anywhere.',
     arDetail: 'تُحسب مواقيت الصلاة والتاريخ الهجري وجدول رمضان على جهازك من إحداثياتك، كما يُحفظ ترتيب صفحات المصحف الـ604 مع تقسيم الأجزاء والأحزاب، فتُفتح صفحة القرآن بلا اتصال. فالشمس لا تحتاج إلى إنترنت، ولا يُرسل أي شيء عن موقعك إلى أي جهة.' },
-  { name: 'Gold and silver prices', ar: 'أسعار الذهب والفضة', endpoint: 'api.gold-api.com', detail: 'Spot gold and silver prices per troy ounce, converted to a price per gram for the nisab threshold.', arDetail: 'أسعار الذهب والفضة الفورية للأوقية، وتحوّل إلى سعر الغرام لحساب النصاب.' }, { name: 'Exchange rates', ar: 'أسعار الصرف', endpoint: 'open.er-api.com', detail: 'Daily reference exchange rates, used to show Zakat figures in the currency you choose.', arDetail: 'أسعار صرف مرجعية يومية، تُستخدم لعرض أرقام الزكاة بالعملة التي تختارها.' }, { name: 'MP3Quran', ar: 'إم بي 3 قرآن', endpoint: 'mp3quran.net',
+  { name: 'Gold and silver prices', ar: 'أسعار الذهب والفضة', endpoint: 'misc.islamicdata.uz', detail: 'Spot gold and silver prices per troy ounce, converted to a price per gram for the nisab threshold.', arDetail: 'أسعار الذهب والفضة الفورية للأوقية، وتحوّل إلى سعر الغرام لحساب النصاب.' }, { name: 'Exchange rates', ar: 'أسعار الصرف', endpoint: 'misc.islamicdata.uz', detail: 'Daily reference exchange rates, used to show Zakat figures in the currency you choose.', arDetail: 'أسعار صرف مرجعية يومية، تُستخدم لعرض أرقام الزكاة بالعملة التي تختارها.' }, { name: 'MP3Quran', ar: 'إم بي 3 قرآن', endpoint: 'audio.islamicdata.uz',
     detail: 'Complete Surah recitations from published reciters, used when you play a whole Surah rather than verse by verse.',
     arDetail: 'تلاوات كاملة للسور من القرّاء المنشورين، وتُستخدم عند تشغيل السورة كاملة.' },
 ];

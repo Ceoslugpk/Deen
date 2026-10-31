@@ -221,13 +221,13 @@ export async function loadZakatState() {
 export async function refreshMarket() {
   try {
     const [fx, gold, silver] = await Promise.all([
-      fetch('https://open.er-api.com/v6/latest/USD', { headers: { Accept: 'application/json' } }).then((r) =>
+      fetch('https://misc.islamicdata.uz/v6/latest/USD', { headers: { Accept: 'application/json' } }).then((r) =>
         r.ok ? r.json() : Promise.reject(new Error('rates unavailable'))
       ),
-      fetch('https://api.gold-api.com/price/XAU', { headers: { Accept: 'application/json' } }).then((r) =>
+      fetch('https://misc.islamicdata.uz/price/XAU', { headers: { Accept: 'application/json' } }).then((r) =>
         r.ok ? r.json() : Promise.reject(new Error('gold unavailable'))
       ),
-      fetch('https://api.gold-api.com/price/XAG', { headers: { Accept: 'application/json' } }).then((r) =>
+      fetch('https://misc.islamicdata.uz/price/XAG', { headers: { Accept: 'application/json' } }).then((r) =>
         r.ok ? r.json() : Promise.reject(new Error('silver unavailable'))
       ),
     ]);

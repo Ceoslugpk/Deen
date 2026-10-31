@@ -28,7 +28,14 @@ export type AudioEdition = { identifier: string; language: string; englishName: 
 export type SurahAudioAyah = { numberInSurah: number; globalNumber: number; audio: string; text: string };
 export type SurahReciter = { id: number; name: string; letter: string; urlTemplate: string; moshaf: string; rewaya: string; surahTotal: number };
 
-const ISLAMIC = 'https://api.islamic.app/v1';
+/**
+ * Nothing here speaks to api.islamic.app any more.
+ *
+ * The Beautiful Names and the adhkar are bundled in the app, the Qibla is
+ * worked out from the coordinates, and the hadith of the day comes from our
+ * own server. The nearby-mosque directory was the last caller and it has been
+ * removed, so the host is gone rather than merely unused.
+ */
 
 /**
  * Per-ayah recitations, bundled and verified.
@@ -1086,11 +1093,6 @@ export async function getSurahReciters(): Promise<SurahReciter[]> {
   });
 
   return reciters.filter((reciter) => reciter.name && reciter.urlTemplate.includes('{surahPadded3}'));
-}
-
-export async function getNearbyMosques(latitude: number, longitude: number): Promise<any[]> {
-  const data = await json(`${ISLAMIC}/masajid/near?lat=${latitude}&lng=${longitude}&radius=50&limit=20`);
-  return data.mosques || [];
 }
 
 /**

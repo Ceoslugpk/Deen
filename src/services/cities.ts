@@ -194,11 +194,19 @@ function savedToResults(query: string): CityResult[] {
 }
 
 /**
- * Open-Meteo's geocoding endpoint: no key, no account, and it returns the
- * timezone, which the prayer calendar wants anyway.
+ * City search, through the app's own Worker.
+ *
+ * Upstream is Open-Meteo's geocoding endpoint: no key, no account, and it
+ * returns the timezone, which the prayer calendar wants anyway.
+ *
+ * One difference from calling upstream directly, and it matters: `format=json`
+ * is dropped. The Worker accepts only `name`, `count`, `language` and
+ * `countryCode`, and answers `400` on anything else, so the old query string
+ * would fail outright. The results are otherwise identical — the same cities,
+ * in the same order, down to the id.
  */
 export async function searchRemoteCities(query: string, limit = 8): Promise<CityResult[]> {
-  const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=${limit}&language=en&format=json`;
+  const url = `https://misc.islamicdata.uz/v1/search?name=${encodeURIComponent(query)}&count=${limit}&language=en`;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 8000);
   try {
