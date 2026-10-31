@@ -36,7 +36,7 @@ const HERO_A = '#2D187D';                     // Deep Indigo
 const HERO_B = '#452D9F';                     // Royal Indigo
 
 const UI_STACK = '"IBMPlexSansArabic_400Regular","DMSans_400Regular",system-ui,-apple-system,"Segoe UI",sans-serif';
-const BRAND_MARK = require('../../assets/logo-mark-dark.png');
+const BRAND_MARK = require('../../assets/logo-mark.png');
 const FALLBACK_ARABIC = '"NotoNaskhArabic_400Regular","Amiri_400Regular","Geeza Pro","Al Bayan",Tahoma,serif';
 
 function font(size: number, weight: number, stack: string) {
