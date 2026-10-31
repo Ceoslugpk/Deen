@@ -27,11 +27,13 @@ const W = 1080;
 const PAD = 84;
 const INNER = W - PAD * 2;
 
-const GOLD = '#D8BC80';
-const CREAM = '#F7F3EA';
-const CREAM_SOFT = 'rgba(247,243,234,0.72)';
-const HERO_A = '#2A2849';
-const HERO_B = '#5146A4';
+/* The share card is a brand artefact, so it is painted from the same ten
+   colours as the rest of the app rather than its own set. */
+const GOLD = '#DFB163';                       // Radiant Gold
+const CREAM = '#F9F2EB';                      // Pearl
+const CREAM_SOFT = 'rgba(249,242,235,0.72)';
+const HERO_A = '#2D187D';                     // Deep Indigo
+const HERO_B = '#452D9F';                     // Royal Indigo
 
 const UI_STACK = '"IBMPlexSansArabic_400Regular","DMSans_400Regular",system-ui,-apple-system,"Segoe UI",sans-serif';
 const BRAND_MARK = require('../../assets/logo-mark-dark.png');
@@ -166,25 +168,25 @@ async function renderWeb(data: VerseCardData): Promise<Blob> {
 
   // a soft glow behind the verse, so the text sits on something
   const glow = ctx.createRadialGradient(W * 0.78, H * 0.24, 0, W * 0.78, H * 0.24, W * 0.62);
-  glow.addColorStop(0, 'rgba(216,188,128,0.20)');
-  glow.addColorStop(1, 'rgba(216,188,128,0)');
+  glow.addColorStop(0, 'rgba(223,177,99,0.20)');
+  glow.addColorStop(1, 'rgba(223,177,99,0)');
   ctx.fillStyle = glow;
   ctx.fillRect(0, 0, W, H);
 
   // ---- the frame: a heavy outer rule and a hairline inside it, with a small
   // diamond set into each corner. One rule reads as a border; two read as a
   // page, which is what this is pretending to be.
-  ctx.strokeStyle = 'rgba(216,188,128,0.34)';
+  ctx.strokeStyle = 'rgba(223,177,99,0.34)';
   ctx.lineWidth = 3;
   roundRect(ctx, 34, 34, W - 68, H - 68, 44);
   ctx.stroke();
 
-  ctx.strokeStyle = 'rgba(216,188,128,0.17)';
+  ctx.strokeStyle = 'rgba(223,177,99,0.17)';
   ctx.lineWidth = 1.5;
   roundRect(ctx, 54, 54, W - 108, H - 108, 32);
   ctx.stroke();
 
-  ctx.fillStyle = 'rgba(216,188,128,0.72)';
+  ctx.fillStyle = 'rgba(223,177,99,0.72)';
   for (const [cx, cy] of [[70, 70], [W - 70, 70], [70, H - 70], [W - 70, H - 70]]) {
     ctx.beginPath();
     ctx.moveTo(cx, cy - 7);
@@ -206,21 +208,21 @@ async function renderWeb(data: VerseCardData): Promise<Blob> {
   const pillH = 54;
   const pillY = y - 34;
   roundRect(ctx, PAD - 20, pillY, refW + 40, pillH, 27);
-  ctx.strokeStyle = 'rgba(216,188,128,0.42)';
+  ctx.strokeStyle = 'rgba(223,177,99,0.42)';
   ctx.lineWidth = 2;
   ctx.stroke();
-  ctx.fillStyle = 'rgba(216,188,128,0.10)';
+  ctx.fillStyle = 'rgba(223,177,99,0.10)';
   ctx.fill();
   ctx.fillStyle = GOLD;
   ctx.fillText(refText, PAD, y);
 
   ctx.textAlign = 'right';
-  ctx.fillStyle = 'rgba(247,243,234,0.78)';
+  ctx.fillStyle = 'rgba(248,242,234,0.78)';
   ctx.font = font(30, 400, UI_STACK);
   ctx.fillText(data.surahName, W - PAD, y);
 
   y += 46;
-  ctx.strokeStyle = 'rgba(216,188,128,0.28)';
+  ctx.strokeStyle = 'rgba(223,177,99,0.28)';
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(PAD, y);
@@ -242,7 +244,7 @@ async function renderWeb(data: VerseCardData): Promise<Blob> {
     // ---- divider with a diamond ----
     y += 22;
     const midY = y + 12;
-    ctx.strokeStyle = 'rgba(216,188,128,0.32)';
+    ctx.strokeStyle = 'rgba(223,177,99,0.32)';
     ctx.lineWidth = 2;
     const gap = 40;
     const cx = W / 2;
@@ -281,7 +283,7 @@ async function renderWeb(data: VerseCardData): Promise<Blob> {
   }
 
   // ---- footer, above a hairline ----
-  ctx.strokeStyle = 'rgba(216,188,128,0.22)';
+  ctx.strokeStyle = 'rgba(223,177,99,0.22)';
   ctx.lineWidth = 1.5;
   ctx.beginPath();
   ctx.moveTo(PAD, H - PAD - 58);
@@ -290,7 +292,7 @@ async function renderWeb(data: VerseCardData): Promise<Blob> {
 
   ctx.direction = 'ltr';
   ctx.textAlign = 'left';
-  ctx.fillStyle = 'rgba(216,188,128,0.86)';
+  ctx.fillStyle = 'rgba(223,177,99,0.86)';
   ctx.font = font(26, 400, UI_STACK);
   ctx.fillText(data.translationName || '', PAD, H - PAD - 6);
 
@@ -298,7 +300,7 @@ async function renderWeb(data: VerseCardData): Promise<Blob> {
   const mark = await loadBrandMark();
   const MARK = 36;
   ctx.textAlign = 'right';
-  ctx.fillStyle = 'rgba(247,243,234,0.62)';
+  ctx.fillStyle = 'rgba(248,242,234,0.62)';
   ctx.font = font(26, 600, UI_STACK);
   ctx.fillText('Islamic', mark ? W - PAD - MARK - 16 : W - PAD, H - PAD - 6);
   if (mark) {

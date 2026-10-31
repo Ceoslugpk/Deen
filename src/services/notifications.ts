@@ -163,14 +163,14 @@ export async function ensureNotificationChannels(rtl = false) {
     name: c.channelAdhan,
     importance: Notifications.AndroidImportance.MAX,
     vibrationPattern: [0, 250, 180, 250],
-    lightColor: '#5146A4',
+    lightColor: '#452D9F',
     sound: 'default',
   });
   await Notifications.setNotificationChannelAsync('prayer-reminders', {
     name: c.channelReminder,
     importance: Notifications.AndroidImportance.HIGH,
     vibrationPattern: [0, 250, 180, 250],
-    lightColor: '#5146A4',
+    lightColor: '#452D9F',
     sound: 'default',
   });
   await Notifications.setNotificationChannelAsync('daily', {
