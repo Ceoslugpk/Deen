@@ -168,7 +168,7 @@ export async function estimateFreeBytes(): Promise<number> {
 
 const AUDIO_RELAY = '/api/audio';
 const CHUNK = 4 * 1024 * 1024;
-let reciterCache: { savedAt: number; list: { id: number; server: string; name: string }[] } | null = null;
+let reciterCache: { savedAt: number; list: { id: number; urlTemplate: string; name: string }[] } | null = null;
 
 async function loadReciters() {
   if (reciterCache && Date.now() - reciterCache.savedAt < 12 * 60 * 60 * 1000) return reciterCache.list;
@@ -197,13 +197,21 @@ export async function resolveAudioSource(edition: string, chapterId: number): Pr
     const id = Number(edition.slice('mp3quran-'.length));
     const reciters = await loadReciters();
     const reciter = reciters.find((entry) => entry.id === id) || (Number.isFinite(id) ? null : reciters[0]);
-    if (!reciter?.server) {
+    if (!reciter?.urlTemplate) {
       return { url: '', direct: '', note: 'The full-Surah reciter list is still loading. Try again in a moment.' };
     }
-    const direct = `${reciter.server.endsWith('/') ? reciter.server : `${reciter.server}/`}${String(chapterId).padStart(3, '0')}.mp3`;
+    const direct = reciter.urlTemplate.replace('{surahPadded3}', String(chapterId).padStart(3, '0'));
     return { url: direct, direct, note: '' };
   }
 
+  /**
+   * A verse-by-verse reciter's whole-Surah file.
+   *
+   * Our Worker serves these ayah by ayah, so it has no single file for a
+   * Surah the way it does for the full-Surah reciters. The download therefore
+   * still reads the Surah-length file from the Islamic Network CDN, which is
+   * the one audio host the app still reaches directly.
+   */
   const direct = `https://cdn.islamic.network/quran/audio-surah/128/${edition}/${chapterId}.mp3`;
   if (Platform.OS !== 'web') return { url: direct, direct, note: '' };
   return { url: `${AUDIO_RELAY}?edition=${encodeURIComponent(edition)}&chapter=${chapterId}`, direct, note: '' };

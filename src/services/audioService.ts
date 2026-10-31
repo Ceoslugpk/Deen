@@ -350,7 +350,18 @@ export async function buildSurahQueue(
   const arabic = await loadSurahAudio(chapterId, settings.reciter);
   const queue = arabic.map((ayah) => trackFor(ayah, chapterId, chapterName, 'arabic', settings.reciter, settings.reciterName));
   if (!settings.translationAudioEnabled) return queue;
-  const translated = await loadSurahAudio(chapterId, settings.translationEdition);
+
+  /**
+   * The spoken translation is an accompaniment, so a voice that turns out to
+   * have no audio for this Surah must not take the recitation down with it.
+   *
+   * It is reachable: the default is a text edition (`en.walk`) which has no
+   * recording, and `loadSurahAudio` throws rather than returning nothing. So
+   * the failure is caught here and the Arabic is offered alone, which is the
+   * same answer the language switch already gives when no voice exists.
+   */
+  const translated = await loadSurahAudio(chapterId, settings.translationEdition).catch(() => [] as SurahAudioAyah[]);
+  if (!translated.length) return queue;
   const byAyah = new Map(translated.map((ayah) => [ayah.numberInSurah, ayah]));
   if (settings.sequential) {
     const merged: AudioTrack[] = [];
@@ -379,7 +390,9 @@ export async function buildSurahFileQueue(
   const reciters = await loadSurahReciters();
   const reciter = reciters.find((entry) => entry.id === settings.surahReciterId) || reciters[0];
   if (!reciter) throw new Error('The full-Surah reciter list is still loading. Try again in a moment.');
-  const url = `${reciter.server}${String(chapterId).padStart(3, '0')}.mp3`;
+  /* The Worker hands back a template rather than a folder, because a
+     recording can live under any path shape it likes. */
+  const url = reciter.urlTemplate.replace('{surahPadded3}', String(chapterId).padStart(3, '0'));
   return [{
     id: `surah:${chapterId}:${reciter.id}`,
     title: `${chapterName} · full recitation`,

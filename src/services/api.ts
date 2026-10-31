@@ -26,7 +26,7 @@ export type QuranEdition = { identifier: string; language: string; englishName: 
 export type QuranSearchResult = { verseKey: string; surahId: number; surahName: string; ayah: number; text: string; edition: string };
 export type AudioEdition = { identifier: string; language: string; englishName: string; name: string; type: string; direction?: string };
 export type SurahAudioAyah = { numberInSurah: number; globalNumber: number; audio: string; text: string };
-export type SurahReciter = { id: number; name: string; letter: string; server: string; moshaf: string; rewaya: string; surahTotal: number };
+export type SurahReciter = { id: number; name: string; letter: string; urlTemplate: string; moshaf: string; rewaya: string; surahTotal: number };
 
 const ISLAMIC = 'https://api.islamic.app/v1';
 
@@ -39,8 +39,27 @@ const ISLAMIC = 'https://api.islamic.app/v1';
  */
 const AUDIO_TABLE: { base: string; editions: AudioEdition[] } =
   require('../data/audio-editions.json');
-const AUDIO_BASE = AUDIO_TABLE.base;
 const AUDIO_EDITIONS: AudioEdition[] = AUDIO_TABLE.editions;
+
+/**
+ * Where one ayah of one recitation lives.
+ *
+ * This wants to be our own Worker, and every one of the 24 editions has been
+ * checked as present and playable there:
+ *
+ *   https://audio.islamicdata.uz/v1/audio/media/audio/128/{edition}/{ayah}.mp3
+ *
+ * It cannot be used yet. A player asks for media by range, and that route
+ * answers every range request with `416` and a content-range of zero length,
+ * so the element refuses the source and the verse never plays. Its full-Surah
+ * sibling (`/v1/audio/media/mp3quran/...`) answers `206` correctly, so this is
+ * a fault in the one route rather than in the idea.
+ *
+ * Raise the line below back to the Worker's base once it honours Range, and
+ * the app moves off the CDN with nothing else to change.
+ */
+const AUDIO_BASE = 'https://cdn.islamic.network/quran/audio/128';
+// const AUDIO_BASE = 'https://audio.islamicdata.uz/v1/audio/media/audio/128';
 
 /** What the app calls its Arabic scripts when it has to name one. */
 const SCRIPT_NAMES: Record<string, string> = {
@@ -945,31 +964,65 @@ export function ayahAudioUrl(edition: string, globalAyahNumber: number): string 
   return `${AUDIO_BASE}/${edition}/${globalAyahNumber}.mp3`;
 }
 
-const REWAYA_NAMES: Record<string, string> = {
-  '1': "Hafs 'an Asim", '2': "Warsh 'an Nafi'", '3': "Qalun 'an Nafi'", '4': "Al-Duri 'an Abi Amr",
-  '5': "Shu'bah 'an Asim", '6': "Khalaf 'an Hamzah", '7': "Al-Susi 'an Abi Amr",
-};
+/**
+ * How many surahs a recording covers, taken from the coverage list where the
+ * Worker sent one and from the declared total where it did not.
+ *
+ * The Worker derives this from the surah numbers the provider actually lists
+ * rather than trusting a `surah_total` field, so where a list is present it is
+ * the honest answer: a variant that claims 114 but lists 90 covers 90.
+ */
+function coverageOf(variant: any): number {
+  const listed: number[] = Array.isArray(variant.surahNumbers) ? variant.surahNumbers : null;
+  if (listed && listed.length) return listed.length;
+  return Number(variant.surahTotal || 0);
+}
 
-export async function getSurahReciters(language = 'eng'): Promise<SurahReciter[]> {
-  const response = await fetch(`https://www.mp3quran.net/api/v3/reciters?language=${language}`, { headers: { Accept: 'application/json' } });
+/**
+ * The whole-Surah reciters, from our own Worker.
+ *
+ * `/v1/reciters` merges every provider behind one normalised catalogue, so the
+ * app no longer talks to mp3quran.net nor reads a provider-specific response
+ * shape. Each reciter can carry several recordings — a riwaya here, a style
+ * there — and only some are complete, so the fullest playable one wins.
+ *
+ * A group is only offered when at least one of its recordings is playable:
+ * the Worker omits the URL template for recordings it cannot proxy, and a
+ * reciter that cannot be played has no business in the list. That is what kept
+ * the old list honest, and the Worker's own coverage check now does it better.
+ *
+ * The id stays the provider's numeric reciter id, which is what a saved
+ * setting already holds, so someone's chosen reciter survives the switch.
+ */
+export async function getSurahReciters(): Promise<SurahReciter[]> {
+  const response = await fetch('https://audio.islamicdata.uz/v1/reciters', { headers: { Accept: 'application/json' } });
   if (!response.ok) throw new Error(`Request failed (${response.status})`);
   const body = await response.json();
-  const rows: any[] = body.reciters || [];
+  const groups: any[] = body.reciters || [];
   const reciters: SurahReciter[] = [];
-  rows.forEach((row) => {
-    const moshaf = (row.moshaf || []).find((entry: any) => Number(entry.surah_total) >= 114) || (row.moshaf || [])[0];
-    if (!moshaf?.server) return;
+
+  groups.forEach((group) => {
+    const playable = (group.variants || []).filter(
+      (variant: any) => variant && variant.source === 'mp3quran' && variant.audioUrlTemplate,
+    );
+    if (!playable.length) return;
+
+    /* The fullest recording first; failing that, whichever one exists. */
+    const sorted = [...playable].sort((a, b) => coverageOf(b) - coverageOf(a));
+    const best = sorted.find((variant: any) => coverageOf(variant) >= 114) || sorted[0];
+
     reciters.push({
-      id: Number(row.id),
-      name: String(row.name || '').trim(),
-      letter: String(row.letter || '#'),
-      server: String(moshaf.server).endsWith('/') ? moshaf.server : `${moshaf.server}/`,
-      moshaf: String(moshaf.name || ''),
-      rewaya: REWAYA_NAMES[String(moshaf.rewaya_id)] || moshaf.name || '',
-      surahTotal: Number(moshaf.surah_total || 0),
+      id: Number(best.providerReciterId ?? group.id),
+      name: String(group.name || best.name || '').trim(),
+      letter: String(group.letter || '#'),
+      urlTemplate: String(best.audioUrlTemplate),
+      moshaf: String(best.moshafName || group.style || ''),
+      rewaya: String(best.rewaya || group.rewaya || ''),
+      surahTotal: coverageOf(best),
     });
   });
-  return reciters.filter((reciter) => reciter.name);
+
+  return reciters.filter((reciter) => reciter.name && reciter.urlTemplate.includes('{surahPadded3}'));
 }
 
 export async function getNearbyMosques(latitude: number, longitude: number): Promise<any[]> {
