@@ -614,23 +614,42 @@ export function mergeTranslations<T extends { verse_key: string }>(
 
 /* ==================== Chapters and structure ==================== */
 
-/** The 114 chapters. Immutable for a snapshot, so cached for a year. */
+/**
+ * The 114 chapters. Immutable for a snapshot, so cached for a year.
+ *
+ * Held in memory as well as on disk. The list is asked for by the reader, by
+ * search, and once for each day as the week ahead is filled in - and those
+ * callers overlap, so they all read the cache before any of them had written
+ * it and every one fetched its own copy. Sixteen requests where one would do.
+ * The in-flight promise collapses the overlapping ones; the memo answers
+ * everyone who arrives afterwards.
+ */
+let chaptersMemo: IslamicChapter[] | null = null;
+let chaptersInFlight: Promise<IslamicChapter[]> | null = null;
 export async function getChapters(): Promise<IslamicChapter[]> {
+  if (chaptersMemo?.length === 114) return chaptersMemo;
   const cached = await getCachedJson<{ fetchedAt: number; chapters: IslamicChapter[] }>('quran', 'chapters-v1').catch(() => null);
-  if (cached?.chapters?.length === 114) return cached.chapters;
-  try {
-    const { data } = await getJson<any>('/chapters', { conditional: false });
-    const chapters = (data?.chapters || []) as IslamicChapter[];
-    if (chapters.length !== 114) throw fail(`Expected 114 chapters, got ${chapters.length}`);
-    if (chapters.some((c) => typeof c?.number !== 'number' || !c?.nameSimple)) {
-      throw fail('A chapter record was missing its number or name');
+  if (cached?.chapters?.length === 114) { chaptersMemo = cached.chapters; return cached.chapters; }
+  if (chaptersInFlight) return chaptersInFlight;
+  chaptersInFlight = (async () => {
+    try {
+      const { data } = await getJson<any>('/chapters', { conditional: false });
+      const chapters = (data?.chapters || []) as IslamicChapter[];
+      if (chapters.length !== 114) throw fail(`Expected 114 chapters, got ${chapters.length}`);
+      if (chapters.some((c) => typeof c?.number !== 'number' || !c?.nameSimple)) {
+        throw fail('A chapter record was missing its number or name');
+      }
+      chaptersMemo = chapters;
+      await setCachedJson('quran', 'chapters-v1', { fetchedAt: Date.now(), chapters }).catch(() => {});
+      return chapters;
+    } catch (error) {
+      if (cached?.chapters?.length) return cached.chapters;
+      throw error;
+    } finally {
+      chaptersInFlight = null;
     }
-    await setCachedJson('quran', 'chapters-v1', { fetchedAt: Date.now(), chapters }).catch(() => {});
-    return chapters;
-  } catch (error) {
-    if (cached?.chapters?.length) return cached.chapters;
-    throw error;
-  }
+  })();
+  return chaptersInFlight;
 }
 
 /** Structure summary plus 114 surah records, in the source's snake_case. */

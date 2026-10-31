@@ -1064,15 +1064,25 @@ const dayKeyOf = (date: Date) => `${date.getFullYear()}-${String(date.getMonth()
 
 /** Fills the days after today, one at a time so a slow network is not hammered. */
 async function preloadReflectionsAhead() {
+  /* Only the verse of the day is tied to a date. The Name and the morning
+     adhkar come from endpoints that take no date at all, so asking for them
+     once per day asked for today, seven times over - and then filed today's
+     Name under six future dates. They are fetched once, here, and shared. */
+  let name: DivineName | null = null;
+  let duas: any[] = [];
   for (let ahead = 1; ahead <= REFLECTION_AHEAD_DAYS; ahead += 1) {
     const date = new Date(); date.setDate(date.getDate() + ahead);
     const key = dayKeyOf(date);
     try {
       const already = await loadDailyContent<DailyContentCache>(key);
       if (already?.ayah) continue;
-      const [ayah, name, duas] = await Promise.all([
-        getAyahForDate(date), loadNameOfDay().catch(() => null), getDuas('morning').catch(() => []),
-      ]);
+      if (!name && !duas.length) {
+        [name, duas] = await Promise.all([
+          loadNameOfDay().catch(() => null),
+          getDuas('morning').catch(() => [] as any[]),
+        ]);
+      }
+      const ayah = await getAyahForDate(date);
       await saveDailyContent(key, { ayah, hadith: null as any, name: name as any, dua: duas?.[0] });
     } catch {
       return; // offline, or one day failed - the rest will fill in next time
@@ -2244,8 +2254,8 @@ function QuranHome({navigation}:any){const{dark}=useTheme();
  const shown=chapters.filter(c=>`${c.id} ${c.name_simple} ${c.name_arabic} ${c.translated_name?.name}`.toLowerCase().includes(debounced.toLowerCase()));const visible=expanded||debounced.length>0?shown:shown.slice(0,30);const openSurah=useCallback((chapter:Chapter)=>navigation.navigate('Reader',{chapter,mode:'both'}),[navigation]);const open=(chapter:Chapter,mode='both',focusVerse?:string)=>navigation.navigate('Reader',{chapter,mode,focusVerse});const featured={id:55,name_simple:'Ar-Rahman',name_arabic:'الرحمن',translated_name:{name:'The Most Merciful'},verses_count:78};const submit=()=>{const ref=query.match(/^(\d{1,3}):(\d{1,3})$/);if(ref){const chapter=chapters.find(c=>c.id===Number(ref[1]));if(chapter)return open(chapter,'both',query)}navigation.navigate('Quran Search',{initialQuery:query})};
  const[audioReciter,setAudioReciter]=useState(T('Choose a reciter'));const memorized=Object.values(hifz).filter(value=>value==='memorized').length;const contentWidth=Math.min(Math.max(width-36,280),980);
 const gridGap=8;const gridCols=gridW>=640?10:4;const tileW=gridW?Math.floor((gridW-gridGap*(gridCols-1))/gridCols):0;
-const exploreTools:{label:string;title:string;screen:string;tab?:string;params?:Record<string,any>;tool?:string}[]=[{label:'Quran Search',title:T('Search'),screen:'Quran Search'},{label:'30 Juz',title:T('Juz'),screen:'Juz Directory'},{label:'60 Hizb',title:T('Hizb'),screen:'Hizb Directory'},{label:'Quran Topics',title:T('Topics'),screen:'Quran Topics'},{label:'Translation Compare',title:T('Tafsir'),screen:'Tafsir Compare',tool:'Tafsir'},{label:'Tajweed',title:T('Tajweed'),screen:'Tajweed Study',tab:'Library'},{label:'Quran Vocabulary',title:T('Vocab'),screen:'Quran Vocabulary',tab:'Library'},{label:'Recitations',title:T('Audio'),screen:'Quran Audio',tool:'Audio'}];
-const compactStats=[{label:'Bookmarks',title:T('Bookmarks'),value:String(bookmarkCount),screen:'Bookmarks',icon:'bookmark-outline'},{label:'Notes',title:T('Notes'),value:String(noteCount),screen:'Notes',icon:'create-outline'},{label:'Reading Plans',title:T('Plans'),value:plan?`${plan.days}d`:'—',screen:'Reading Plans',icon:'calendar-outline'},{label:'Hifz',title:T('Hifz'),value:String(memorized),screen:'Hifz',icon:'school-outline'},{label:'Offline Quran',title:T('Offline'),value:`${preload.cached}/114`,screen:'Quran Preload',icon:'download-outline'}];
+const exploreTools:{label:string;title:string;screen:string;tab?:string;params?:Record<string,any>;tool?:string}[]=[{label:'30 Juz',title:T('Juz'),screen:'Juz Directory'},{label:'60 Hizb',title:T('Hizb'),screen:'Hizb Directory'},{label:'Quran Topics',title:T('Topics'),screen:'Quran Topics'},{label:'Translation Compare',title:T('Tafsir'),screen:'Tafsir Compare',tool:'Tafsir'},{label:'Tajweed',title:T('Tajweed'),screen:'Tajweed Study',tab:'Library'},{label:'Quran Vocabulary',title:T('Vocab'),screen:'Quran Vocabulary',tab:'Library'},{label:'Recitations',title:T('Audio'),screen:'Quran Audio',tool:'Audio'}];
+const compactStats=[{label:'Bookmarks',title:T('Bookmarks'),value:String(bookmarkCount),screen:'Bookmarks',icon:'bookmark-outline',tool:'Bookmarks'},{label:'Notes',title:T('Notes'),value:String(noteCount),screen:'Notes',icon:'create-outline',tool:'Notes'},{label:'Reading Plans',title:T('Plans'),value:plan?`${plan.days}d`:'—',screen:'Reading Plans',icon:'calendar-outline',tool:'Reading Plans'},{label:'Hifz',title:T('Hifz'),value:String(memorized),screen:'Hifz',icon:'school-outline',tool:'Hifz'},{label:'Offline Quran',title:T('Offline'),value:`${preload.cached}/114`,screen:'Quran Preload',icon:'download-outline',tool:'Offline Quran'}];
  return <Page><ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}><AppHeader/>
  <View style={s.search}>{ico('search-outline',19,C.muted)}<TextInput accessibilityLabel={T('Search the Quran')} value={query} onChangeText={setQuery} onSubmitEditing={submit} returnKeyType="search" style={s.searchInput} placeholder={T('Search Surah, meaning, or 2:255')} placeholderTextColor={C.muted}/>{query.length>0&&<Pressable accessibilityLabel={T('Clear Quran search')} onPress={()=>setQuery('')}>{ico('close-circle',18,C.muted)}</Pressable>}</View>
  {position&&<Pressable onPress={()=>{const chapter=chapters.find(c=>c.id===position.surahId);if(chapter)open(chapter,'both',position.verseKey)}} style={s.continueBar}><ToolGraphic tool="Quran Arabic" size={54}/><View style={{flex:1}}><Text style={s.dailyKicker}>{T('CONTINUE READING')}</Text><Text style={s.settingName}>{position.surahName} · {position.verseKey}</Text><Text style={s.meta}>{rtl ? `صفحة ${position.page || '—'} · محفوظ على هذا الجهاز` : `Page ${position.page || '—'} · saved locally`}</Text></View>{ico('arrow-forward',18,C.green)}</Pressable>}
@@ -2253,7 +2263,7 @@ const compactStats=[{label:'Bookmarks',title:T('Bookmarks'),value:String(bookmar
  <Section title={T('Explore')}/>
  <View style={s.qTileGrid} onLayout={e=>setGridW(e.nativeEvent.layout.width)}>{exploreTools.map(item=><MotionPress key={item.label} testID={`qtile-${item.label}`} onPress={()=>item.tab?navigation.navigate(item.tab,{screen:item.screen,params:item.params||{}}):navigation.navigate(item.screen,item.params||{})} style={[s.qTile,tileW?{width:tileW}:{flex:1,minWidth:60}]}><ToolGraphic tool={item.tool||item.label} size={40}/><Text numberOfLines={2} style={s.qTileLabel}>{item.title}</Text></MotionPress>)}</View>
  <Section title={T('Your Quran')}/>
- <View style={s.qStatRow}>{compactStats.map(item=><MotionPress key={item.label} testID={`qstat-${item.label}`} onPress={()=>navigation.navigate(item.screen)} style={s.qStat}><View style={s.qStatIcon}>{ico(item.icon,17,C.green)}</View><Text style={s.qStatValue}>{item.value}</Text><Text numberOfLines={1} style={s.qStatLabel}>{item.title}</Text></MotionPress>)}</View>
+ <View style={s.qStatRow}>{compactStats.map(item=><MotionPress key={item.label} testID={`qstat-${item.label}`} onPress={()=>navigation.navigate(item.screen)} style={s.qStat}><View style={s.qStatIcon}>{item.tool?<Image source={(dark?TOOL_IMAGES_DARK:TOOL_IMAGES)[item.tool]} resizeMode="contain" style={{width:24,height:24}}/>:ico(item.icon,17,C.green)}</View><Text style={s.qStatValue}>{item.value}</Text><Text numberOfLines={1} style={s.qStatLabel}>{item.title}</Text></MotionPress>)}</View>
  <Section title={T('Reading preferences')}/>
  <View style={s.quranPreferenceRow}><Pressable onPress={()=>navigation.navigate('Reader Settings')} style={s.quranPreferenceCard}><ToolGraphic tool="Reader Settings" size={56}/><View style={{flex:1}}><Text style={s.settingName}>{T('Script & display')}</Text><Text numberOfLines={1} style={s.meta}>{T(preferences.scriptName)} · {T(QURAN_FONTS.find(font=>font.id===preferences.arabicFont)?.short || '')} · {preferences.fontSize}px</Text></View>{ico('arrow-forward',17,C.green)}</Pressable><Pressable onPress={()=>navigation.navigate('Translations')} style={s.quranPreferenceCard}><ToolGraphic tool="Translations" size={56}/><View style={{flex:1}}><Text style={s.settingName}>{T('Translation')}</Text><View style={s.metaRow}><Flag code={languageOf(preferences.translationEdition, preferences.translationLanguage)} size={12} /><Text numberOfLines={1} style={s.meta}>{T(rtl ? preferences.translationLanguage : preferences.translationName)}</Text></View></View>{ico('arrow-forward',17,C.green)}</Pressable></View>
  
@@ -3482,12 +3492,25 @@ function ReaderSettingsScreen({navigation}:any){
   const[editions,setEditions]=useState<IslamicEdition[]>([]);
   const[transliterations,setTransliterations]=useState<IslamicEdition[]>([]);
   const[translitLanguage,setTranslitLanguage]=useState('en');
+  const[catalogError,setCatalogError]=useState('');
+  const[catalogAttempt,setCatalogAttempt]=useState(0);
 
   useEffect(()=>{ Animated.spring(rise,{toValue:1,friction:9,tension:130,useNativeDriver:true}).start(); },[rise]);
+  /* The catalogue is ~200KB. When that first fetch failed the rejection was
+     swallowed and "Loading live data…" stayed on screen for good, with no way
+     to recover short of leaving the screen and coming back. Report it instead,
+     and offer a retry that re-runs this effect. */
   useEffect(()=>{
-    getEditions('quran').then(setEditions).catch(()=>undefined);
-    getEditions('transliteration').then(setTransliterations).catch(()=>undefined);
-  },[]);
+    let live=true;
+    setCatalogError('');
+    Promise.all([getEditions('quran'), getEditions('transliteration')])
+      .then(([nextEditions, nextTransliterations])=>{
+        if(!live)return;
+        setEditions(nextEditions); setTransliterations(nextTransliterations);
+      })
+      .catch((e:any)=>{ if(live) setCatalogError(e?.message || 'Please check your connection.'); });
+    return ()=>{ live=false; };
+  },[catalogAttempt]);
 
   const scripts=[['quran-uthmani','Uthmani'],['quran-simple','Imla’i Simple'],['quran-indopak','IndoPak'],['quran-tajweed','Tajweed colour'],['quran-mushaf','Mushaf page']];
   /* Every control below is a setting of the same two lines of text, so the two
@@ -3581,7 +3604,11 @@ function ReaderSettingsScreen({navigation}:any){
                 <Text style={s.langCount}>{current?current.count:0} {T(current&&current.count===1?'version':'versions')}</Text>
                 {ico('chevron-down',18,C.green)}
               </Pressable>
-              {!editions.length ? <Spinner/> : <EditionPicker C={C} editions={editions} category="quran"
+              {!editions.length
+                ? (catalogError
+                    ? <ErrorState message={catalogError} retry={()=>setCatalogAttempt(a=>a+1)}/>
+                    : <Spinner/>)
+                : <EditionPicker C={C} editions={editions} category="quran"
                 selectedId={preferences.translationEdition} initialLanguage={language} hideLanguageRow
                 searchPlaceholder={T('Search translator or edition')}
                 onPick={(e)=>{void update({translationEdition:e.id,translationName:editionDisplayName(e),translationLanguage:languageLabel(e.language||'en')})}}/>}
