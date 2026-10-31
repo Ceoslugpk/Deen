@@ -3,6 +3,7 @@ import * as Notifications from 'expo-notifications';
 import { arNoun, clockTime, prayerName } from './arabicCopy';
 import type { PrayerSnapshot } from './api';
 import type { WorshipSettings } from './localState';
+import { ADHAN_TRACKS, FAJR_TRACKS } from './adhanCatalog';
 
 /**
  * Everything the app says out loud, and when it says it.
@@ -27,27 +28,61 @@ import type { WorshipSettings } from './localState';
 /**
  * The adhan voices that can sound from a notification.
  *
- * Only what is actually in the app can play, so this list is built from
- * `assets/audio`: every file named `adhan-*.mp3` there is copied into the
- * Android raw resources by the `withAdhanSounds` plugin, under the filename
- * with punctuation turned into underscores. `adhan-doha-public-domain.mp3`
- * therefore becomes the sound `adhan_doha_public_domain`.
+ * Only what is actually compiled into the app can play from a notification, so
+ * this is the bundled catalogue: every file named `adhan-*.mp3` or
+ * `fajr-*.mp3` in `assets/audio` is copied by the `withAdhanSounds` plugin
+ * under the filename with punctuation turned into underscores, and that
+ * resource name is what the system is asked to play.
  *
- * Adding another recording is a matter of dropping the file in — no code
- * change, and no rebuild of this list. If a named sound is somehow missing the
- * system tone plays instead, because an adhan that fails to make a noise at all
- * is worse than one that uses a generic chime.
+ * Adding another recording is a matter of dropping the file in and naming it
+ * in the catalogue. If a named sound is somehow missing the system tone plays
+ * instead, because an adhan that fails to make a noise at all is worse than
+ * one that uses a generic chime — which is also why the bundled list carries
+ * its own fallback rather than trusting a value read off disk.
  */
 export const ADHAN_OPTIONS: { id: string; label: string; labelAr: string; sound: string }[] = [
-  { id: 'doha', label: 'Doha', labelAr: 'الدوحة', sound: 'adhan_doha_public_domain' },
+  ...ADHAN_TRACKS.map((track) => ({
+    id: track.id, label: track.name, labelAr: track.nameAr, sound: track.sound,
+  })),
   { id: 'default', label: 'System tone', labelAr: 'نغمة الجهاز', sound: 'default' },
 ];
 
-export function adhanOption(id: string) {
-  // Tolerant of an old saved value that stored the label rather than the id.
+/** Fajr's own recordings, offered in the same shape. */
+export const FAJR_OPTIONS: { id: string; label: string; labelAr: string; sound: string }[] = [
+  ...FAJR_TRACKS.map((track) => ({
+    id: track.id, label: track.name, labelAr: track.nameAr, sound: track.sound,
+  })),
+  { id: 'default', label: 'System tone', labelAr: 'نغمة الجهاز', sound: 'default' },
+];
+
+const SYSTEM_TONE = { id: 'default', label: 'System tone', labelAr: 'نغمة الجهاز', sound: 'default' };
+
+function pickOption(options: typeof ADHAN_OPTIONS, id: string) {
+  /* Tolerant of an old saved value that stored the label rather than the id. */
   const wanted = String(id || '').toLowerCase();
-  return ADHAN_OPTIONS.find((option) => option.id === wanted || option.label.toLowerCase() === wanted)
-    || ADHAN_OPTIONS[ADHAN_OPTIONS.length - 1];
+  return options.find((option) => option.id === wanted || option.label.toLowerCase() === wanted)
+    || SYSTEM_TONE;
+}
+
+export function adhanOption(id: string) {
+  return pickOption(ADHAN_OPTIONS, id);
+}
+
+export function fajrOption(id: string) {
+  return pickOption(FAJR_OPTIONS, id);
+}
+
+/**
+ * Which sound a prayer asks for.
+ *
+ * Fajr is the only prayer with its own recording. Everything else — Dhuhr,
+ * Asr, Maghrib, Isha — shares the one choice, so picking a noon adhan does
+ * not quietly change what sounds at dawn.
+ */
+export function adhanSoundFor(prayerName: string, settings: { adhanReciter?: string; adhanFajrReciter?: string }): string {
+  return prayerName === 'Fajr'
+    ? fajrOption(settings.adhanFajrReciter || '').sound
+    : adhanOption(settings.adhanReciter || '').sound;
 }
 
 const COPY = {
@@ -260,7 +295,7 @@ export async function schedulePrayerNotifications(
 
     // ---- 1. the adhan itself ------------------------------------------
     if (settings.adhanEnabled?.[prayer.name]) {
-      const sound = adhanOption(settings.adhanReciter).sound;
+      const sound = adhanSoundFor(prayer.name, settings);
       if (at > now) {
         await Notifications.scheduleNotificationAsync({
           content: {

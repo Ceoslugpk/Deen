@@ -7,17 +7,22 @@
  * the bundle. Dropping an MP3 into `assets/audio` is not enough, which is why
  * the adhan would silently fall back to the system tone without this.
  *
- * Anything named `adhan-*.mp3` in `assets/audio` is copied. The resource name
- * is the filename with everything but letters and numbers turned into
- * underscores, so `adhan-doha-public-domain.mp3` becomes
- * `adhan_doha_public_domain`. That is the name the notification asks for.
+ * Anything named `adhan-*.mp3` or `fajr-*.mp3` in `assets/audio` is copied.
+ * The resource name is the filename with everything but letters and numbers
+ * turned into underscores, so `adhan-mishary-rashid-alafasy.mp3` becomes
+ * `adhan_mishary_rashid_alafasy` and `fajr-traditional.mp3` becomes
+ * `fajr_traditional`. That is the name the notification asks for.
+ *
+ * Fajr carries its own recordings. The dawn call is longer and is recited in
+ * its own manner, so it is not the same file as the one used at noon - and a
+ * person who picks one for Fajr does not expect it to change the others.
  */
 const { withDangerousMod } = require('expo/config-plugins');
 const fs = require('fs');
 const path = require('path');
 
 const SOURCE_DIR = 'assets/audio';
-const PATTERN = /^adhan-.*\.mp3$/i;
+const PATTERN = /^(adhan|fajr)-.*\.mp3$/i;
 
 const resourceName = (filename) =>
   filename.replace(/\.mp3$/i, '').replace(/[^a-z0-9]/gi, '_').toLowerCase();

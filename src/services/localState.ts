@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { PrayerSnapshot } from './api';
+import { adhanTrack, ADHAN_TRACKS, DEFAULT_ADHAN_ID, DEFAULT_FAJR_ID, FAJR_TRACKS } from './adhanCatalog';
 
 export type TimeFormat = '12' | '24';
 export type Madhab = 'shafi' | 'hanafi';
@@ -13,7 +14,20 @@ export type WorshipSettings = {
   prayerReminders: Record<string, boolean>;
   quranReminderEnabled: boolean;
   quranReminderTime: string;
+  /**
+   * The recording for the five prayers other than Fajr.
+   *
+   * An id from ADHAN_TRACKS, not a label — labels change with language.
+   */
   adhanReciter: string;
+  /**
+   * The recording for Fajr alone.
+   *
+   * Dawn carries its own call, longer and recited in its own manner, so it is
+   * chosen separately. Setting this never touches the other five prayers, and
+   * setting those never touches Fajr.
+   */
+  adhanFajrReciter: string;
   /**
    * Which prayers the adhan sounds for. On for the five prayers by default —
    * that is what a prayer app is for — but nothing sounds until permission has
@@ -75,8 +89,9 @@ export const DEFAULT_WORSHIP_SETTINGS: WorshipSettings = {
   prayerReminders: { Fajr: true, Dhuhr: true, Asr: true, Maghrib: true, Isha: true },
   quranReminderEnabled: false,
   quranReminderTime: '20:00',
-  // The id of an entry in ADHAN_OPTIONS, not its label.
-  adhanReciter: 'makkah',
+  // Ids from adhanCatalog, not labels - labels change with language.
+  adhanReciter: DEFAULT_ADHAN_ID,
+  adhanFajrReciter: DEFAULT_FAJR_ID,
   adhanEnabled: { Fajr: true, Dhuhr: true, Asr: true, Maghrib: true, Isha: true },
   continueReadingReminder: true,
   dailyVerseReminder: false,
@@ -120,6 +135,13 @@ export async function loadWorshipSettings(): Promise<WorshipSettings> {
     ...saved,
     prayerReminders: { ...DEFAULT_WORSHIP_SETTINGS.prayerReminders, ...(saved?.prayerReminders || {}) },
     adhanEnabled: { ...DEFAULT_WORSHIP_SETTINGS.adhanEnabled, ...(saved?.adhanEnabled || {}) },
+    /* Older builds stored 'makkah' and 'doha', ids that never matched an
+       entry in the list - so the notification quietly fell back to the system
+       tone while the screen showed a recording as chosen. Anything that does
+       not name a recording we still carry is dropped in favour of the
+       default, which is at least the adhan a person expected to hear. */
+    adhanReciter: adhanTrack(saved?.adhanReciter || '', adhanTrack(DEFAULT_ADHAN_ID, ADHAN_TRACKS[0])).id,
+    adhanFajrReciter: adhanTrack(saved?.adhanFajrReciter || '', adhanTrack(DEFAULT_FAJR_ID, FAJR_TRACKS[0])).id,
   };
 }
 

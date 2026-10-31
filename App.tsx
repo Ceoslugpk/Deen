@@ -7,7 +7,7 @@ function ExploreStack(){return <Stack.Navigator screenOptions={{headerShown:fals
  */
 function PrayerStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="Prayer" component={PrayerScreen}/><Stack.Screen name="Adhan" component={AdhanScreen}/><Stack.Screen name="Ramadan" component={RamadanScreen}/></Stack.Navigator>}
 /** The tools tab: what you calculate, look up, travel for, or record. */
-function ToolsStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="ToolsHome" component={ToolsHomeScreen}/><Stack.Screen name="Zakat" component={ZakatScreen}/><Stack.Screen name="Holy site channels" component={HolyChannelsScreen}/><Stack.Screen name="Women" component={WomenHubScreen}/><Stack.Screen name="Istihada" component={IstihadaScreen}/><Stack.Screen name="Ramadan Planner" component={RamadanPlannerScreen}/><Stack.Screen name="These Days" component={TheseDaysScreen}/><Stack.Screen name="Cycle" component={CycleScreen}/><Stack.Screen name="Qada" component={QadaScreen}/><Stack.Screen name="Women Guides" component={WomenGuidesScreen}/><Stack.Screen name="Privacy Lock" component={PrivacyLockScreen}/><Stack.Screen name="Fasting" component={FastingScreen}/><Stack.Screen name="Weekly Summary" component={WeeklySummaryScreen}/><Stack.Screen name="Qibla" component={QiblaScreen}/><Stack.Screen name="Location Setup" component={LocationSetupScreen}/><Stack.Screen name="Notifications" component={NotificationScreen}/><Stack.Screen name="Hijri Calendar" component={HijriCalendarScreen}/><Stack.Screen name="Tasbih" component={TasbihScreen}/><Stack.Screen name="Umrah Packing" component={UmrahPackingScreen}/><Stack.Screen name="Hajj Live" component={HajjLiveScreen}/></Stack.Navigator>}
+function ToolsStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="ToolsHome" component={ToolsHomeScreen}/><Stack.Screen name="Zakat" component={ZakatScreen}/><Stack.Screen name="Holy site channels" component={HolyChannelsScreen}/><Stack.Screen name="Women" component={WomenHubScreen}/><Stack.Screen name="Istihada" component={IstihadaScreen}/><Stack.Screen name="Ramadan Planner" component={RamadanPlannerScreen}/><Stack.Screen name="These Days" component={TheseDaysScreen}/><Stack.Screen name="Cycle" component={CycleScreen}/><Stack.Screen name="Qada" component={QadaScreen}/><Stack.Screen name="Women Guides" component={WomenGuidesScreen}/><Stack.Screen name="Privacy Lock" component={PrivacyLockScreen}/><Stack.Screen name="Fasting" component={FastingScreen}/><Stack.Screen name="Weekly Summary" component={WeeklySummaryScreen}/><Stack.Screen name="Qibla" component={QiblaScreen}/><Stack.Screen name="Location Setup" component={LocationSetupScreen}/><Stack.Screen name="Notifications" component={NotificationScreen}/><Stack.Screen name="Adhan" component={AdhanScreen}/><Stack.Screen name="Hijri Calendar" component={HijriCalendarScreen}/><Stack.Screen name="Tasbih" component={TasbihScreen}/><Stack.Screen name="Umrah Packing" component={UmrahPackingScreen}/><Stack.Screen name="Hajj Live" component={HajjLiveScreen}/></Stack.Navigator>}
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -59,7 +59,7 @@ import {
   WorshipSettings, loadOnboarding, saveOnboarding, loadLanguage, saveLanguage
 } from './src/services/localState';
 import {
-  actionFromResponse, adhanOption, ADHAN_OPTIONS, cancelAllNotifications, getNotificationHealth, getScheduledCount,
+  actionFromResponse, adhanOption, ADHAN_OPTIONS, cancelAllNotifications, FAJR_OPTIONS, fajrOption, getNotificationHealth, getScheduledCount,
   NotificationHealth, prayerFromNotification, requestNotificationPermission, schedulePrayerNotifications, sendTestNotification,
   SLEEP_SURAH
 } from './src/services/notifications';
@@ -91,6 +91,7 @@ import * as Clipboard from 'expo-clipboard';
 import { getCacheUsage, getCachedJson, setCachedJson } from './src/services/contentCache';
 import { AudioSession, AudioSettings, AudioTrackKind, buildQueueForChapter, buildSurahQueue, loadSurahReciters, clearQueue, clearRecentPlays, deletePlaylist, formatClock, getAudioSettings, loadAudioEditions, loadAudioSession, loadAudioSettings, loadPlaylists, loadRecentPlays, nextTrack, playQueue, Playlist, previousTrack, RecentPlay, removeFromQueue, restoreSavedSession, saveAudioSettings, savePlaylist, seekTo, selectQueueItem, setAutoNextSurah, setRepeatCount, setRepeatMode, setRepeatRange, setResumeOnStart, setVolume, stepPlaybackRate, MAX_RATE, MIN_RATE, RATE_STEPS, REPEAT_COUNT_CHOICES, REPEAT_FOREVER, setPlaybackRate, reciterLabel, stopPlayback, syncAudioTranslationToLanguage, togglePlayback, useAudio } from './src/services/audioService';
 import {DEFAULT_HADITH_LANGUAGE, deviceHadithCount, downloadCollection, fetchHadithOne, getHadith, hadithDownloadProgress, searchDeviceHadith, useHadithLanguage, setHadithLanguage, hadithReference, hadithSourceLabel, HADITH_COLLECTIONS, Hadith, HadithOutline, isHadithSaved, loadHadithBook, loadHadithOutline, loadHadithState, markHadithRead, removeDownloadedCollection, removeHadithBookmark, subscribeHadithDownloads, toggleHadithSaved, useDownloadedCollections, useHadithState } from './src/services/hadithService';
+import { adhanTrack, ADHAN_TRACKS, AdhanTrack, DEFAULT_ADHAN_ID, DEFAULT_FAJR_ID, FAJR_TRACKS } from './src/services/adhanCatalog';
 import {
   buildReportMailto, deleteReport, openReportEmail, saveReport, subscribeReports,
   type CorrectionReport, type CorrectionIssue as ReportIssue
@@ -5145,7 +5146,22 @@ function NotificationScreen({navigation}:any){const{rtl}=useLanguage();const T=(
           value={settings.adhanEnabled?.Fajr||settings.adhanEnabled?.Isha?true:false}
           onChange={(v:boolean)=>update({adhanEnabled:Object.fromEntries(prayers.map(p=>[p,v]))})}/>
       </View>
+      <Pressable accessibilityLabel={T('Choose the adhan recordings')} onPress={()=>navigation.navigate('Adhan')} style={s.setting}>
+        <MotionGlyph name="musical-notes-outline" size={19}/>
+        <View style={{flex:1}}>
+          <Text style={s.settingName}>{T('Choose the recordings')}</Text>
+          <Text style={s.meta}>{T('Fajr has its own call, chosen separately. All recordings are stored in the app.')}</Text>
+        </View>
+        {ico('chevron-forward',18,C.muted)}
+      </Pressable>
       <Text style={s.preferenceLabel}>{T('WHICH ADHAN')}</Text>
+      <Text style={s.meta}>{T('Fajr only')}</Text>
+      <View style={s.choiceRow}>
+        {FAJR_OPTIONS.map(option=><ChoicePill key={option.id}
+          label={rtl?option.labelAr:option.label} selected={fajrOption(settings.adhanFajrReciter).id===option.id}
+          onPress={()=>update({adhanFajrReciter:option.id})}/>)}
+      </View>
+      <Text style={s.meta}>{T('Every other prayer')}</Text>
       <View style={s.choiceRow}>
         {ADHAN_OPTIONS.map(option=><ChoicePill key={option.id}
           label={rtl?option.labelAr:option.label} selected={adhanOption(settings.adhanReciter).id===option.id}
@@ -5275,12 +5291,104 @@ function NotificationScreen({navigation}:any){const{rtl}=useLanguage();const T=(
     </ScrollView></Page>}
 
 
-const ADHAN_TRACKS=[
- {id:'Makkah',titleAr:'أذان مكة',detailAr:'مضمّن للعمل دون اتصال · الملك العام',title:'Beautiful Adhan',detail:'Bundled offline · Public domain',source:require('./assets/audio/adhan-doha-public-domain.mp3')},
- {id:'Doha Fajr',titleAr:'أذان فجر الدوحة',detailAr:'الملك العام · أرشيف الإنترنت',title:'Doha Fajr Adhan',detail:'Public domain · Internet Archive',source:'https://archive.org/download/adhan.recordings.from.doha.qatar/Adhan_Doha_Qatar_01_Fajr_Adhan.mp3'},
- {id:'Doha Classic',titleAr:'أذان ظهر الدوحة',detailAr:'الملك العام · أرشيف الإنترنت',title:'Doha Dhuhr Adhan',detail:'Public domain · Internet Archive',source:'https://archive.org/download/adhan.recordings.from.doha.qatar/Adhan_Doha_Qatar_02_Dhuhr_Adhan.mp3'}
-];
-function AdhanScreen({navigation}:any){const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);const{settings,update}=useWorshipSettings();const selected=ADHAN_TRACKS.find(x=>x.id===settings.adhanReciter)||ADHAN_TRACKS[0];const player=useAudioPlayer(selected.source);const status=useAudioPlayerStatus(player);const toggle=()=>status.playing?player.pause():player.play();useEffect(()=>()=>{player.pause()},[player]);return <Page><ToolBar title={T('Adhan')} navigation={navigation}/><ScrollView contentContainerStyle={s.dataPage}><ToolGraphic tool="Adhan" size={92}/><Text style={s.dataTitle}>{T('Choose an Adhan')}</Text><Text style={s.intro}>{T('Preview a recording and choose which prayers may use Adhan. The bundled selection works without a network connection.')}</Text><View style={s.audioPreview}><Pressable accessibilityLabel={status.playing?'Pause Adhan preview':'Play Adhan preview'} onPress={toggle} style={s.audioPlay}>{ico(status.playing?'pause':'play',25,C.white)}</Pressable><View style={{flex:1}}><Text style={s.profileName}>{rtl?selected.titleAr||selected.title:selected.title}</Text><Text style={s.profileSub}>{rtl?selected.detailAr||selected.detail:selected.detail}</Text></View><Pressable accessibilityLabel={T('Stop Adhan preview')} onPress={()=>{player.seekTo(0);player.pause()}} style={s.stopButton}>{ico('stop-circle-outline',26,C.white)}</Pressable></View><Section title={T('Recordings')}/><View style={s.settings}>{ADHAN_TRACKS.map(track=><Pressable accessibilityRole="radio" accessibilityState={{selected:track.id===selected.id}} key={track.id} onPress={()=>update({adhanReciter:track.id})} style={s.setting}><ToolGraphic tool="Adhan" size={49}/><View style={{flex:1}}><Text style={s.settingName}>{rtl?track.titleAr||track.title:track.title}</Text><Text style={s.meta}>{rtl?track.detailAr||track.detail:track.detail}</Text></View>{ico(track.id===selected.id?'checkmark-circle':'ellipse-outline',20,track.id===selected.id?C.green:C.muted)}</Pressable>)}</View><Section title={T('Use Adhan for')}/><View style={s.settings}>{['Fajr','Dhuhr','Asr','Maghrib','Isha'].map(name=><View key={name} style={s.setting}><Text style={[s.settingName,{flex:1}]}>{prayerName(rtl, name)}</Text><View style={{direction:'ltr'} as any}><Switch value={settings.adhanEnabled[name]} onValueChange={v=>update({adhanEnabled:{...settings.adhanEnabled,[name]:v}})} trackColor={{true:C.green}}/></View></View>)}</View><View style={s.sourceCard}>{ico('information-circle-outline',21,C.green)}<View style={{flex:1}}><Text style={s.sourceTitle}>{T('Audio rights')}</Text><Text style={s.sourceBody}>{T('Bundled and streamed Doha recordings: Internet Archive Public Domain Mark 1.0.')}</Text></View></View></ScrollView></Page>}
+/**
+ * One recording list, used twice: once for Fajr and once for the rest.
+ *
+ * Fajr and the other five are different calls, so they are chosen separately
+ * and previewed separately. Everything here is bundled in the app rather than
+ * fetched, which is the only way a notification can play it at all - and it
+ * means the adhan sounds at dawn with no network and no warm-up, whether or
+ * not the app has been opened that day.
+ *
+ * The player is bound to whichever recording is selected, so tapping a
+ * recording you have not selected cannot play it yet: the choice is committed
+ * first and the preview is started once the player has actually moved to the
+ * new file. Doing it the other way round plays the previous recording, which
+ * is worse than a short wait.
+ */
+function AdhanTrackList({tracks,selectedId,onSelect}:{tracks:AdhanTrack[];selectedId:string;onSelect:(id:string)=>void}){
+  const {rtl}=useLanguage(); const T=(text:string)=>tx(rtl,text);
+  const source=useMemo(()=>tracks.find(t=>t.id===selectedId)?.source, [tracks,selectedId]);
+  const player=useAudioPlayer(source);
+  const status=useAudioPlayerStatus(player);
+  const [pending,setPending]=useState(false);
+  const [failed,setFailed]=useState(false);
+  useEffect(()=>()=>{player.pause()},[player]);
+
+  const press=(track:AdhanTrack)=>{
+    if(track.id===selectedId){
+      if(status.playing){player.pause()}
+      else{setFailed(false);setPending(true)}
+      return;
+    }
+    onSelect(track.id); setFailed(false); setPending(true);
+  };
+
+  /* Started here rather than in the press handler, because the player is still
+     pointed at the previous file at that moment. */
+  useEffect(()=>{
+    if(!pending)return;
+    let alive=true;
+    void (async()=>{
+      try{
+        if(status.currentTime>0.05)player.seekTo(0);
+        player.play();
+      }catch{ if(alive)setFailed(true); }
+      finally{ if(alive)setPending(false); }
+    })();
+    return ()=>{alive=false};
+  },[pending,player]);
+
+  useEffect(()=>{ if(!status.playing) setPending(false); },[status.playing]);
+
+  return <View style={s.settings}>
+    {tracks.map(track=>{
+      const chosen=track.id===selectedId;
+      const playing=chosen&&status.playing;
+      return <Pressable key={track.id} accessibilityRole="radio" accessibilityState={{selected:chosen}}
+        accessibilityLabel={`${rtl?track.nameAr||track.name:track.name}`}
+        onPress={()=>press(track)} style={s.setting}>
+        <ToolGraphic tool="Adhan" size={49}/>
+        <View style={{flex:1}}>
+          <Text style={s.settingName}>{rtl?track.nameAr||track.name:track.name}</Text>
+          <Text style={s.meta}>{T('Stored in the app')} · {(track.bytes/1024/1024)>=1
+            ? `${(track.bytes/1048576).toFixed(1)} ${T('MB')}`
+            : `${Math.round(track.bytes/1024)} ${T('KB')}`}</Text>
+        </View>
+        <Pressable accessibilityLabel={playing?T('Pause Adhan preview'):T('Play Adhan preview')}
+          onPress={()=>press(track)} style={s.iconButton} hitSlop={8}>
+          {ico(playing?'pause':'play-outline',20,chosen?C.green:C.muted)}
+        </Pressable>
+        {ico(chosen?'checkmark-circle':'ellipse-outline',20,chosen?C.green:C.muted)}
+      </Pressable>;
+    })}
+    {failed&&<Text style={s.meta}>{T('This recording could not be played here.')}</Text>}
+  </View>;
+}
+
+function AdhanScreen({navigation}:any){const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);
+  const {settings,update}=useWorshipSettings();
+  const fajrId=adhanTrack(settings.adhanFajrReciter,FAJR_TRACKS[0]).id;
+  const otherId=adhanTrack(settings.adhanReciter,ADHAN_TRACKS[0]).id;
+  return <Page><ToolBar title={T('Adhan')} navigation={navigation}/>
+    <ScrollView contentContainerStyle={s.dataPage}>
+      <ToolGraphic tool="Adhan" size={92}/>
+      <Text style={s.dataTitle}>{T('Choose an Adhan')}</Text>
+      <Text style={s.intro}>{T('Fajr has its own call, so it is chosen on its own. Every other prayer shares the second choice. All recordings are stored in the app and play with no connection.')}</Text>
+
+      <Section title={T('Fajr adhan')}/>
+      <Text style={s.preferenceLabel}>{T('FOR FAJR ONLY')}</Text>
+      <AdhanTrackList tracks={FAJR_TRACKS} selectedId={fajrId} onSelect={(id)=>update({adhanFajrReciter:id})}/>
+
+      <Section title={T('Adhan for other prayers')}/>
+      <Text style={s.preferenceLabel}>{T('FOR DHUHR, ASR, MAGHRIB AND ISHA')}</Text>
+      <AdhanTrackList tracks={ADHAN_TRACKS} selectedId={otherId} onSelect={(id)=>update({adhanReciter:id})}/>
+
+      <View style={s.apiPanel}>
+        <Text style={s.apiTitle}>{T('Stored on your device')}</Text>
+        <Text style={s.apiText}>{T('These recordings ship inside the app rather than downloading when you pick them. A notification can only play a sound built into the app, so this is what lets the adhan sound at dawn with no network at all.')}</Text>
+      </View>
+    </ScrollView></Page>}
 
 function GuideDirectory({route,navigation}:any){const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);const group=route?.params?.group;const guides=group==='ramadan'?WORSHIP_GUIDES.filter((guide)=>RAMADAN_GUIDE_IDS.includes(guide.id)):WORSHIP_GUIDES;return <Page><ToolBar title={group==='ramadan'?T('Ramadan and Eid'):T('Worship guides')} navigation={navigation}/><ScrollView contentContainerStyle={s.dataPage}><ToolGraphic tool="Worship guides" size={87}/><Text style={s.dataTitle}>{T('Learn with references')}</Text><Text style={s.intro}>{T('Concise educational overviews with transparent Qur’an and Hadith references. Detailed rulings should be learned from a qualified local scholar.')}</Text><View style={s.guideGrid}>{guides.map(guide=>{const g=localizeGuide(guide,rtl);return <MotionPress key={guide.id} onPress={()=>navigation.navigate('Guide Detail',{guide})} style={s.guideCard}><View style={s.guideCardInner}><ToolGraphic tool={guide.id} size={69}/><Text style={s.exploreTitle}>{g.title}</Text><Text style={s.exploreBody}>{g.subtitle}</Text><View style={s.exploreArrow}>{ico('arrow-forward',15,C.green)}</View></View></MotionPress>})}</View></ScrollView></Page>}
 /**
@@ -6910,14 +7018,14 @@ const DATA_SOURCES: { name: string; ar: string; endpoint: string; detail: string
     detail: 'The app’s own server. Every Arabic script — Uthmani, Imla’i simple, IndoPak and Tajweed — all 484 translations and every Tafsir, the Surah, Juz and Hizb structure, and Quran search.',
     arDetail: 'خادم التطبيق نفسه. كل الرسوم القرآنية — العثماني والإملائي البسيط والهندي والتجويد — وجميع الترجمات وكل التفاسير، وترتيب السور والأجزاء والأحزاب، والبحث في القرآن.' },
   { name: 'Islamic Data Audio', ar: 'الصوتيات — البيانات الإسلامية', endpoint: 'audio.islamicdata.uz',
-    detail: 'Every recitation and every spoken translation, ayah by ayah, plus the full-Surah reciters drawn from all the providers behind one catalogue. Kept audio for a verse-by-verse reciter is the one thing still fetched whole from the Islamic Network CDN.',
-    arDetail: 'كل التلاوات وكل تلاوات المعنى آية بآية، إضافة إلى قرّاء السورة كاملة من جميع المزوّدين في فهرس واحد. الصوت المحفوظ لقارئ آية بآية هو الشيء الوحيد الذي ما زال يُجلب كاملاً من شبكة إسلاميك.' },
+    detail: 'Every recitation and every spoken translation, ayah by ayah, plus the full-Surah reciters drawn from all the providers behind one catalogue. Both adhan catalogues are served here too, though the recordings themselves ship inside the app so they can sound from a notification. Kept audio for a verse-by-verse reciter is the one thing still fetched whole from the Islamic Network CDN.',
+    arDetail: 'كل التلاوات وكل تلاوات المعنى آية بآية، إضافة إلى قرّاء السورة كاملة من جميع المزوّدين في فهرس واحد. ويُقدَّم فهرسا الأذان من هنا أيضًا، مع أن التسجيلات نفسها مخزّنة داخل التطبيق لتعمل من الإشعار. الصوت المحفوظ لقارئ آية بآية هو الشيء الوحيد الذي ما زال يُجلب كاملاً من شبكة إسلاميك.' },
   { name: 'Islamic Data Misc', ar: 'متنوّعات — البيانات الإسلامية', endpoint: 'misc.islamicdata.uz',
     detail: 'Gold and silver prices and the currency rates Zakat is worked out from, and city search when a place is not in the list kept on the device.',
     arDetail: 'أسعار الذهب والفضة وأسعار العملات التي تُحسب منها الزكاة، والبحث عن المدن عندما لا يكون المكان في القائمة المحفوظة على الجهاز.' },
   { name: 'On your device', ar: 'على جهازك', endpoint: 'no network request',
-    detail: 'Prayer times, the Hijri date, the Ramadan timetable, and the 604-page Mushaf layout with the Juz and Hizb divisions — kept with the app rather than asked for, so a page of the Quran opens without a connection. The sun does not need the internet, and nothing about where you are is sent anywhere.',
-    arDetail: 'تُحسب مواقيت الصلاة والتاريخ الهجري وجدول رمضان على جهازك من إحداثياتك، كما يُحفظ ترتيب صفحات المصحف الـ604 مع تقسيم الأجزاء والأحزاب، فتُفتح صفحة القرآن بلا اتصال. فالشمس لا تحتاج إلى إنترنت، ولا يُرسل أي شيء عن موقعك إلى أي جهة.' },
+    detail: 'Prayer times, the Hijri date, the Ramadan timetable, and the 604-page Mushaf layout with the Juz and Hizb divisions — kept with the app rather than asked for, so a page of the Quran opens without a connection. Every adhan recording is stored here too, eighteen for the day and two for dawn, which is what lets the call sound at Fajr with no network at all. The sun does not need the internet, and nothing about where you are is sent anywhere.',
+    arDetail: 'تُحسب مواقيت الصلاة والتاريخ الهجري وجدول رمضان على جهازك من إحداثياتك، كما يُحفظ ترتيب صفحات المصحف الـ604 مع تقسيم الأجزاء والأحزاب، فتُفتح صفحة القرآن بلا اتصال. وتُخزَّن كل تسجيلات الأذان هنا أيضًا، ثمانية عشر للنهار واثنان للفجر، وهو ما يجعل الأذان يعمل في الفجر بلا أي اتصال. فالشمس لا تحتاج إلى إنترنت، ولا يُرسل أي شيء عن موقعك إلى أي جهة.' },
   { name: 'Gold and silver prices', ar: 'أسعار الذهب والفضة', endpoint: 'misc.islamicdata.uz', detail: 'Spot gold and silver prices per troy ounce, converted to a price per gram for the nisab threshold.', arDetail: 'أسعار الذهب والفضة الفورية للأوقية، وتحوّل إلى سعر الغرام لحساب النصاب.' }, { name: 'Exchange rates', ar: 'أسعار الصرف', endpoint: 'misc.islamicdata.uz', detail: 'Daily reference exchange rates, used to show Zakat figures in the currency you choose.', arDetail: 'أسعار صرف مرجعية يومية، تُستخدم لعرض أرقام الزكاة بالعملة التي تختارها.' }, { name: 'MP3Quran', ar: 'إم بي 3 قرآن', endpoint: 'audio.islamicdata.uz',
     detail: 'Complete Surah recitations from published reciters, used when you play a whole Surah rather than verse by verse.',
     arDetail: 'تلاوات كاملة للسور من القرّاء المنشورين، وتُستخدم عند تشغيل السورة كاملة.' },
