@@ -1,6 +1,6 @@
 import { getCachedJson, setCachedJson } from './contentCache';
 import { daysOfHijriMonth, gregorianForHijri, hijriForDate } from './hijri';
-import { getDailyHadith as getWorkerDailyHadith, getEditions, getSurah, IslamicDataError, IslamicEdition } from './islamicDataApi';
+import { getChapters as getWorkerChapters, getDailyHadith as getWorkerDailyHadith, getEditions, getSurah, IslamicChapter, IslamicDataError, IslamicEdition } from './islamicDataApi';
 import { DEFAULT_TRANSLATION_EDITION } from './quranState';
 import {
   computeDayTimes,
@@ -473,6 +473,10 @@ async function wholeEdition(editionId: string): Promise<Array<{ surah: number; r
     if (error instanceof IslamicDataError && error.status === 404) return null;
     throw error;
   }
+  /* The lanes finish in whatever order the network allows, so `out` is not in
+     Quran order. A search reading it as-is would list the same matches in a
+     different order on every run. */
+  out.sort((a, b) => a.surah - b.surah);
   return out;
 }
 
@@ -483,8 +487,11 @@ export async function searchQuran(query: string, edition = DEFAULT_TRANSLATION_E
   /* Our own server first: it is the one that understands our edition ids. */
   const book = await wholeEdition(edition).catch(() => null);
   if (book) {
-    const chapters = await getChapters().catch(() => [] as Chapter[]);
-    const names = new Map(chapters.map((c) => [c.id, c.name_simple]));
+    /* Surah names come from the same server as the text. Reaching for the
+       chapter list on the other provider here would mean a search could fail
+       on their outage while everything it needs is sat in our own cache. */
+    const chapters = await getWorkerChapters().catch(() => [] as IslamicChapter[]);
+    const names = new Map(chapters.map((c) => [c.number, c.nameSimple]));
     const matches: QuranSearchResult[] = [];
     for (const { surah, rows } of book) {
       for (const row of rows || []) {
