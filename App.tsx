@@ -162,8 +162,12 @@ const SCENE_MOSQUE = require('./assets/hero-mosque-scene.png');
 const SCENE_MOSQUE_DARK = require('./assets/hero-mosque-scene-dark.png');
 const PRAYER_CARD_SCENE = require('./assets/prayer-card-scene.png');
 const PRAYER_CARD_SCENE_DARK = require('./assets/prayer-card-scene-dark.png');
+/* One mark for both themes. A logo-mark-dark.png used to sit beside it, but it
+   was byte-for-byte the same file, so the ternaries that picked between them
+   were doing nothing. The mark carries its own colours and reads on either
+   ground; if a genuinely different dark cut is drawn later, add it back as
+   logo-mark-dark.png and restore the choice below. */
 const LOGO_MARK = require('./assets/logo-mark.png');
-const LOGO_MARK_DARK = require('./assets/logo-mark-dark.png');
 
 /**
  * The palettes live in `src/design/brand.ts`, next to the ten brand colours
@@ -977,7 +981,7 @@ function AppHeader() {
     {canGoBack
       ? <IconButton name={rtl ? 'arrow-forward' : 'arrow-back'} onPress={() => navigation.goBack()} />
       : <View style={s.appHeaderBrand}>
-        <Image source={dark ? LOGO_MARK_DARK : LOGO_MARK} resizeMode="contain" style={s.appLogo} />
+        <Image source={LOGO_MARK} resizeMode="contain" style={s.appLogo} />
         <Text style={s.appName} numberOfLines={1}>{T('Islamic')}</Text>
       </View>}
     <View style={s.appHeaderActions}>
@@ -7968,7 +7972,7 @@ function Splash({ ready, onDone }: { ready: boolean; onDone: () => void }) {
       <View style={s.splashMarkWrap}>
         <Animated.View style={[s.splashHalo, { opacity: halo, transform: [{ scale: halo.interpolate({ inputRange: [0, 1], outputRange: [.9, 1.22] }) }] }]} />
         <Animated.View style={{ transform: [{ scale: mark }] }}>
-          <Image source={dark ? LOGO_MARK_DARK : LOGO_MARK} resizeMode="contain" style={s.splashMark} />
+          <Image source={LOGO_MARK} resizeMode="contain" style={s.splashMark} />
         </Animated.View>
       </View>
       <Animated.View style={[s.splashWords, { opacity: words, transform: [{ translateY: words.interpolate({ inputRange: [0, 1], outputRange: [14, 0] }) }] }]}>
@@ -8370,7 +8374,7 @@ function Onboarding({ onFinish }: { onFinish: () => void }) {
   return <View style={s.safe}>
     <StatusBar barStyle={dark ? 'light-content' : 'dark-content'} />
     <View style={s.onbTop}>
-      <Image source={dark ? LOGO_MARK_DARK : LOGO_MARK} resizeMode="contain" style={s.appLogo} />
+      <Image source={LOGO_MARK} resizeMode="contain" style={s.appLogo} />
     </View>
     <ScrollView contentContainerStyle={s.onbScroll} showsVerticalScrollIndicator={false}>
       <Animated.View style={[s.onbHead, { opacity: slide, transform: [{ translateX: slide.interpolate({ inputRange: [0, 1], outputRange: [rtl ? -26 : 26, 0] }) }] }]}>

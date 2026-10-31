@@ -5,7 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 /** The same mark the app header wears, in its light-on-dark variant:
     the card is a dark gradient, so the dark-background artwork is the
     one that reads. */
-const BRAND_MARK = require('../../assets/logo-mark-dark.png');
+const BRAND_MARK = require('../../assets/logo-mark.png');
 
 /**
  * The verse card as a real view. On native this is what gets captured into the
