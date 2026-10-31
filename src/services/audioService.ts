@@ -852,9 +852,6 @@ export async function setResumeOnStart(on: boolean) {
   void saveAudioSettings({ resumeOnStart: on });
 }
 
-export function getAudioState() {
-  return state;
-}
 
 export function subscribeAudio(listener: (next: AudioState) => void) {
   listeners.add(listener);

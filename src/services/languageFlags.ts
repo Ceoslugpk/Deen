@@ -111,10 +111,6 @@ export function languageLabel(code: string): string {
   return LANGUAGE_NAMES[key] || key.toUpperCase() || 'Other';
 }
 
-/** True when we actually know a country for this code. */
-export function hasLanguageFlag(code: string): boolean {
-  return !!LANGUAGE_TO_COUNTRY[(code || '').toLowerCase().trim()];
-}
 
 export type LanguageEntry = { code: string; label: string; flag: string; count: number };
 

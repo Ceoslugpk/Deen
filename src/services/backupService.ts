@@ -147,9 +147,6 @@ function emitSession() {
   sessionListeners.forEach((listener) => listener(isUnlocked()));
 }
 
-export function getBackupSettings(): BackupSettings {
-  return settings;
-}
 
 export function subscribeBackupSettings(listener: (next: BackupSettings) => void) {
   settingsListeners.add(listener);

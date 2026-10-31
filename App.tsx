@@ -195,7 +195,6 @@ const MINI_PLAYER_H = 62;
  * already reserves makes the gap the same 14 everywhere.
  */
 const MINI_PLAYER_BOTTOM = BOTTOM_RESERVE;
-const MINI_PLAYER_TOP = MINI_PLAYER_BOTTOM + MINI_PLAYER_H;
 /** Extra room a screen needs once the mini-player appears, given it already
     reserves BOTTOM_RESERVE. Keeps the shortest container clear of the player. */
 const MINI_PLAYER_INSET = MINI_PLAYER_H + 20;
@@ -1044,22 +1043,6 @@ if(asked)return <Pressable accessibilityRole="button" accessibilityLabel={T('Cho
   {ico('arrow-forward',17,C.muted)}
 </Pressable>;return <View style={[s.locationGate,width<370&&s.locationGateNarrow,compact&&{marginVertical: 12}]}><ToolGraphic tool="Location" size={54}/><View style={{flex:1,width:width<370?'100%':undefined}}><Text style={s.locationGateTitle}>{T('Choose your prayer location')}</Text><Text style={s.locationGateBody}>{T('Makkah is shown until you choose. Search for your city, or enter coordinates by hand.')}</Text><View style={[s.locationActions,width<370&&s.locationActionsNarrow]}><Pressable accessibilityLabel={T('Choose prayer location manually')} onPress={manual} style={s.primarySmall}><Text style={s.primaryText}>{T('Choose a city')}</Text></Pressable></View></View></View>}
 
-function SlidingCards<T>({label,items,cardWidth,renderItem}:{label:string;items:T[];cardWidth:number;renderItem:(item:T,index:number,minHeight:number)=>React.ReactNode}){
-  const ref=useRef<any>(null);const[active,setActive]=useState(0);const{rtl}=useLanguage();const stride=cardWidth+12;
-  /* Cards in a strip are measured, then all of them settle at the tallest. A
-     card that grows to fit its text would otherwise make the whole strip
-     change height under your thumb as you swipe between them. */
-  const heights=useRef<Record<number,number>>({});const[tallest,setTallest]=useState(0);
-  const measure=(i:number)=>(event:any)=>{const h=Math.round(event?.nativeEvent?.layout?.height||0);if(!h||heights.current[i]===h)return;heights.current[i]=h;const t=Math.max(...Object.values(heights.current));if(t&&t!==tallest)setTallest(t)};
-  const go=(index:number)=>{const next=Math.max(0,Math.min(items.length-1,index));setActive(next);ref.current?.scrollTo({x:next*stride,animated:true})};
-  return <View accessible accessibilityLabel={`${label}، ${tx(rtl,'card')} ${active+1} ${tx(rtl,'of')} ${items.length}`}>
-    <ScrollView ref={ref} horizontal showsHorizontalScrollIndicator={false} snapToInterval={stride} snapToAlignment="start" decelerationRate="fast" directionalLockEnabled contentContainerStyle={s.sliderContent} style={[{direction:'ltr'} as any, tallest?{height:tallest}:null]} onMomentumScrollEnd={(event:any)=>setActive(Math.max(0,Math.min(items.length-1,Math.round(event.nativeEvent.contentOffset.x/stride))))}>
-      {items.map((item,index)=><View key={index} testID={`slider-card-${index}`} onLayout={measure(index)} style={[{width:cardWidth,direction:rtl?'rtl':'ltr'} as any, tallest?{minHeight:tallest}:null]}>{renderItem(item,index,tallest)}</View>)}
-    </ScrollView>
-    <View style={s.sliderControls}><Text style={s.sliderHint}>{active+1} / {items.length}{rtl ? ' · اسحب أو استخدم الأسهم' : ' · Swipe or use arrows'}</Text><View style={s.sliderButtons}><Pressable accessibilityLabel={`${tx(rtl,'Previous')} ${label}`} accessibilityState={{disabled:active===0}} disabled={active===0} onPress={()=>go(active-1)} style={[s.sliderButton,active===0&&s.sliderButtonDisabled]}>{ico(rtl?'arrow-forward':'arrow-back',16,C.ink)}</Pressable><Pressable accessibilityLabel={`${tx(rtl,'Next')} ${label}`} accessibilityState={{disabled:active===items.length-1}} disabled={active===items.length-1} onPress={()=>go(active+1)} style={[s.sliderButton,active===items.length-1&&s.sliderButtonDisabled]}>{ico(rtl?'arrow-back':'arrow-forward',16,C.ink)}</Pressable></View></View>
-  </View>
-}
-
 type DailyContentCache={ayah:DailyAyah;hadith:DailyHadith;name:DivineName;dua:any};
 /**
  * Home's daily content - the ayah, the Name and the hadith behind the
@@ -1252,7 +1235,6 @@ const[quranPosition,setQuranPosition]=useState<any>(null);const[openReflection,s
   };
   /* Morning gives way to evening as the day does. The hour is re-read every
      minute so the card turns over by itself rather than on the next render. */
-  const morningTime = hour < 13;
   /* One of the eight remembrances said once the salam is given, chosen by the
      day so it turns over on its own instead of showing the same line forever.
      The local date is used rather than the UTC one so it changes at midnight
@@ -4932,14 +4914,6 @@ function WeeklySummaryScreen({navigation}:any){const{rtl}=useLanguage();const T=
     <View style={s.apiPanel}><Text style={s.apiTitle}>{T('How these numbers are counted')}</Text><Text style={s.apiText}>{T('Salah counts the prayers you mark on the Prayer screen. Reading counts the verses you mark in the reader and the Mushaf pages you open. Dhikr comes from the Tasbih counter, and hifz from every verse you rate in recall practice. Thirty days are kept, on this device only, and nothing is uploaded.')}</Text></View>
   </ScrollView></Page>}
 
-const CITY_PRESETS=[
- {label:'Dubai, United Arab Emirates',ar:'دبي، الإمارات العربية المتحدة',latitude:25.2048,longitude:55.2708},
- {label:'Makkah, Saudi Arabia',ar:'مكة المكرمة، المملكة العربية السعودية',latitude:21.3891,longitude:39.8579},
- {label:'Madinah, Saudi Arabia',ar:'المدينة المنورة، المملكة العربية السعودية',latitude:24.5247,longitude:39.5692},
- {label:'London, United Kingdom',ar:'لندن، المملكة المتحدة',latitude:51.5074,longitude:-.1278},
- {label:'New York, United States',ar:'نيويورك، الولايات المتحدة',latitude:40.7128,longitude:-74.006},
- {label:'Karachi, Pakistan',ar:'كراتشي، باكستان',latitude:24.8607,longitude:67.0011}
-];
 function LocationSetupScreen({navigation}:any){const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);
   const loc=useAppLocation();
   const[query,setQuery]=useState('');
@@ -7230,7 +7204,6 @@ const AUDIO_LANGUAGES_AR: Record<string, string> = {
 };
 const languageName = (code: string, rtl: boolean) =>
   (rtl ? AUDIO_LANGUAGES_AR : AUDIO_LANGUAGES)[code] || code;
-const AUDIO_RATES = [0.75, 1, 1.25, 1.5];
 
 /**
  * A level from nothing to full, dragged with the thumb.
@@ -8837,8 +8810,7 @@ roundIcon:{width:58,height:58,borderRadius:29,backgroundColor:C.mint,alignItems:
 roundLabel:{color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:11,lineHeight:14,marginTop:8,textAlign:'center'},
 depthCard:{backgroundColor:C.card,borderWidth:1,borderColor:C.line,borderTopColor:depth.edge,...depth.ambient},
 depthBody:{overflow:'hidden'},
-depthVeil:{position:'absolute',top:0,left:0,right:0,bottom:0,backgroundColor:depth.veil},railCheck:{position:'absolute',top:-2,right:-2,width:16,height:16,borderRadius:8,backgroundColor:C.accent,alignItems:'center',justifyContent:'center',borderWidth:1.5,borderColor:C.white},railName:{color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:10},railTime:{color:C.ink,textAlign:'center',fontFamily:'DMSans_600SemiBold',fontSize:10,lineHeight:11,marginTop:2},
- sliderContent:{gap:12,paddingRight:28},sliderControls:{minHeight:48,flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingTop:8},sliderHint:{color:C.muted,fontFamily:'DMSans_600SemiBold',fontSize:10},sliderButtons:{flexDirection:'row',gap:8},sliderButton:{width:44,height:44,borderRadius:20,alignItems:'center',justifyContent:'center',backgroundColor:C.card,borderWidth:1,borderColor:C.line},sliderButtonDisabled:{opacity:.32},essentialSlide:{height:174,backgroundColor:C.card,borderRadius:24,padding:16,borderWidth:1,borderColor:C.line,...surface},essentialTop:{flexDirection:'row',alignItems:'flex-start',justifyContent:'space-between'},essentialArrow:{width:34,height:34,borderRadius:17,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},essentialTitle:{color:C.ink,fontFamily:'Newsreader_600SemiBold',fontSize:21,marginTop:4},essentialBody:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:12,lineHeight:18,marginTop:4},tool:{width:'33.33%',paddingVertical:12},
+depthVeil:{position:'absolute',top:0,left:0,right:0,bottom:0,backgroundColor:depth.veil},railCheck:{position:'absolute',top:-2,right:-2,width:16,height:16,borderRadius:8,backgroundColor:C.accent,alignItems:'center',justifyContent:'center',borderWidth:1.5,borderColor:C.white},railName:{color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:10},railTime:{color:C.ink,textAlign:'center',fontFamily:'DMSans_600SemiBold',fontSize:10,lineHeight:11,marginTop:2},essentialSlide:{height:174,backgroundColor:C.card,borderRadius:24,padding:16,borderWidth:1,borderColor:C.line,...surface},essentialTop:{flexDirection:'row',alignItems:'flex-start',justifyContent:'space-between'},essentialArrow:{width:34,height:34,borderRadius:17,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},essentialTitle:{color:C.ink,fontFamily:'Newsreader_600SemiBold',fontSize:21,marginTop:4},essentialBody:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:12,lineHeight:18,marginTop:4},tool:{width:'33.33%',paddingVertical:12},
  homeProgress:{marginHorizontal:8,backgroundColor:C.card,borderBottomLeftRadius:20,borderBottomRightRadius:20,padding:12,flexDirection:'row',alignItems:'center',justifyContent:'space-between',borderWidth:1,borderTopWidth:0,borderColor:C.line},homeProgressRing:{width:43,height:43,borderRadius:24,backgroundColor:C.mint,alignItems:'center',justifyContent:'center',borderWidth:3,borderColor:'#E6DEFA'},dailyKicker:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10,letterSpacing:1.1,marginTop:4},dailyArabic:{color:C.ink,fontFamily:'KFGQPCUthmanicHafs',fontSize:22,lineHeight:36,textAlign:'right',marginTop:8},weekWrap:{marginTop:12},
 weekSurface:{backgroundColor:C.deep,borderColor:'transparent',borderTopColor:'rgba(255,255,255,.16)'},
 weekBody:{padding:16,gap:14},weekSummaryTitle:{color:C.onAccent,fontFamily:'Newsreader_600SemiBold',fontSize:19},weekSummaryBody:{color:'#E6DEFA',fontSize:10,marginTop:4},

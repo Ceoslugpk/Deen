@@ -72,9 +72,6 @@ async function persist(next: Record<string, ActivityDay>) {
   await AsyncStorage.setItem(KEY, JSON.stringify(trimmed)).catch(() => undefined);
 }
 
-export function getActivity() {
-  return activity;
-}
 
 export function subscribeActivity(listener: (next: Record<string, ActivityDay>) => void) {
   listeners.add(listener);

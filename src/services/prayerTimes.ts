@@ -217,9 +217,5 @@ export function hijriLabel(date: Date): HijriLabel {
   };
 }
 
-/** `19 Jumādá al-ūlá 1448` and its Arabic twin, for a given day. */
-export function hijriForParts(year: number, month: number, day: number): HijriLabel {
-  return hijriLabel(new Date(year, month - 1, day));
-}
 
 export { pad };

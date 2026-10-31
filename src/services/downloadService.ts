@@ -70,9 +70,6 @@ function patch(id: string, changes: Partial<DownloadItem>) {
   void persist(next);
 }
 
-export function getDownloads() {
-  return items;
-}
 
 export function subscribeDownloads(listener: (next: DownloadItem[]) => void) {
   listeners.add(listener);

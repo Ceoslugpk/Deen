@@ -87,9 +87,6 @@ async function persist(next: WomensState) {
   await AsyncStorage.setItem(KEY, JSON.stringify(next)).catch(() => undefined);
 }
 
-export function getWomensState() {
-  return state;
-}
 
 export function subscribeWomens(listener: (next: WomensState) => void) {
   listeners.add(listener);

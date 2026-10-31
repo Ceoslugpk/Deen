@@ -44,9 +44,6 @@ export function quranFontFamily(id?: QuranFontId | string) {
   return match ? match.family : QURAN_FONTS[0].family;
 }
 
-export function isQuranFontReady(id: QuranFontId = DEFAULT_QURAN_FONT) {
-  return ready.has(id);
-}
 
 export async function ensureQuranFont(id: QuranFontId = DEFAULT_QURAN_FONT): Promise<boolean> {
   if (ready.has(id)) return true;

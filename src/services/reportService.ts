@@ -117,9 +117,6 @@ export function subscribeReports(listener: (next: CorrectionReport[]) => void) {
   };
 }
 
-export function getReports(): CorrectionReport[] {
-  return reports;
-}
 
 const ISSUE_LABEL: Record<CorrectionIssue, string> = {
   arabic: 'The Arabic text',

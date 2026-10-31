@@ -73,9 +73,6 @@ async function persist(next: FastingState) {
   await AsyncStorage.setItem(KEY, JSON.stringify(next)).catch(() => undefined);
 }
 
-export function getFastingState() {
-  return state;
-}
 
 export function subscribeFasting(listener: (next: FastingState) => void) {
   listeners.add(listener);
@@ -105,9 +102,6 @@ export async function loadFastingState() {
   return state;
 }
 
-export function entryForDate(date = dayKey()) {
-  return state.entries.find((entry) => entry.date === date) || null;
-}
 
 /** A missed day adds one to the make-up ledger; a make-up fast settles one. */
 function owedAfter(type: FastType, current: number) {

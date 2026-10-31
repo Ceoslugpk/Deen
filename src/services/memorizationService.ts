@@ -441,10 +441,6 @@ export async function undoAttempt(attemptId: string): Promise<boolean> {
   return true;
 }
 
-/** The attempts for one verse, newest first, excluding the reversal markers. */
-export function historyFor(verseKey: string): Attempt[] {
-  return state.attempts.filter((entry) => entry.verseKey === verseKey && entry.kind !== 'undo');
-}
 
 /** The most recent attempts across everything, newest first. */
 export function recentAttempts(limit = 40): Attempt[] {

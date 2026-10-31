@@ -136,9 +136,6 @@ export async function loadOfflineSetup(): Promise<OfflineSetup> {
   return setup;
 }
 
-export function getOfflineSetup(): OfflineSetup {
-  return setup;
-}
 
 export function subscribeOfflineSetup(listener: (next: OfflineSetup) => void) {
   listeners.add(listener);

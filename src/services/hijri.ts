@@ -182,9 +182,3 @@ export function daysOfHijriMonth(year: number, month: number): Date[] {
   return out;
 }
 
-/** How many days long a Hijri month is — 29 or 30. Used for event windows. */
-export function hijriMonthLength(year: number, month: number): number {
-  return monthLength(year, month);
-}
-
-export const HIJRI_RANGE = { firstYear: table.firstYear, lastYear: table.lastYear };

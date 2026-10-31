@@ -32,9 +32,6 @@ export function setHapticsEnabled(next: boolean) {
   enabled = next !== false;
 }
 
-export function isHapticsEnabled() {
-  return enabled && SUPPORTED;
-}
 
 /** Lets Settings explain itself on a platform that cannot buzz at all. */
 export function isHapticsSupported() {
