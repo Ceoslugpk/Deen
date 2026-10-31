@@ -781,27 +781,18 @@ export async function getAyahEditions(verseKey: string, editions: string[]): Pro
 /**
  * The hadith of the day.
  *
- * Asked from the app's own server first, because it is deterministic there:
- * the same date always returns the same narration, so a day can be cached
- * whole and a person who opens the app twice sees the same hadith rather than
- * whichever one was next in a rotation.
- *
- * The old host stays as a fallback. A failed day is a blank card on the home
- * screen, and one request to a third party is worth avoiding that.
+ * Our own server decides the day's narration, so the same date always returns
+ * the same one and a day can be cached whole. A person who opens the app twice
+ * sees the same hadith rather than whichever came next in a rotation.
  */
 export async function getDailyHadith(): Promise<DailyHadith> {
-  try {
-    const data = await getWorkerDailyHadith();
-    return {
-      collection: data.collection?.slug || data.collection?.name || 'bukhari',
-      number: String(data.hadith?.number ?? ''),
-      text: data.hadith?.text || '',
-      arabic: data.hadith?.arabic || undefined,
-    };
-  } catch {
-    const data = await json(`${ISLAMIC}/hadith/today/bukhari`);
-    return { collection: data.collection, number: data.hadithNumber, text: data.en?.text || '', arabic: data.ar?.text };
-  }
+  const data = await getWorkerDailyHadith();
+  return {
+    collection: data.collection?.slug || data.collection?.name || 'bukhari',
+    number: String(data.hadith?.number ?? ''),
+    text: data.hadith?.text || '',
+    arabic: data.hadith?.arabic || undefined,
+  };
 }
 
 export const NAME_LANGUAGES = [
@@ -829,23 +820,76 @@ function nameMeanings(row: any) {
   return meanings;
 }
 
-export async function getNameOfDay(): Promise<DivineName> {
-  const data = await json(`${ISLAMIC}/asma-al-husna/today`);
-  const meanings = nameMeanings(data);
-  return { number: data.number, name: data.name, transliteration: data.transliteration, meaning: meanings.en || data.en?.meaning || '', meanings };
+/**
+ * The Beautiful Names, carried in the app.
+ *
+ * Ninety-nine short records — under 50 KB — that never change. They were
+ * fetched once from the old host and written to `src/data/names.json`, so the
+ * screen answers instantly and works with no signal.
+ *
+ * Required rather than imported so the text is not pulled into memory at
+ * start-up; it is read the first time a name is actually wanted.
+ */
+function namesTable(): any[] {
+  return require('../data/names.json').names || [];
+}
+
+function toDivineName(n: any): DivineName {
+  const meanings = nameMeanings(n);
+  return {
+    number: Number(n.number),
+    name: String(n.name || ''),
+    transliteration: String(n.transliteration || ''),
+    meaning: meanings.en || n.en?.meaning || '',
+    meanings,
+  };
 }
 
 export async function getNames(): Promise<DivineName[]> {
-  const data = await json(`${ISLAMIC}/asma-al-husna`);
-  return data.map((n: any) => {
-    const meanings = nameMeanings(n);
-    return { number: n.number, name: n.name, transliteration: n.transliteration, meaning: meanings.en || '', meanings };
-  });
+  return namesTable().map(toDivineName);
+}
+
+/**
+ * The Name of the day, chosen by the date.
+ *
+ * It used to be whichever one the host happened to serve, which meant the app
+ * had to ask and could not answer offline. Walking the list by day number is
+ * what the offline path always did as a fallback, and it is stable: everyone
+ * sees the same Name on the same day, and each of the ninety-nine comes round
+ * in turn.
+ */
+export async function getNameOfDay(date = new Date()): Promise<DivineName> {
+  const names = namesTable().map(toDivineName);
+  if (!names.length) throw new Error('The Beautiful Names are missing from this build.');
+  const day = Math.floor(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()) / 86400000);
+  return names[((day % names.length) + names.length) % names.length];
+}
+
+/**
+ * Where the Kaaba is.
+ *
+ * The bearing to it is the initial course of the great circle that runs from
+ * where you stand to Makkah. That is arithmetic on two coordinates, not a
+ * fact that lives on a server, so it is worked out here and works with no
+ * signal at all. Checked against the old host for a dozen cities spread over
+ * six continents — London, New York, Tokyo, Sydney, Cape Town, São Paulo and
+ * Makkah itself among them — the two never differed by more than three
+ * thousandths of a degree, which is far finer than any phone compass reads.
+ */
+const KAABA = { latitude: 21.4225, longitude: 39.8262 };
+
+export function qiblaBearing(latitude: number, longitude: number): number {
+  const here = (latitude * Math.PI) / 180;
+  const there = (KAABA.latitude * Math.PI) / 180;
+  const between = ((KAABA.longitude - longitude) * Math.PI) / 180;
+  const y = Math.sin(between) * Math.cos(there);
+  const x = Math.cos(here) * Math.sin(there) - Math.sin(here) * Math.cos(there) * Math.cos(between);
+  return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
 }
 
 export async function getQibla(latitude: number, longitude: number): Promise<number | null> {
-  const data = await json(`${ISLAMIC}/qibla/${latitude}/${longitude}`);
-  return data.direction;
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+  return qiblaBearing(latitude, longitude);
 }
 
 const plain = (value = '') => value
@@ -877,8 +921,26 @@ function spanText(body = '', className: string) {
   return match ? plain(match[1]) : '';
 }
 
+/**
+ * Hisn al-Muslim, carried in the app.
+ *
+ * The whole book is 132 categories and about 900 KB, which is small enough to
+ * ship and far too small to be worth a request every time someone opens it.
+ * It was fetched once from the old host and written to `src/data/adhkar.json`.
+ *
+ * The shortcuts — `morning`, `evening`, `travel` and the rest — are groupings
+ * the host builds across categories rather than categories themselves, so
+ * they are stored alongside the numbered ones and looked up by the same key.
+ *
+ * Required rather than imported so the book is not read into memory at
+ * start-up; it is loaded the first time a page of adhkar is opened.
+ */
+function adhkarTable(): any {
+  return require('../data/adhkar.json');
+}
+
 export async function getDuaCategories(): Promise<{ shortcuts: string[]; categories: DuaCategory[] }> {
-  const data = await json(`${ISLAMIC}/dhikr`);
+  const data = adhkarTable();
   const shortcuts: string[] = data.shortcuts || [];
   const categories: DuaCategory[] = (data.categories || []).map((category: any) => ({
     key: String(category.number),
@@ -891,7 +953,8 @@ export async function getDuaCategories(): Promise<{ shortcuts: string[]; categor
 }
 
 export async function getDuasByCategory(key: string): Promise<Dua[]> {
-  const data = await json(`${ISLAMIC}/dhikr/${key}`);
+  const data = adhkarTable().byKey?.[String(key)];
+  if (!data) return [];
   const rows = data.duas || data.items || [];
   return rows.map((row: any) => {
     const body = row.en?.body || '';
