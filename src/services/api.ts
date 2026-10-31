@@ -7,6 +7,7 @@ import {
   QURAN_AYAH_COUNT, rubOfVerse, rubVerseKeys, scriptEditionId, versesInSurah,
 } from './quranMeta';
 import { DEFAULT_TRANSLATION_EDITION } from './quranState';
+import { fetchHadithOne, getHadithLanguage } from './hadithService';
 import {
   computeDayTimes,
   hijriLabel,
@@ -794,12 +795,27 @@ export async function getAyahEditions(verseKey: string, editions: string[]): Pro
  */
 export async function getDailyHadith(): Promise<DailyHadith> {
   const data = await getWorkerDailyHadith();
-  return {
-    collection: data.collection?.slug || data.collection?.name || 'bukhari',
-    number: String(data.hadith?.number ?? ''),
-    text: data.hadith?.text || '',
-    arabic: data.hadith?.arabic || undefined,
-  };
+  const slug = data.collection?.slug || data.collection?.name || 'bukhari';
+  const number = String(data.hadith?.number ?? '');
+
+  /* The daily route answers in English whatever `language` you send it - the
+     payload comes back byte-identical and even reports language "en". So the
+     day is taken from it (which keeps everyone on the same narration) and the
+     text is then fetched in the reader's own language by number. If that
+     second call fails the English is still here to show. */
+  let text = data.hadith?.text || '';
+  let arabic = data.hadith?.arabic || undefined;
+  const wanted = getHadithLanguage();
+  if (number && wanted !== 'en') {
+    try {
+      const local = await fetchHadithOne(slug, Number(number), wanted);
+      /* A 200 is not proof of content - one Tamil edition answers with an
+         empty body - so the text is only swapped when there is one. */
+      if (local?.english) { text = local.english; if (local.arabic) arabic = local.arabic; }
+    } catch { /* the English already in hand is the fallback */ }
+  }
+
+  return { collection: slug, number, text, arabic };
 }
 
 export const NAME_LANGUAGES = [

@@ -90,7 +90,7 @@ import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 import * as Clipboard from 'expo-clipboard';
 import { getCacheUsage, getCachedJson, setCachedJson } from './src/services/contentCache';
 import { AudioSession, AudioSettings, AudioTrackKind, buildQueueForChapter, buildSurahQueue, loadSurahReciters, clearQueue, clearRecentPlays, deletePlaylist, formatClock, getAudioSettings, loadAudioEditions, loadAudioSession, loadAudioSettings, loadPlaylists, loadRecentPlays, nextTrack, playQueue, Playlist, previousTrack, RecentPlay, removeFromQueue, restoreSavedSession, saveAudioSettings, savePlaylist, seekTo, selectQueueItem, setAutoNextSurah, setRepeatCount, setRepeatMode, setRepeatRange, setResumeOnStart, setVolume, stepPlaybackRate, MAX_RATE, MIN_RATE, RATE_STEPS, REPEAT_COUNT_CHOICES, REPEAT_FOREVER, setPlaybackRate, reciterLabel, stopPlayback, syncAudioTranslationToLanguage, togglePlayback, useAudio } from './src/services/audioService';
-import {deviceHadithCount, downloadCollection, fetchHadithOne, getHadith, hadithDownloadProgress, searchDeviceHadith, hadithReference, hadithSourceLabel, HADITH_COLLECTIONS, Hadith, HadithOutline, isHadithSaved, loadHadithBook, loadHadithOutline, loadHadithState, markHadithRead, removeDownloadedCollection, removeHadithBookmark, subscribeHadithDownloads, toggleHadithSaved, useDownloadedCollections, useHadithState } from './src/services/hadithService';
+import {DEFAULT_HADITH_LANGUAGE, deviceHadithCount, downloadCollection, fetchHadithOne, getHadith, hadithDownloadProgress, searchDeviceHadith, useHadithLanguage, setHadithLanguage, hadithReference, hadithSourceLabel, HADITH_COLLECTIONS, Hadith, HadithOutline, isHadithSaved, loadHadithBook, loadHadithOutline, loadHadithState, markHadithRead, removeDownloadedCollection, removeHadithBookmark, subscribeHadithDownloads, toggleHadithSaved, useDownloadedCollections, useHadithState } from './src/services/hadithService';
 import {
   buildReportMailto, deleteReport, openReportEmail, saveReport, subscribeReports,
   type CorrectionReport, type CorrectionIssue as ReportIssue
@@ -1102,6 +1102,10 @@ async function preloadReflectionsAhead() {
 
 function useHomeData() {
   const {rtl}=useLanguage(); const {location}=useAppLocation(); const {settings}=useWorshipSettings(); const dateKey=dayKeyOf(new Date());
+  /* The hadith of the day is fetched in the reader's hadith language, so a
+     change of language has to be a reason to refresh — otherwise the card
+     keeps yesterday's tongue until midnight. */
+  const hadithLanguage=useHadithLanguage();
   const [snapshot,setSnapshot]=useState<PrayerSnapshot|null>(null); const[ayah,setAyah]=useState<DailyAyah|null>(null); const[hadith,setHadith]=useState<DailyHadith|null>(null); const[name,setName]=useState<DivineName|null>(null); const[dua,setDua]=useState<any>(null); const[cached,setCached]=useState(false); const[error,setError]=useState('');
   const applyDaily=(daily:DailyContentCache)=>{setAyah(daily.ayah);setHadith(daily.hadith);setName(daily.name);setDua(daily.dua)};
   const load=async()=>{
@@ -1128,7 +1132,7 @@ function useHomeData() {
     loadDailyContent<DailyContentCache>(dateKey).then(saved=>saved&&applyDaily(saved)).catch(()=>undefined);
     setSnapshot(null);
     if(location)load();
-  },[location?.latitude,location?.longitude,settings.calculationMethod,settings.madhab,settings.timeFormat]);
+  },[location?.latitude,location?.longitude,settings.calculationMethod,settings.madhab,settings.timeFormat,hadithLanguage]);
   return{snapshot,ayah,hadith,name,dua,location,cached,error,load};
 }
 function getNext(prayers: Prayer[]) {
@@ -6505,6 +6509,7 @@ function HadithScreen({navigation}:any){const{rtl}=useLanguage();const T=(text:s
   const [searching,setSearching]=useState(false);
   const [booksOnDevice,setBooksOnDevice]=useState(0);
   const downloaded=useDownloadedCollections();
+  const language=useHadithLanguage();
   const [downloadTick,setDownloadTick]=useState(0);
   useEffect(()=>subscribeHadithDownloads(()=>setDownloadTick(t=>t+1)) as any,[]);
   useEffect(()=>{void deviceHadithCount().then(setBooksOnDevice)},[downloadTick]);
@@ -6528,6 +6533,8 @@ function HadithScreen({navigation}:any){const{rtl}=useLanguage();const T=(text:s
     <Text style={s.dataTitle}>{T('Hadith')}</Text>
 
     <Text style={s.intro}>{T('Ten verified collections with matched Arabic and English texts. Grading is shown where the source publishes it—Sahih al-Bukhari and Sahih Muslim carry no separate grade because their contents are accepted as sound.')}</Text>
+
+    <HadithLanguagePicker available={[]}/>
 
     <View style={s.search}>{ico('search',18,C.muted)}<TextInput accessibilityLabel={T('Search hadith on this device')} value={query} onChangeText={setQuery} style={s.searchInput} placeholder={booksOnDevice?T('Search hadith you have opened or downloaded'):T('Search hadith')} placeholderTextColor={C.muted}/></View>
 
@@ -6582,7 +6589,7 @@ function HadithScreen({navigation}:any){const{rtl}=useLanguage();const T=(text:s
           {progress.phase==='downloading'&&<Text style={s.meta}>{progress.booksDone} / {progress.booksTotal} {T('books')}</Text>}
           {percent>0&&progress.phase!=='downloading'&&<View style={s.hadithTrack}><View style={[s.hadithFill,{width:`${percent}%`}]}/></View>}
           {progress.phase!=='downloading'&&<Pressable accessibilityLabel={isDownloaded?T('Remove this collection from the device'):T('Download this collection for offline reading')}
-            onPress={()=>{void (isDownloaded?removeDownloadedCollection(collection.slug):downloadCollection(collection.slug)).catch(()=>undefined)}}
+            onPress={()=>{void (isDownloaded?removeDownloadedCollection(collection.slug):downloadCollection(collection.slug,language)).catch(()=>undefined)}}
             style={[s.secondary,{marginTop:10}]}>
             <Text style={s.secondaryText}>{isDownloaded?T('Remove download'):T('Download for offline')}</Text></Pressable>}
         </View>;
@@ -6597,6 +6604,7 @@ function HadithCollectionScreen({route,navigation}:any){const{rtl}=useLanguage()
   const [outline,setOutline]=useState<HadithOutline|null>(null);
   const [book,setBook]=useState<number|null>(null);
   const [rows,setRows]=useState<Hadith[]>([]);
+  const language=useHadithLanguage();
   const [loadingBook,setLoadingBook]=useState(false);
   const [error,setError]=useState('');
   const [query,setQuery]=useState('');
@@ -6611,8 +6619,8 @@ function HadithCollectionScreen({route,navigation}:any){const{rtl}=useLanguage()
   /* Re-render while a download runs - the progress lives outside React. */
   useEffect(()=>subscribeHadithDownloads(()=>setDownloadTick(t=>t+1)) as any,[]);
 
-  const load=()=>{setError('');return loadHadithOutline(slug).then(next=>{setOutline(next)}).catch((e:any)=>setError(T(e.message||'Please check your connection.')))};
-  useEffect(()=>{void load()},[slug]);
+  const load=()=>{setError('');return loadHadithOutline(slug,language).then(next=>{setOutline(next)}).catch((e:any)=>setError(T(e.message||'Please check your connection.')))};
+  useEffect(()=>{void load()},[slug,language]);
   useEffect(()=>{setLimit(20)},[book,query]);
 
   /* A book is read only when it is opened, and then only once. */
@@ -6620,17 +6628,17 @@ function HadithCollectionScreen({route,navigation}:any){const{rtl}=useLanguage()
     if(book===null){setRows([]);return}
     let alive=true;
     setLoadingBook(true);setError('');
-    void loadHadithBook(slug,book)
+    void loadHadithBook(slug,book,outline?.lang||language)
       .then(next=>{if(alive){setRows(next);setLoadingBook(false)}})
       .catch((e:any)=>{if(alive){setError(T(e.message||'Please check your connection.'));setLoadingBook(false)}});
     return ()=>{alive=false};
-  },[slug,book,downloadTick]);
+  },[slug,book,downloadTick,outline?.lang]);
 
   const filtered=query.trim().length>=2
     ? rows.filter(row=>(row.english||'').toLowerCase().includes(query.trim().toLowerCase())||(row.arabic||'').includes(query.trim()))
     : rows;
   const shown=filtered.slice(0,limit);
-  const totalInCollection=outline?.books.reduce((sum,entry)=>sum+entry.count,0)||0;
+  const totalInCollection=outline?.total||outline?.books.reduce((sum,entry)=>sum+entry.count,0)||0;
   const booksDone=progress.booksDone, booksTotal=progress.booksTotal;
   const pct=booksTotal?Math.round(booksDone/booksTotal*100):0;
 
@@ -6642,6 +6650,9 @@ function HadithCollectionScreen({route,navigation}:any){const{rtl}=useLanguage()
         <Text style={s.dataTitle}>{collection?.name||outline.name}</Text>
         <Text style={s.dataArabic}>{collection?.arabicName}</Text>
         <Text style={s.intro}>{T(collection?.author||'')} · {T(collection?.kind||'')} · {totalInCollection.toLocaleString()} {T('hadith')} · {outline.books.length} {T('books')}</Text>
+
+        <HadithLanguagePicker available={outline.available}/>
+        {outline.fellBack&&<HadithLanguageNotice wanted={language} onReset={()=>{void setHadithLanguage(DEFAULT_HADITH_LANGUAGE)}}/>}
 
         <View style={s.apiPanel}>
           <View style={s.hadithRowTop}>
@@ -6656,7 +6667,7 @@ function HadithCollectionScreen({route,navigation}:any){const{rtl}=useLanguage()
           {progress.phase==='downloading'&&<Text style={s.meta}>{booksDone} / {booksTotal} {T('books')}</Text>}
           <View style={{flexDirection:'row',gap:8,marginTop:12}}>
             {!isDownloaded&&<Pressable accessibilityLabel={T('Download this collection for offline reading')}
-              onPress={()=>{void downloadCollection(slug).catch(()=>undefined)}}
+              onPress={()=>{void downloadCollection(slug,outline?.lang||language).catch(()=>undefined)}}
               style={[s.secondary,{flex:1,opacity:progress.phase==='downloading'?.5:1}]} disabled={progress.phase==='downloading'}>
               <Text style={s.secondaryText}>{progress.phase==='downloading'?T('Downloading…'):T('Download for offline')}</Text></Pressable>}
             {isDownloaded&&<Pressable accessibilityLabel={T('Remove this collection from the device')}
@@ -6715,13 +6726,14 @@ function HadithDetailScreen({route,navigation}:any){const{rtl}=useLanguage();con
   const collection=HADITH_COLLECTIONS.find(item=>item.slug===slug);
   const [hadith,setHadith]=useState<Hadith|null>(null);
   const [outline,setOutline]=useState<HadithOutline|null>(null);
+  const language=useHadithLanguage();
   const [neighbours,setNeighbours]=useState<{previous?:Hadith;next?:Hadith}>({});
   const [error,setError]=useState('');
   const [copied,setCopied]=useState(false);
   const [reporting,setReporting]=useState(false);
   useHadithState();
   const saved=isHadithSaved(slug,number);
-  const total=outline?.books.reduce((sum,entry)=>sum+entry.count,0)||0;
+  const total=outline?.total||0;
 
   /* One request for the narration, one for its book so the reader can walk
      forward and back. The book is cached, so walking is free after the first
@@ -6729,19 +6741,19 @@ function HadithDetailScreen({route,navigation}:any){const{rtl}=useLanguage();con
   const load=async()=>{
     setError('');
     try{
-      const record=await fetchHadithOne(slug,number);
+      const record=await fetchHadithOne(slug,number,language);
       setHadith(record);
-      const shape=await loadHadithOutline(slug).catch(()=>null);
+      const shape=await loadHadithOutline(slug,language).catch(()=>null);
       if(shape)setOutline(shape);
       if(record.book){
-        const rows=await loadHadithBook(slug,record.book).catch(()=>[] as Hadith[]);
+        const rows=await loadHadithBook(slug,record.book,shape?.lang||language).catch(()=>[] as Hadith[]);
         if(rows.length){
           const at=rows.findIndex(row=>row.number===number);
           if(at>=0){
             const previous=rows[at-1]; const next=rows[at+1];
             setNeighbours({previous,next});
-            if(previous)await fetchHadithOne(slug,previous.number).then(r=>setNeighbours(n=>({...n,previous:r}))).catch(()=>undefined);
-            if(next)await fetchHadithOne(slug,next.number).then(r=>setNeighbours(n=>({...n,next:r}))).catch(()=>undefined);
+            if(previous)await fetchHadithOne(slug,previous.number,shape?.lang||language).then(r=>setNeighbours(n=>({...n,previous:r}))).catch(()=>undefined);
+            if(next)await fetchHadithOne(slug,next.number,shape?.lang||language).then(r=>setNeighbours(n=>({...n,next:r}))).catch(()=>undefined);
           }
         }
       }
@@ -6749,7 +6761,7 @@ function HadithDetailScreen({route,navigation}:any){const{rtl}=useLanguage();con
       setError(T(e.message||'Please check your connection.'));
     }
   };
-  useEffect(()=>{setNeighbours({});void load()},[slug,number]);
+  useEffect(()=>{setNeighbours({});void load()},[slug,number,language]);
   useEffect(()=>{if(total)void markHadithRead(slug,number,total)},[total,slug,number]);
   const share=async()=>{
     if(!hadith)return;
@@ -6838,6 +6850,61 @@ function ChoicePill({label,selected,onPress}:{label:string;selected:boolean;onPr
     </Pressable>
   </Animated.View>;
 }
+
+/**
+ * The language a narration is read in.
+ *
+ * Ten languages exist in the corpus but not one of them covers every
+ * collection, so the pills are drawn dimmed where the collection has no
+ * edition. Choosing a missing one still works - it falls back to English and
+ * the screen says so - because a picker that refuses to be touched is worse
+ * than one that explains itself.
+ */
+function HadithLanguagePicker({available,onPick}:{available:string[];onPick?:()=>void}){
+  const {rtl}=useLanguage(); const T=(text:string)=>tx(rtl,text);
+  const current=useHadithLanguage();
+  const has=available.length>0;
+  return <View>
+    <Text style={s.meta}>{T('Hadith language')}</Text>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.choiceRow}>
+      {HADITH_LANGUAGES.map(entry=>{
+        const missing=has&&!available.includes(entry.code);
+        const selected=current===entry.code;
+        return <View key={entry.code} style={{opacity:missing?.42:1}}>
+          <ChoicePill
+            label={rtl?entry.native:entry.english}
+            selected={selected}
+            onPress={()=>{void setHadithLanguage(entry.code);onPick?.()}}
+          />
+        </View>;
+      })}
+    </ScrollView>
+    {has&&<Text style={[s.meta,{marginTop:-4}]}>
+      {available.length} {T('of')} {HADITH_LANGUAGES.length} {T('languages in this collection')}
+    </Text>}
+  </View>;
+}
+
+/**
+ * Shown when the collection has no edition in the chosen language.
+ *
+ * Falling back to English is the only honest option - there is nothing else to
+ * show - but doing it silently would leave a person wondering why they asked
+ * for Turkish and got English.
+ */
+function HadithLanguageNotice({wanted,onReset}:{wanted:string;onReset:()=>void}){
+  const {rtl}=useLanguage(); const T=(text:string)=>tx(rtl,text);
+  const entry=hadithLanguage(wanted);
+  const name=entry?(rtl?entry.native:entry.english):wanted;
+  return <View style={s.apiPanel}>
+    <Text style={s.apiTitle}>{T('No edition in this language')}</Text>
+    <Text style={s.apiText}>{`${T('This collection has no')} ${name} ${T('edition, so these narrations are shown in English.')}`}</Text>
+    <Pressable accessibilityLabel={T('Read hadith in English')} onPress={onReset} style={[s.secondary,{marginTop:10}]}>
+      <Text style={s.secondaryText}>{T('Switch to English')}</Text>
+    </Pressable>
+  </View>;
+}
+
 const DATA_SOURCES: { name: string; ar: string; endpoint: string; detail: string; arDetail: string }[] = [
   { name: 'Islamic Data', ar: 'البيانات الإسلامية', endpoint: 'api.islamicdata.uz',
     detail: 'The app’s own server. Every Arabic script — Uthmani, Imla’i simple, IndoPak and Tajweed — all 484 translations and every Tafsir, the Surah, Juz and Hizb structure, and Quran search.',
@@ -7360,7 +7427,7 @@ function SettingsScreen({navigation}:any){
       </Pressable>
     </ScrollView>
   </Page>}
-import { DEFAULT_RECITER, editionsForLanguage, LANGUAGES, Language, LanguageCode, languageByCode, isRtl, pickEdition } from './src/services/languages';
+import { DEFAULT_RECITER, editionsForLanguage, LANGUAGES, Language, LanguageCode, languageByCode, isRtl, pickEdition, HADITH_LANGUAGES, hadithLanguage } from './src/services/languages';
 
 const navigationRef = createNavigationContainerRef<any>();
 const AUDIO_LANGUAGES: Record<string, string> = {

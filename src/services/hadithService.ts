@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getCachedJson, listCachedKeys, setCachedJson } from './contentCache';
+import { hadithLanguage } from './languages';
 import {
   /* `getHadith` already names the local lookup at the bottom of this file, so
      the network call is imported under the name the API gives it. */
-  getHadith as getHadithRecord, getHadithBook, getHadithCollection,
+  getHadith as getHadithRecord, getHadithBook, getHadithCollection, getHadithCollections,
   HadithBook as WorkerBook, HadithRecord, IslamicDataError, ISLAMIC_DATA_BASE_URL,
 } from './islamicDataApi';
 
@@ -142,8 +143,13 @@ function toHadith(slug: string, row: HadithRecord, fallbackBookName: string | nu
  * used as they are: a person reopening a collection should not re-download
  * what they already have.
  */
-async function fetchBook(slug: string, book: WorkerBook, force: boolean): Promise<Hadith[]> {
-  const cacheKey = `book-${slug}-${book.number}`;
+async function fetchBook(
+  slug: string,
+  book: WorkerBook,
+  force: boolean,
+  language: string = DEFAULT_HADITH_LANGUAGE,
+): Promise<Hadith[]> {
+  const cacheKey = `book-${slug}-${language}-${book.number}`;
   if (!force) {
     const cached = await getCachedJson<{ hadiths: Hadith[] }>('hadith', cacheKey).catch(() => null);
     if (cached && Array.isArray(cached.hadiths) && cached.hadiths.length) return cached.hadiths;
@@ -154,7 +160,7 @@ async function fetchBook(slug: string, book: WorkerBook, force: boolean): Promis
   let offset = 0;
   for (;;) {
     /* eslint-disable no-await-in-loop */
-    const page = await getHadithBook(slug, book.number, { language: 'en', limit, offset });
+    const page = await getHadithBook(slug, book.number, { language, limit, offset });
     page.hadiths.forEach((row) => rows.push(toHadith(slug, row, book.name)));
     if (!page.page?.hasMore || page.hadiths.length === 0) break;
     offset += page.hadiths.length;
@@ -162,8 +168,91 @@ async function fetchBook(slug: string, book: WorkerBook, force: boolean): Promis
     if (offset > 20000) break;
   }
 
-  if (rows.length) void setCachedJson('hadith', cacheKey, { book, hadiths: rows }).catch(() => undefined);
+  if (rows.length) void setCachedJson('hadith', cacheKey, { book, lang: language, hadiths: rows }).catch(() => undefined);
   return rows;
+}
+
+/* ==================== Which language ==================== */
+
+const HADITH_LANG_KEY = 'hadith:language-v1';
+export const DEFAULT_HADITH_LANGUAGE = 'en';
+
+const languageListeners = new Set<() => void>();
+let currentLanguage: string = DEFAULT_HADITH_LANGUAGE;
+let languageHydrated = false;
+
+export function getHadithLanguage(): string {
+  return currentLanguage;
+}
+
+export async function loadHadithLanguage(): Promise<string> {
+  try {
+    const stored = await AsyncStorage.getItem(HADITH_LANG_KEY);
+    if (stored && hadithLanguage(stored)) currentLanguage = stored;
+  } catch { /* first run, or storage unavailable */ }
+  languageHydrated = true;
+  languageListeners.forEach((listener) => listener());
+  return currentLanguage;
+}
+
+export async function setHadithLanguage(code: string): Promise<void> {
+  if (!hadithLanguage(code)) return;
+  currentLanguage = code;
+  await AsyncStorage.setItem(HADITH_LANG_KEY, code).catch(() => undefined);
+  languageListeners.forEach((listener) => listener());
+}
+
+export function useHadithLanguage(): string {
+  const [code, setCode] = useState(getHadithLanguage());
+  useEffect(() => {
+    if (!languageHydrated) void loadHadithLanguage();
+    const off = subscribeHadithLanguage(() => setCode(getHadithLanguage()));
+    return off;
+  }, []);
+  return code;
+}
+
+export function subscribeHadithLanguage(listener: () => void) {
+  languageListeners.add(listener);
+  return () => { languageListeners.delete(listener); };
+}
+
+/**
+ * Which languages a collection actually carries.
+ *
+ * Coverage is per-collection and uneven — Arabic and English reach all ten,
+ * Russian only three, Tamil two — so this is read from the server's own
+ * catalogue rather than assumed from a global list.
+ */
+const languageMemory = new Map<string, string[]>();
+
+export async function collectionLanguages(slug: string): Promise<string[]> {
+  if (languageMemory.has(slug)) return languageMemory.get(slug) as string[];
+  try {
+    const all = await getHadithCollections();
+    all.forEach((entry: any) => {
+      if (entry?.slug && Array.isArray(entry.languages)) {
+        languageMemory.set(entry.slug, entry.languages);
+      }
+    });
+  } catch { /* the catalogue is optional; a miss just means "assume yes" */ }
+  return languageMemory.get(slug) || [];
+}
+
+/**
+ * The language to actually ask the server for.
+ *
+ * A collection that has no edition in the chosen language answers 404, so the
+ * request is made in English instead and `fellBack` is set, which is how the
+ * screen knows to say so rather than silently showing the wrong tongue.
+ */
+async function resolveLanguage(slug: string, wanted: string): Promise<{ lang: string; fellBack: boolean }> {
+  if (wanted === 'en') return { lang: 'en', fellBack: false };
+  const available = await collectionLanguages(slug);
+  /* No catalogue means no knowledge, and guessing costs a 404 - so ask for
+     what was wanted and let the caller handle the miss. */
+  if (!available.length) return { lang: wanted, fellBack: false };
+  return available.includes(wanted) ? { lang: wanted, fellBack: false } : { lang: 'en', fellBack: true };
 }
 
 /* ==================== Reading on demand ==================== */
@@ -176,6 +265,14 @@ export type HadithOutline = {
   books: HadithBook[];
   loadedAt: number;
   source: string;
+  /** The language the contents were fetched in. */
+  lang: string;
+  /** True when the wanted language was missing and English was used instead. */
+  fellBack: boolean;
+  /** Every language this collection publishes, for the picker to grey out. */
+  available: string[];
+  /** Narrations in this language - editions disagree slightly on the total. */
+  total: number;
 };
 
 /**
@@ -185,21 +282,27 @@ export type HadithOutline = {
  * reader open Bukhari without waiting on 7,589 narrations — the numbers are
  * the table of contents, not the contents.
  */
-export async function loadHadithOutline(slug: string, force = false): Promise<HadithOutline> {
+export async function loadHadithOutline(
+  slug: string,
+  language: string = DEFAULT_HADITH_LANGUAGE,
+  force = false,
+): Promise<HadithOutline> {
   const known = HADITH_COLLECTIONS.find((collection) => collection.slug === slug);
   if (!known) throw new Error('Unknown collection');
-  if (!force && outlineMemory.has(slug)) return outlineMemory.get(slug) as HadithOutline;
+  const { lang, fellBack } = await resolveLanguage(slug, language);
+  const cacheSlug = `${slug}:${lang}`;
+  if (!force && outlineMemory.has(cacheSlug)) return outlineMemory.get(cacheSlug) as HadithOutline;
 
-  const key = `outline-${slug}`;
+  const key = `outline-${slug}-${lang}`;
   if (!force) {
     const cached = await getCachedJson<HadithOutline>('hadith', key).catch(() => null);
     if (cached && Array.isArray(cached.books) && cached.books.length) {
-      outlineMemory.set(slug, cached);
+      outlineMemory.set(cacheSlug, cached);
       return cached;
     }
   }
 
-  const detail = await getHadithCollection(slug, 'en');
+  const detail = await getHadithCollection(slug, lang);
   const books: HadithBook[] = (detail.books || [])
     .filter((book: any) => book && typeof book.number === 'number')
     .map((book: any) => ({
@@ -212,14 +315,23 @@ export async function loadHadithOutline(slug: string, force = false): Promise<Ha
     .filter((book: HadithBook) => book.count > 0);
   if (!books.length) throw new Error('The collection listed no books');
 
+  const available = await collectionLanguages(slug);
+  const counts: Record<string, number> = (detail as any)?.counts || {};
+  /* Editions disagree on the total - Russian Bukhari has one narration more
+     than English - so the count is taken for the language actually in hand. */
+  const total = counts[lang] || books.reduce((sum, entry) => sum + entry.count, 0);
   const outline: HadithOutline = {
     slug,
     name: detail.collection?.name || known.name || slug,
     books,
     loadedAt: Date.now(),
     source: `${ISLAMIC_DATA_BASE_URL}/hadith/collections/${slug}`,
+    lang,
+    fellBack,
+    available,
+    total,
   };
-  outlineMemory.set(slug, outline);
+  outlineMemory.set(cacheSlug, outline);
   void setCachedJson('hadith', key, outline).catch(() => undefined);
   return outline;
 }
@@ -233,15 +345,17 @@ export async function loadHadithOutline(slug: string, force = false): Promise<Ha
 export async function loadHadithBook(
   slug: string,
   bookNumber: number,
+  language: string = DEFAULT_HADITH_LANGUAGE,
   force = false,
 ): Promise<Hadith[]> {
-  const key = `book-${slug}-${bookNumber}`;
+  const { lang } = await resolveLanguage(slug, language);
+  const key = `book-${slug}-${lang}-${bookNumber}`;
   if (!force) {
     const cached = await getCachedJson<{ hadiths: Hadith[] }>('hadith', key).catch(() => null);
     if (cached && Array.isArray(cached.hadiths) && cached.hadiths.length) return cached.hadiths;
   }
 
-  const outline = await loadHadithOutline(slug).catch(() => null);
+  const outline = await loadHadithOutline(slug, lang).catch(() => null);
   const bookName = outline?.books.find((book) => book.number === bookNumber)?.name || 'General';
 
   const rows: Hadith[] = [];
@@ -249,7 +363,7 @@ export async function loadHadithBook(
   let offset = 0;
   for (;;) {
     /* eslint-disable no-await-in-loop */
-    const page = await getHadithBook(slug, bookNumber, { language: 'en', limit, offset });
+    const page = await getHadithBook(slug, bookNumber, { language: lang, limit, offset });
     page.hadiths.forEach((row) => rows.push(toHadith(slug, row, bookName)));
     if (!page.page?.hasMore || page.hadiths.length === 0) break;
     offset += page.hadiths.length;
@@ -257,7 +371,7 @@ export async function loadHadithBook(
     if (offset > 20000) break;
   }
 
-  if (rows.length) void setCachedJson('hadith', key, { bookNumber, hadiths: rows }).catch(() => undefined);
+  if (rows.length) void setCachedJson('hadith', key, { bookNumber, lang, hadiths: rows }).catch(() => undefined);
   return rows;
 }
 
@@ -273,9 +387,11 @@ export async function loadHadithBook(
 export async function fetchHadithOne(
   slug: string,
   number: number,
+  language: string = DEFAULT_HADITH_LANGUAGE,
   disambiguate?: { book?: number; occurrence?: number },
 ): Promise<Hadith> {
-  const key = `one-${slug}-${number}-${disambiguate?.book ?? 'x'}-${disambiguate?.occurrence ?? 'x'}`;
+  const { lang } = await resolveLanguage(slug, language);
+  const key = `one-${slug}-${lang}-${number}-${disambiguate?.book ?? 'x'}-${disambiguate?.occurrence ?? 'x'}`;
   if (!disambiguate) {
     const cached = await getCachedJson<{ hadith: Hadith }>('hadith', key).catch(() => null);
     if (cached?.hadith) return cached.hadith;
@@ -283,19 +399,19 @@ export async function fetchHadithOne(
 
   let record: HadithRecord;
   try {
-    record = await getHadithRecord(slug, number, { language: 'en', ...disambiguate });
+    record = await getHadithRecord(slug, number, { language: lang, ...disambiguate });
   } catch (error) {
     const ambiguous = error instanceof IslamicDataError && error.kind === 'ambiguous';
     const first = ambiguous ? (error.matches || [])[0] : undefined;
     if (!first) throw error;
     record = await getHadithRecord(slug, number, {
-      language: 'en',
+      language: lang,
       book: first.book,
       occurrence: first.occurrence,
     });
   }
 
-  const outline = await loadHadithOutline(slug).catch(() => null);
+  const outline = await loadHadithOutline(slug, lang).catch(() => null);
   const bookName = outline?.books.find((book) => book.number === record.book)?.name || null;
   const hadith = toHadith(slug, record, bookName);
   void setCachedJson('hadith', key, { hadith }).catch(() => undefined);
@@ -305,7 +421,11 @@ export async function fetchHadithOne(
 /** How many books are read at once. Enough to be quick, few enough to be polite. */
 const BOOK_CONCURRENCY = 4;
 
-export async function loadHadithCollection(slug: string, force = false): Promise<HadithCollectionData> {
+export async function loadHadithCollection(
+  slug: string,
+  force = false,
+  language: string = DEFAULT_HADITH_LANGUAGE,
+): Promise<HadithCollectionData> {
   const known = HADITH_COLLECTIONS.find((collection) => collection.slug === slug);
   if (!known) throw new Error('Unknown collection');
   if (!force && memory.has(slug)) return memory.get(slug) as HadithCollectionData;
@@ -318,7 +438,7 @@ export async function loadHadithCollection(slug: string, force = false): Promise
       if (cached && Array.isArray(cached.hadiths) && cached.hadiths.length) data = cached;
     }
     if (!data) {
-      const detail = await getHadithCollection(slug, 'en');
+      const detail = await getHadithCollection(slug, language);
       const books = (detail.books || []).filter((book) => book && typeof book.number === 'number');
       if (!books.length) throw new Error('The collection listed no books');
 
@@ -330,7 +450,7 @@ export async function loadHadithCollection(slug: string, force = false): Promise
         const slice = books.slice(i, i + BOOK_CONCURRENCY);
         // eslint-disable-next-line no-await-in-loop
         const groups = await Promise.all(
-          slice.map((book) => fetchBook(slug, book, force).catch(() => [] as Hadith[])),
+          slice.map((book) => fetchBook(slug, book, force, language).catch(() => [] as Hadith[])),
         );
         groups.forEach((group) => group.forEach((row) => hadiths.push(row)));
       }
@@ -380,8 +500,12 @@ export function whenArabicReady(slug: string): Promise<HadithCollectionData | nu
   return hydration;
 }
 
-export async function loadBookOffline(slug: string, book: number): Promise<Hadith[] | null> {
-  const cached = await getCachedJson<{ hadiths: Hadith[] }>('hadith', `book-${slug}-${book}`).catch(() => null);
+export async function loadBookOffline(
+  slug: string,
+  book: number,
+  language: string = DEFAULT_HADITH_LANGUAGE,
+): Promise<Hadith[] | null> {
+  const cached = await getCachedJson<{ hadiths: Hadith[] }>('hadith', `book-${slug}-${language}-${book}`).catch(() => null);
   return cached && Array.isArray(cached.hadiths) ? cached.hadiths : null;
 }
 
@@ -438,13 +562,16 @@ export function useDownloadedCollections(): Record<string, { at: number; count: 
  * offline is a real thing a person wants, but it should be a decision they
  * make and watch, not something that happens because they tapped a hadith.
  */
-export async function downloadCollection(slug: string): Promise<number> {
+export async function downloadCollection(
+  slug: string,
+  language: string = DEFAULT_HADITH_LANGUAGE,
+): Promise<number> {
   if (hadithDownloadProgress(slug).phase === 'downloading') return 0;
   const known = HADITH_COLLECTIONS.find((collection) => collection.slug === slug);
   if (!known) throw new Error('Unknown collection');
   setProgress(slug, { phase: 'listing', booksDone: 0, booksTotal: 0 });
   try {
-    const outline = await loadHadithOutline(slug, true);
+    const outline = await loadHadithOutline(slug, language, true);
     const books = outline.books;
     setProgress(slug, { phase: 'downloading', booksDone: 0, booksTotal: books.length });
 
@@ -454,7 +581,7 @@ export async function downloadCollection(slug: string): Promise<number> {
       const slice = books.slice(i, i + BOOK_CONCURRENCY);
       /* eslint-disable no-await-in-loop */
       const groups = await Promise.all(
-        slice.map((book) => loadHadithBook(slug, book.number, true).catch(() => [] as Hadith[])),
+        slice.map((book) => loadHadithBook(slug, book.number, outline.lang, true).catch(() => [] as Hadith[])),
       );
       groups.forEach((group) => { count += group.length; });
       done += slice.length;
@@ -484,10 +611,12 @@ export async function removeDownloadedCollection(slug: string): Promise<void> {
   const all = await downloadedCollections();
   delete all[slug];
   await AsyncStorage.setItem(`hadith:${DOWNLOAD_MARKER}`, JSON.stringify(all)).catch(() => undefined);
+  /* Every language: the cache key carries the language, so removing one
+     collection means clearing it in each tongue it was read in. */
   const keys = await listCachedKeys('hadith').catch(() => [] as string[]);
   await Promise.all(
     keys
-      .filter((key) => key.startsWith(`book-${slug}-`) || key === `outline-${slug}`)
+      .filter((key) => key.startsWith(`book-${slug}-`) || key.startsWith(`outline-${slug}-`) || key === `outline-${slug}`)
       .map((key) => AsyncStorage.removeItem(key).catch(() => undefined)),
   );
   setProgress(slug, { phase: 'idle', booksDone: 0, booksTotal: 0 });

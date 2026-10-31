@@ -12,7 +12,12 @@
  * fetches a page.
  */
 
-export type LanguageCode = 'en' | 'ar' | 'ur' | 'fr' | 'tr' | 'ru' | 'zh' | 'fa' | 'uz' | 'kk' | 'my';
+export type LanguageCode =
+  | 'en' | 'ar' | 'ur' | 'fr' | 'tr' | 'ru' | 'zh' | 'fa' | 'uz' | 'kk' | 'my'
+  /* Below: languages the hadith corpus carries that the rest of the app does
+     not offer yet — no Quran translation, no recitation voice, no interface
+     copy. They exist so hadith can be read in them, not so the app can be. */
+  | 'bn' | 'id' | 'ta';
 
 export type QuranTextEdition = {
   /** The AlQuran Cloud identifier, as the reader passes it to the API. */
@@ -103,6 +108,45 @@ export const LANGUAGES: Language[] = [
     voice: { identifier: 'my.hashimtinmyint', name: 'Hashim Tin Myint' },
   },
 ];
+
+/**
+ * The languages the hadith corpus is published in, and how much of it each
+ * one covers.
+ *
+ * This is a separate list from LANGUAGES on purpose. The app's list answers
+ * "what can I read the whole app in" — interface copy, Quran translation,
+ * recitation voice. This one answers a narrower question: what can I read a
+ * narration in. Bengali, Indonesian and Tamil have no Quran translation and no
+ * audio, so they belong here and not there; and the five app languages with no
+ * hadith edition at all (Chinese, Persian, Uzbek, Kazakh, Burmese) belong
+ * there and not here.
+ *
+ * `collections` is how many of the ten collections carry that language. It is
+ * published by the server rather than counted here, because coverage is
+ * per-collection and uneven: only Arabic and English reach all ten.
+ */
+export type HadithLanguage = {
+  code: LanguageCode;
+  native: string;
+  english: string;
+  rtl: boolean;
+};
+
+export const HADITH_LANGUAGES: HadithLanguage[] = [
+  { code: 'en', native: 'English', english: 'English', rtl: false },
+  { code: 'ar', native: 'العربية', english: 'Arabic', rtl: true },
+  { code: 'bn', native: 'বাংলা', english: 'Bengali', rtl: false },
+  { code: 'fr', native: 'Français', english: 'French', rtl: false },
+  { code: 'id', native: 'Bahasa Indonesia', english: 'Indonesian', rtl: false },
+  { code: 'tr', native: 'Türkçe', english: 'Turkish', rtl: false },
+  { code: 'ur', native: 'اردو', english: 'Urdu', rtl: true },
+  { code: 'ru', native: 'Русский', english: 'Russian', rtl: false },
+  { code: 'ta', native: 'தமிழ்', english: 'Tamil', rtl: false },
+];
+
+export function hadithLanguage(code: string): HadithLanguage | undefined {
+  return HADITH_LANGUAGES.find((entry) => entry.code === code);
+}
 
 export const isRtl = (code: LanguageCode) => RTL.includes(code);
 
