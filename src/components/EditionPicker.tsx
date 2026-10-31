@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { IslamicEdition, editionDisplayName, editionSubtitle, servableEditions } from '../services/islamicDataApi';
 import { LanguageEntry, languagesOf } from '../services/languageFlags';
@@ -100,6 +100,18 @@ export default function EditionPicker({
     return languages[0]?.code ?? 'en';
   });
   const [query, setQuery] = useState('');
+
+  /* `initialLanguage` is only a seed. Without this the list would stay on the
+     language chosen at mount, so picking a new language from the sheet above
+     would change the label but never the editions underneath it. Follow the
+     prop while it differs, and leave the internal row free to move on its own
+     in between: it only writes to local state, which never re-fires this. */
+  useEffect(() => {
+    if (!initialLanguage) return;
+    if (initialLanguage === language) return;
+    if (!languages.some((l) => l.code === initialLanguage)) return;
+    setLanguage(initialLanguage);
+  }, [initialLanguage, language, languages]);
 
   const flagFor = useMemo(() => {
     const map = new Map(languages.map((l) => [l.code, l.flag]));

@@ -3402,6 +3402,14 @@ function TranslationScreen({navigation}:any){const{preferences,update}=useQuranP
   const[language,setLanguage]=useState(currentCode);
   useEffect(()=>{setLanguage(currentCode)},[currentCode]);
 
+  /* Registered on the overlay layer rather than drawn inside the page: the
+     floating tab bar paints after the screens, so a sheet rendered inline is
+     drawn underneath it and its lower rows cannot be reached. */
+  useOverlaySheet('translations-language', picking, () => (
+    <LanguagePickerSheet rtl={rtl} T={T} entries={languages} selected={language}
+      onPick={(code)=>setLanguage(code)} onClose={()=>setPicking(false)}/>
+  ));
+
   return <Page><ToolBar title={T('Translation')} navigation={navigation}/><ScrollView contentContainerStyle={s.dataPage} keyboardShouldPersistTaps="handled">
     <ToolGraphic tool="Translations" size={76}/>
     <Text style={s.dataTitle}>{T('Choose a translation')}</Text>
@@ -3427,8 +3435,6 @@ function TranslationScreen({navigation}:any){const{preferences,update}=useQuranP
       navigation.goBack();
     }}/>}
   </ScrollView>
-  {picking&&<LanguagePickerSheet rtl={rtl} T={T} entries={languages} selected={language}
-    onPick={(code)=>setLanguage(code)} onClose={()=>setPicking(false)}/>}
 </Page>}
 
 function QuranSearchScreen({route,navigation}:any){const{preferences}=useQuranPreferences();const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);const[query,setQuery]=useState(route.params?.initialQuery||'');const[results,setResults]=useState<QuranSearchResult[]>([]);const[history,setHistory]=useState<string[]>([]);const[error,setError]=useState('');const[loading,setLoading]=useState(false);useEffect(()=>{loadSearchHistory().then(setHistory);if(route.params?.initialQuery)run(route.params.initialQuery)},[]);const run=async(value=query)=>{const q=value.trim();if(q.length<2)return;setLoading(true);setError('');try{const edition=/[\u0600-\u06ff]/.test(q)?preferences.scriptEdition:preferences.translationEdition;setResults((await searchQuran(q,edition)).slice(0,100));setHistory(await addSearchHistory(q))}catch(e:any){setError(T(e.message))}finally{setLoading(false)}};const open=(r:QuranSearchResult)=>navigation.navigate('Reader',{chapter:{id:r.surahId,name_simple:r.surahName,name_arabic:'',verses_count:0},focusVerse:r.verseKey});return <Page><ToolBar title={T('Quran search')} navigation={navigation}/><ScrollView contentContainerStyle={s.dataPage} keyboardShouldPersistTaps="handled"><ToolGraphic tool="Quran Search" size={72}/><Text style={s.dataTitle}>{T('Search Arabic or translation')}</Text><View style={s.search}>{ico('search-outline',19,C.muted)}<TextInput autoFocus value={query} onChangeText={setQuery} onSubmitEditing={()=>run()} returnKeyType="search" style={s.searchInput} placeholder={T('Mercy, الصبر, or 2:255')}/><Pressable onPress={()=>run()}>{ico('arrow-forward-circle',22,C.green)}</Pressable></View>{history.length>0&&<><View style={s.historyHead}><Text style={s.preferenceLabel}>{T('RECENT SEARCHES')}</Text><Pressable onPress={async()=>{await clearSearchHistory();setHistory([])}}><Text style={s.sectionAction}>{T('Clear')}</Text></Pressable></View><View style={s.historyWrap}>{history.map(item=><Pressable key={item} onPress={()=>{setQuery(item);run(item)}} onLongPress={async()=>setHistory(await removeSearchHistory(item))} style={s.historyChip}><Text style={s.meta}>{item}</Text></Pressable>)}</View></>}{error?<ErrorState message={error} retry={()=>run()}/>:loading?<Spinner/>:<View>{results.map(r=><Pressable key={`${r.verseKey}-${r.edition}`} onPress={()=>open(r)} style={s.searchResult}><Text style={s.dataMeta}>{r.surahName} · {r.verseKey}</Text><Text numberOfLines={4} style={/[\u0600-\u06ff]/.test(r.text)?s.dataArabic:s.dataBody}>{r.text}</Text><Text style={s.meta}>{r.edition}</Text></Pressable>)}</View>}</ScrollView></Page>}
