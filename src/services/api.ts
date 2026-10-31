@@ -1,6 +1,6 @@
 import { getCachedJson, setCachedJson } from './contentCache';
 import { daysOfHijriMonth, gregorianForHijri, hijriForDate } from './hijri';
-import { getDailyHadith as getWorkerDailyHadith, getSurah, IslamicDataError } from './islamicDataApi';
+import { getDailyHadith as getWorkerDailyHadith, getEditions, getSurah, IslamicDataError, IslamicEdition } from './islamicDataApi';
 import { DEFAULT_TRANSLATION_EDITION } from './quranState';
 import {
   computeDayTimes,
@@ -376,8 +376,8 @@ export async function getPageVerses(page: number, options: { script?: string; tr
   return arabic.ayahs.map((a:any,index:number)=>({id:a.number,verse_key:keys[index],text_uthmani:a.text,translation:worker?worker.get(keys[index]):translated.ayahs[index]?.text,page:a.page,juz:a.juz,hizbQuarter:a.hizbQuarter,surah_name:a.surah.englishName}));
 }
 
-export async function getAyahOfDay(): Promise<DailyAyah> {
-  return getAyahForDate(new Date());
+export async function getAyahOfDay(edition = DEFAULT_TRANSLATION_EDITION): Promise<DailyAyah> {
+  return getAyahForDate(new Date(), edition);
 }
 
 /**
@@ -387,7 +387,7 @@ export async function getAyahOfDay(): Promise<DailyAyah> {
  * fixed and knowable in advance - which is what lets the app fetch the next
  * several before they are needed and keep them on the device.
  */
-export async function getAyahForDate(date: Date): Promise<DailyAyah> {
+export async function getAyahForDate(date: Date, edition = DEFAULT_TRANSLATION_EDITION): Promise<DailyAyah> {
   const start = new Date(date.getFullYear(), 0, 0);
   const day = Math.floor((new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime() - start.getTime()) / 86400000);
   const ayahNumber = (day % 6236) + 1;
@@ -397,10 +397,15 @@ export async function getAyahForDate(date: Date): Promise<DailyAyah> {
      then asked for by the key that call just handed us. */
   const arabic = await json(`${QURAN}/ayah/${ayahNumber}/quran-uthmani`);
   const verseKey = `${arabic.surah.number}:${arabic.numberInSurah}`;
-  const worker = await workerTexts(DEFAULT_TRANSLATION_EDITION, [String(arabic.surah.number)]);
-  let translation = worker?.get(verseKey);
-  if (!translation) {
-    translation = await json(`${QURAN}/ayah/${ayahNumber}/en.sahih`).then((r: any) => r?.text).catch(() => '');
+  /* The meaning is asked for at home, and only at home. This used to fall back
+     to a hardcoded English edition on the third-party index - which pinned the
+     ayah of the day to one language whatever the person reads, and was the
+     last caller still addressing that index by a legacy id. Where the chosen
+     edition is not served here, the day is shown in Arabic alone rather than
+     in a language that was never chosen. */
+  let translation = (await workerTexts(edition, [String(arabic.surah.number)]))?.get(verseKey);
+  if (!translation && edition !== DEFAULT_TRANSLATION_EDITION) {
+    translation = (await workerTexts(DEFAULT_TRANSLATION_EDITION, [String(arabic.surah.number)]))?.get(verseKey);
   }
   return {
     reference: `${arabic.surah.englishName} ${arabic.surah.number}:${arabic.numberInSurah}`,
@@ -435,14 +440,130 @@ export async function getQuranEditions(type = 'translation'): Promise<QuranEditi
   return data.map((e:any)=>({identifier:e.identifier,language:e.language,englishName:e.englishName,name:e.name,type:e.type,direction:e.direction}));
 }
 
+/**
+ * Every verse of one edition, asked surah by surah, so a search can run
+ * against the text itself.
+ *
+ * The Worker is the only server that knows our own edition ids, and a search
+ * is the one place the whole book has to be read rather than one surah of it.
+ * The requests go out a handful at a time - enough to fill the wait, few
+ * enough that a phone is not juggling a hundred sockets - and every surah
+ * lands in the Worker's cache, so a second search costs nothing and works
+ * with the network off.
+ *
+ * A 404 means the edition is not one of ours, and the caller should ask the
+ * other provider instead.
+ */
+async function wholeEdition(editionId: string): Promise<Array<{ surah: number; rows: Array<{ verseKey: string; numberInSurah: number; text: string }> }> | null> {
+  const out: Array<{ surah: number; rows: Array<{ verseKey: string; numberInSurah: number; text: string }> }> = [];
+  const queue = Array.from({ length: 114 }, (_, i) => i + 1);
+  const WORKERS = 16;
+  let index = 0;
+  const lane = async () => {
+    while (index < queue.length) {
+      const surah = queue[index];
+      index += 1;
+      const rows = (await getSurah('quran', editionId, surah)).rows || [];
+      out.push({ surah, rows });
+    }
+  };
+  try {
+    await Promise.all(Array.from({ length: WORKERS }, lane));
+  } catch (error) {
+    if (error instanceof IslamicDataError && error.status === 404) return null;
+    throw error;
+  }
+  return out;
+}
+
 export async function searchQuran(query: string, edition = DEFAULT_TRANSLATION_EDITION): Promise<QuranSearchResult[]> {
+  const needle = query.trim().toLowerCase();
+  if (needle.length < 2) return [];
+
+  /* Our own server first: it is the one that understands our edition ids. */
+  const book = await wholeEdition(edition).catch(() => null);
+  if (book) {
+    const chapters = await getChapters().catch(() => [] as Chapter[]);
+    const names = new Map(chapters.map((c) => [c.id, c.name_simple]));
+    const matches: QuranSearchResult[] = [];
+    for (const { surah, rows } of book) {
+      for (const row of rows || []) {
+        if ((row.text || '').toLowerCase().includes(needle)) {
+          matches.push({
+            verseKey: row.verseKey,
+            surahId: surah,
+            surahName: names.get(surah) || `Surah ${surah}`,
+            ayah: row.numberInSurah,
+            text: row.text,
+            edition,
+          });
+        }
+      }
+    }
+    return matches;
+  }
+
+  /* Not one of ours - the third party still serves the older ids. */
   const data = await json(`${QURAN}/search/${encodeURIComponent(query)}/all/${edition}`);
   return (data.matches || []).map((m:any)=>({verseKey:`${m.surah.number}:${m.numberInSurah}`,surahId:m.surah.number,surahName:m.surah.englishName,ayah:m.numberInSurah,text:m.text,edition:m.edition?.englishName||edition}));
 }
 
+/**
+ * Any list of editions for one verse, split across the two providers.
+ *
+ * The split has to happen before the asking, not after. Handed an id it does
+ * not know, the third-party index does not 404 - it answers 200 with a
+ * stand-in, an Arabic script where a translation was wanted. The row arrives,
+ * carries a plausible edition object, and passes every check on the way in, so
+ * the screen shows the wrong book with no error anywhere to see. Since the
+ * reader moved to the app's own edition ids, every translation asked for here
+ * was silently answered in Arabic.
+ *
+ * The two sets do not overlap: our catalog is 484 entries and every one is a
+ * translation, while the script ids and the old index ids are absent from it.
+ * So membership of the catalog is the whole test - no guesswork about shape.
+ */
 export async function getAyahEditions(verseKey: string, editions: string[]): Promise<{edition:string;name:string;language:string;text:string}[]> {
-  const data = await json(`${QURAN}/ayah/${verseKey}/editions/${editions.join(',')}`);
-  return data.map((row:any)=>({edition:row.edition.identifier,name:row.edition.englishName,language:row.edition.language,text:row.text}));
+  const surah = String(verseKey).split(':')[0];
+  const wanted = (editions || []).filter(Boolean);
+
+  const catalogue = await getEditions('quran').catch(() => [] as IslamicEdition[]);
+  const ours = new Map(catalogue.map((edition) => [edition.id, edition]));
+
+  const fromIndex = wanted.filter((id) => !ours.has(id));
+  const rows: {edition:string;name:string;language:string;text:string}[] = [];
+
+  if (fromIndex.length) {
+    const data = await json(`${QURAN}/ayah/${verseKey}/editions/${fromIndex.join(',')}`);
+    for (const row of (data || [])) {
+      rows.push({
+        edition: row.edition?.identifier,
+        name: row.edition?.englishName,
+        language: row.edition?.language,
+        text: row.text,
+      });
+    }
+  }
+
+  await Promise.all(
+    wanted
+      .filter((id) => ours.has(id))
+      .map(async (id) => {
+        const meta = ours.get(id)!;
+        const texts = await workerTexts(id, [surah]);
+        rows.push({
+          edition: id,
+          name: meta.displayName,
+          language: meta.language || '',
+          text: texts?.get(verseKey) || '',
+        });
+      }),
+  );
+
+  /* Back in the order they were asked for, so a caller reading by position -
+     or by "the one that is not Arabic" - still finds what it expected. */
+  const order = new Map(wanted.map((id, index) => [id, index]));
+  return rows.sort((a, b) => (order.get(a.edition) ?? 0) - (order.get(b.edition) ?? 0));
 }
 
 /**
