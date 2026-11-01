@@ -5215,6 +5215,23 @@ function FastingScreen({navigation}:any){const{rtl}=useLanguage();const T=(text:
         <Pressable accessibilityLabel={T('One more day owed')} onPress={()=>adjust(1)} style={s.secondary}><Text style={s.secondaryText}>{T('+ 1 day')}</Text></Pressable>
       </View>
     </View>
+    <Section title={T('The last six months')} />
+    <View style={s.dataCard}>
+      <View style={s.fastMonths}>
+        {summary.months.map((month) => {
+          const total = month.fasted + month.missed;
+          const share = total ? Math.round((month.fasted / total) * 100) : 0;
+          return <View key={month.key} style={s.fastMonth}>
+            <View style={s.fastMonthTrack}>
+              <View style={[s.fastMonthFill, { height: `${Math.max(share, 4)}%` }]} />
+            </View>
+            <Text style={s.fastMonthLabel}>{month.label}</Text>
+            <Text style={s.fastMonthCount}>{month.fasted}</Text>
+          </View>;
+        })}
+      </View>
+      <Text style={s.meta}>{rtl ? 'الأيام التي صُمت في كل شهر' : 'Days fasted in each month, oldest first.'}</Text>
+    </View>
     <Section title={T('Recent record')} action={rtl?`${fasting.entries.length} ${arNoun(fasting.entries.length,'يوم مسجَّل','يومان مسجَّلان','أيام مسجَّلة','يومًا مسجَّلًا')}`:`${fasting.entries.length} entries`} />
     {!fasting.entries.length && <View style={s.empty}><Text style={s.dataBody}>{T('Nothing recorded yet. Mark today above and your record starts here.')}</Text></View>}
     {!!fasting.entries.length && <View style={s.settings}>{summary.recent.map(entry=><View key={entry.date} style={s.summaryDay}><View style={{flex:1}}><Text style={s.settingName}>{readableDate(entry.date)}</Text><Text style={s.meta}>{labelForEntry(entry, rtl)}</Text></View><Pressable accessibilityLabel={`${T('Remove the fasting record for')} ${readableDate(entry.date)}`} onPress={()=>{void clearFastDay(entry.date)}}>{ico('trash-outline',17,C.coral)}</Pressable></View>)}</View>}
@@ -7028,7 +7045,33 @@ function PrivacyLockScreen({ navigation }: any) {
 }
 
 /* ==================== Phase 4 · Zakat ==================== */
+
+/**
+ * Working out Zakat means a lot of numbers on one screen. Each block closes,
+ * and its header keeps whatever the old `action` showed, so a closed block
+ * still tells you its answer (the currency, the nisab, the amount due).
+ * The blocks you only set once start out of the way.
+ */
+function ZakatSection({ title, action, open, onToggle, children }: any) {
+  const { rtl } = useLanguage();
+  return <View>
+    <Pressable accessibilityRole="button" accessibilityState={{ expanded: open }}
+      accessibilityLabel={`${title}, ${open ? 'open' : 'closed'}`}
+      onPress={onToggle} style={s.zHead}>
+      <Text style={s.zHeadTitle}>{title}</Text>
+      <View style={s.zHeadRight}>
+        {!!action && <Text style={s.zHeadAction}>{action}</Text>}
+        {ico(open ? 'chevron-down' : (rtl ? 'chevron-back' : 'chevron-forward'), 16, C.muted)}
+      </View>
+    </Pressable>
+    {open && <View style={s.zBody}>{children}</View>}
+  </View>;
+}
+
 function ZakatScreen({ navigation }: any) {
+  const [zOpen, setZOpen] = useState<Record<string, boolean>>({
+    own: true, nisab: true, result: true,
+  });
   const { language, rtl } = useLanguage();
   const T = (text: string) => tx(rtl, text);
   const zakat = useZakat();
@@ -7057,13 +7100,14 @@ function ZakatScreen({ navigation }: any) {
       <Text style={s.dataTitle}>{T('Work out what is due')}</Text>
       <Text style={s.intro}>{T('List what you own, subtract what falls due, and compare what is left with the nisab. Prices and exchange rates are fetched live where they are reachable and kept on this device when they are not. This is arithmetic, not a ruling — take the details to a scholar.')}</Text>
 
-      <Section title={T('Currency')} action={zakat.currency} />
+      <ZakatSection title={T('Currency')} action={zakat.currency} open={zOpen.currency === true} onToggle={() => setZOpen((prev) => ({ ...prev, currency: prev.currency !== true }))}>
       <View style={s.preferencePanel}>
         <View style={s.choiceGrid}>{CURRENCIES.map((currency) => <ChoicePill key={currency.code} label={currency.code} selected={zakat.currency === currency.code} onPress={() => void setCurrency(currency.code)} />)}</View>
         <Text style={s.meta}>{T(CURRENCIES.find((item) => item.code === zakat.currency)?.name ?? zakat.currency)} · {T('every figure below is shown in it.')}</Text>
       </View>
 
-      <Section title={T('What you own')} />
+     
+      </ZakatSection> <ZakatSection title={T('What you own')} open={zOpen.own === true} onToggle={() => setZOpen((prev) => ({ ...prev, own: prev.own !== true }))}>
       <View style={s.settings}>
         {zakat.assets.map((asset) => <View key={asset.id} style={[s.assetRow, ]}>
           <View style={{ flex: 1, marginHorizontal: 4 }}>
@@ -7074,7 +7118,8 @@ function ZakatScreen({ navigation }: any) {
         </View>)}
       </View>
 
-      <Section title={T('What falls due')} />
+     
+      </ZakatSection> <ZakatSection title={T('What falls due')} open={zOpen.due === true} onToggle={() => setZOpen((prev) => ({ ...prev, due: prev.due !== true }))}>
       <View style={s.settings}>
         {zakat.liabilities.map((item) => <View key={item.id} style={[s.assetRow, ]}>
           <View style={{ flex: 1, marginHorizontal: 4 }}><Text style={s.settingName}>{T(item.label)}</Text><Text style={s.meta}>{T('Subtracted from the total above')}</Text></View>
@@ -7082,7 +7127,8 @@ function ZakatScreen({ navigation }: any) {
         </View>)}
       </View>
 
-      <Section title={T('Gold and silver prices')} />
+     
+      </ZakatSection> <ZakatSection title={T('Gold and silver prices')} open={zOpen.metals === true} onToggle={() => setZOpen((prev) => ({ ...prev, metals: prev.metals !== true }))}>
       <View style={s.dataCard}>
         <Text style={s.preferenceLabel}>{rtl ? 'لكل غرام، بالعملة ' : 'PER GRAM, IN '}{zakat.currency}</Text>
         <View style={[s.metalRow, ]}>
@@ -7100,7 +7146,8 @@ function ZakatScreen({ navigation }: any) {
         <Text style={s.meta}>{zakat.prices.custom ? T('You are using your own prices.') : fresh ? T('Prices and exchange rates were fetched within the last twelve hours.') : T('Prices and rates were last saved on this device.')}{market.fetchedAt ? ` ${rtl ? 'آخر تحديث' : 'Updated'} ${new Date(market.fetchedAt).toLocaleString(language === 'ar' ? 'ar-u-nu-latn' : language)}.` : ''}</Text>
       </View>
 
-      <Section title={T('The nisab')} />
+     
+      </ZakatSection> <ZakatSection title={T('The nisab')} open={zOpen.nisab === true} onToggle={() => setZOpen((prev) => ({ ...prev, nisab: prev.nisab !== true }))}>
       <View style={s.dataCard}>
         <View style={s.choiceRow}><ChoicePill label={`${T('Gold')} · ${NISAB_GOLD_GRAMS}${rtl ? ' غ' : 'g'}`} selected={zakat.basis === 'gold'} onPress={() => void setBasis('gold')} /><ChoicePill label={`${T('Silver')} · ${NISAB_SILVER_GRAMS}${rtl ? ' غ' : 'g'}`} selected={zakat.basis === 'silver'} onPress={() => void setBasis('silver')} /></View>
         <View style={s.statGrid}>
@@ -7110,7 +7157,8 @@ function ZakatScreen({ navigation }: any) {
         <Text style={s.meta}>{T('Scholars differ on which of the two to measure against. The lower threshold brings more wealth into Zakat; take the choice to someone you trust.')}</Text>
       </View>
 
-      <Section title={T('The result')} />
+     
+      </ZakatSection> <ZakatSection title={T('The result')} open={zOpen.result === true} onToggle={() => setZOpen((prev) => ({ ...prev, result: prev.result !== true }))}>
       <LinearGradient colors={[C.heroA, C.green]} style={s.summaryScore}>
         <View><Text style={s.nextCardLabel}>{T('ZAKAT DUE · 2.5%')}</Text><Text style={s.zakatNo}>{formatMoney(result.zakat, zakat.currency)}</Text><Text style={s.weekScoreBody}>{result.above ? T('Your net wealth is above the nisab') : T('Below the nisab — nothing is due')}</Text></View>
       </LinearGradient>
@@ -7122,6 +7170,7 @@ function ZakatScreen({ navigation }: any) {
       </View>
       <Pressable accessibilityLabel={T('Save this calculation')} onPress={() => void saveCalculation(result).then(() => setSaved(T('Saved on this device.')))} style={s.primary}><Text style={s.primaryText}>{T('Save this calculation')}</Text></Pressable>
       {!!saved && <Text style={s.dataMeta}>{saved.toUpperCase()}</Text>}
+      </ZakatSection>
 
       <Section title={T('History')} action={zakat.history.length ? `${zakat.history.length} ${rtl ? 'محفوظة' : 'saved'}` : undefined} onPress={zakat.history.length ? () => void clearHistory() : undefined} />
       {!zakat.history.length ? <View style={s.dataCard}><Text style={s.dataBody}>{T('No saved calculations yet. Save one and it stays here on this device.')}</Text></View> : <View style={s.settings}>{zakat.history.map((entry) => <View key={entry.id} style={[s.setting, ]}>
@@ -10063,6 +10112,17 @@ mushafPageNoText:{color:C.green,fontFamily:'Newsreader_700Bold',fontSize:16},mus
   reminderSub:{marginTop:12,marginBottom:7},reminderPills:{marginBottom:6},
   packingGroupHead:{flexDirection:'row',alignItems:'center',gap:8},packingGroupCount:{color:C.muted,fontFamily:'DMSans_600SemiBold',fontSize:11},
   packingGroupCaution:{borderColor:C.gold,borderWidth:1},
+  fastMonths:{flexDirection:'row',alignItems:'flex-end',justifyContent:'space-between',gap:8,marginTop:4},
+  fastMonth:{flex:1,alignItems:'center',gap:5},
+  fastMonthTrack:{width:'100%',height:74,borderRadius:6,backgroundColor:C.creamSoft,overflow:'hidden',justifyContent:'flex-end'},
+  fastMonthFill:{width:'100%',backgroundColor:C.gold,borderRadius:6},
+  fastMonthLabel:{color:C.muted,fontFamily:'DMSans_600SemiBold',fontSize:10},
+  fastMonthCount:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:12},
+  zHead:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:12,paddingVertical:16,paddingHorizontal:16,borderBottomWidth:1,borderBottomColor:C.hairline},
+  zHeadTitle:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:12,letterSpacing:1,textTransform:'uppercase',flex:1},
+  zHeadRight:{flexDirection:'row',alignItems:'center',gap:8,flexShrink:0},
+  zHeadAction:{color:C.gold,fontFamily:'DMSans_600SemiBold',fontSize:11,flexShrink:1,textAlign:'right'},
+  zBody:{paddingTop:16},
   settingsRow:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingHorizontal:16,paddingVertical:14,borderBottomWidth:1,borderColor:C.line},choicePill:{minHeight:44,justifyContent:'center',minWidth:44,alignItems:'center',paddingHorizontal:12,paddingVertical:8,borderRadius:12,backgroundColor:C.bg,borderWidth:1,borderColor:C.line},choicePillActive:{backgroundColor:C.accent,borderColor:C.green},choiceText:{color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:10},choiceTextActive:{color:C.onAccent},preferenceLabel:{color:C.muted,fontFamily:'DMSans_700Bold',fontSize:10,letterSpacing:1.1,marginTop:16,marginBottom:8},settings:{backgroundColor:C.card,borderRadius:24,overflow:'hidden',borderWidth:1,borderColor:C.line,...surface},setting:{minHeight:69,flexDirection:'row',alignItems:'center',gap:12,paddingHorizontal:12,borderBottomWidth:1,borderColor:C.line},settingName:{color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:13},
  locationGate:{flexDirection:'row',gap:16,alignItems:'flex-start',backgroundColor:C.card,borderRadius:24,padding:20,borderWidth:1,borderColor:C.line,...soft},locationGateNarrow:{flexDirection:'column',alignItems:'stretch'},locationGateTitle:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:16},locationGateBody:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:12,lineHeight:18,marginTop:4},locationActions:{flexDirection:'row',flexWrap:'wrap',gap:8,marginTop:16},locationActionsNarrow:{flexDirection:'column',alignItems:'stretch'},primarySmall:{backgroundColor:C.accent,paddingHorizontal:16,paddingVertical:12,borderRadius:12,minHeight:44,justifyContent:'center'},ghostSmall:{backgroundColor:C.mint,paddingHorizontal:16,paddingVertical:12,borderRadius:12,minHeight:44,justifyContent:'center'},ghostText:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:11},
  prayerTools:{flexDirection:'row',flexWrap:'wrap',gap:8},prayerToolsTwo:{flexDirection:'row',gap:12,marginBottom:8},prayerToolTwo:{flex:1},prayerTool:{flexGrow:1,flexBasis:'30%',minWidth:220},prayerToolInner:{minHeight:86,flexDirection:'row',alignItems:'center',gap:12,backgroundColor:C.white,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line},prayerToolText:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:12,flex:1},

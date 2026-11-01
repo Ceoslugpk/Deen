@@ -147,7 +147,12 @@ export type FastingSummary = {
   thisWeek: number;
   today: FastEntry | null;
   recent: FastEntry[];
+  /** The last six months on record, so the year reads at a glance. */
+  months: FastMonth[];
 };
+
+/** One month of the record: how many days were fasted, and how many were not. */
+export type FastMonth = { key: string; label: string; fasted: number; missed: number };
 
 export function summariseFasting(next: FastingState = state): FastingSummary {
   const entries = next.entries;
@@ -182,7 +187,29 @@ export function summariseFasting(next: FastingState = state): FastingSummary {
     thisWeek: fasted.filter((entry) => entry.date >= weekKey).length,
     today: entries.find((entry) => entry.date === dayKey()) || null,
     recent: [...entries].sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 21),
+    months: summariseMonths(entries),
   };
+}
+
+/**
+ * The last six calendar months, newest last. Months with nothing recorded still
+ * appear, so a gap in the record reads as a gap rather than vanishing.
+ */
+function summariseMonths(entries: FastEntry[]): FastMonth[] {
+  const now = new Date();
+  const out: FastMonth[] = [];
+  for (let back = 5; back >= 0; back -= 1) {
+    const d = new Date(now.getFullYear(), now.getMonth() - back, 1);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    const own = entries.filter((entry) => entry.date.slice(0, 7) === key);
+    out.push({
+      key,
+      label: d.toLocaleDateString('en-US', { month: 'short' }),
+      fasted: own.filter((entry) => entry.type !== 'missed').length,
+      missed: own.filter((entry) => entry.type === 'missed').length,
+    });
+  }
+  return out;
 }
 
 /** The entry label in the language of the interface. */
