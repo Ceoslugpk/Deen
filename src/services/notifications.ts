@@ -6,6 +6,7 @@ import type { WorshipSettings } from './localState';
 import { ADHAN_TRACKS, FAJR_TRACKS, adhanTrack, type AdhanTrack } from './adhanCatalog';
 import { isAdhanCached } from './adhanCache';
 import { isAdhanAlarmAvailable, scheduleAdhanAlarms, cancelAdhanAlarms } from './adhanAlarm';
+import { recordScheduled, type PendingEntry } from './notificationLog';
 
 /**
  * Everything the app says out loud, and when it says it.
@@ -256,7 +257,7 @@ export async function requestNotificationPermission(rtl = false): Promise<Notifi
 export async function sendTestNotification(rtl = false) {
   if (Platform.OS === 'web') throw new Error(copy(rtl).webUnsupported);
   await ensureNotificationChannels(rtl);
-  await Notifications.scheduleNotificationAsync({
+  await scheduleAndLog({
     content: { title: copy(rtl).testTitle, body: copy(rtl).testBody, sound: 'default', data: { route: 'Prayer' } },
     trigger: null,
   });
@@ -293,6 +294,36 @@ export type ScheduleResult = {
  * work out which of the old timers are still right — is how you end up with a
  * phone that prays at yesterday's times.
  */
+/**
+ * Everything scheduled in the current pass, written to the history at the end.
+ * Kept in one place so each call site stays a single, readable call.
+ */
+let pending: PendingEntry[] = [];
+
+/**
+ * Schedules a notification and notes it for the history in the same step.
+ *
+ * The fire time is read off the trigger rather than passed separately, so a
+ * call site cannot record one time and schedule another.
+ */
+async function scheduleAndLog(request: Notifications.NotificationRequestInput) {
+  const id = await Notifications.scheduleNotificationAsync(request);
+  const trigger = request.trigger as { date?: number | Date } | undefined;
+  const raw = trigger?.date;
+  const fireAt = raw instanceof Date ? raw.getTime() : typeof raw === 'number' ? raw : Date.now();
+  if (Number.isFinite(fireAt)) {
+    const data = (request.content.data || {}) as Record<string, unknown>;
+    pending.push({
+      kind: (data.kind as string) || '',
+      title: request.content.title || '',
+      body: request.content.body || '',
+      prayer: data.prayer as string | undefined,
+      fireAt,
+    });
+  }
+  return id;
+}
+
 export async function schedulePrayerNotifications(
   snapshot: PrayerSnapshot,
   settings: WorshipSettings,
@@ -300,6 +331,7 @@ export async function schedulePrayerNotifications(
   readingLabel?: string,
 ): Promise<ScheduleResult> {
   if (Platform.OS === 'web') return { scheduled: 0, unsupported: true, adhans: 0 };
+  pending = [];
 
   await ensureNotificationChannels(rtl);
   await Notifications.cancelAllScheduledNotificationsAsync();
@@ -324,7 +356,7 @@ export async function schedulePrayerNotifications(
     if (settings.adhanEnabled?.[prayer.name]) {
       const sound = adhanNotificationSound(prayer.name, settings);
       if (at > now) {
-        await Notifications.scheduleNotificationAsync({
+        await scheduleAndLog({
           content: {
             title: name,
             body: c.adhanBodyName(name),
@@ -352,7 +384,7 @@ export async function schedulePrayerNotifications(
       if (settings.continueReadingReminder !== false && readingLabel) {
         const later = new Date(at.getTime() + 30 * 60 * 1000);
         if (later > now) {
-          await Notifications.scheduleNotificationAsync({
+          await scheduleAndLog({
             content: {
               title: c.continueTitle,
               body: c.continueBody(readingLabel),
@@ -370,7 +402,7 @@ export async function schedulePrayerNotifications(
     if (settings.remindersEnabled && settings.prayerReminders?.[prayer.name]) {
       const early = new Date(at.getTime() - settings.reminderOffset * 60 * 1000);
       if (early > now) {
-        await Notifications.scheduleNotificationAsync({
+        await scheduleAndLog({
           content: {
             title: c.preAdhan(name, minutesWord(rtl, settings.reminderOffset)),
             body: c.preAdhanBody(name, clockTime(rtl, prayer.time)),
@@ -389,7 +421,7 @@ export async function schedulePrayerNotifications(
     if (!on) return;
     const at = atTime(raw);
     if (!at) return;
-    return Notifications.scheduleNotificationAsync({
+    return scheduleAndLog({
       content: { title, body: '', sound: 'default', data: { route, kind } },
       trigger: dailyTrigger(at.getHours(), at.getMinutes(), 'daily'),
     });
@@ -411,7 +443,7 @@ export async function schedulePrayerNotifications(
   if (settings.sleepReminderEnabled) {
     const at = atTime(settings.sleepReminderTime || '22:30');
     if (at) {
-      await Notifications.scheduleNotificationAsync({
+      await scheduleAndLog({
         content: {
           title: c.sleepTitle,
           body: c.sleepBody,
@@ -430,7 +462,7 @@ export async function schedulePrayerNotifications(
   if (settings.quranReminderEnabled) {
     const at = atTime(settings.quranReminderTime);
     if (at) {
-      await Notifications.scheduleNotificationAsync({
+      await scheduleAndLog({
         content: { title: c.quranTitle, body: c.quranBody, data: { route: 'Quran' } },
         trigger: dailyTrigger(at.getHours(), at.getMinutes(), 'daily'),
       });
@@ -441,6 +473,9 @@ export async function schedulePrayerNotifications(
   /* Rescheduled every time, because the times, the city, and the person's
      choice of recording all move. Any alarm already set is replaced. */
   await scheduleAdhanAlarms(alarmEntries);
+
+  await recordScheduled(pending);
+  pending = [];
 
   return { scheduled, unsupported: false, adhans };
 }
