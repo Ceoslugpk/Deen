@@ -9492,6 +9492,7 @@ function Splash({ ready, progress, onDone }: { ready: boolean; progress: number;
   const settle = useRef(new Animated.Value(1)).current;
   const mark = useRef(new Animated.Value(0.86)).current;
   const words = useRef(new Animated.Value(0)).current;
+  const version = useRef(new Animated.Value(0)).current;
   const bar = useRef(new Animated.Value(0)).current;
   const fade = useRef(new Animated.Value(1)).current;
   const [held, setHeld] = useState(false);
@@ -9501,7 +9502,7 @@ function Splash({ ready, progress, onDone }: { ready: boolean; progress: number;
     if (still) {
       /* Nothing is withheld from somebody who asked for less movement: the
          emblem is simply there, already built. */
-      draw.setValue(1); settle.setValue(0.6); mark.setValue(1); words.setValue(1);
+      draw.setValue(1); settle.setValue(0.6); mark.setValue(1); words.setValue(1); version.setValue(1);
       setHeld(true);
       return;
     }
@@ -9513,6 +9514,9 @@ function Splash({ ready, progress, onDone }: { ready: boolean; progress: number;
     Animated.timing(settle, { toValue: 0.55, duration: 420, delay: 880, easing: Easing.out(Easing.quad), useNativeDriver: true }).start();
     Animated.spring(mark, { toValue: 1, friction: 5, tension: 64, delay: 560, useNativeDriver: true }).start();
     Animated.timing(words, { toValue: 1, duration: 460, delay: 700, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+    /* The plate is the last thing to arrive, once the name it sits under
+       has already been read. */
+    Animated.timing(version, { toValue: 1, duration: 380, delay: 900, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
     const timer = setTimeout(() => setHeld(true), SPLASH_MIN_MS);
     return () => clearTimeout(timer);
   }, [still]);
@@ -9543,6 +9547,12 @@ function Splash({ ready, progress, onDone }: { ready: boolean; progress: number;
       <Animated.View style={[s.splashWords, { opacity: words, transform: [{ translateY: words.interpolate({ inputRange: [0, 1], outputRange: [14, 0] }) }] }]}>
         <Text style={s.splashName}>{T('Islamic')}</Text>
         <Text style={s.splashTagline}>{T('Your Daily Companion')}</Text>
+        {/* The second version of the app, named on the one screen everybody
+            sees. A plate rather than a bare line, so it reads as part of the
+            mark instead of a build number someone forgot to remove. */}
+        <Animated.View style={[s.splashVersion, { opacity: version, transform: [{ translateY: version.interpolate({ inputRange: [0, 1], outputRange: [6, 0] }) }] }]}>
+          <Text style={s.splashVersionText}>{T('Version 2.0')}</Text>
+        </Animated.View>
       </Animated.View>
     </View>
     <View style={s.splashTrack}>
@@ -10539,6 +10549,8 @@ function makeStyles() {
  splashWords:{alignItems:'center',gap:8},
  splashName:{color:C.onHero,fontSize:30,fontFamily:'Newsreader_600SemiBold',letterSpacing:-.6,textAlign:'center'},
  splashTagline:{color:'rgba(255,255,255,.68)',fontSize:13,fontFamily:'DMSans_400Regular',textAlign:'center',letterSpacing:.2},
+ splashVersion:{marginTop:4,paddingHorizontal:11,paddingVertical:4,borderRadius:999,borderWidth:1,borderColor:'rgba(255,255,255,.30)',backgroundColor:'rgba(255,255,255,.09)'},
+ splashVersionText:{color:C.onHero,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.4,textAlign:'center'},
  splashTrack:{position:'absolute',bottom:56,left:'22%',right:'22%',height:3,borderRadius:2,backgroundColor:'rgba(255,255,255,.22)',overflow:'hidden'},
  splashBar:{height:3,borderRadius:2,backgroundColor:C.onHero},
  onbTop:{paddingHorizontal:20,paddingTop:12,paddingBottom:2},
