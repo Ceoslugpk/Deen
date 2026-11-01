@@ -8313,8 +8313,107 @@ function BackupScreen({ navigation }: any) {
   </Page>;
 }
 
+/**
+ * Storage.
+ *
+ * What the app is holding on the device, and what it costs. The numbers come
+ * from three places that do not know about each other: the text cache index,
+ * the audio downloads list, and everything left over in AsyncStorage. They are
+ * measured separately and added up here, because a screen that said the Quran
+ * was 40 MB and did not mention the recitations would be answering a different
+ * question from the one being asked.
+ *
+ * Bytes are counted as they are stored, not as they are served. Text is
+ * compressed on the wire and not on the device, so a translation that arrives
+ * as 3 MB is 11 MB here, and that is the number that matters when the question
+ * is how much room is left.
+ */
+function StorageScreen({navigation}:any){
+  const{rtl}=useLanguage(); const T=(text:string)=>tx(rtl,text);
+  const[usage,setUsage]=useState<any>(null);
+  const[otherBytes,setOtherBytes]=useState(0);
+  const[loading,setLoading]=useState(true);
+  const[free,setFree]=useState<number|null>(null);
+  const downloads=useDownloads();
+  const audioBytes=downloads.filter(d=>d.status==='done').reduce((n,d)=>n+(d.bytes||0),0);
+  const audioCount=downloads.filter(d=>d.status==='done').length;
+
+  const measure=useCallback(async()=>{
+    setLoading(true);
+    const[u,f]=await Promise.all([
+      getCacheUsage().catch(()=>null),
+      estimateFreeBytes().catch(()=>null)
+    ]);
+    setUsage(u); setFree(f);
+    /* Everything the cache does not already account for: settings, prayer
+       history, the adhkar log, saved positions. Counted key by key, because
+       AsyncStorage has no way to report a total. */
+    let other=0;
+    const keys=await AsyncStorage.getAllKeys().catch(()=>[] as readonly string[]);
+    for(const key of keys){
+      if(key==='@deen/content-cache/index/v1') continue;
+      const raw=await AsyncStorage.getItem(key).catch(()=>null);
+      if(raw) other+=raw.length*2;
+    }
+    setOtherBytes(other);
+    setLoading(false);
+  },[]);
+
+  useFocusEffect(useCallback(()=>{void measure()},[measure]));
+
+  /* Free space is reported in gigabytes on a modern phone, and a figure in
+     megabytes there is a number nobody reads. Downloads are quoted in MB
+     because that is the unit they were chosen in. */
+  const formatRoom=(bytes:number)=>bytes>=1024*1024*1024
+    ? `${(bytes/(1024*1024*1024)).toFixed(1)} GB`
+    : formatBytes(bytes);
+
+  const ns=usage?.byNamespace||{};
+  const rows=[
+    {label:T('Quran'), detail:T('The Arabic and the translations'), bytes:ns.quran||0, color:C.heroA},
+    {label:T('Tafsir'), detail:T('Commentary you have kept'), bytes:ns.tafsir||0, color:C.green},
+    {label:T('Hadith'), detail:T('Collections kept for offline'), bytes:ns.hadith||0, color:C.gold},
+    {label:T('Recitations'), detail:audioCount?`${audioCount} ${T('surahs')}`:T('Nothing downloaded yet'), bytes:audioBytes, color:C.heroB},
+    {label:T('Daily content'), detail:T('Verse, Name and adhkar of the day'), bytes:ns.daily||0, color:C.muted},
+    {label:T('Everything else'), detail:T('Settings, history, saved places'), bytes:otherBytes+(ns['audio-meta']||0), color:C.line},
+  ].filter(r=>r.bytes>0);
+
+  const total=rows.reduce((n,r)=>n+r.bytes,0);
+  const largest=rows.reduce((m,r)=>Math.max(m,r.bytes),1);
+
+  return <Page><ToolBar title={T('Storage')} navigation={navigation}/>
+    <ScrollView contentContainerStyle={s.dataPage}>
+      <ToolGraphic tool="Storage" size={81}/>
+      <Text style={s.dataTitle}>{T('What the app is holding')}</Text>
+      <Text style={s.intro}>{T('Measured as it sits on the device, not as it arrived. Text is compressed on the way in and not once stored, so a translation that downloads as 3 MB takes 11 MB here.')}</Text>
+
+      {loading?<Spinner/>:<>
+        <DepthCard style={s.storeTotal}>
+          <Text style={s.storeTotalNum}>{formatBytes(total)}</Text>
+          <Text style={s.meta}>{T('used by the app')}</Text>
+          {free!==null&&Number.isFinite(free)&&<Text style={s.meta}>{formatRoom(free)} {T('free on this device')}</Text>}
+        </DepthCard>
+
+        {rows.map(r=>(
+          <View key={r.label} style={s.storeRow}>
+            <View style={s.storeRowTop}>
+              <Text style={s.storeLabel}>{r.label}</Text>
+              <Text style={s.storeBytes}>{formatBytes(r.bytes)}</Text>
+            </View>
+            <View style={s.storeTrack}>
+              <View style={[s.storeFill,{width:`${Math.max(2,(r.bytes/largest)*100)}%`,backgroundColor:r.color}]}/>
+            </View>
+            <Text style={s.storeDetail}>{r.detail}</Text>
+          </View>
+        ))}
+
+        {!rows.length&&<Text style={s.intro}>{T('Nothing is stored yet.')}</Text>}
+      </>}
+    </ScrollView></Page>;
+}
+
 function SettingsStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="Settings" component={SettingsScreen}/><Stack.Screen name="Legal" component={LegalScreen}/><Stack.Screen name="Data sources" component={DataSourcesScreen}/><Stack.Screen name="Reader Settings" component={ReaderSettingsScreen}
-      options={{presentation:'transparentModal',animation:'slide_from_bottom',contentStyle:{backgroundColor:'transparent'}}}/><Stack.Screen name="Privacy Lock" component={PrivacyLockScreen}/><Stack.Screen name="My Reports" component={ReportsScreen}/><Stack.Screen name="Backup" component={BackupScreen}/></Stack.Navigator>}
+      options={{presentation:'transparentModal',animation:'slide_from_bottom',contentStyle:{backgroundColor:'transparent'}}}/><Stack.Screen name="Privacy Lock" component={PrivacyLockScreen}/><Stack.Screen name="My Reports" component={ReportsScreen}/><Stack.Screen name="Backup" component={BackupScreen}/><Stack.Screen name="Storage" component={StorageScreen}/></Stack.Navigator>}
 
 /**
  * The header of a settings card: a tile, a name, and what the choice does.
@@ -8544,6 +8643,15 @@ function SettingsScreen({navigation}:any){
           <View style={{ flex: 1, marginHorizontal: 12 }}>
             <Text style={s.settingName}>{rtl ? 'النسخة الاحتياطية' : 'Backup'}</Text>
             <Text style={s.meta}>{rtl ? 'نسخة مشفرة بكلمة سر تختارها' : 'An encrypted copy, sealed with a password you choose'}</Text>
+          </View>
+          {ico(rtl ? 'arrow-back' : 'arrow-forward', 17, C.chevron)}
+        </Pressable>
+
+        <Pressable accessibilityRole="button" accessibilityLabel={T('Storage')} onPress={() => navigation.navigate('Storage')} style={s.setting}>
+          <ToolGraphic tool="Storage" size={49} />
+          <View style={{ flex: 1, marginHorizontal: 12 }}>
+            <Text style={s.settingName}>{T('Storage')}</Text>
+            <Text style={s.meta}>{T('What the app is holding on this device')}</Text>
           </View>
           {ico(rtl ? 'arrow-back' : 'arrow-forward', 17, C.chevron)}
         </Pressable>
@@ -10884,7 +10992,16 @@ dayToolIcon:{width:52,height:52,borderRadius:26,backgroundColor:C.mint,alignItem
   trNumText:{color:C.green,fontSize:11,fontFamily:'DMSans_700Bold'},
   trArabic:{flex:1,color:C.ink,fontFamily:'KFGQPCUthmanicHafs',fontSize:24,lineHeight:46,textAlign:'right',writingDirection:'rtl'} as any,
   trTranslit:{color:C.muted,fontSize:14,lineHeight:22,marginTop:10,fontFamily:'DMSans_400Regular'},
-});
+  /* Storage: what the app is holding, and what it costs. */
+  storeTotal:{alignItems:'center',paddingVertical:18,marginBottom:16},
+  storeTotalNum:{color:C.ink,fontSize:34,fontFamily:'Newsreader_600SemiBold',letterSpacing:-.6},
+  storeRow:{marginBottom:16},
+  storeRowTop:{flexDirection:'row',alignItems:'baseline',justifyContent:'space-between'},
+  storeLabel:{color:C.ink,fontSize:14,fontFamily:'DMSans_600SemiBold',flex:1},
+  storeBytes:{color:C.green,fontSize:13,fontFamily:'DMSans_700Bold'},
+  storeTrack:{height:8,borderRadius:4,backgroundColor:C.mint,marginTop:7,overflow:'hidden'},
+  storeFill:{height:8,borderRadius:4},
+  storeDetail:{color:C.muted,fontSize:11.5,fontFamily:'DMSans_400Regular',marginTop:5}});
   /* Runs in both themes now: the brand remap has to land on light too. */
   return remapStyles(created);
 }
