@@ -1,4 +1,4 @@
-function ExploreStack(){const subtle=useSubtleTransitions();return <Stack.Navigator screenOptions={{...subtle,headerShown:false}}><Stack.Screen name="ExploreHome" component={ExploreHome}/><Stack.Screen name="Adhkar" component={AdhkarScreen}/><Stack.Screen name="99 Names" component={NamesScreen}/><Stack.Screen name="Prophet Names" component={ProphetNamesScreen}/><Stack.Screen name="Duas" component={DuasScreen}/><Stack.Screen name="Dua Category" component={DuaCategoryScreen}/><Stack.Screen name="Hadith" component={HadithScreen}/><Stack.Screen name="Hadith Collection" component={HadithCollectionScreen}/><Stack.Screen name="Hadith Detail" component={HadithDetailScreen}/><Stack.Screen name="Hadith Saved" component={HadithSavedScreen}/><Stack.Screen name="Worship Guides" component={GuideDirectory}/><Stack.Screen name="Guide Detail" component={needsPayload(GuideDetailInner, 'Guide')}/><Stack.Screen name="Ramadan" component={RamadanScreen}/><Stack.Screen name="Pilgrimage" component={PilgrimageScreen}/><Stack.Screen name="Journey" component={needsPayload(JourneyScreenInner, 'Journey')}/><Stack.Screen name="Purity" component={PurityScreen}/><Stack.Screen name="Ghusl" component={GhuslScreen}/></Stack.Navigator>}
+function ExploreStack(){const subtle=useSubtleTransitions();return <Stack.Navigator screenOptions={{...subtle,headerShown:false}}><Stack.Screen name="ExploreHome" component={ExploreHome}/><Stack.Screen name="Adhkar" component={AdhkarScreen}/><Stack.Screen name="99 Names" component={NamesScreen}/><Stack.Screen name="Prophet Names" component={ProphetNamesScreen}/><Stack.Screen name="Muslim Names" component={MuslimNamesScreen}/><Stack.Screen name="Duas" component={DuasScreen}/><Stack.Screen name="Dua Category" component={DuaCategoryScreen}/><Stack.Screen name="Hadith" component={HadithScreen}/><Stack.Screen name="Hadith Collection" component={HadithCollectionScreen}/><Stack.Screen name="Hadith Detail" component={HadithDetailScreen}/><Stack.Screen name="Hadith Saved" component={HadithSavedScreen}/><Stack.Screen name="Worship Guides" component={GuideDirectory}/><Stack.Screen name="Guide Detail" component={needsPayload(GuideDetailInner, 'Guide')}/><Stack.Screen name="Ramadan" component={RamadanScreen}/><Stack.Screen name="Pilgrimage" component={PilgrimageScreen}/><Stack.Screen name="Journey" component={needsPayload(JourneyScreenInner, 'Journey')}/><Stack.Screen name="Purity" component={PurityScreen}/><Stack.Screen name="Ghusl" component={GhuslScreen}/></Stack.Navigator>}
 
 /**
  * The prayer tab: keeping the day. The times, the direction, the call, the
@@ -160,6 +160,7 @@ import { downloadSurahAudio, loadDownloads, downloadSurahText, estimateFreeBytes
 import { NAME_LANGUAGES } from './src/services/api';
 import { PROPHETS } from './src/content/prophets';
 import { NAMES_MEANING_AR } from './src/content/namesAr';
+import { countMuslimNames, loadMuslimNames, searchMuslimNames, type MuslimName, type NameFilter } from './src/services/muslimNames';
 import { currentPhrase, dhikrMeaning, DHIKR_PHRASES, loadTasbihState, removeTasbihSession, resetTasbihCount, saveTasbihSession, setTasbihGoal, setTasbihPhrase, TASBIH_GOALS, tapTasbih, todayTotal, useTasbih } from './src/services/tasbihService';
 import { Dua, DuaCategory } from './src/services/api';
 import { clearPreparedQuran, getPreloadState, pauseQuranPreload, refreshPreload, resumeSavedQuranPreload, startQuranPreload, subscribePreload } from './src/services/quranPreload';
@@ -834,6 +835,7 @@ const TOOL_IMAGES:Record<string,any>={
   Hadith:require('./assets/tool-icons/hadith.png'),
   Names:require('./assets/tool-icons/99-names-of-allah.png'),
   'Prophet Names':require('./assets/tool-icons/prophet-names.png'),
+  'Muslim Names':require('./assets/tool-icons/muslim-names.png'),
   'Adhkar':require('./assets/tool-icons/adhkar.png'),
   '99 Names':require('./assets/tool-icons/99-names-of-allah.png'),
   Zakat:require('./assets/tool-icons/zakat.png'),
@@ -931,6 +933,7 @@ const TOOL_IMAGES_DARK:Record<string,any>={
   Hadith:require('./assets/tool-icons/hadith-dark.png'),
   Names:require('./assets/tool-icons/99-names-of-allah-dark.png'),
   'Prophet Names':require('./assets/tool-icons/prophet-names-dark.png'),
+  'Muslim Names':require('./assets/tool-icons/muslim-names-dark.png'),
   'Adhkar':require('./assets/tool-icons/adhkar-dark.png'),
   '99 Names':require('./assets/tool-icons/99-names-of-allah-dark.png'),
   Zakat:require('./assets/tool-icons/zakat-dark.png'),
@@ -4478,6 +4481,7 @@ const libraryGroups: { label: string; title: string; items: LibraryItem[] }[] = 
     { title: 'Hadith', caption: 'Collections, books and saved hadith', route: 'Hadith' },
     { title: '99 Names', caption: 'Asma ul-Husna with meanings', route: '99 Names' },
     { title: 'Prophet Names', caption: 'The twenty-five prophets named in the Qur’an', route: 'Prophet Names' },
+    { title: 'Muslim Names', caption: 'Boys’ and girls’ names with meanings', route: 'Muslim Names' },
   ]},
   { label: 'REMEMBER', title: 'What you say', items: [
     { title: 'Duas', caption: 'Hisn al-Muslim by occasion', route: 'Duas' },
@@ -4904,6 +4908,95 @@ function NamesScreen({ navigation }: any) {const{rtl}=useLanguage();const T=(tex
     {!!names.length && <View style={s.apiPanel}><Text style={s.apiTitle}>{T('Kept on this device')}</Text><Text style={s.apiText}>{rtl?`يُخزَّن الدليل بعد أول زيارة، فتُقرأ الأسماء بلا اتصال. وترجمة القرآن التي تقرأ بها في موضع آخر (${preferences.translationEdition}) لا أثر لها على هذه المعاني.`:`The catalogue is stored after the first visit, so the Names can be read without a connection. The Qur'an translation you use elsewhere (${preferences.translationEdition}) does not affect these meanings.`}</Text></View>}
     <Tactile accessibilityLabel={T('Open the prophets catalogue')} onPress={() => navigation.navigate('Prophet Names')} style={s.secondary}><Text style={s.secondaryText}>{T("Prophets named in the Qur'an")}</Text></Tactile>
   </ScrollView></Page>}
+
+/**
+ * Choosing a name for a child.
+ *
+ * Thirteen thousand names is far too many to draw at once — a list that long
+ * would need tens of thousands of views and would stop the phone — so the
+ * list is paged, sixty at a time, and search is the quickest way in.
+ *
+ * The meanings are the supplier's and are shown as they arrived. This is a
+ * book of names, not a ruling: nothing here says what a child may be called.
+ */
+const NAME_FILTER_LABEL: Record<NameFilter, string> = { all: 'All', male: 'Boys', female: 'Girls' };
+
+function MuslimNamesScreen({ navigation }: any) {
+  const { rtl } = useLanguage();
+  const T = (text: string) => tx(rtl, text);
+  const { preferences } = useQuranPreferences();
+  const [filter, setFilter] = useState<NameFilter>('all');
+  const [query, setQuery] = useState('');
+  const [limit, setLimit] = useState(60);
+  const [ready, setReady] = useState(false);
+
+  /* The catalogue is about a megabyte, so it is read the first time this
+     screen opens rather than while the app is starting. */
+  useEffect(() => { loadMuslimNames(); setReady(true); }, []);
+  /* A new search, or a new gender, starts the list again from the top. */
+  useEffect(() => { setLimit(60); }, [query, filter]);
+
+  const results = useMemo(() => (ready ? searchMuslimNames(query, filter, limit) : []), [ready, query, filter, limit]);
+  const total = useMemo(() => (ready ? countMuslimNames(filter) : 0), [ready, filter]);
+
+  const genderLabel = (gender: MuslimName['gender']) =>
+    gender === 'male' ? T('Boy') : gender === 'female' ? T('Girl') : T('Either');
+
+  const shareName = async (name: MuslimName) => {
+    await shareCard({
+      kicker: T('Muslim Names'),
+      arabic: name.arabic,
+      body: name.meaning,
+      footer: `${name.name} · ${genderLabel(name.gender)}`,
+      arabicFontFamily: preferences.arabicFont,
+      filename: `muslim-name-${name.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.png`,
+      shareTitle: name.name,
+      fallbackText: `${name.arabic}\n\n${name.name}\n\n${name.meaning}`,
+    });
+  };
+
+  return <Page><ToolBar title={T('Muslim names')} navigation={navigation}/>
+    <ScrollView keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
+      <ToolGraphic tool="Muslim Names" size={81} />
+      <Text style={s.dataTitle}>{T('Muslim names')}</Text>
+      <Text style={[s.intro, { marginBottom: 0 }]}>{T('Thirteen thousand names for boys and girls, with their Arabic and meaning.')}</Text>
+
+      <Section title={T('Boy or girl')} />
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.choiceRow}>
+        {(['all', 'male', 'female'] as NameFilter[]).map((option) => (
+          <ChoicePill key={option} label={T(NAME_FILTER_LABEL[option])} selected={filter === option} onPress={() => setFilter(option)} />
+        ))}
+      </ScrollView>
+
+      <View style={[s.search, { marginTop: 12 }]}>
+        {ico('search', 18, C.muted)}
+        <TextInput accessibilityLabel={T('Search Muslim names')} value={query} onChangeText={setQuery}
+          placeholder={T('Search a name, its Arabic or its meaning')} placeholderTextColor={C.muted} style={s.searchInput} />
+        {query.length > 0 && <Pressable accessibilityLabel={T('Clear the search')} onPress={() => setQuery('')}>{ico('close', 16, C.muted)}</Pressable>}
+      </View>
+
+      <Text style={[s.meta, { marginTop: 4, marginBottom: 8 }]}>{rtl
+        ? `${results.length} من ${total} اسم`
+        : `${results.length.toLocaleString('en-US')} of ${total.toLocaleString('en-US')} names`}</Text>
+
+      {results.map((name) => <View key={name.name} style={s.nameRow}>
+        <View style={{ flex: 1 }}>
+          <Text style={s.dataName}>{name.name}</Text>
+          <Text style={s.namesArabic}>{name.arabic}</Text>
+          <Text style={s.dataBody}>{name.meaning}</Text>
+          {name.gender === 'both' && <Text style={s.meta}>{T('Given to either')}</Text>}
+        </View>
+        <Pressable accessibilityRole="button" accessibilityLabel={`${T('Share')} ${name.name}`}
+          onPress={() => void shareName(name)} style={s.nameShare}>{ico('share-outline', 18, C.green)}</Pressable>
+      </View>)}
+
+      {results.length >= limit && <Tactile accessibilityLabel={T('Show more names')}
+        onPress={() => setLimit((value) => value + 60)} style={[s.secondary, { marginTop: 12 }]}>
+        <Text style={s.secondaryText}>{T('Show more')}</Text>
+      </Tactile>}
+      {ready && !results.length && <View style={s.empty}><Text style={s.dataBody}>{T('No name matches. Try another spelling.')}</Text></View>}
+    </ScrollView></Page>;
+}
 
 function ProphetNamesScreen({ navigation }: any) {const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);
   const { preferences } = useQuranPreferences();
