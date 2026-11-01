@@ -1,4 +1,4 @@
-function ExploreStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="ExploreHome" component={ExploreHome}/><Stack.Screen name="Adhkar" component={AdhkarScreen}/><Stack.Screen name="99 Names" component={NamesScreen}/><Stack.Screen name="Prophet Names" component={ProphetNamesScreen}/><Stack.Screen name="Duas" component={DuasScreen}/><Stack.Screen name="Dua Category" component={DuaCategoryScreen}/><Stack.Screen name="Hadith" component={HadithScreen}/><Stack.Screen name="Hadith Collection" component={HadithCollectionScreen}/><Stack.Screen name="Hadith Detail" component={HadithDetailScreen}/><Stack.Screen name="Hadith Saved" component={HadithSavedScreen}/><Stack.Screen name="Worship Guides" component={GuideDirectory}/><Stack.Screen name="Guide Detail" component={needsPayload(GuideDetailInner, 'Guide')}/><Stack.Screen name="Quran Vocabulary" component={VocabularyScreen}/><Stack.Screen name="Tajweed Study" component={TajweedStudyScreen}/><Stack.Screen name="Pilgrimage" component={PilgrimageScreen}/><Stack.Screen name="Journey" component={needsPayload(JourneyScreenInner, 'Journey')}/><Stack.Screen name="Purity" component={PurityScreen}/></Stack.Navigator>}
+function ExploreStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="ExploreHome" component={ExploreHome}/><Stack.Screen name="Adhkar" component={AdhkarScreen}/><Stack.Screen name="99 Names" component={NamesScreen}/><Stack.Screen name="Prophet Names" component={ProphetNamesScreen}/><Stack.Screen name="Duas" component={DuasScreen}/><Stack.Screen name="Dua Category" component={DuaCategoryScreen}/><Stack.Screen name="Hadith" component={HadithScreen}/><Stack.Screen name="Hadith Collection" component={HadithCollectionScreen}/><Stack.Screen name="Hadith Detail" component={HadithDetailScreen}/><Stack.Screen name="Hadith Saved" component={HadithSavedScreen}/><Stack.Screen name="Worship Guides" component={GuideDirectory}/><Stack.Screen name="Guide Detail" component={needsPayload(GuideDetailInner, 'Guide')}/><Stack.Screen name="Quran Vocabulary" component={VocabularyScreen}/><Stack.Screen name="Tajweed Study" component={TajweedStudyScreen}/><Stack.Screen name="Pilgrimage" component={PilgrimageScreen}/><Stack.Screen name="Journey" component={needsPayload(JourneyScreenInner, 'Journey')}/><Stack.Screen name="Purity" component={PurityScreen}/><Stack.Screen name="Ghusl" component={GhuslScreen}/></Stack.Navigator>}
 
 /**
  * The prayer tab: keeping the day. The times, the direction, the call, the
@@ -4362,7 +4362,7 @@ const libraryGroups: { label: string; title: string; items: LibraryItem[] }[] = 
     { title: 'Ramadan', caption: 'Fasting, Laylatul Qadr and Zakat al-Fitr', route: 'Worship Guides', params: { group: 'ramadan' } },
     { title: 'Umrah', caption: 'Ihram, Tawaf and Sa’i, rite by rite', route: 'Journey', params: { kind: 'umrah' } },
     { title: 'Hajj', caption: 'A day-by-day timeline of the journey', route: 'Journey', params: { kind: 'hajj' } },
-    { title: 'Purity', caption: 'Step-by-step ghusl and the signs of tuhr', route: 'Purity' },
+    { title: 'Ghusl', caption: 'The full washing, step by step', route: 'Ghusl' },
   ]},
 ];
 /**
@@ -6744,6 +6744,50 @@ function CycleScreen({ navigation }: any) {
   </Page></PrivateArea>;
 }
 
+/* Ghusl is not a women's subject. It is required of a man after janabah just
+   as it is of a woman after hayd or nifas, so it cannot live only behind the
+   women's lock — doing that would leave men with no way to read how to do it.
+
+   The steps are the ones already used by the purity screen, taken from the
+   same service rather than restated, so the two screens cannot disagree. */
+function GhuslScreen({ navigation }: any) {
+  const { rtl } = useLanguage(); const T = (text: string) => tx(rtl, text);
+  return <Page><ToolBar title={T('Ghusl')} navigation={navigation} />
+    <ScrollView contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
+      <ToolGraphic tool="Purity" size={87} />
+      <Text style={s.dataTitle}>{T('The full washing')}</Text>
+      <Text style={s.intro}>{T('How to perform ghusl, with what is required of it and how the Prophet ﷺ performed it.')}</Text>
+
+      <View style={s.dataCard}>
+        <Text style={s.dataArabic}>{BISMILLAH_ARABIC}</Text>
+        <Text style={s.dataMeta}>{T('THE INTENTION, IN THE HEART AND ON THE TONGUE')}</Text>
+        <Text style={s.dataArabic}>{NIYYAH_ARABIC}</Text>
+        <Text style={s.dataBody}>{rtl ? `${NIYYAH_ARABIC} — ${NIYYAH_TRANSLITERATION}` : `${NIYYAH_TRANSLITERATION} — ${NIYYAH_MEANING}`}</Text>
+      </View>
+
+      <Section title={T('What is required')} />
+      <View style={s.settings}>{GHUSL_FARD.map((step, index) => (
+        <View key={step} style={s.setting}>
+          <View style={s.stepNo}><Text style={s.stepNoText}>{index + 1}</Text></View>
+          <Text style={[s.guideStepText, { flex: 1 }]}>{T(step)}</Text>
+        </View>))}
+      </View>
+
+      <Section title={T('As the Prophet ﷺ performed it')} />
+      <View style={s.settings}>{GHUSL_SUNNAH.map((step, index) => (
+        <View key={step} style={s.setting}>
+          <View style={s.stepNo}><Text style={s.stepNoText}>{index + 1}</Text></View>
+          <Text style={[s.guideStepText, { flex: 1 }]}>{T(step)}</Text>
+        </View>))}
+      </View>
+
+      <View style={s.dataCard}>
+        <Text style={s.dataMeta}>{T('BEFORE YOU RELY ON ANY OF THIS')}</Text>
+        <Text style={s.dataBody}>{T(ADVISORY)}</Text>
+      </View>
+    </ScrollView></Page>;
+}
+
 function PurityScreen({ navigation }: any) {
   const { language, rtl } = useLanguage();
   const T = (text: string) => tx(rtl, text);
@@ -6791,16 +6835,12 @@ function PurityScreen({ navigation }: any) {
       </View>}
       <Section title={T('Signs that bleeding has ended')} />
       <View style={s.settings}>{TUHR_SIGNS.map((block) => <View key={block.title} style={s.guideBlock}><Text style={s.guideTitle}>{T(block.title)}</Text><Text style={s.dataBody}>{T(block.body)}</Text></View>)}</View>
-      <Section title={T('The ghusl — what is required')} />
-      <View style={s.dataCard}>
-        <Text style={s.dataArabic}>{BISMILLAH_ARABIC}</Text>
-        <Text style={s.dataMeta}>{T('THE INTENTION, IN THE HEART AND ON THE TONGUE')}</Text>
-        <Text style={s.dataArabic}>{NIYYAH_ARABIC}</Text>
-        <Text style={s.dataBody}>{rtl ? `${NIYYAH_ARABIC} — ${NIYYAH_TRANSLITERATION}` : `${NIYYAH_TRANSLITERATION} — ${NIYYAH_MEANING}`}</Text>
-      </View>
-      <View style={s.settings}>{GHUSL_FARD.map((step, index) => <View key={step} style={s.setting}><View style={s.stepNo}><Text style={s.stepNoText}>{index + 1}</Text></View><Text style={[s.guideStepText, { flex: 1 }]}>{T(step)}</Text></View>)}</View>
-      <Section title={T('The ghusl — as the Prophet ﷺ performed it')} />
-      <View style={s.settings}>{GHUSL_SUNNAH.map((step, index) => <View key={step} style={s.setting}><View style={s.stepNo}><Text style={s.stepNoText}>{index + 1}</Text></View><Text style={[s.guideStepText, { flex: 1 }]}>{T(step)}</Text></View>)}</View>
+      <Section title={T('The ghusl')} />
+      <Pressable accessibilityRole="button" onPress={() => navigation.navigate('Ghusl')} style={s.dataCard}>
+        <Text style={s.settingName}>{T('How to perform ghusl')}</Text>
+        <Text style={s.dataBody}>{T('What is required of the washing, and how the Prophet ﷺ performed it.')}</Text>
+      </Pressable>
+
       <Section title={T('Hayd, nifas and istihadha')} />
       <View style={s.settings}>{EXPLANATIONS.map((block) => <View key={block.title} style={s.guideBlock}><Text style={s.guideTitle}>{T(block.title)}</Text><Text style={s.dataBody}>{T(block.body)}</Text></View>)}</View>
       <View style={s.dataCard}><Text style={s.dataMeta}>{T('BEFORE YOU RELY ON ANY OF THIS')}</Text><Text style={s.dataBody}>{T(ADVISORY)}</Text></View>
