@@ -49,7 +49,7 @@ import { StatusBar as ExpoStatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import {
   AudioEdition, Chapter, DailyAyah, DailyHadith, DivineName, getAyahEditions, getAyahOfDay, getChapters, getDailyHadith, getDuas, getQuranEditions,
-  getAyahForDate, getCalendarSpan, getGregorianCalendar, getNameOfDay, getNames, getPrayerCalendar, getPrayerSnapshot, getQibla, getRamadanCalendar,
+  getAyahForDate, getCalendarSpan, getGregorianCalendar, getNameOfDay, getNames, getPrayerCalendar, getPrayerSnapshot, getQibla, qiblaDistance, getRamadanCalendar,
   getHizbVerses, getJuzVerses, getPageVerses, getVerses, searchQuran, CalendarDay, Prayer, PrayerSnapshot, QuranEdition, QuranSearchResult, SurahReciter, Verse,
   HajjCountdown, getHajjCountdown
 } from './src/services/api';
@@ -4379,7 +4379,21 @@ function ExploreHome({navigation}:any){
   };
   return <Page><ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}><AppHeader/><Text style={s.intro}>{T('Remembrance, trusted learning and step-by-step guidance—organized by purpose rather than hidden in a feature grid.')}</Text>{libraryGroups.map(group=><View key={group.label}><Text style={s.libraryKicker}>{T(group.label)}</Text><Text style={s.libraryHeading}>{T(group.title)}</Text><View style={s.exploreGrid}>{group.items.map((item)=>{return <MotionPress key={item.title} onPress={()=>open(item)} style={s.exploreCard}><View style={s.exploreCardInner}><ToolGraphic tool={item.title} size={72}/><Text style={s.exploreTitle}>{T(item.title)}</Text><Text style={s.exploreBody}>{T(item.caption)}</Text><View style={s.exploreArrow}>{ico('arrow-forward',15,C.green)}</View></View></MotionPress>})}</View></View>)}</ScrollView></Page>;}
 function ToolBar({title,navigation}:any){const{rtl}=useLanguage();return <View style={s.readerBar}><IconButton name={rtl?'arrow-forward':'arrow-back'} onPress={()=>navigation.goBack()}/><Text style={s.readerName}>{title}</Text><View style={{width:44}}/></View>}
-function QiblaScreen({navigation}:any){const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);const{location}=useAppLocation();const[direction,setDirection]=useState<number|null>(null);const[error,setError]=useState('');const load=async()=>{if(!location)return;setDirection(null);setError('');try{setDirection(await getQibla(location.latitude,location.longitude))}catch(e:any){setError(T(e.message))}};useEffect(()=>{load()},[location?.latitude,location?.longitude]);return <Page><ToolBar title={T('Qibla direction')} navigation={navigation}/>{!location?<View style={s.dataPage}><LocationPrompt compact/></View>:<View style={s.toolPage}><Text style={s.toolEyebrow}>{T(location.label)}</Text>{error?<ErrorState message={error} retry={load}/>:direction===null?<Spinner/>:<><View style={s.compass}><Text style={s.north}>N</Text><View style={[s.compassArrow,{transform:[{rotate:`${direction}deg`}]}]}>{ico('navigate',74,C.green)}</View><View style={s.kaaba}><View style={s.kaabaGold}/></View></View><Text style={s.direction}>{direction.toFixed(1)}°</Text><Text style={s.directionText}>{T('clockwise from true north')}</Text><Pressable onPress={load} style={s.primary}><Text style={s.primaryText}>{T('Refresh direction')}</Text></Pressable></>}</View>}</Page>}
+/* Sixteen points, the usual navigational set. Left as the Latin abbreviations
+   in both languages: they are the standard notation on a compass rather than
+   prose, and an invented Arabic for "north-north-east" would be a guess
+   dressed up as a translation. */
+const COMPASS_POINTS = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+const compassPoint = (bearing: number) => COMPASS_POINTS[Math.round(((bearing % 360) + 360) % 360 / 22.5) % 16];
+
+function QiblaScreen({navigation}:any){const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);const{location}=useAppLocation();const[direction,setDirection]=useState<number|null>(null);const[error,setError]=useState('');const load=async()=>{if(!location)return;setDirection(null);setError('');try{setDirection(await getQibla(location.latitude,location.longitude))}catch(e:any){setError(T(e.message))}};useEffect(()=>{load()},[location?.latitude,location?.longitude]);return <Page><ToolBar title={T('Qibla direction')} navigation={navigation}/>{!location?<View style={s.dataPage}><LocationPrompt compact/></View>:<View style={s.toolPage}><Text style={s.toolEyebrow}>{T(location.label)}</Text>{error?<ErrorState message={error} retry={load}/>:direction===null?<Spinner/>:<><View style={s.compass}><Text style={s.north}>N</Text><View style={[s.compassArrow,{transform:[{rotate:`${direction}deg`}]}]}>{ico('navigate',74,C.green)}</View><View style={s.kaaba}><View style={s.kaabaGold}/></View></View><Text style={s.direction}>{direction.toFixed(1)}°</Text>
+        <Text style={s.directionText}>{compassPoint(direction)} · {T('clockwise from true north')}</Text>
+        {!!location && <View style={s.trackStats}>
+          <View style={s.trackStat}><Text style={s.trackStatValue}>{Math.round(qiblaDistance(location.latitude, location.longitude)).toLocaleString('en-US')}</Text><Text style={s.trackStatLabel}>{T('km to Makkah')}</Text></View>
+          <View style={s.trackStat}><Text style={s.trackStatValue}>{compassPoint(direction)}</Text><Text style={s.trackStatLabel}>{T('Compass point')}</Text></View>
+        </View>}
+        <Text style={s.intro}>{T('The bearing is measured on a great circle — the shortest way round the earth — which is why it can differ from the direction a flat map appears to show.')}</Text>
+        <Pressable onPress={load} style={s.primary}><Text style={s.primaryText}>{T('Refresh direction')}</Text></Pressable></>}</View>}</Page>}
 /* A tasbih is a ring of beads, so the counter is one: the beads fill as the
    round goes round, and the one under your thumb is the one that moves. The
    number in the middle is there because you still want to know where you are,

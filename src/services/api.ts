@@ -910,6 +910,25 @@ export function qiblaBearing(latitude: number, longitude: number): number {
   return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
 }
 
+/**
+ * Great-circle distance to the Kaaba, in kilometres.
+ *
+ * Deliberately built from the same KAABA coordinates as the bearing and with
+ * the same function shape, so the two can never disagree — a screen that said
+ * "face 137°" and "Makkah is 4,800 km away" from two different notions of
+ * where Makkah is would be worse than a screen that said only one of them.
+ */
+export function qiblaDistance(latitude: number, longitude: number): number {
+  const R = 6371.0088; // mean Earth radius, km
+  const rad = (d: number) => (d * Math.PI) / 180;
+  const dLat = rad(KAABA.latitude - latitude);
+  const dLon = rad(KAABA.longitude - longitude);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(rad(latitude)) * Math.cos(rad(KAABA.latitude)) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+
 export async function getQibla(latitude: number, longitude: number): Promise<number | null> {
   if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
   return qiblaBearing(latitude, longitude);
