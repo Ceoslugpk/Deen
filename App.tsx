@@ -1183,10 +1183,10 @@ function IconButton({ name, onPress, dark = false, label = 'Go back' }: { name: 
 function Section({ title, action, onPress, busy }: { title: string; action?: string; onPress?: () => void; busy?: boolean }) {const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);
   /* A refresh that takes a moment and shows nothing is indistinguishable from
      one that did nothing at all, so the link says so while it works. */
-  return <View style={s.section}><Text style={s.h2}>{title}</Text>{action&&<Pressable onPress={busy?undefined:onPress} disabled={busy} accessibilityState={{busy}} style={s.sectionLink}>
+  return <View style={s.section}><Text style={s.h2}>{title}</Text>{action&&<Tactile onPress={busy?undefined:onPress} disabled={busy} accessibilityState={{busy}} style={s.sectionLink}>
     {busy?<><ActivityIndicator size="small" color={C.green}/><Text style={s.sectionAction}>{T('Refreshing…')}</Text></>
         :<Text style={s.sectionAction}>{rtl?'\u2190  ':''}{action}{rtl?'':'  \u2192'}</Text>}
-  </Pressable>}</View>}
+  </Tactile>}</View>}
 function LiveBadge({ source }: { source: string }) {
   const { rtl } = useLanguage();
   return <View style={s.liveBadge}><View style={s.liveDot} /><Text style={s.liveText}>{rtl ? `مباشر · ${tx(rtl, source)}` : `LIVE · ${source}`}</Text></View>;
@@ -3996,7 +3996,7 @@ function VocabularyScreen({navigation}:any){const[index,setIndex]=useState(0);co
     </View>;})}
   </View>}
 </>:<>
-<Pressable accessibilityLabel={`${word.arabic}. ${revealed?`${word.transliteration}, ${word.meaning}`:T('Tap to reveal meaning')}`} onPress={()=>setRevealed(value=>!value)} style={s.flashcard}><Text style={s.flashIndex}>{index+1} / {QURAN_VOCABULARY.length}</Text><Text style={s.flashArabic}>{word.arabic}</Text>{revealed?<><Text style={s.flashTransliteration}>{word.transliteration}</Text><Text style={s.flashMeaning}>{word.meaning}</Text>{word.root&&<Text style={s.meta}>{T('Root')} · {word.root}</Text>}</>:<Text style={s.flashHint}>{T('Tap to reveal')}</Text>}</Pressable>{revealed&&<View style={s.actionRow}><Tactile onPress={()=>mark(false)} style={s.secondary}><Text style={s.secondaryText}>{T('Review again')}</Text></Tactile><Tactile onPress={()=>mark(true)} style={s.primary}><Text style={s.primaryText}>{T('I know this')}</Text></Tactile></View>}<View style={s.mushafNav}><Tactile onPress={()=>{setRevealed(false);setIndex((index-1+QURAN_VOCABULARY.length)%QURAN_VOCABULARY.length)}} style={s.stepButton}>{ico('arrow-back',19,C.green)}</Tactile><Pressable onPress={()=>Linking.openURL('https://corpus.quran.com/lemmas.jsp')} style={s.sectionLink}><Text style={s.sectionAction}>{T('Frequency source')}</Text></Pressable><Tactile onPress={()=>{setRevealed(false);setIndex((index+1)%QURAN_VOCABULARY.length)}} style={s.stepButton}>{ico('arrow-forward',19,C.green)}</Tactile></View></>}</ScrollView></Page>}
+<Pressable accessibilityLabel={`${word.arabic}. ${revealed?`${word.transliteration}, ${word.meaning}`:T('Tap to reveal meaning')}`} onPress={()=>setRevealed(value=>!value)} style={s.flashcard}><Text style={s.flashIndex}>{index+1} / {QURAN_VOCABULARY.length}</Text><Text style={s.flashArabic}>{word.arabic}</Text>{revealed?<><Text style={s.flashTransliteration}>{word.transliteration}</Text><Text style={s.flashMeaning}>{word.meaning}</Text>{word.root&&<Text style={s.meta}>{T('Root')} · {word.root}</Text>}</>:<Text style={s.flashHint}>{T('Tap to reveal')}</Text>}</Pressable>{revealed&&<View style={s.actionRow}><Tactile onPress={()=>mark(false)} style={s.secondary}><Text style={s.secondaryText}>{T('Review again')}</Text></Tactile><Tactile onPress={()=>mark(true)} style={s.primary}><Text style={s.primaryText}>{T('I know this')}</Text></Tactile></View>}<View style={s.mushafNav}><Tactile onPress={()=>{setRevealed(false);setIndex((index-1+QURAN_VOCABULARY.length)%QURAN_VOCABULARY.length)}} style={s.stepButton}>{ico('arrow-back',19,C.green)}</Tactile><Tactile onPress={()=>Linking.openURL('https://corpus.quran.com/lemmas.jsp')} style={s.sectionLink}><Text style={s.sectionAction}>{T('Frequency source')}</Text></Tactile><Tactile onPress={()=>{setRevealed(false);setIndex((index+1)%QURAN_VOCABULARY.length)}} style={s.stepButton}>{ico('arrow-forward',19,C.green)}</Tactile></View></>}</ScrollView></Page>}
 
 function TajweedStudyScreen({navigation}:any){const[reference,setReference]=useState('2:255');const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);const[rows,setRows]=useState<any[]>([]);const[error,setError]=useState('');const[showNormal,setShowNormal]=useState(false);const load=()=>{if(!/^([1-9]|[1-9]\d|1(?:0\d|1[0-4])):([1-9]\d*)$/.test(reference.trim())){setError(T('Enter a verse reference such as 2:255.'));return}setError('');setRows([]);getAyahEditions(reference.trim(),['quran-tajweed','quran-uthmani','en.sahih']).then(setRows).catch(e=>setError(T(e.message)))};useEffect(load,[]);return <Page><ToolBar title={T('Tajweed study')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><ToolGraphic tool="Tajweed" size={83}/><Text style={s.dataTitle}>{T('Read the rules in colour')}</Text><Text style={s.intro}>{T('Each Tajweed rule is coloured where it applies. Colours are a learning aid and do not replace study with a qualified teacher.')}</Text><View style={s.search}><TextInput value={reference} onChangeText={setReference} onSubmitEditing={load} placeholder="2:255" style={s.searchInput}/><Pressable accessibilityLabel={T('Load this verse')} onPress={load} style={s.searchGo}>{ico('arrow-forward-circle',23,C.green)}</Pressable></View><View style={s.choiceRow}><ChoicePill label={T('Tajweed colour')} selected={!showNormal} onPress={()=>setShowNormal(false)}/><ChoicePill label={T('Normal text')} selected={showNormal} onPress={()=>setShowNormal(true)}/></View>{error?<ErrorState message={error} retry={load}/>:!rows.length?<Spinner/>:<View style={s.tajweedPractice}><Text style={s.dataMeta}>{T('QURAN')} {reference}</Text>{showNormal?<Text style={s.dataArabic}>{rows[1]?.text}</Text>:<TajweedText text={rows[0]?.text||''} style={s.dataArabic}/>}<Text style={s.dataBody}>{rows[2]?.text}</Text></View>}<Section title={T('Colour legend')}/><View style={s.settings}>{TAJWEED_RULES.map(rule=><View key={rule.name} style={s.tajweedRule}><View style={[s.tajweedSwatch,{backgroundColor:rule.color}]}/><View style={{flex:1}}><Text style={s.settingName}>{tajweedName(rule,rtl)}</Text><Text style={s.meta}>{tajweedDetail(rule,rtl)}</Text></View></View>)}</View></ScrollView></Page>}
 
@@ -4698,10 +4698,10 @@ function DuaCard({ dua, read, onRead }: { dua: Dua; read?: boolean; onRead?: () 
     </>}
     <Text style={s.duaKicker}>{T('MEANING')}</Text>
     <Text style={s.dataBody}>{dua.translation}</Text>
-    {!!dua.reference && <Pressable accessibilityLabel={T('Show the source of this dua')} onPress={() => setOpenSource(!openSource)} style={s.sectionLink}>
+    {!!dua.reference && <Tactile accessibilityLabel={T('Show the source of this dua')} onPress={() => setOpenSource(!openSource)} style={s.sectionLink}>
       <Text style={s.duaRefToggle}>{openSource ? 'Hide source' : 'Source'}</Text>
       {openSource && <Text style={s.duaReference}>{dua.reference}</Text>}
-    </Pressable>}
+    </Tactile>}
     <View style={s.actionRow}>
       <Tactile accessibilityLabel={T('Copy this dua')} onPress={copy} style={s.secondary}>{ico('copy-outline', 16, C.green)}<Text style={s.secondaryText}>{copied ? 'Copied' : 'Copy'}</Text></Tactile>
       <Tactile accessibilityLabel={T('Share this dua')} onPress={share} style={s.secondary}>{ico('share-outline', 16, C.green)}<Text style={s.secondaryText}>{T('Share')}</Text></Tactile>
@@ -6483,7 +6483,7 @@ function PrivateLockScreen({ navigation }: any) {
       <PinDots filled={pin.length} error={!!error} />
       <Text style={[s.pinHint, !!error && s.pinHintError]}>{error || (config.pinSet ? T('Enter your 4-digit PIN') : T('No PIN has been set yet'))}</Text>
       <PinKeypad onDigit={digit} onDelete={() => { setPin((value) => value.slice(0, -1)); setError(''); }} onBiometric={config.biometric && info.available ? withBiometrics : null} biometric={info} />
-      {!config.pinSet && <Pressable accessibilityLabel={T('Set a PIN')} onPress={() => navigation.navigate('Privacy Lock')} style={s.sectionLink}><Text style={s.sectionAction}>{T('Set a PIN')}{rtl ? ' ←' : ' →'}</Text></Pressable>}
+      {!config.pinSet && <Tactile accessibilityLabel={T('Set a PIN')} onPress={() => navigation.navigate('Privacy Lock')} style={s.sectionLink}><Text style={s.sectionAction}>{T('Set a PIN')}{rtl ? ' ←' : ' →'}</Text></Tactile>}
     </View>
   </Page>;
 }
