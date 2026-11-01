@@ -2430,7 +2430,7 @@ function QuranHome({navigation}:any){const{dark}=useTheme();
  const shown=chapters.filter(c=>`${c.id} ${c.name_simple} ${c.name_arabic} ${c.translated_name?.name}`.toLowerCase().includes(debounced.toLowerCase()));const visible=expanded||debounced.length>0?shown:shown.slice(0,30);const openSurah=useCallback((chapter:Chapter)=>navigation.navigate('Reader',{chapter,mode:'both'}),[navigation]);const open=(chapter:Chapter,mode='both',focusVerse?:string)=>navigation.navigate('Reader',{chapter,mode,focusVerse});const featured={id:55,name_simple:'Ar-Rahman',name_arabic:'الرحمن',translated_name:{name:'The Most Merciful'},verses_count:78};const submit=()=>{const ref=query.match(/^(\d{1,3}):(\d{1,3})$/);if(ref){const chapter=chapters.find(c=>c.id===Number(ref[1]));if(chapter)return open(chapter,'both',query)}navigation.navigate('Quran Search',{initialQuery:query})};
  const[audioReciter,setAudioReciter]=useState(T('Choose a reciter'));const memorized=Object.values(hifz).filter(value=>value==='memorized').length;const contentWidth=Math.min(Math.max(width-36,280),980);
 const gridGap=8;const gridCols=gridW>=640?10:4;const tileW=gridW?Math.floor((gridW-gridGap*(gridCols-1))/gridCols):0;
-const exploreTools:{label:string;title:string;screen:string;tab?:string;params?:Record<string,any>;tool?:string}[]=[{label:'30 Juz',title:T('Juz'),screen:'Juz Directory'},{label:'60 Hizb',title:T('Hizb'),screen:'Hizb Directory'},{label:'Quran Topics',title:T('Topics'),screen:'Quran Topics'},{label:'Translation Compare',title:T('Tafsir'),screen:'Tafsir Compare',tool:'Tafsir'},{label:'Tajweed',title:T('Tajweed'),screen:'Tajweed Study',tab:'Library'},{label:'Quran Vocabulary',title:T('Vocab'),screen:'Quran Vocabulary',tab:'Library'},{label:'Recitations',title:T('Audio'),screen:'Quran Audio',tool:'Audio'}];
+const exploreTools:{label:string;title:string;screen:string;tab?:string;params?:Record<string,any>;tool?:string}[]=[{label:'Transliteration',title:T('Sounds'),screen:'Transliteration'},{label:'30 Juz',title:T('Juz'),screen:'Juz Directory'},{label:'60 Hizb',title:T('Hizb'),screen:'Hizb Directory'},{label:'Quran Topics',title:T('Topics'),screen:'Quran Topics'},{label:'Translation Compare',title:T('Tafsir'),screen:'Tafsir Compare',tool:'Tafsir'},{label:'Tajweed',title:T('Tajweed'),screen:'Tajweed Study',tab:'Library'},{label:'Quran Vocabulary',title:T('Vocab'),screen:'Quran Vocabulary',tab:'Library'},{label:'Recitations',title:T('Audio'),screen:'Quran Audio',tool:'Audio'}];
 const compactStats=[{label:'Bookmarks',title:T('Bookmarks'),value:String(bookmarkCount),screen:'Bookmarks',icon:'bookmark-outline',tool:'Bookmarks'},{label:'Notes',title:T('Notes'),value:String(noteCount),screen:'Notes',icon:'create-outline',tool:'Notes'},{label:'Reading Plans',title:T('Plans'),value:plan?`${plan.days}d`:'—',screen:'Reading Plans',icon:'calendar-outline',tool:'Reading Plans'},{label:'Hifz',title:T('Hifz'),value:String(memorized),screen:'Hifz',icon:'school-outline',tool:'Hifz'},{label:'Offline Quran',title:T('Offline'),value:`${preload.cached}/114`,screen:'Quran Preload',icon:'download-outline',tool:'Offline Quran'}];
  return <Page><ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}><AppHeader/>
  <View style={s.search}>{ico('search-outline',19,C.muted)}<TextInput accessibilityLabel={T('Search the Quran')} value={query} onChangeText={setQuery} onSubmitEditing={submit} returnKeyType="search" style={s.searchInput} placeholder={T('Search Surah, meaning, or 2:255')} placeholderTextColor={C.muted}/>{query.length>0&&<Pressable accessibilityLabel={T('Clear Quran search')} onPress={()=>setQuery('')}>{ico('close-circle',18,C.muted)}</Pressable>}</View>
@@ -4463,9 +4463,122 @@ function MemorizeTestScreen({ navigation, route }: any) {
   </Page>;
 }
 
+/**
+ * Transliteration: the Arabic sounded out, verse by verse.
+ *
+ * This is a guide to reciting, not a translation. The two are easy to confuse
+ * and the difference matters, so the screen says which it is and keeps the
+ * Arabic above the line it is describing rather than replacing it — a
+ * transliteration read on its own is a transliteration of something you
+ * cannot see.
+ *
+ * Only three of the fourteen transliterations in the catalogue actually serve
+ * a surah; the rest are listed but return nothing. `servableEditions` filters
+ * them out, because offering a choice that produces an empty page is worse
+ * than offering three.
+ */
+function TransliterationScreen({navigation}:any){
+  const{rtl}=useLanguage(); const T=(text:string)=>tx(rtl,text);
+  const{preferences,update}=useQuranPreferences();
+  const[chapters,setChapters]=useState<Chapter[]>([]);
+  const[chapterId,setChapterId]=useState(1);
+  const[editions,setEditions]=useState<IslamicEdition[]>([]);
+  const[editionId,setEditionId]=useState('');
+  const[rows,setRows]=useState<{n:number;arabic:string;translit:string}[]>([]);
+  const[loading,setLoading]=useState(true);
+  const[error,setError]=useState('');
+  const chapter=chapters.find(c=>c.id===chapterId);
+
+  useEffect(()=>{getChapters().then(setChapters).catch(()=>undefined)},[]);
+
+  useEffect(()=>{
+    let alive=true;
+    getEditions('transliteration').then((all)=>{
+      if(!alive)return;
+      const pool=servableEditions(all,'transliteration');
+      setEditions(pool);
+      const wanted=pool.find(e=>e.id===preferences.transliterationEdition)||pool.find(e=>e.language==='en')||pool[0];
+      if(wanted)setEditionId(wanted.id);
+      else setLoading(false);
+    }).catch(()=>{if(alive){setError(T('Could not load the transliterations'));setLoading(false)}});
+    return ()=>{alive=false};
+  },[]);
+
+  useEffect(()=>{
+    if(!editionId)return;
+    let alive=true; setLoading(true); setError('');
+    /* The Arabic and the transliteration are two separate fetches. They are
+       joined on the verse's position within the surah, which is the one field
+       both endpoints carry. */
+    Promise.all([
+      getVerses(chapterId,{script:preferences.scriptEdition,translation:preferences.translationEdition}),
+      getSurah('transliteration',editionId,chapterId)
+    ]).then(([verses,translit])=>{
+      if(!alive)return;
+      const byNumber=new Map(translit.rows.map(r=>[r.numberInSurah,r.text]));
+      setRows(verses.map(v=>{
+        const n=Number(String(v.verse_key).split(':')[1])||0;
+        return {n, arabic:v.text_uthmani||'', translit:byNumber.get(n)||''};
+      }));
+      setLoading(false);
+    }).catch((e:any)=>{if(alive){setError(e?.message||T('Could not load this surah'));setLoading(false)}});
+    return ()=>{alive=false};
+  },[chapterId,editionId,preferences.scriptEdition,preferences.translationEdition]);
+
+  const step=(delta:number)=>{
+    const next=Math.min(114,Math.max(1,chapterId+delta));
+    if(next!==chapterId)setChapterId(next);
+  };
+
+  return <Page><ToolBar title={T('Transliteration')} navigation={navigation}/>
+    <ScrollView contentContainerStyle={s.dataPage}>
+      <ToolGraphic tool="Transliteration" size={81}/>
+      <Text style={s.dataTitle}>{T('How the Arabic sounds')}</Text>
+      <Text style={s.intro}>{T('A guide to reciting, not a translation. The Arabic is kept above each line so you can see what is being sounded out.')}</Text>
+
+      <View style={s.trStepRow}>
+        <Pressable accessibilityLabel={T('Previous Surah')} onPress={()=>step(-1)} disabled={chapterId<=1} style={s.trStep}>{ico(rtl?'chevron-forward':'chevron-back',19,chapterId<=1?C.muted:C.ink)}</Pressable>
+        <View style={{flex:1,alignItems:'center'}}>
+          <Text style={s.trSurahName} numberOfLines={1}>{chapter?chapter.name_simple:T('Surah')}</Text>
+          <Text style={s.meta} numberOfLines={1}>{chapter?`${T('Surah')} ${chapter.id} · ${chapter.verses_count} ${T('verses')}`:''}</Text>
+        </View>
+        <Pressable accessibilityLabel={T('Next Surah')} onPress={()=>step(1)} disabled={chapterId>=114} style={s.trStep}>{ico(rtl?'chevron-back':'chevron-forward',19,chapterId>=114?C.muted:C.ink)}</Pressable>
+      </View>
+
+      {editions.length>1&&<>
+        <Section title={T('Script')}/>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap:8,paddingRight:16}}>
+          {editions.map(e=>(
+            <Pressable key={e.id}
+              accessibilityRole="button" accessibilityState={{selected:e.id===editionId}}
+              onPress={()=>{setEditionId(e.id);update({transliterationEdition:e.id,transliterationName:editionDisplayName(e)})}}
+              style={[s.trEdition,e.id===editionId&&s.trEditionOn]}>
+              <Flag code={e.language} size={12}/>
+              <Text style={[s.trEditionText,e.id===editionId&&s.trEditionTextOn]} numberOfLines={1}>{editionDisplayName(e)}</Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+      </>}
+
+      <Section title={T('Verses')}/>
+      {loading?<Spinner/>:error?<ErrorState message={error} retry={()=>setChapterId(chapterId)}/>:(
+        rows.length?rows.map(r=>(
+          <DepthCard key={r.n} style={s.trVerse}>
+            <View style={s.trVerseTop}>
+              <View style={s.trNum}><Text style={s.trNumText}>{r.n}</Text></View>
+              <Text style={s.trArabic}>{r.arabic}</Text>
+            </View>
+            {!!r.translit&&<Text style={s.trTranslit}>{r.translit}</Text>}
+            {!r.translit&&<Text style={s.meta}>{T('No transliteration for this verse in this script.')}</Text>}
+          </DepthCard>
+        )):<Text style={s.intro}>{T('Nothing to show yet.')}</Text>
+      )}
+    </ScrollView></Page>;
+}
+
 function QuranStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="QuranHome" component={QuranHome}/><Stack.Screen name="Downloads" component={DownloadsScreen}/><Stack.Screen name="Reader" component={ReaderScreen}/><Stack.Screen name="Translations" component={TranslationScreen}/><Stack.Screen name="Quran Search" component={QuranSearchScreen}/><Stack.Screen name="Bookmarks" component={BookmarkScreen}/><Stack.Screen name="Notes" component={NotesScreen}/><Stack.Screen name="Note Editor" component={needsPayload(NoteEditorScreen, 'Note')}/><Stack.Screen name="Reader Settings" component={ReaderSettingsScreen}
       options={{presentation:'transparentModal',animation:'slide_from_bottom',contentStyle:{backgroundColor:'transparent'}}}/>{/* 'Ayah Actions' was a screen; it is the verse actions sheet now. The route is
-    gone on purpose - a restored stack naming it is dropped by the navigator. */}<Stack.Screen name="Tafsir" component={TafsirScreen}/><Stack.Screen name="Tafsir Compare" component={TafsirCompareScreen}/><Stack.Screen name="Quran Topics" component={QuranTopicsScreen}/><Stack.Screen name="Topic Detail" component={TopicDetailScreen}/><Stack.Screen name="Juz Directory" component={JuzDirectoryScreen}/><Stack.Screen name="Hizb Directory" component={HizbDirectoryScreen}/><Stack.Screen name="Reading Plans" component={ReadingPlansScreen}/><Stack.Screen name="Quran Preload" component={QuranPreloadScreen}/><Stack.Screen name="Hifz" component={HifzScreen}/><Stack.Screen name="Memorize" component={MemorizeHubScreen}/><Stack.Screen name="Memorize Test" component={MemorizeTestScreen}/><Stack.Screen name="Quran Audio" component={AudioCenterScreen}/><Stack.Screen name="Audio Player" component={AudioPlayerScreen}/></Stack.Navigator>}
+    gone on purpose - a restored stack naming it is dropped by the navigator. */}<Stack.Screen name="Tafsir" component={TafsirScreen}/><Stack.Screen name="Tafsir Compare" component={TafsirCompareScreen}/><Stack.Screen name="Quran Topics" component={QuranTopicsScreen}/><Stack.Screen name="Topic Detail" component={TopicDetailScreen}/><Stack.Screen name="Juz Directory" component={JuzDirectoryScreen}/><Stack.Screen name="Hizb Directory" component={HizbDirectoryScreen}/><Stack.Screen name="Reading Plans" component={ReadingPlansScreen}/><Stack.Screen name="Quran Preload" component={QuranPreloadScreen}/><Stack.Screen name="Hifz" component={HifzScreen}/><Stack.Screen name="Memorize" component={MemorizeHubScreen}/><Stack.Screen name="Memorize Test" component={MemorizeTestScreen}/><Stack.Screen name="Quran Audio" component={AudioCenterScreen}/><Stack.Screen name="Audio Player" component={AudioPlayerScreen}/><Stack.Screen name="Transliteration" component={TransliterationScreen}/></Stack.Navigator>}
 
 /**
  * The library holds what you read, recite and learn. Nothing here calculates
@@ -10756,7 +10869,22 @@ homeReflectName:{color:C.green,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSi
 homeReflectBody:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:13.5,lineHeight:21,marginTop:10},
 homeReflectFoot:{flexDirection:'row',alignItems:'center',gap:6,marginTop:16,paddingTop:14,borderTopWidth:1,borderTopColor:C.line},
 homeReflectFootText:{color:C.green,fontFamily:'DMSans_600SemiBold',fontSize:12,flex:1},
-dayToolIcon:{width:52,height:52,borderRadius:26,backgroundColor:C.mint,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,marginRight:12}});
+dayToolIcon:{width:52,height:52,borderRadius:26,backgroundColor:C.mint,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,marginRight:12},
+  /* Transliteration: the Arabic on top, sounded out underneath. */
+  trStepRow:{flexDirection:'row',alignItems:'center',gap:8,marginTop:16,marginBottom:4},
+  trStep:{width:40,height:40,borderRadius:14,backgroundColor:C.card,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line},
+  trSurahName:{color:C.ink,fontSize:20,fontFamily:'Newsreader_600SemiBold',textAlign:'center'},
+  trEdition:{flexDirection:'row',alignItems:'center',gap:6,paddingHorizontal:14,paddingVertical:9,borderRadius:14,backgroundColor:C.card,borderWidth:1,borderColor:C.line},
+  trEditionOn:{backgroundColor:C.green,borderColor:C.green},
+  trEditionText:{color:C.muted,fontSize:12,fontFamily:'DMSans_600SemiBold'},
+  trEditionTextOn:{color:C.onAccent},
+  trVerse:{marginBottom:10,padding:14},
+  trVerseTop:{flexDirection:'row',alignItems:'flex-start',gap:10},
+  trNum:{width:26,height:26,borderRadius:13,backgroundColor:C.mint,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,marginTop:6},
+  trNumText:{color:C.green,fontSize:11,fontFamily:'DMSans_700Bold'},
+  trArabic:{flex:1,color:C.ink,fontFamily:'KFGQPCUthmanicHafs',fontSize:24,lineHeight:46,textAlign:'right',writingDirection:'rtl'} as any,
+  trTranslit:{color:C.muted,fontSize:14,lineHeight:22,marginTop:10,fontFamily:'DMSans_400Regular'},
+});
   /* Runs in both themes now: the brand remap has to land on light too. */
   return remapStyles(created);
 }
