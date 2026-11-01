@@ -179,8 +179,23 @@ export async function loadHifz(){return read<Record<number,HifzStatus>>(K.hifz,{
 export async function saveHifz(value:Record<number,HifzStatus>){return write(K.hifz,value)}
 export async function loadPlan(){return read<{days:number;startedAt:number;completed:number[]}|null>(K.plan,null)}
 export async function savePlan(value:{days:number;startedAt:number;completed:number[]}|null){return write(K.plan,value)}
-export async function loadVocabularyProgress(){return read<{reviewed:string[];known:string[]}>(K.vocabulary,{reviewed:[],known:[]})}
-export async function saveVocabularyProgress(value:{reviewed:string[];known:string[]}){return write(K.vocabulary,value)}
+/** What the vocabulary screen keeps: which cards were reviewed, which the
+ *  reader said they know, and which they bookmarked to come back to. */
+export type VocabularyProgress = { reviewed: string[]; known: string[]; saved: string[] };
+
+/**
+ * `saved` is newer than the records already on devices, so a stored record
+ * without it is filled in rather than thrown away.
+ */
+export async function loadVocabularyProgress(): Promise<VocabularyProgress> {
+  const raw = await read<Partial<VocabularyProgress>>(K.vocabulary, { reviewed: [], known: [] });
+  return {
+    reviewed: Array.isArray(raw.reviewed) ? raw.reviewed : [],
+    known: Array.isArray(raw.known) ? raw.known : [],
+    saved: Array.isArray(raw.saved) ? raw.saved : [],
+  };
+}
+export async function saveVocabularyProgress(value: VocabularyProgress) { return write(K.vocabulary, value); }
 const LEGACY_CACHE = '@deen/quran/cache/v1';
 const LEGACY_INDEX = '@deen/quran/cache-index/v1';
 let legacyMigration: Promise<void> | null = null;
