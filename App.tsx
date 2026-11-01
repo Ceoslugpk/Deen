@@ -376,9 +376,14 @@ function remapStyles(created: Record<string, any>): Record<string, any> {
 }
 
 export type ThemeMode = 'system' | 'light' | 'dark';
-type ThemeState = { mode: ThemeMode; dark: boolean; tick: number; setMode: (mode: ThemeMode) => void };
+type ThemeState = { mode: ThemeMode; dark: boolean; tick: number; setMode: (mode: ThemeMode) => void;
+  /**
+   * Drives the change-over. It falls to 0 while the palette is swapped and
+   * comes back to 1, so the swap itself is never seen.
+   */
+  swap: Animated.Value };
 const THEME_KEY = 'deen-theme-v1';
-const ThemeContext = createContext<ThemeState>({ mode: 'system', dark: false, tick: 0, setMode: () => {} });
+const ThemeContext = createContext<ThemeState>({ mode: 'system', dark: false, tick: 0, setMode: () => {}, swap: new Animated.Value(1) });
 
 async function loadThemeMode(): Promise<ThemeMode> {
   try {
@@ -422,23 +427,55 @@ function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [tick, setTick] = useState(0);
   useEffect(() => { void loadThemeMode().then((next) => { setModeState(next); setHydrated(true); }); }, []);
   const dark = mode === 'system' ? system === 'dark' : mode === 'dark';
-  // applied while rendering, so the first screen is already painted in it
-  if (hydrated && themeDark !== dark) applyPalette(dark);
+  const swap = useRef(new Animated.Value(1)).current;
+  /* Painted once, during render, so the opening screen is already in the right
+     palette. Every change after that goes through the animation below instead
+     of happening here - otherwise the swap would land on the same render as
+     the tap and the change-over would have nothing left to hide. */
+  const painted = useRef(false);
+  if (hydrated && !painted.current) {
+    painted.current = true;
+    if (themeDark !== dark) applyPalette(dark);
+  }
   useEffect(() => {
     if (!hydrated) return;
-    if (themeDark !== dark) applyPalette(dark);
-    if (Platform.OS === 'web' && typeof document !== 'undefined') {
-      const paper = dark ? C_DARK.bg : C_LIGHT.bg;
-      document.documentElement.style.background = paper;
-      document.body.style.background = paper;
-    }
-    setTick((value) => value + 1);
-  }, [dark, hydrated]);
+    if (themeDark === dark) return;
+    const paper = (next: boolean) => {
+      if (Platform.OS !== 'web' || typeof document === 'undefined') return;
+      const value = next ? C_DARK.bg : C_LIGHT.bg;
+      document.documentElement.style.background = value;
+      document.body.style.background = value;
+    };
+    /* The palette is a module-level object and the sheet is built from it, so
+       changing theme is a rebuild and a remount - an instant cut from one
+       palette to the other. That cut is hidden by taking the screen to nothing
+       first: it dips out, the swap happens while there is nothing to see, and
+       it comes back in the new palette.
+
+       The dip is quicker than the return. Going should feel like a decision;
+       coming back should feel like the screen settling. */
+    Animated.timing(swap, {
+      toValue: 0,
+      duration: 150,
+      easing: Easing.in(Easing.quad),
+      useNativeDriver: true,
+    }).start(() => {
+      applyPalette(dark);
+      paper(dark);
+      setTick((value) => value + 1);
+      Animated.timing(swap, {
+        toValue: 1,
+        duration: 300,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }).start();
+    });
+  }, [dark, hydrated, swap]);
   const setMode = (next: ThemeMode) => {
     setModeState(next);
     AsyncStorage.setItem(THEME_KEY, next).catch(() => undefined);
   };
-  const value = useMemo(() => ({ mode, dark, setMode, tick }), [mode, dark, tick]);
+  const value = useMemo(() => ({ mode, dark, setMode, tick, swap }), [mode, dark, tick, swap]);
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
 
@@ -9254,7 +9291,7 @@ function ExitPrompt() {
  * reaches every screen; the navigation state is carried across that rebuild.
  */
 function Root() {
-  const { dark, tick } = useTheme();
+  const { dark, tick, swap } = useTheme();
   /* The palette is a module-level object, so a theme change remounts the
      navigator (via `key` below) to make every screen repaint. That remount
      re-runs `initialState`, so the newest state is held in a ref: the remount
@@ -9269,7 +9306,20 @@ function Root() {
   const liveState = useRef<any>(undefined);
   useBackIntegration(navigationRef);
   useEffect(() => { clearSavedNavState(); }, []);
-  return <NavigationContainer ref={navigationRef} key={(dark ? 'dark' : 'light') + ':' + tick + ':' + fontTick} initialState={liveState.current} onStateChange={(state: any) => { liveState.current = state; }}>
+  /* The screen dips out and back around the palette swap. It gives way a
+     little as it goes: a plain fade reads like a light bulb being switched,
+     whereas a small withdrawal towards the middle reads as the screen settling
+     into the new palette rather than simply being replaced by it.
+
+     The backdrop is the new ground colour and stays put, so what shows through
+     the dip is where the screen is going, not the page behind it. */
+  const dip = {
+    opacity: swap,
+    transform: [{ scale: swap.interpolate({ inputRange: [0, 1], outputRange: [0.965, 1] }) }],
+  };
+
+  return <Animated.View style={[s.themeSwap, dip]}>
+    <NavigationContainer ref={navigationRef} key={(dark ? 'dark' : 'light') + ':' + tick + ':' + fontTick} initialState={liveState.current} onStateChange={(state: any) => { liveState.current = state; }}>
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Main" component={Tabs} />
       <Stack.Screen name="Settings" component={SettingsStack} />
@@ -9278,8 +9328,9 @@ function Root() {
           reached from anywhere belongs above all of them. */}
       <Stack.Screen name="Inbox" component={NotificationInboxScreen} />
     </Stack.Navigator>
-    <ExpoStatusBar style={dark ? 'light' : 'dark'} /><MiniPlayer /><OverlayHost /><ExitPrompt />
-  </NavigationContainer>;
+      <ExpoStatusBar style={dark ? 'light' : 'dark'} /><MiniPlayer /><OverlayHost /><ExitPrompt />
+    </NavigationContainer>
+  </Animated.View>;
 }
 
 /* ==================== First run ==================== */
@@ -10914,7 +10965,11 @@ dayToolIcon:{width:52,height:52,borderRadius:26,backgroundColor:C.mint,alignItem
   /* Onboarding permission: the ask, and somewhere to go if it is not shown. */
   onbBtnRow:{flexDirection:'row',alignItems:'center',gap:8},
   onbSettingsBtn:{paddingHorizontal:14,paddingVertical:13,borderRadius:14,borderWidth:1,borderColor:C.line,backgroundColor:C.card,justifyContent:'center'},
-  onbSettingsBtnText:{color:C.ink,fontSize:12.5,fontFamily:'DMSans_600SemiBold'}});
+  onbSettingsBtnText:{color:C.ink,fontSize:12.5,fontFamily:'DMSans_600SemiBold'},
+    /* The backdrop that holds the screen while it dips out and back during a
+       theme change. Opaque and full-height, so what shows through the dip is
+       the new ground colour rather than whatever sits behind the app. */
+    themeSwap:{flex:1,backgroundColor:C.bg}});
   /* Runs in both themes now: the brand remap has to land on light too. */
   return remapStyles(created);
 }
