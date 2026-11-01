@@ -7,7 +7,7 @@ function ExploreStack(){return <Stack.Navigator screenOptions={{headerShown:fals
  */
 function PrayerStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="Prayer" component={PrayerScreen}/><Stack.Screen name="Ramadan" component={RamadanScreen}/></Stack.Navigator>}
 /** The tools tab: what you calculate, look up, travel for, or record. */
-function ToolsStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="ToolsHome" component={ToolsHomeScreen}/><Stack.Screen name="Zakat" component={ZakatScreen}/><Stack.Screen name="Holy site channels" component={HolyChannelsScreen}/><Stack.Screen name="Women" component={WomenHubScreen}/><Stack.Screen name="Istihada" component={IstihadaScreen}/><Stack.Screen name="Ramadan Planner" component={RamadanPlannerScreen}/><Stack.Screen name="These Days" component={TheseDaysScreen}/><Stack.Screen name="Cycle" component={CycleScreen}/><Stack.Screen name="Qada" component={QadaScreen}/><Stack.Screen name="Women Guides" component={WomenGuidesScreen}/><Stack.Screen name="Privacy Lock" component={PrivacyLockScreen}/><Stack.Screen name="Fasting" component={FastingScreen}/><Stack.Screen name="Weekly Summary" component={WeeklySummaryScreen}/><Stack.Screen name="Qibla" component={QiblaScreen}/><Stack.Screen name="Location Setup" component={LocationSetupScreen}/><Stack.Screen name="Notifications" component={NotificationScreen}/><Stack.Screen name="Notification Inbox" component={NotificationInboxScreen}/><Stack.Screen name="Adhan" component={AdhanScreen}/><Stack.Screen name="Hijri Calendar" component={HijriCalendarScreen}/><Stack.Screen name="Tasbih" component={TasbihScreen}/><Stack.Screen name="Umrah Packing" component={UmrahPackingScreen}/><Stack.Screen name="Hajj Live" component={HajjLiveScreen}/></Stack.Navigator>}
+function ToolsStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="ToolsHome" component={ToolsHomeScreen}/><Stack.Screen name="Zakat" component={ZakatScreen}/><Stack.Screen name="Holy site channels" component={HolyChannelsScreen}/><Stack.Screen name="Women" component={WomenHubScreen}/><Stack.Screen name="Istihada" component={IstihadaScreen}/><Stack.Screen name="Ramadan Planner" component={RamadanPlannerScreen}/><Stack.Screen name="These Days" component={TheseDaysScreen}/><Stack.Screen name="Cycle" component={CycleScreen}/><Stack.Screen name="Qada" component={QadaScreen}/><Stack.Screen name="Women Guides" component={WomenGuidesScreen}/><Stack.Screen name="Privacy Lock" component={PrivacyLockScreen}/><Stack.Screen name="Fasting" component={FastingScreen}/><Stack.Screen name="Weekly Summary" component={WeeklySummaryScreen}/><Stack.Screen name="Qibla" component={QiblaScreen}/><Stack.Screen name="Location Setup" component={LocationSetupScreen}/><Stack.Screen name="Notifications" component={NotificationScreen}/><Stack.Screen name="Notification Inbox" component={NotificationInboxScreen}/><Stack.Screen name="Salah Tracker" component={SalahTrackerScreen}/><Stack.Screen name="Adhan" component={AdhanScreen}/><Stack.Screen name="Hijri Calendar" component={HijriCalendarScreen}/><Stack.Screen name="Tasbih" component={TasbihScreen}/><Stack.Screen name="Umrah Packing" component={UmrahPackingScreen}/><Stack.Screen name="Hajj Live" component={HajjLiveScreen}/></Stack.Navigator>}
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -1525,7 +1525,7 @@ const WOMENS_ONLY_TOOLS = ['Women', 'Cycle', 'Qada'];
 
 const TOOL_GROUPS: ToolGroup[] = [
   { label: 'TRACK', title: 'Trackers and calculators', items: [
-    { title: 'Salah Tracker', caption: 'The five prayers, and the run you are on', route: 'Prayer' },
+    { title: 'Salah Tracker', caption: 'Every day you have marked, on one map', route: 'Salah Tracker' },
     { title: 'Fasting', caption: 'Ramadan, voluntary and missed fasts', route: 'Fasting' },
     { title: 'Zakat', caption: 'Gold, silver, cash and investments', route: 'Zakat' },
     { title: 'Tasbih', caption: 'A quiet, tactile dhikr counter', route: 'Tasbih' },
@@ -5283,6 +5283,163 @@ function timeAgoText(ms: number, rtl: boolean): string {
   if (hours < 24) return rtl ? `قبل ${arNoun(hours, 'ساعة', 'ساعتين', 'ساعات', 'ساعة')}` : `${hours}h ago`;
   const days = Math.round(hours / 24);
   return rtl ? `قبل ${arNoun(days, 'يوم', 'يومين', 'أيام', 'يومًا')}` : `${days}d ago`;
+}
+
+/* Five shades of the brand gold: nothing marked on the day, through to all
+   five. Alpha steps of one colour rather than a rainbow, so the map reads as
+   one quantity rather than five categories. */
+const HEAT_STOPS = [
+  'rgba(223,177,99,0.20)',
+  'rgba(223,177,99,0.38)',
+  'rgba(223,177,99,0.56)',
+  'rgba(223,177,99,0.74)',
+  '#DFB163',
+];
+
+function heatColour(done: number) {
+  if (done <= 0) return C.line;
+  return HEAT_STOPS[Math.min(done, 5) - 1];
+}
+
+function SalahTrackerScreen({ navigation }: any) {
+  const { rtl } = useLanguage(); const T = (text: string) => tx(rtl, text);
+  const [history, setHistory] = useState<Record<string, string[]>>({});
+  const [busy, setBusy] = useState(true);
+
+  const load = useCallback(async () => {
+    setBusy(true);
+    setHistory((await loadPrayerHistory()) || {});
+    setBusy(false);
+  }, []);
+  useEffect(() => { void load(); }, [load]);
+
+  const keys = useMemo(() => Object.keys(history).sort(), [history]);
+  const counted = useCallback(
+    (key: string) => (history[key] || []).filter((p) => PRAYER_FIVE.includes(p)).length,
+    [history],
+  );
+
+  const stats = useMemo(() => {
+    let total = 0, best = 0, run = 0, tracked = 0;
+    for (const key of keys) {
+      const n = counted(key);
+      total += n;
+      if (n > 0) tracked += 1;
+      if (n >= 5) { run += 1; best = Math.max(best, run); } else run = 0;
+    }
+    return {
+      tracked, total, best,
+      streak: prayerStreak(history),
+      rate: tracked ? Math.round((total / (tracked * 5)) * 100) : 0,
+    };
+  }, [keys, counted, history]);
+
+  /* One column per week, Sunday first, across every day on record. The map
+     starts at the first day ever marked rather than a fixed window, so a
+     record going back a year shows a year — which is the whole point of
+     keeping the record at all. */
+  const weeks = useMemo(() => {
+    if (!keys.length) return [] as string[][];
+    const start = new Date(`${keys[0]}T00:00:00`);
+    start.setDate(start.getDate() - start.getDay());
+    const end = new Date();
+    const out: string[][] = [];
+    const cur = new Date(start);
+    let guard = 0;
+    while (cur <= end && guard++ < 800) {
+      const week: string[] = [];
+      for (let d = 0; d < 7; d += 1) {
+        week.push(prayerDayKey(cur));
+        cur.setDate(cur.getDate() + 1);
+      }
+      out.push(week);
+    }
+    return out;
+  }, [keys]);
+
+  const monthLabels = useMemo(() => {
+    const out: { index: number; label: string }[] = [];
+    let lastMonth = '';
+    weeks.forEach((week, i) => {
+      const first = week[0];
+      if (!first) return;
+      const month = new Date(`${first}T00:00:00`).toLocaleDateString(rtl ? 'ar-u-nu-latn' : 'en', { month: 'short' });
+      if (month !== lastMonth) { out.push({ index: i, label: month }); lastMonth = month; }
+    });
+    return out;
+  }, [weeks, rtl]);
+
+  const dayNames = useMemo(() => {
+    const base = new Date(2024, 0, 7); // a Sunday
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(base); d.setDate(base.getDate() + i);
+      return d.toLocaleDateString(rtl ? 'ar-u-nu-latn' : 'en', { weekday: 'narrow' });
+    });
+  }, [rtl]);
+
+  return <Page><ToolBar title={T('Salah Tracker')} navigation={navigation} />
+    <ScrollView contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
+      <Text style={s.intro}>{T('Every day you have marked, going back as far as your record does. A square is a day; the deeper the gold, the more of the five you prayed.')}</Text>
+
+      {busy && !keys.length ? <Spinner /> : !stats.tracked ? (
+        <View style={s.inboxEmpty}>
+          <ToolGraphic tool="Salah Tracker" size={70} />
+          <Text style={s.emptyTitle}>{T('No days marked yet')}</Text>
+          <Text style={s.emptyBody}>{T('Mark a prayer from the Prayer screen and it will appear here.')}</Text>
+        </View>
+      ) : (
+        <>
+          <View style={s.trackStats}>
+            <View style={s.trackStat}><Text style={s.trackStatValue}>{stats.streak}</Text><Text style={s.trackStatLabel}>{T('Day streak')}</Text></View>
+            <View style={s.trackStat}><Text style={s.trackStatValue}>{stats.best}</Text><Text style={s.trackStatLabel}>{T('Longest run')}</Text></View>
+            <View style={s.trackStat}><Text style={s.trackStatValue}>{stats.total}</Text><Text style={s.trackStatLabel}>{T('Prayers marked')}</Text></View>
+            <View style={s.trackStat}><Text style={s.trackStatValue}>{stats.rate}%</Text><Text style={s.trackStatLabel}>{T('Of the five')}</Text></View>
+          </View>
+
+          <Text style={s.dataMeta}>{rtl ? `${stats.tracked} ${arNoun(stats.tracked, 'يوم', 'يومين', 'أيام', 'يومًا')} مسجّلة` : `${stats.tracked} days on record`}</Text>
+
+          <View style={{ marginTop: 10 }}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View>
+                <View style={{ flexDirection: 'row', gap: 3, marginLeft: 20, marginBottom: 4 }}>
+                  {monthLabels.map((m) => (
+                    <Text key={`${m.index}-${m.label}`} style={[s.trackLegendText, { width: 16 * (weeks.length ? 1 : 1) }]}>{m.label}</Text>
+                  ))}
+                </View>
+                <View style={{ flexDirection: 'row', gap: 3 }}>
+                  <View style={{ width: 20 }}>
+                    {dayNames.map((d, i) => (
+                      <View key={i} style={{ height: 13, marginBottom: 3, justifyContent: 'center' }}>
+                        {i % 2 === 1 && <Text style={[s.trackLegendText, { fontSize: 9 }]}>{d}</Text>}
+                      </View>
+                    ))}
+                  </View>
+                  <View style={s.trackGrid}>
+                    {weeks.map((week, wi) => (
+                      <View style={s.trackWeek} key={wi}>
+                        {week.map((day) => {
+                          const n = counted(day);
+                          const future = new Date(`${day}T00:00:00`) > new Date();
+                          return <View key={day} style={[s.trackCell, { backgroundColor: future ? 'transparent' : heatColour(n) }]} />;
+                        })}
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              </View>
+            </ScrollView>
+          </View>
+
+          <View style={s.trackLegend}>
+            <Text style={s.trackLegendText}>{T('Less')}</Text>
+            {[0, 1, 2, 3, 4, 5].map((n) => (
+              <View key={n} style={[s.trackCell, { backgroundColor: heatColour(n) }]} />
+            ))}
+            <Text style={s.trackLegendText}>{T('More')}</Text>
+          </View>
+        </>
+      )}
+    </ScrollView></Page>;
 }
 
 function NotificationInboxScreen({navigation}:any){
@@ -9664,7 +9821,11 @@ mushafPageNoText:{color:C.green,fontFamily:'Newsreader_700Bold',fontSize:16},mus
   inboxKind:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:9,letterSpacing:.8},inboxTime:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:11,marginTop:2},dataPage:{width:'100%',maxWidth:860,alignSelf:'center',padding:20,paddingBottom:BOTTOM_RESERVE},empty:{backgroundColor:C.white,borderRadius:24,padding:24,alignItems:'center',borderWidth:1,borderColor:C.line},dataTitle:{color:C.ink,fontSize:29,fontFamily:'Newsreader_600SemiBold',letterSpacing:-.5,marginTop:16,marginBottom:8},dataCard:{backgroundColor:C.card,borderRadius:20,padding:16,marginBottom:12,borderWidth:1,borderColor:C.line,...surface},bookmarkMain:{flex:1},bookmarkRemove:{paddingStart:10,paddingVertical:4,justifyContent:'center'},dataArabic:{color:C.green,fontFamily:'KFGQPCUthmanicHafs',fontSize:27,lineHeight:48,textAlign:'right'},dataName:{color:C.ink,fontSize:14,fontFamily:'DMSans_700Bold',marginTop:4},dataBody:{color:'#7B7671',fontFamily:'DMSans_400Regular',fontSize:13,lineHeight:18,marginTop:4},dataMeta:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold',marginTop:12,textTransform:'uppercase'},inputLabel:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.2,marginTop:12},moneyInput:{backgroundColor:C.white,borderWidth:1,borderColor:C.line,borderRadius:20,padding:16,fontSize:24,fontFamily:'DMSans_700Bold',color:C.ink,marginTop:8,outlineStyle:'none'} as any,zakatResult:{borderRadius:24,padding:20,marginTop:12},zakatNo:{color:C.onAccent,fontSize:34,fontFamily:'DMSans_700Bold',marginTop:8},
  profileName:{color:C.onAccent,fontSize:18,fontFamily:'DMSans_700Bold'},profileSub:{color:'#EBD3A6',fontSize:10,marginTop:4},privacyHero:{borderRadius:24,padding:20,flexDirection:'row',alignItems:'center',gap:12,...shadow},privacyPoints:{flexDirection:'row',gap:8,marginTop:12},privacyPoint:{flex:1,backgroundColor:C.card,borderRadius:16,paddingVertical:12,alignItems:'center',gap:4,borderWidth:1,borderColor:C.line},privacyPointText:{color:C.ink,fontSize:10,fontFamily:'DMSans_700Bold',textAlign:'center'},preferencePanel:{backgroundColor:C.card,borderRadius:24,padding:16,borderWidth:1,borderColor:C.line,...surface},preferenceHead:{flexDirection:'row',alignItems:'center',gap:12,marginBottom:16},prefIconTile:{width:54,height:54,borderRadius:18,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},choiceGrid:{flexDirection:'row',flexWrap:'wrap',gap:8},choiceRow:{flexDirection:'row',gap:8},
   hadithPick:{marginTop:4,marginBottom:20},hadithSearch:{marginBottom:20},hadithResults:{marginBottom:10},
-  nameShare:{width:40,height:40,borderRadius:20,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,flexShrink:0},choicePill:{minHeight:44,justifyContent:'center',minWidth:44,alignItems:'center',paddingHorizontal:12,paddingVertical:8,borderRadius:12,backgroundColor:C.bg,borderWidth:1,borderColor:C.line},choicePillActive:{backgroundColor:C.accent,borderColor:C.green},choiceText:{color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:10},choiceTextActive:{color:C.onAccent},preferenceLabel:{color:C.muted,fontFamily:'DMSans_700Bold',fontSize:10,letterSpacing:1.1,marginTop:16,marginBottom:8},settings:{backgroundColor:C.card,borderRadius:24,overflow:'hidden',borderWidth:1,borderColor:C.line,...surface},setting:{minHeight:69,flexDirection:'row',alignItems:'center',gap:12,paddingHorizontal:12,borderBottomWidth:1,borderColor:C.line},settingName:{color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:13},
+  nameShare:{width:40,height:40,borderRadius:20,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,flexShrink:0},
+  trackGrid:{flexDirection:'row',gap:3,alignItems:'flex-start'},trackWeek:{gap:3},trackCell:{width:13,height:13,borderRadius:3},
+  trackStats:{flexDirection:'row',flexWrap:'wrap',gap:10,marginBottom:18},trackStat:{flex:1,minWidth:88,backgroundColor:C.card,borderRadius:16,padding:12,borderWidth:1,borderColor:C.line},
+  trackStatValue:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:22},trackStatLabel:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:11,marginTop:2},
+  trackLegend:{flexDirection:'row',alignItems:'center',gap:6,marginTop:14},trackLegendText:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:11},choicePill:{minHeight:44,justifyContent:'center',minWidth:44,alignItems:'center',paddingHorizontal:12,paddingVertical:8,borderRadius:12,backgroundColor:C.bg,borderWidth:1,borderColor:C.line},choicePillActive:{backgroundColor:C.accent,borderColor:C.green},choiceText:{color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:10},choiceTextActive:{color:C.onAccent},preferenceLabel:{color:C.muted,fontFamily:'DMSans_700Bold',fontSize:10,letterSpacing:1.1,marginTop:16,marginBottom:8},settings:{backgroundColor:C.card,borderRadius:24,overflow:'hidden',borderWidth:1,borderColor:C.line,...surface},setting:{minHeight:69,flexDirection:'row',alignItems:'center',gap:12,paddingHorizontal:12,borderBottomWidth:1,borderColor:C.line},settingName:{color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:13},
  locationGate:{flexDirection:'row',gap:16,alignItems:'flex-start',backgroundColor:C.card,borderRadius:24,padding:20,borderWidth:1,borderColor:C.line,...soft},locationGateNarrow:{flexDirection:'column',alignItems:'stretch'},locationGateTitle:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:16},locationGateBody:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:12,lineHeight:18,marginTop:4},locationActions:{flexDirection:'row',flexWrap:'wrap',gap:8,marginTop:16},locationActionsNarrow:{flexDirection:'column',alignItems:'stretch'},primarySmall:{backgroundColor:C.accent,paddingHorizontal:16,paddingVertical:12,borderRadius:12,minHeight:44,justifyContent:'center'},ghostSmall:{backgroundColor:C.mint,paddingHorizontal:16,paddingVertical:12,borderRadius:12,minHeight:44,justifyContent:'center'},ghostText:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:11},
  prayerTools:{flexDirection:'row',flexWrap:'wrap',gap:8},prayerToolsTwo:{flexDirection:'row',gap:12,marginBottom:8},prayerToolTwo:{flex:1},prayerTool:{flexGrow:1,flexBasis:'30%',minWidth:220},prayerToolInner:{minHeight:86,flexDirection:'row',alignItems:'center',gap:12,backgroundColor:C.white,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line},prayerToolText:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:12,flex:1},
  libraryKicker:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10,letterSpacing:1.7,marginTop:24},libraryHeading:{color:C.ink,fontFamily:'Newsreader_600SemiBold',fontSize:23,marginTop:4,marginBottom:12},
