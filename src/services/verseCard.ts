@@ -1,4 +1,5 @@
 import { Platform, Share } from 'react-native';
+import * as FileSystem from 'expo-file-system';
 import { captureRef } from 'react-native-view-shot';
 
 /**
@@ -278,8 +279,19 @@ export async function shareVerseCard(data: VerseCardData, viewRef?: any): Promis
         quality: 1,
         result: 'tmpfile',
       });
-      await Share.share({ url: uri, title: `Quran ${data.reference}` });
-      return 'shared';
+      /* A capture that succeeded is not the same as a capture with a picture
+         in it. If the view has not been laid out, or was still transparent,
+         the read-back is a blank PNG a few hundred bytes long — and sharing
+         that looks exactly like a bug in the share sheet. Weigh it first: a
+         real card is tens of kilobytes. Anything smaller is treated as a
+         failure and the verse goes out as text instead, which is always
+         readable. */
+      const info = await FileSystem.getInfoAsync(uri).catch(() => null as any);
+      const size = typeof info?.size === 'number' ? info.size : 0;
+      if (size > 4096) {
+        await Share.share({ url: uri, title: `Quran ${data.reference}` });
+        return 'shared';
+      }
     } catch {
       // fall through to the text share below
     }

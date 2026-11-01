@@ -325,8 +325,15 @@ export async function shareCard(data: ShareCardData, viewRef?: any): Promise<Sha
   } else if (viewRef?.current) {
     try {
       const uri = await captureRef(viewRef, { format: 'png', quality: 1, result: 'tmpfile' });
-      await Share.share({ url: uri, title: data.shareTitle });
-      return 'shared';
+      /* Weighed for the same reason as the verse card: a blank read-back is a
+         PNG of a few hundred bytes, and forwarding that to someone is worse
+         than forwarding the words. */
+      const info = await FileSystem.getInfoAsync(uri).catch(() => null as any);
+      const size = typeof info?.size === 'number' ? info.size : 0;
+      if (size > 4096) {
+        await Share.share({ url: uri, title: data.shareTitle });
+        return 'shared';
+      }
     } catch {
       // fall through to the text share below
     }
