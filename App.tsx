@@ -1126,7 +1126,13 @@ function IconButton({ name, onPress, dark = false, label = 'Go back' }: { name: 
     </Pressable>
   </Animated.View>;
 }
-function Section({ title, action, onPress }: { title: string; action?: string; onPress?: () => void }) {const{rtl}=useLanguage();return <View style={s.section}><Text style={s.h2}>{title}</Text>{action&&<Pressable onPress={onPress} style={s.sectionLink}><Text style={s.sectionAction}>{rtl?'←  ':''}{action}{rtl?'':'  →'}</Text></Pressable>}</View>}
+function Section({ title, action, onPress, busy }: { title: string; action?: string; onPress?: () => void; busy?: boolean }) {const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);
+  /* A refresh that takes a moment and shows nothing is indistinguishable from
+     one that did nothing at all, so the link says so while it works. */
+  return <View style={s.section}><Text style={s.h2}>{title}</Text>{action&&<Pressable onPress={busy?undefined:onPress} disabled={busy} accessibilityState={{busy}} style={s.sectionLink}>
+    {busy?<><ActivityIndicator size="small" color={C.green}/><Text style={s.sectionAction}>{T('Refreshing…')}</Text></>
+        :<Text style={s.sectionAction}>{rtl?'\u2190  ':''}{action}{rtl?'':'  \u2192'}</Text>}
+  </Pressable>}</View>}
 function LiveBadge({ source }: { source: string }) {
   const { rtl } = useLanguage();
   return <View style={s.liveBadge}><View style={s.liveDot} /><Text style={s.liveText}>{rtl ? `مباشر · ${tx(rtl, source)}` : `LIVE · ${source}`}</Text></View>;
@@ -1399,7 +1405,7 @@ const[quranPosition,setQuranPosition]=useState<any>(null);const[openReflection,s
      the Arabic at a size nobody can comfortably recite from. The Quick
      Tasbih counter has moved to "For your day", where it belongs: it is a
      thing you do, not a thing you reflect on. */
-  const [reflectionKind,setReflectionKind]=useState<'ayah'|'name'|'dua'>('ayah');
+  const [reflectionKind,setReflectionKind]=useState<'ayah'|'name'|'dua'>('ayah');  const [reflectBusy,setReflectBusy]=useState(false);
   const REFLECTION_TABS:{id:'ayah'|'name'|'dua';label:string}[]=[
     {id:'ayah',label:'Ayah'},{id:'name',label:'Name'},{id:'dua',label:'Dua'},
   ];
@@ -1500,7 +1506,12 @@ const[quranPosition,setQuranPosition]=useState<any>(null);const[openReflection,s
       </MotionPress>
     ))}</View>
 
-    <Section title={T('Daily reflection')} action={T('Refresh')} onPress={onRefresh}/>
+    <Section title={T('Daily reflection')} action={T('Refresh')} busy={reflectBusy} onPress={async()=>{setReflectBusy(true);const started=Date.now();await onRefresh();
+      /* Cached content comes back in a few milliseconds, and a busy state that
+         appears for two frames reads as a flicker rather than as an answer. The
+         label is held long enough to be seen, and the work is not delayed by it. */
+      const rest=650-(Date.now()-started); if(rest>0) await new Promise(r=>setTimeout(r,rest));
+      setReflectBusy(false)}}/>
     <View style={s.homeReflectTabs}>{REFLECTION_TABS.map(tab=>(
       <Pressable key={tab.id} accessibilityRole="tab" accessibilityState={{selected:reflectionKind===tab.id}}
         onPress={()=>setReflectionKind(tab.id)} style={[s.homeReflectTab,reflectionKind===tab.id&&s.homeReflectTabOn]}>
