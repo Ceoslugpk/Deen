@@ -17,6 +17,7 @@ import {
   PanResponder, useColorScheme, useWindowDimensions, View, Modal
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { WebView } from 'react-native-webview';
 import { haptic, isHapticsSupported, setHapticsEnabled, withHaptic, type HapticKind } from './src/services/haptics';
 import { createNavigationContainerRef, NavigationContainer, StackActions, useFocusEffect, useNavigation } from '@react-navigation/native';
 const KFGQPCUthmanicHafs = require('./assets/fonts/KFGQPCUthmanicHafs.ttf');
@@ -148,7 +149,7 @@ import { BRAND, C_DARK, C_LIGHT, DEPTH, brandHex, mix, snapToBrand } from './src
 import { useCalmMotion } from './src/design/useCalmMotion';
 import { MOTION, easeOut, useEntrance, usePressDepth } from './src/design/motion';
 import { completeJourney, clearJourney, journeyMeta, JOURNEY_META, JOURNEY_STEPS, localizeJourneyStep, JourneyKind, JourneyStep, journeyProgress, setStepCount, setStepNote, startJourney, toggleStep, useJourneys, loadJourneys, setJourneyDateLocale } from './src/services/journeyService';
-import { HOLY_CHANNELS, openChannel } from './src/services/holyChannels';
+import { HOLY_CHANNELS, openChannel, type HolyChannel } from './src/services/holyChannels';
 import { clearFastDay, FastType, labelForEntry, loadFastingState, missedReasons, MISSED_REASONS, MissedReason, recordFast, readableDate, setFastingOwed, summariseFasting, useFasting, setFastingDateLocale } from './src/services/fastingService';
 import { buildWeeklySummary, loadActivity, logAdhkarRead, logHifzReview, logMushafPage, logSurahOpen, logVerseRead, useActivity, setActivityDateLocale } from './src/services/activityService';
 import { addDays, addQada, ADVISORY, assessBleeding, BISMILLAH_ARABIC, BLEEDING_GUIDANCE, cycleStats, dayKey, daysBetween, deleteCycle, deleteNifas, deleteQada, endCycle, endNifas, EXPLANATIONS, FLOW_LEVELS, formatDay, formatLongDay, GHUSL_FARD, GHUSL_SUNNAH, LIMITS, loadWomensState, logPurity, nifasStats, NIYYAH_ARABIC, NIYYAH_MEANING, NIYYAH_TRANSLITERATION, PurityStatus, QadaReason, QADA_REASONS, qadaStats, RAMADAN_ADVISORY, RAMADAN_NOTES, RAMADAN_STATE_LABEL, ramadanPlan, RamadanPlanDay, recentPurity, REFERENCES, SCHOOL_NOTE, setFlow, setOptedIn, startCycle, startNifas, THESE_DAYS_ACTS, THESE_DAYS_ADVISORY, THESE_DAYS_ANCHOR, THESE_DAYS_DISPUTED, TheseDaysAct, toggleQada, TUHR_SIGNS, useWomens, WORSHIP_GUIDANCE } from './src/services/womensService';
@@ -5206,6 +5207,111 @@ function JourneyScreenInner({ route, navigation }: any) {
   </Page>;
 }
 
+
+/**
+ * The embed page for one channel's current livestream.
+ *
+ * The stream is a channel's live broadcast rather than a fixed video, so it has
+ * no id to give the YouTube player API — it has to go through the
+ * /embed/live_stream path, which is driven by postMessage instead. YouTube's own
+ * controls are switched off and the app draws its own over the top.
+ */
+function livePlayerHtml(channelId: string) {
+  const src = 'https://www.youtube.com/embed/live_stream?channel=' + channelId
+    + '&enablejsapi=1&controls=0&modestbranding=1&rel=0&playsinline=1&fs=0&iv_load_policy=3';
+  return `<!doctype html>
+<html><head><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<style>html,body{margin:0;padding:0;height:100%;background:#000;overflow:hidden}
+#yt{position:absolute;top:0;left:0;width:100%;height:100%;border:0}</style></head>
+<body><iframe id="yt" width="100%" height="100%" frameborder="0"
+  allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+  src="${src}"></iframe>
+<script>
+function cmd(func,args){
+  var f=document.getElementById('yt');
+  if(f&&f.contentWindow){f.contentWindow.postMessage(JSON.stringify({event:'command',func:func,args:args||''}),'*');}
+}
+window.addEventListener('message',function(e){
+  try{
+    var d=(typeof e.data==='string')?JSON.parse(e.data):e.data;
+    if(!d) return;
+    if(d.event==='onStateChange'&&window.ReactNativeWebView){
+      window.ReactNativeWebView.postMessage('state:'+d.info);
+    }
+  }catch(err){}
+},false);
+window.onerror=function(){window.ReactNativeWebView&&window.ReactNativeWebView.postMessage('error');};
+window.ReactNativeWebView&&window.ReactNativeWebView.postMessage('loaded');
+</script></body></html>`;
+}
+
+/**
+ * A small player for a live channel, drawn over the embed so the controls are
+ * ours and not YouTube's. It starts paused: a stream that begins playing the
+ * moment a screen opens is startling, and mobile browsers block it anyway.
+ */
+function LivePlayer({ channel, rtl, T }: { channel: HolyChannel; rtl: boolean; T: (text: string) => string }) {
+  const webRef = useRef<any>(null);
+  const [playing, setPlaying] = useState(false);
+  const [muted, setMuted] = useState(false);
+  const [buffering, setBuffering] = useState(false);
+  const [broken, setBroken] = useState(false);
+
+  const command = (func: string, args = '') => {
+    try { webRef.current?.injectJavaScript(`cmd('${func}'${args ? `,'${args}'` : ''});true;`); } catch { /* the page may not be ready */ }
+  };
+
+  const onMessage = (event: any) => {
+    const data = String(event?.nativeEvent?.data || '');
+    if (data.startsWith('state:')) {
+      const code = Number(data.slice(6));
+      setPlaying(code === 1);
+      setBuffering(code === 3);
+    } else if (data === 'error') {
+      setBroken(true);
+    }
+  };
+
+  /* YouTube's own controls are off, so every control below is ours. */
+  return <View style={s.liveFrame}>
+    {!broken && <WebView
+      ref={webRef}
+      source={{ html: livePlayerHtml(channel.channelId || ''), baseUrl: 'https://www.youtube.com' }}
+      style={s.liveWeb}
+      javaScriptEnabled
+      domStorageEnabled
+      mediaPlaybackRequiresUserAction={false}
+      allowsInlineMediaPlayback
+      allowsFullscreenVideo
+      originWhitelist={['*']}
+      onMessage={onMessage}
+      onError={() => setBroken(true)}
+      onHttpError={() => setBroken(true)}
+    />}
+    {broken && <View style={s.liveFallback}>
+      <Text style={s.liveFallbackText}>{T('The stream could not be loaded here. Open it in YouTube instead.')}</Text>
+    </View>}
+
+    <View style={s.liveBar} pointerEvents="box-none">
+      <View style={s.liveBadge}><View style={s.livePulse} /><Text style={s.liveBadgeText}>{T('LIVE')}</Text></View>
+      <View style={s.liveControls}>
+        <Pressable accessibilityRole="button" accessibilityLabel={muted ? T('Unmute the stream') : T('Mute the stream')}
+          onPress={() => { const next = !muted; setMuted(next); command(next ? 'mute' : 'unMute'); }} style={s.liveButton}>
+          {ico(muted ? 'volume-mute' : 'volume-high', 17, C.onAccent)}
+        </Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel={playing ? T('Pause the stream') : T('Play the stream')}
+          onPress={() => { if (playing) command('pauseVideo'); else command('playVideo'); }} style={s.livePlay}>
+          {buffering ? <Spinner /> : ico(playing ? 'pause' : 'play', 19, C.deep)}
+        </Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel={`${T('Open')} ${channel.channel} ${T('in YouTube')}`}
+          onPress={() => Linking.openURL(channel.url).catch(() => undefined)} style={s.liveButton}>
+          {ico('open-outline', 17, C.onAccent)}
+        </Pressable>
+      </View>
+    </View>
+  </View>;
+}
+
 function HolyChannelsScreen({ route, navigation }: any) {
   const { rtl } = useLanguage();
   const T = (text: string) => tx(rtl, text);
@@ -5230,6 +5336,7 @@ function HolyChannelsScreen({ route, navigation }: any) {
         </View>
         <Text style={s.dataBody}>{channel.detail}</Text>
         <Text style={s.meta}>{channel.broadcaster}</Text>
+        {!!channel.embedUrl && Platform.OS !== 'web' && <LivePlayer channel={channel} rtl={rtl} T={T} />}
         <Pressable accessibilityRole="button" accessibilityLabel={`${T('Watch live')} ${channel.channel}`} onPress={() => open(channel)} style={s.primary}>
           <Text style={s.primaryText}>{opened === channel.id ? 'Opening…' : 'Open live stream'}</Text>
         </Pressable>
@@ -10190,6 +10297,16 @@ mushafPageNoText:{color:C.green,fontFamily:'Newsreader_700Bold',fontSize:16},mus
   zHeadRight:{flexDirection:'row',alignItems:'center',gap:8,flexShrink:0},
   zHeadAction:{color:C.gold,fontFamily:'DMSans_600SemiBold',fontSize:11,flexShrink:1,textAlign:'right'},
   zBody:{paddingTop:16},
+  liveFrame:{height:211,borderRadius:18,overflow:'hidden',backgroundColor:'#000',marginTop:12,borderWidth:1,borderColor:C.line},
+  liveWeb:{flex:1,backgroundColor:'#000'},
+  liveFallback:{position:'absolute',top:0,left:0,right:0,bottom:0,alignItems:'center',justifyContent:'center',padding:20},
+  liveFallbackText:{color:C.onAccent,fontFamily:'DMSans_400Regular',fontSize:12,textAlign:'center'},
+  liveBar:{position:'absolute',left:0,right:0,bottom:0,flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingHorizontal:12,paddingVertical:10},
+  livePulse:{width:6,height:6,borderRadius:3,backgroundColor:C.coral},
+  liveBadgeText:{color:C.onAccent,fontFamily:'DMSans_700Bold',fontSize:9,letterSpacing:1.2},
+  liveControls:{flexDirection:'row',alignItems:'center',gap:8},
+  liveButton:{width:32,height:32,borderRadius:16,backgroundColor:'rgba(0,0,0,0.5)',alignItems:'center',justifyContent:'center'},
+  livePlay:{width:38,height:38,borderRadius:19,backgroundColor:C.onAccent,alignItems:'center',justifyContent:'center'},
   vocabRow:{flexDirection:'row',alignItems:'center',gap:12,padding:14,borderBottomWidth:1,borderColor:C.line},
   vocabSave:{padding:4},
   vocabWord:{color:C.ink,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:22,lineHeight:34,textAlign:'right'},
