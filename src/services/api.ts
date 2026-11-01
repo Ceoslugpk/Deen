@@ -1123,6 +1123,7 @@ export interface HajjCountdown {
   hijriYear: number;
   daysToArafah: number;
   daysToTarwiyah: number;
+  daysToEid: number;
   arafahGregorian: string;
   tarwiyahGregorian: string;
   eidGregorian: string;
@@ -1171,6 +1172,7 @@ export async function getHajjCountdown(): Promise<HajjCountdown> {
       hijriYear: year,
       daysToArafah: 0,
       daysToTarwiyah: 0,
+      daysToEid: 0,
       arafahGregorian: '',
       tarwiyahGregorian: '',
       eidGregorian: '',
@@ -1183,6 +1185,7 @@ export async function getHajjCountdown(): Promise<HajjCountdown> {
     hijriYear: year,
     daysToArafah: nights(arafah),
     daysToTarwiyah: nights(tarwiyah),
+    daysToEid: nights(eid),
     arafahGregorian: gregorianStamp(arafah),
     tarwiyahGregorian: gregorianStamp(tarwiyah),
     eidGregorian: gregorianStamp(eid),

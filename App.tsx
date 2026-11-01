@@ -1938,6 +1938,15 @@ function makeHajjStyles() { return StyleSheet.create({
   countUnit: { color: 'rgba(255,255,255,.8)', fontSize: 15, fontFamily: 'DMSans_600SemiBold', marginBottom: 12, marginStart: 10 },
   until: { color: C.white, fontSize: 17, fontFamily: 'DMSans_600SemiBold', marginBottom: 14 },
   meta: { color: 'rgba(255,255,255,.75)', fontSize: 12.5, fontFamily: 'DMSans_400Regular', lineHeight: 19 },
+      dateCard:{backgroundColor:C.card,borderRadius:20,padding:16,marginBottom:12,borderWidth:1,borderColor:C.line},
+      dateTop:{flexDirection:'row',alignItems:'center',gap:12},
+      dateHijri:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10,letterSpacing:.8},
+      dateName:{color:C.ink,fontFamily:'Newsreader_600SemiBold',fontSize:18,marginTop:2},
+      dateNote:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:11,marginTop:1},
+      dateGreg:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:12,marginTop:6},
+      dateCount:{alignItems:'center',minWidth:62},
+      dateCountNum:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:26},
+      dateCountUnit:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:10},
   sectionTitle: { color: C.ink, fontSize: 18, fontFamily: 'Newsreader_600SemiBold', letterSpacing: -.3, marginBottom: 4, marginTop: 8 },
   sectionNote: { color: C.muted, fontSize: 12.5, fontFamily: 'DMSans_400Regular', lineHeight: 19, marginBottom: 14 },
   dayCard: { backgroundColor: C.card, borderRadius: 20, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: C.line },
@@ -1991,6 +2000,36 @@ function HajjLiveScreen({ navigation }: any) {
             <Text style={st.meta}>{T('Today')} · {count.todayHijri}</Text>
           </LinearGradient>
         )}
+
+        {!!count && (<>
+        {/* The countdown above answers "how long until Arafah"; these answer
+              "how long until the rites begin" and "when is Eid", which are the
+              other two questions people actually arrive with. All three come
+              from the same hijri table — nothing here is worked out by hand. */}
+          <Text style={st.sectionTitle}>{T('Key dates')}</Text>
+          <Text style={st.sectionNote}>{T('The days the pilgrimage turns on, with the days still to go.')}</Text>
+          {[
+            { day: '8', name: 'Yawm at-Tarwiyah', note: T('The day of preparing'), days: count.daysToTarwiyah, greg: count.tarwiyahGregorian },
+            { day: '9', name: 'Yawm al-Arafah', note: T('Hajj itself'), days: count.daysToArafah, greg: count.arafahGregorian },
+            { day: '10', name: 'Yawm an-Nahr', note: T('Eid al-Adha'), days: count.daysToEid, greg: count.eidGregorian },
+          ].filter((d) => !!d.greg).map((d) => (
+            <View style={st.dateCard} key={d.day}>
+              <View style={st.dateTop}>
+                <View style={{ flex: 1 }}>
+                  <Text style={st.dateHijri}>{d.day} {T('Dhul-Hijjah')}</Text>
+                  <Text style={st.dateName}>{T(d.name)}</Text>
+                  <Text style={st.dateNote}>{d.note}</Text>
+                  <Text style={st.dateGreg}>{d.greg}</Text>
+                </View>
+                <View style={st.dateCount}>
+                  <Text style={st.dateCountNum}>{d.days}</Text>
+                  <Text style={st.dateCountUnit}>{d.days === 1 ? T('day') : T('days')}</Text>
+                </View>
+              </View>
+            </View>
+          ))}
+        </>)}
+
 
         <Text style={st.sectionTitle}>{T('The six days')}</Text>
         <Text style={st.sectionNote}>{T('What happens on each day of Hajj, from entering ihram to the farewell tawaf.')}</Text>
