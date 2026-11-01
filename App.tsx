@@ -160,7 +160,7 @@ import { downloadSurahAudio, loadDownloads, downloadSurahText, estimateFreeBytes
 import { NAME_LANGUAGES } from './src/services/api';
 import { PROPHETS } from './src/content/prophets';
 import { NAMES_MEANING_AR } from './src/content/namesAr';
-import { countMuslimNames, loadMuslimNames, searchMuslimNames, type MuslimName, type NameFilter } from './src/services/muslimNames';
+import { countMuslimNames, findMuslimNames, letterCounts, loadMuslimNames, type MuslimName, type NameFilter } from './src/services/muslimNames';
 import { currentPhrase, dhikrMeaning, DHIKR_PHRASES, loadTasbihState, removeTasbihSession, resetTasbihCount, saveTasbihSession, setTasbihGoal, setTasbihPhrase, TASBIH_GOALS, tapTasbih, todayTotal, useTasbih } from './src/services/tasbihService';
 import { Dua, DuaCategory } from './src/services/api';
 import { clearPreparedQuran, getPreloadState, pauseQuranPreload, refreshPreload, resumeSavedQuranPreload, startQuranPreload, subscribePreload } from './src/services/quranPreload';
@@ -4919,13 +4919,16 @@ function NamesScreen({ navigation }: any) {const{rtl}=useLanguage();const T=(tex
  * The meanings are the supplier's and are shown as they arrived. This is a
  * book of names, not a ruling: nothing here says what a child may be called.
  */
-const NAME_FILTER_LABEL: Record<NameFilter, string> = { all: 'All', male: 'Boys', female: 'Girls' };
+const NAME_FILTER_LABEL: Record<NameFilter, string> = { all: 'All', male: 'Boys', female: 'Girls', unisex: 'Unisex' };
+const NAME_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
 function MuslimNamesScreen({ navigation }: any) {
   const { rtl } = useLanguage();
   const T = (text: string) => tx(rtl, text);
   const { preferences } = useQuranPreferences();
+  const scrollRef = useRef<any>(null);
   const [filter, setFilter] = useState<NameFilter>('all');
+  const [letter, setLetter] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [limit, setLimit] = useState(60);
   const [ready, setReady] = useState(false);
@@ -4933,11 +4936,18 @@ function MuslimNamesScreen({ navigation }: any) {
   /* The catalogue is about a megabyte, so it is read the first time this
      screen opens rather than while the app is starting. */
   useEffect(() => { loadMuslimNames(); setReady(true); }, []);
-  /* A new search, or a new gender, starts the list again from the top. */
-  useEffect(() => { setLimit(60); }, [query, filter]);
+  /* Any change to what is being looked at starts the list again from the top. */
+  useEffect(() => { setLimit(60); }, [query, filter, letter]);
 
-  const results = useMemo(() => (ready ? searchMuslimNames(query, filter, limit) : []), [ready, query, filter, limit]);
-  const total = useMemo(() => (ready ? countMuslimNames(filter) : 0), [ready, filter]);
+  const results = useMemo(
+    () => (ready ? findMuslimNames({ query, filter, letter, limit }) : []),
+    [ready, query, filter, letter, limit]);
+  const total = useMemo(() => (ready ? countMuslimNames(filter, letter) : 0), [ready, filter, letter]);
+  const counts = useMemo(() => (ready ? letterCounts(filter) : {}), [ready, filter]);
+
+  /* Choosing a letter or a gender replaces the whole list, so the reader is
+     taken back to the top of it rather than left wherever they had scrolled. */
+  const jump = (run: () => void) => { run(); scrollRef.current?.scrollTo?.({ y: 0, animated: false }); };
 
   const genderLabel = (gender: MuslimName['gender']) =>
     gender === 'male' ? T('Boy') : gender === 'female' ? T('Girl') : T('Either');
@@ -4956,26 +4966,44 @@ function MuslimNamesScreen({ navigation }: any) {
   };
 
   return <Page><ToolBar title={T('Muslim names')} navigation={navigation}/>
-    <ScrollView keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
+    <ScrollView ref={scrollRef} keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
       <ToolGraphic tool="Muslim Names" size={81} />
       <Text style={s.dataTitle}>{T('Muslim names')}</Text>
       <Text style={[s.intro, { marginBottom: 0 }]}>{T('Thirteen thousand names for boys and girls, with their Arabic and meaning.')}</Text>
 
       <Section title={T('Boy or girl')} />
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.choiceRow}>
-        {(['all', 'male', 'female'] as NameFilter[]).map((option) => (
-          <ChoicePill key={option} label={T(NAME_FILTER_LABEL[option])} selected={filter === option} onPress={() => setFilter(option)} />
+        {(['all', 'male', 'female', 'unisex'] as NameFilter[]).map((option) => (
+          <ChoicePill key={option} label={T(NAME_FILTER_LABEL[option])} selected={filter === option}
+            onPress={() => jump(() => setFilter(option))} />
         ))}
       </ScrollView>
 
-      <View style={[s.search, { marginTop: 12 }]}>
+      <View style={[s.search, { marginTop: 12, marginBottom: 0 }]}>
         {ico('search', 18, C.muted)}
         <TextInput accessibilityLabel={T('Search Muslim names')} value={query} onChangeText={setQuery}
           placeholder={T('Search a name, its Arabic or its meaning')} placeholderTextColor={C.muted} style={s.searchInput} />
         {query.length > 0 && <Pressable accessibilityLabel={T('Clear the search')} onPress={() => setQuery('')}>{ico('close', 16, C.muted)}</Pressable>}
       </View>
 
-      <Text style={[s.meta, { marginTop: 4, marginBottom: 8 }]}>{rtl
+      <Section title={T('Alphabetical')} />
+      <View style={s.letterGrid}>
+        <Tactile accessibilityLabel={T('Every letter')} onPress={() => jump(() => setLetter(null))}
+          style={[s.letterCell, s.letterCellWide, letter === null && s.letterCellActive]}>
+          <Text style={[s.letterText, letter === null && s.letterTextActive]}>{T('All')}</Text>
+        </Tactile>
+        {NAME_LETTERS.map((L) => {
+          const howMany = counts[L] || 0;
+          const on = letter === L;
+          return <Tactile key={L} accessibilityLabel={`${T('Letter')} ${L}, ${howMany} ${T('names')}`}
+            onPress={() => jump(() => setLetter(on ? null : L))}
+            style={[s.letterCell, on && s.letterCellActive, !howMany && s.letterCellEmpty]}>
+            <Text style={[s.letterText, on && s.letterTextActive, !on && !howMany && s.letterTextDim]}>{L}</Text>
+          </Tactile>;
+        })}
+      </View>
+
+      <Text style={[s.meta, { marginTop: 16, marginBottom: 8 }]}>{rtl
         ? `${results.length} من ${total} اسم`
         : `${results.length.toLocaleString('en-US')} of ${total.toLocaleString('en-US')} names`}</Text>
 
@@ -4997,6 +5025,7 @@ function MuslimNamesScreen({ navigation }: any) {
       {ready && !results.length && <View style={s.empty}><Text style={s.dataBody}>{T('No name matches. Try another spelling.')}</Text></View>}
     </ScrollView></Page>;
 }
+
 
 function ProphetNamesScreen({ navigation }: any) {const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);
   const { preferences } = useQuranPreferences();
@@ -10943,7 +10972,7 @@ mushafPageNoText:{color:C.green,fontFamily:'Newsreader_700Bold',fontSize:16},mus
   vocabWord:{color:C.ink,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:22,lineHeight:34,textAlign:'right'},
   vocabKnown:{backgroundColor:C.mint,borderRadius:10,paddingHorizontal:8,paddingVertical:3},
   vocabKnownText:{color:C.green,fontFamily:'DMSans_600SemiBold',fontSize:10},
-  settingsRow:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingHorizontal:16,paddingVertical:14,borderBottomWidth:1,borderColor:C.line},choicePill:{minHeight:44,justifyContent:'center',minWidth:44,alignItems:'center',paddingHorizontal:12,paddingVertical:8,borderRadius:12,backgroundColor:C.bg,borderWidth:1,borderColor:C.line},choicePillActive:{backgroundColor:C.accent,borderColor:C.green},choiceText:{color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:10},choiceTextActive:{color:C.onAccent},preferenceLabel:{color:C.muted,fontFamily:'DMSans_700Bold',fontSize:10,letterSpacing:1.1,marginTop:16,marginBottom:8},settings:{backgroundColor:C.card,borderRadius:24,overflow:'hidden',borderWidth:1,borderColor:C.line,...surface},setting:{minHeight:69,flexDirection:'row',alignItems:'center',gap:12,paddingHorizontal:12,borderBottomWidth:1,borderColor:C.line},settingName:{color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:13},
+  letterGrid:{flexDirection:'row',flexWrap:'wrap',gap:10},letterCell:{width:42,height:42,borderRadius:12,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,backgroundColor:C.white},letterCellWide:{width:58},letterCellActive:{backgroundColor:C.accent,borderColor:C.green},letterCellEmpty:{opacity:.4},letterText:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:13},letterTextActive:{color:C.onAccent},letterTextDim:{color:C.muted},  settingsRow:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingHorizontal:16,paddingVertical:14,borderBottomWidth:1,borderColor:C.line},choicePill:{minHeight:44,justifyContent:'center',minWidth:44,alignItems:'center',paddingHorizontal:12,paddingVertical:8,borderRadius:12,backgroundColor:C.bg,borderWidth:1,borderColor:C.line},choicePillActive:{backgroundColor:C.accent,borderColor:C.green},choiceText:{color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:10},choiceTextActive:{color:C.onAccent},preferenceLabel:{color:C.muted,fontFamily:'DMSans_700Bold',fontSize:10,letterSpacing:1.1,marginTop:16,marginBottom:8},settings:{backgroundColor:C.card,borderRadius:24,overflow:'hidden',borderWidth:1,borderColor:C.line,...surface},setting:{minHeight:69,flexDirection:'row',alignItems:'center',gap:12,paddingHorizontal:12,borderBottomWidth:1,borderColor:C.line},settingName:{color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:13},
  locationGate:{flexDirection:'row',gap:16,alignItems:'flex-start',backgroundColor:C.card,borderRadius:24,padding:20,borderWidth:1,borderColor:C.line,...soft},locationGateNarrow:{flexDirection:'column',alignItems:'stretch'},locationGateTitle:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:16},locationGateBody:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:12,lineHeight:18,marginTop:4},locationActions:{flexDirection:'row',flexWrap:'wrap',gap:8,marginTop:16},locationActionsNarrow:{flexDirection:'column',alignItems:'stretch'},primarySmall:{backgroundColor:C.accent,paddingHorizontal:16,paddingVertical:12,borderRadius:12,minHeight:44,justifyContent:'center'},ghostSmall:{backgroundColor:C.mint,paddingHorizontal:16,paddingVertical:12,borderRadius:12,minHeight:44,justifyContent:'center'},ghostText:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:11},
  prayerTools:{flexDirection:'row',flexWrap:'wrap',gap:8},prayerToolsTwo:{flexDirection:'row',gap:12,marginBottom:8},prayerToolTwo:{flex:1},prayerTool:{flexGrow:1,flexBasis:'30%',minWidth:220},prayerToolInner:{minHeight:86,flexDirection:'row',alignItems:'center',gap:12,backgroundColor:C.white,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line},prayerToolText:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:12,flex:1},
  libraryKicker:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10,letterSpacing:1.7,marginTop:24},libraryHeading:{color:C.ink,fontFamily:'Newsreader_600SemiBold',fontSize:23,marginTop:4,marginBottom:12},

@@ -11,9 +11,15 @@
  *   1. 963 names were listed twice — once as a boy's name, once as a girl's.
  *      Checking them, the pairs carry the same Arabic and the same meaning;
  *      they are names given to either, not two different names that happen to
- *      be spelled alike. They are stored once and shown as "either", rather
- *      than as two rows the reader has to reconcile. That is 14,585 rows
- *      becoming 13,622 names.
+ *      be spelled alike. They are stored once, which is why 14,585 rows
+ *      became 13,622 names.
+ *
+ *      They are not hidden inside the other two lists, though, because a name
+ *      given to either is a boy's name as much as it is a girl's, and leaving
+ *      them out of both would lose that. So they appear under Boys and under
+ *      Girls, badged on screen, and 'Unisex' is the view of them on their
+ *      own. The three overlap by design; 'All' is the only view where each
+ *      name appears exactly once.
  *
  *   2. The meanings are the supplier's, written in English, and they are
  *      short — an average of fifty characters. Where a name differs between
@@ -39,6 +45,7 @@ type Row = [string, string, string, number];
 
 const MALE = 1;
 const FEMALE = 2;
+const BOTH = MALE + FEMALE;
 
 let table: Row[] | null = null;
 let folds: { name: string; hay: string }[] | null = null;
@@ -114,34 +121,53 @@ function score(index: number, query: string): number {
   return rank - f.name.length;
 }
 
-export type NameFilter = 'all' | 'male' | 'female';
+export type NameFilter = 'all' | 'male' | 'female' | 'unisex';
 
 /**
- * The whole list, in the supplier's order, which is alphabetical.
+ * Whether a row belongs to the view being looked at.
+ *
+ * 'unisex' is the narrow view of the 963 names the source lists twice. Boys
+ * and Girls both keep them, because that is what the source meant by listing
+ * them twice — so 'all' is the only view where each name appears exactly once.
+ */
+function matches(mask: number, filter: NameFilter): boolean {
+  if (filter === 'all') return true;
+  if (filter === 'unisex') return mask === BOTH;
+  if (mask === BOTH) return true; // a name given to either belongs to both
+  return filter === 'male' ? mask === MALE : mask === FEMALE;
+}
+
+/** Whether a name starts with the letter the reader jumped to. */
+function startsWithLetter(name: string, letter: string | null): boolean {
+  if (!letter) return true;
+  return name.charAt(0).toUpperCase() === letter;
+}
+
+export type NameQuery = {
+  /** What was typed. Empty means list everything in order. */
+  query: string;
+  filter: NameFilter;
+  /** A single upper-case letter to narrow to, or null for every letter. */
+  letter: string | null;
+  /** How many to return. The screen pages through the list with this. */
+  limit: number;
+};
+
+/**
+ * Names for the current view, in the supplier's order, which is alphabetical.
  *
  * Returned as objects rather than rows so the screen never has to know how
  * the file is packed.
  */
-export function loadMuslimNames(): MuslimName[] {
-  return table$().map(toName);
-}
-
-/**
- * Names matching `query`, narrowed to one gender when asked.
- *
- * 'both' names belong to whichever gender is being looked at — a name given
- * to either is a boy's name as much as it is a girl's — but they are never
- * filtered out of 'all', which is the only view where "either" means
- * something on its own.
- */
-export function searchMuslimNames(query: string, filter: NameFilter = 'all', limit = 400): MuslimName[] {
+export function findMuslimNames({ query, filter, letter, limit }: NameQuery): MuslimName[] {
   const rows = table$();
   const q = fold(query.trim());
+  const out: MuslimName[] = [];
 
   if (!q) {
-    const out: MuslimName[] = [];
     for (let i = 0; i < rows.length && out.length < limit; i += 1) {
       if (!matches(rows[i][3], filter)) continue;
+      if (!startsWithLetter(rows[i][0], letter)) continue;
       out.push(toName(rows[i]));
     }
     return out;
@@ -150,6 +176,7 @@ export function searchMuslimNames(query: string, filter: NameFilter = 'all', lim
   const scored: { index: number; rank: number }[] = [];
   for (let i = 0; i < rows.length; i += 1) {
     if (!matches(rows[i][3], filter)) continue;
+    if (!startsWithLetter(rows[i][0], letter)) continue;
     const rank = score(i, q);
     if (rank > 0) scored.push({ index: i, rank });
   }
@@ -157,16 +184,37 @@ export function searchMuslimNames(query: string, filter: NameFilter = 'all', lim
   return scored.slice(0, limit).map(({ index }) => toName(rows[index]));
 }
 
-function matches(mask: number, filter: NameFilter): boolean {
-  if (filter === 'all') return true;
-  if (mask === MALE + FEMALE) return true; // 'both' belongs to either view
-  return filter === 'male' ? mask === MALE : mask === FEMALE;
-}
-
-/** How many names a given filter would show, for the count under the search. */
-export function countMuslimNames(filter: NameFilter = 'all'): number {
+/** How many names the current view holds, for the count under the search. */
+export function countMuslimNames(filter: NameFilter = 'all', letter: string | null = null): number {
   const rows = table$();
   let n = 0;
-  for (let i = 0; i < rows.length; i += 1) if (matches(rows[i][3], filter)) n += 1;
+  for (let i = 0; i < rows.length; i += 1) {
+    if (!matches(rows[i][3], filter)) continue;
+    if (!startsWithLetter(rows[i][0], letter)) continue;
+    n += 1;
+  }
   return n;
+}
+
+/**
+ * How many names sit under each letter, for the A–Z strip.
+ *
+ * Letters with nothing under them are shown dimmed rather than hidden: a
+ * strip that changes shape as you switch between Boys and Girls is harder to
+ * use than one that stays put with a few letters you cannot press.
+ */
+export function letterCounts(filter: NameFilter = 'all'): Record<string, number> {
+  const rows = table$();
+  const counts: Record<string, number> = {};
+  for (let i = 0; i < rows.length; i += 1) {
+    if (!matches(rows[i][3], filter)) continue;
+    const letter = rows[i][0].charAt(0).toUpperCase();
+    counts[letter] = (counts[letter] || 0) + 1;
+  }
+  return counts;
+}
+
+/** The whole list, unfiltered. Kept for callers that want everything. */
+export function loadMuslimNames(): MuslimName[] {
+  return table$().map(toName);
 }
