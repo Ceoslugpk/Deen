@@ -5016,6 +5016,7 @@ function PilgrimageScreen({ navigation }: any) {
 }
 
 function JourneyScreenInner({ route, navigation }: any) {
+  const [tappedStep, setTappedStep] = useState<string | null>(null);
   const { rtl } = useLanguage();
   const T = (text: string) => tx(rtl, text);
   const kind: JourneyKind = route.params.kind;
@@ -5078,19 +5079,31 @@ function JourneyScreenInner({ route, navigation }: any) {
         const checked = !!journey.done[step.id];
         const count = journey.counts[step.id] || 0;
         const note = journey.notes[step.id] || '';
+        /* Hajj is eleven rites and Umrah six, each with a page of detail, so
+           the whole journey is far too long to hold open at once. The rite you
+           are on opens itself; tapping another moves the focus. */
+        const isOpen = (tappedStep ?? (steps.find((item) => !journey.done[item.id]) || steps[0])?.id) === step.id;
         return <View key={step.id} style={[s.stepCard, checked && s.stepCardDone]}>
           <View style={[s.stepHead, ]}>
             <ToolGraphic tool={step.icon} size={49} />
-            <View style={{ flex: 1 }}>
-              <Text style={s.stepIndex}>{rtl ? `المنسك ${index + 1}` : `RITE ${index + 1}`}</Text>
-              <Text style={s.settingName}>{step.title}</Text>
-              <Text style={s.meta}>{step.short}</Text>
-            </View>
+            <Pressable accessibilityRole="button" accessibilityState={{ expanded: isOpen }}
+              accessibilityLabel={`${step.title}, ${isOpen ? 'open' : 'closed'}`}
+              onPress={() => setTappedStep(isOpen ? null : step.id)} style={{ flex: 1 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.stepIndex}>{rtl ? `المنسك ${index + 1}` : `RITE ${index + 1}`}</Text>
+                  <Text style={s.settingName}>{step.title}</Text>
+                  <Text style={s.meta}>{step.short}</Text>
+                </View>
+                {ico(isOpen ? 'chevron-down' : (rtl ? 'chevron-back' : 'chevron-forward'), 17, C.muted)}
+              </View>
+            </Pressable>
             <Pressable accessibilityRole="checkbox" accessibilityState={{ checked }} accessibilityLabel={`${T('Mark as done')} ${step.title}`}
               onPress={() => toggleStep(kind, step.id)} style={[s.stepCheck, checked && s.stepCheckDone]}>
               {!!checked && ico('checkmark', 16, C.white)}
             </Pressable>
           </View>
+          {isOpen && <>
           <Text style={s.dataBody}>{step.detail}</Text>
           {!!step.counter && <View style={s.stepper}>
             <Pressable accessibilityLabel={`${T('One fewer')} ${step.counter.label}`} onPress={() => setStepCount(kind, step.id, count - 1, step.counter!.max)} style={s.stepButton}>{ico('remove', 20, C.green)}</Pressable>
@@ -5119,6 +5132,7 @@ function JourneyScreenInner({ route, navigation }: any) {
           {noteFor === step.id && <TextInput accessibilityLabel={`${T('Note for')} ${step.title}`} value={note} onChangeText={(text) => setStepNote(kind, step.id, text)}
             placeholder={T('A reminder to yourself — kept only on this device')} placeholderTextColor={C.muted} style={s.searchInput} multiline />}
           {!!note && noteFor !== step.id && <Text style={s.stepNote}>{note}</Text>}
+          </>}
         </View>;
       })}
 
