@@ -297,6 +297,63 @@ export function snapToBrand(color: string): string {
   return toHex([bestC[0], bestC[1], bestC[2]]);
 }
 
+/* ------------------------------------------------------------------ *
+ * Palestine
+ * ------------------------------------------------------------------ */
+
+/**
+ * The flag, in its four colours.
+ *
+ * Black, white, green and red, as the flag of Palestine is specified. Every
+ * value in the palette below is one of these four or a tint of one toward
+ * another, so the theme is made of the flag and nothing else.
+ *
+ * The greens and reds used for text are shaded toward black rather than the
+ * pure flag values. Pure green measures 3.6:1 on the white ground, under the
+ * 4.5:1 the small print in this app needs, so text takes a green that has
+ * been taken down a little while fills and graphics keep the flag's own.
+ */
+export const FLAG = {
+  black: '#000000',
+  white: '#FFFFFF',
+  green: '#009736',
+  red:   '#EE2A35',
+} as const;
+
+/** Palestinian palette — the flag's four colours, and nothing else. */
+export const C_PALESTINE: Palette = {
+  bg:       mix(FLAG.white, FLAG.black, 0.035),        // white, taken down a little
+  card:     FLAG.white,
+  ink:      mix(FLAG.black, FLAG.white, 0.07),         // black, off pure
+  muted:    mix(mix(FLAG.black, FLAG.white, 0.07), mix(FLAG.white, FLAG.black, 0.035), 0.40), // 4.8:1
+  body:     mix(mix(FLAG.black, FLAG.white, 0.07), mix(FLAG.white, FLAG.black, 0.035), 0.18), // 10.4:1
+  green:    mix(FLAG.green, FLAG.black, 0.18),         // primary, 5.0:1
+  green2:   mix(FLAG.green, FLAG.black, 0.34),
+  accent:   mix(FLAG.green, FLAG.black, 0.10),         // fill; white on it 4.6:1
+  deep:     FLAG.black,
+  teal:     mix(FLAG.green, FLAG.black, 0.18),         // teal retired -> primary
+  mint:     mix(FLAG.white, FLAG.green, 0.10),
+  blue:     mix(FLAG.white, FLAG.green, 0.10),
+  peach:    mix(FLAG.white, FLAG.red, 0.10),
+  lilac:    mix(FLAG.white, FLAG.green, 0.10),
+  yellow:   mix(FLAG.white, FLAG.red, 0.10),
+  cyan:     mix(FLAG.white, FLAG.green, 0.10),
+  gold:     mix(FLAG.green, FLAG.black, 0.14),         // the lit state, 4.6:1
+  line:     mix(FLAG.white, FLAG.black, 0.12),
+  coral:    mix(FLAG.red, FLAG.black, 0.10),           // destructive, 4.7:1
+  white:    FLAG.white,
+  chevron:  mix(FLAG.black, FLAG.white, 0.55),
+  onAccent: FLAG.white,
+  onAccentInk: FLAG.white,
+  onHero:   FLAG.white,
+  link:     mix(FLAG.green, FLAG.black, 0.18),         // 5.0:1
+  success:  FLAG.green,
+  successInk: mix(FLAG.green, FLAG.black, 0.18),       // 5.0:1
+  /* The hero reads as the flag stood on end: black at the top, green below. */
+  heroA:    mix(FLAG.black, FLAG.green, 0.22),
+  heroB:    mix(FLAG.green, FLAG.black, 0.10),
+};
+
 /** Brand-derived depth tokens, replacing the old off-palette shadow tints. */
 export const DEPTH = {
   light: {
@@ -312,5 +369,12 @@ export const DEPTH = {
     edge:   alpha(BRAND.lavender, 0.10),
     veil:   alpha(BRAND.lavender, 0.05),
     scrim:  alpha(BRAND.midnightInk, 0.72),
+  },
+  palestine: {
+    shadow: mix(FLAG.black, FLAG.green, 0.20),
+    soft:   mix(FLAG.black, FLAG.green, 0.35),
+    edge:   alpha(FLAG.white, 0.90),
+    veil:   alpha(FLAG.black, 0.035),
+    scrim:  alpha(FLAG.black, 0.62),
   },
 } as const;

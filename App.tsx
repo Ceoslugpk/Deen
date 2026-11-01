@@ -143,7 +143,7 @@ const languageOf = (identifier?: string, language?: string) => {
   return LANGUAGE_NAME_TO_CODE[(language || '').toLowerCase()] || (language || '');
 };
 import { CARD, CARD_GAP, RADIUS, SPACE } from './src/design/tokens';
-import { BRAND, C_DARK, C_LIGHT, DEPTH, brandHex, mix, snapToBrand } from './src/design/brand';
+import { BRAND, C_DARK, C_LIGHT, C_PALESTINE, DEPTH, FLAG, brandHex, mix, snapToBrand } from './src/design/brand';
 import { useCalmMotion } from './src/design/useCalmMotion';
 import { Tactile } from './src/components/Tactile';
 import { useSubtleTransitions } from './src/design/transitions';
@@ -229,7 +229,10 @@ const MUSHAF_LEAD = 1.48;
 const MUSHAF_FILL = 0.97;
 
 let C: Record<string, string> = { ...C_LIGHT };
-/** True while the dark palette is the one in use. */
+/** The palette built into the sheet right now, so a swap happens only once. */
+let themeApplied: ResolvedTheme = 'light';
+/** Whether that palette is the dark one. A few colours are chosen on this
+ *  rather than on the palette itself. */
 let themeDark = false;
 let shadow: any = { shadowColor: DEPTH.light.shadow, shadowOffset: { width: 0, height: 10 }, shadowOpacity: .11, shadowRadius: 24, elevation: 5 };
 let soft: any = { shadowColor: DEPTH.light.soft, shadowOffset: { width: 0, height: 4 }, shadowOpacity: .07, shadowRadius: 14, elevation: 2 };
@@ -249,7 +252,7 @@ let depth: any = {
   ambient: { shadowColor: DEPTH.light.soft, shadowOffset: { width: 0, height: 8 }, shadowOpacity: .09, shadowRadius: 20, elevation: 3 },
   contact: { shadowColor: DEPTH.light.shadow, shadowOffset: { width: 0, height: 1 }, shadowOpacity: .10, shadowRadius: 2, elevation: 1 },
   edge: 'rgba(255,255,255,.9)',
-  veil: 'rgba(47,36,78,.035)'
+  veil: DEPTH.light.veil
 };
 /**
  * What a card is made of.
@@ -378,7 +381,21 @@ function remapStyles(created: Record<string, any>): Record<string, any> {
   return out;
 }
 
-export type ThemeMode = 'system' | 'light' | 'dark';
+/**
+ * What can be chosen.
+ *
+ * 'palestine' is a third palette rather than a third brightness: it is built
+ * from the flag's four colours — black, white, green and red — and every value
+ * in it is one of those, or a tint of one toward another.
+ *
+ * It follows the device. Somebody who has chosen it and whose phone turns dark
+ * at night gets the app's dark palette, not a darkened flag: the four colours
+ * are the point of the theme, and a half-lit version of them would be neither
+ * the flag nor the dark they already have.
+ */
+export type ThemeMode = 'system' | 'light' | 'dark' | 'palestine';
+/** What is on screen once 'system' has been resolved. */
+export type ResolvedTheme = 'light' | 'dark' | 'palestine';
 type ThemeState = { mode: ThemeMode; dark: boolean; tick: number; setMode: (mode: ThemeMode) => void;
   /**
    * Drives the change-over. It falls to 0 while the palette is swapped and
@@ -391,28 +408,31 @@ const ThemeContext = createContext<ThemeState>({ mode: 'system', dark: false, ti
 async function loadThemeMode(): Promise<ThemeMode> {
   try {
     const raw = await AsyncStorage.getItem(THEME_KEY);
-    return raw === 'light' || raw === 'dark' || raw === 'system' ? raw : 'system';
+    return raw === 'light' || raw === 'dark' || raw === 'palestine' || raw === 'system' ? raw : 'system';
   } catch {
     return 'system';
   }
 }
 
 /** Puts one palette in place and rebuilds the style sheet from it. */
-function applyPalette(dark: boolean) {
-  themeDark = dark;
-  const palette = dark ? C_DARK : C_LIGHT;
+function applyPalette(theme: ResolvedTheme) {
+  themeApplied = theme;
+  const palette = theme === 'dark' ? C_DARK : theme === 'palestine' ? C_PALESTINE : C_LIGHT;
   Object.keys(palette).forEach((key) => { C[key] = palette[key]; });
-  shadow = { ...shadow, shadowColor: dark ? DEPTH.dark.shadow : DEPTH.light.shadow, shadowOpacity: dark ? 0.5 : 0.11 };
+  const d = theme === 'dark' ? DEPTH.dark : theme === 'palestine' ? DEPTH.palestine : DEPTH.light;
+  const dark = theme === 'dark';
+  themeDark = dark;
+  shadow = { ...shadow, shadowColor: d.shadow, shadowOpacity: dark ? 0.5 : 0.11 };
   surface = { ...surface, borderTopColor: depth.edge, ...depth.ambient };
-  soft = { ...soft, shadowColor: dark ? DEPTH.dark.soft : DEPTH.light.soft, shadowOpacity: dark ? 0.4 : 0.07 };
+  soft = { ...soft, shadowColor: d.soft, shadowOpacity: dark ? 0.4 : 0.07 };
   /* On dark, shadows alone would disappear into the background, so the top
      edge carries the form: a faint light along the lip instead of a dark
      outline. */
   depth = {
-    ambient: { ...depth.ambient, shadowColor: dark ? DEPTH.dark.soft : DEPTH.light.soft, shadowOpacity: dark ? 0.45 : 0.09 },
-    contact: { ...depth.contact, shadowColor: dark ? DEPTH.dark.shadow : DEPTH.light.shadow, shadowOpacity: dark ? 0.5 : 0.10 },
-    edge: dark ? DEPTH.dark.edge : DEPTH.light.edge,
-    veil: dark ? DEPTH.dark.veil : DEPTH.light.veil
+    ambient: { ...depth.ambient, shadowColor: d.soft, shadowOpacity: dark ? 0.45 : 0.09 },
+    contact: { ...depth.contact, shadowColor: d.shadow, shadowOpacity: dark ? 0.5 : 0.10 },
+    edge: d.edge,
+    veil: d.veil
   };
   CARD_GREEN.backgroundColor = C.mint;
   CARD_GOLD.backgroundColor = C.peach;
@@ -429,7 +449,15 @@ function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [hydrated, setHydrated] = useState(false);
   const [tick, setTick] = useState(0);
   useEffect(() => { void loadThemeMode().then((next) => { setModeState(next); setHydrated(true); }); }, []);
-  const dark = mode === 'system' ? system === 'dark' : mode === 'dark';
+  /* 'palestine' follows the device: chosen and it is night, the app is dark
+     like anybody else's. The mode is a preference, the resolved theme is what
+     is on screen, and only the latter decides colours. */
+  const systemDark = system === 'dark';
+  const resolved: ResolvedTheme =
+    mode === 'palestine' ? (systemDark ? 'dark' : 'palestine') :
+    mode === 'system' ? (systemDark ? 'dark' : 'light') :
+    mode;
+  const dark = resolved === 'dark';
   const swap = useRef(new Animated.Value(1)).current;
   /* Painted once, during render, so the opening screen is already in the right
      palette. Every change after that goes through the animation below instead
@@ -438,14 +466,14 @@ function ThemeProvider({ children }: { children: React.ReactNode }) {
   const painted = useRef(false);
   if (hydrated && !painted.current) {
     painted.current = true;
-    if (themeDark !== dark) applyPalette(dark);
+    if (themeApplied !== resolved) applyPalette(resolved);
   }
   useEffect(() => {
     if (!hydrated) return;
-    if (themeDark === dark) return;
-    const paper = (next: boolean) => {
+    if (themeApplied === resolved) return;
+    const paper = (next: ResolvedTheme) => {
       if (Platform.OS !== 'web' || typeof document === 'undefined') return;
-      const value = next ? C_DARK.bg : C_LIGHT.bg;
+      const value = next === 'dark' ? C_DARK.bg : next === 'palestine' ? C_PALESTINE.bg : C_LIGHT.bg;
       document.documentElement.style.background = value;
       document.body.style.background = value;
     };
@@ -463,8 +491,8 @@ function ThemeProvider({ children }: { children: React.ReactNode }) {
       easing: Easing.in(Easing.quad),
       useNativeDriver: true,
     }).start(() => {
-      applyPalette(dark);
-      paper(dark);
+      applyPalette(resolved);
+      paper(resolved);
       setTick((value) => value + 1);
       Animated.timing(swap, {
         toValue: 1,
@@ -473,7 +501,7 @@ function ThemeProvider({ children }: { children: React.ReactNode }) {
         useNativeDriver: true,
       }).start();
     });
-  }, [dark, hydrated, swap]);
+  }, [resolved, hydrated, swap]);
   const setMode = (next: ThemeMode) => {
     setModeState(next);
     AsyncStorage.setItem(THEME_KEY, next).catch(() => undefined);
@@ -7903,12 +7931,32 @@ const PRAYER_METHODS=[{id:8,name:'Gulf Region',ar:'منطقة الخليج'},{id
  * answer a press with nothing at all. They now answer the way a card does -
  * they give slightly under the finger - so the whole app feels consistent.
  */
-function ChoicePill({label,selected,onPress}:{label:string;selected:boolean;onPress:()=>void}){
+/**
+ * The flag, small enough to sit inside a pill.
+ *
+ * Three bands and a triangle at the hoist, drawn from FLAG so it is the same
+ * four colours the theme is made of. The triangle is a border triangle: a box
+ * of no size whose left border is red and whose top and bottom borders are
+ * nothing, which React Native paints as the wedge the flag has.
+ */
+function FlagMark({height=12}:{height?:number}){
+  const w=height*2, h=height;
+  return <View style={{width:w,height:h,borderRadius:2,overflow:'hidden',backgroundColor:FLAG.white}}>
+    <View style={{position:'absolute',left:0,right:0,top:0,height:h/3,backgroundColor:FLAG.black}}/>
+    <View style={{position:'absolute',left:0,right:0,bottom:0,height:h/3,backgroundColor:FLAG.green}}/>
+    <View style={{position:'absolute',left:0,top:0,width:0,height:0,
+      borderTopWidth:h/2,borderBottomWidth:h/2,borderLeftWidth:w/3,
+      borderTopColor:'transparent',borderBottomColor:'transparent',borderLeftColor:FLAG.red}}/>
+  </View>;
+}
+
+function ChoicePill({label,selected,onPress,swatch}:{label:string;selected:boolean;onPress:()=>void;swatch?:React.ReactNode}){
   const press=usePressDepth();
   return <Animated.View style={{transform:[{scale:press.scale}]}}>
     <Pressable accessibilityRole="radio" accessibilityState={{selected}} onPress={onPress}
       onPressIn={press.onPressIn} onPressOut={press.onPressOut}
-      style={[s.choicePill,selected&&s.choicePillActive]}>
+      style={[s.choicePill,selected&&s.choicePillActive,swatch?{flexDirection:'row',gap:6}:null]}>
+      {swatch}
       <Text style={[s.choiceText,selected&&s.choiceTextActive]}>{label}</Text>
     </Pressable>
   </Animated.View>;
@@ -8559,11 +8607,12 @@ function SettingsScreen({navigation}:any){
 
       <Section title={T('Appearance')} />
       <View style={s.preferencePanel}>
-        <PanelHead glyph={themeMode === 'dark' ? 'moon-outline' : themeMode === 'light' ? 'sunny-outline' : 'contrast-outline'} title={T('Appearance')} note={T('Light, dark, or whatever the device is set to')} />
-        <View style={s.choiceRow}>
+        <PanelHead glyph={themeMode === 'dark' ? 'moon-outline' : themeMode === 'light' ? 'sunny-outline' : themeMode === 'palestine' ? 'flag-outline' : 'contrast-outline'} title={T('Appearance')} note={T('Light, dark, the flag colours, or whatever the device is set to')} />
+        <View style={s.choiceGrid}>
           <ChoicePill label={T('System')} selected={themeMode === 'system'} onPress={() => setMode('system')} />
           <ChoicePill label={T('Light')} selected={themeMode === 'light'} onPress={() => setMode('light')} />
           <ChoicePill label={T('Dark')} selected={themeMode === 'dark'} onPress={() => setMode('dark')} />
+          <ChoicePill label={T('Palestine')} selected={themeMode === 'palestine'} onPress={() => setMode('palestine')} swatch={<FlagMark height={11} />} />
         </View>
       </View>
 
@@ -9788,6 +9837,7 @@ function OnboardingLocation() {
  */
 function OnboardingNotifications() {
   const { rtl } = useLanguage(); const T = (text: string) => tx(rtl, text);
+  const { mode, setMode } = useTheme();
   const [health, setHealth] = useState<NotificationHealth>('undetermined');
   const [asking, setAsking] = useState(false);
   const [stuck, setStuck] = useState(false);
@@ -9854,6 +9904,19 @@ function OnboardingNotifications() {
               </Pressable>}
             </View>
           </View>}
+
+    {/* The look lives here rather than on a screen of its own. It is not
+        needed for the app to work, so it does not earn a step; but it is the
+        one question asked on this screen that somebody might want to answer,
+        and burying it four screens deep in Settings means most people never
+        find it. Asked once, here, and changeable in Settings afterwards. */}
+    <Text style={s.preferenceLabel}>{T('HOW THE APP SHOULD LOOK')}</Text>
+    <View style={s.choiceGrid}>
+      <ChoicePill label={T('System')} selected={mode === 'system'} onPress={() => setMode('system')} />
+      <ChoicePill label={T('Light')} selected={mode === 'light'} onPress={() => setMode('light')} />
+      <ChoicePill label={T('Dark')} selected={mode === 'dark'} onPress={() => setMode('dark')} />
+      <ChoicePill label={T('Palestine')} selected={mode === 'palestine'} onPress={() => setMode('palestine')} swatch={<FlagMark height={11} />} />
+    </View>
 
     <Text style={s.onbNoteText}>
       {T('Nothing is scheduled unless you allow it, and every reminder has its own switch in Settings.')}
