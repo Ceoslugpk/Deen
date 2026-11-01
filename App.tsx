@@ -1836,6 +1836,10 @@ const PACKING_KEY = '@deen/umrah-packing/v1';
  * kept on the device, so the list is where you left it.
  */
 function UmrahPackingScreen({ navigation }: any) {
+  /* Sixty items across ten groups is a lot to hold on screen at once, so the
+     groups close. They start open: a packing list you have to open before you
+     can see any of it is not a packing list. */
+  const [open, setOpen] = useState<Record<string, boolean>>({});
   const { rtl } = useLanguage();
   const T = (text: string) => tx(rtl, text);
   const [packed, setPacked] = useState<string[]>([]);
@@ -1870,16 +1874,27 @@ function UmrahPackingScreen({ navigation }: any) {
       {!!done && <Pressable accessibilityRole="button" accessibilityLabel={T('Clear the list')} onPress={clear} style={s.secondary}>
         <Text style={s.secondaryText}>{T('Clear the list')}</Text>
       </Pressable>}
-      {PACKING_GROUPS.map((group) => <View key={group.title} style={s.packingGroup}>
-        <Text style={s.packingGroupTitle}>{T(group.title)}</Text>
-        {group.items.map((item) => {
+      {PACKING_GROUPS.map((group) => {
+        const inGroup = group.items.filter((item) => packed.includes(item)).length;
+        const isOpen = open[group.title] !== false;
+        const caution = group.title === 'Leave at home';
+        return <View key={group.title} style={[s.packingGroup, caution && s.packingGroupCaution]}>
+        <Pressable accessibilityRole="button" accessibilityState={{ expanded: isOpen }}
+          accessibilityLabel={`${T(group.title)}, ${inGroup} of ${group.items.length}`}
+          onPress={() => setOpen((prev) => ({ ...prev, [group.title]: !isOpen }))}
+          style={s.packingGroupHead}>
+          <Text style={[s.packingGroupTitle, caution && { color: C.gold }, { flex: 1 }]}>{T(group.title)}</Text>
+          <Text style={s.packingGroupCount}>{caution ? '' : `${inGroup}/${group.items.length}`}</Text>
+          {ico(isOpen ? 'chevron-down' : 'chevron-forward', 16, C.muted)}
+        </Pressable>
+        {isOpen && group.items.map((item) => {
           const checked = packed.includes(item);
           return <Pressable key={item} onPress={() => toggle(item)} accessibilityRole="checkbox" accessibilityState={{ checked }} accessibilityLabel={T(item)} style={s.packingRow}>
             <View style={[s.packingBox, checked && s.packingBoxOn]}>{checked && ico('checkmark', 14, C.onAccent)}</View>
             <Text style={[s.packingItem, checked && s.packingItemOn]}>{T(item)}</Text>
           </Pressable>;
         })}
-      </View>)}
+      </View>;})}
     </ScrollView></Page>;
 }
 
@@ -5638,14 +5653,14 @@ function NotificationScreen({navigation}:any){const{rtl}=useLanguage();const T=(
         {ico('chevron-forward',18,C.muted)}
       </Pressable>
       <Text style={s.preferenceLabel}>{T('WHICH ADHAN')}</Text>
-      <Text style={s.meta}>{T('Fajr only')}</Text>
-      <View style={s.choiceRow}>
+      <Text style={[s.meta,s.reminderSub]}>{T('Fajr only')}</Text>
+      <View style={[s.choiceRow,s.reminderPills]}>
         {FAJR_OPTIONS.map(option=><ChoicePill key={option.id}
           label={rtl?option.labelAr:option.label} selected={fajrOption(settings.adhanFajrReciter).id===option.id}
           onPress={()=>update({adhanFajrReciter:option.id})}/>)}
       </View>
-      <Text style={s.meta}>{T('Every other prayer')}</Text>
-      <View style={s.choiceRow}>
+      <Text style={[s.meta,s.reminderSub]}>{T('Every other prayer')}</Text>
+      <View style={[s.choiceRow,s.reminderPills]}>
         {ADHAN_OPTIONS.map(option=><ChoicePill key={option.id}
           label={rtl?option.labelAr:option.label} selected={adhanOption(settings.adhanReciter).id===option.id}
           onPress={()=>update({adhanReciter:option.id})}/>)}
@@ -10045,6 +10060,9 @@ mushafPageNoText:{color:C.green,fontFamily:'Newsreader_700Bold',fontSize:16},mus
   trackStatValue:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:22},trackStatLabel:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:11,marginTop:2},
   trackLegend:{flexDirection:'row',alignItems:'center',gap:6,marginTop:14},trackLegendText:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:11},
   madeWith:{alignItems:'center',paddingTop:28,paddingBottom:8},madeWithText:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:12},
+  reminderSub:{marginTop:12,marginBottom:7},reminderPills:{marginBottom:6},
+  packingGroupHead:{flexDirection:'row',alignItems:'center',gap:8},packingGroupCount:{color:C.muted,fontFamily:'DMSans_600SemiBold',fontSize:11},
+  packingGroupCaution:{borderColor:C.gold,borderWidth:1},
   settingsRow:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingHorizontal:16,paddingVertical:14,borderBottomWidth:1,borderColor:C.line},choicePill:{minHeight:44,justifyContent:'center',minWidth:44,alignItems:'center',paddingHorizontal:12,paddingVertical:8,borderRadius:12,backgroundColor:C.bg,borderWidth:1,borderColor:C.line},choicePillActive:{backgroundColor:C.accent,borderColor:C.green},choiceText:{color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:10},choiceTextActive:{color:C.onAccent},preferenceLabel:{color:C.muted,fontFamily:'DMSans_700Bold',fontSize:10,letterSpacing:1.1,marginTop:16,marginBottom:8},settings:{backgroundColor:C.card,borderRadius:24,overflow:'hidden',borderWidth:1,borderColor:C.line,...surface},setting:{minHeight:69,flexDirection:'row',alignItems:'center',gap:12,paddingHorizontal:12,borderBottomWidth:1,borderColor:C.line},settingName:{color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:13},
  locationGate:{flexDirection:'row',gap:16,alignItems:'flex-start',backgroundColor:C.card,borderRadius:24,padding:20,borderWidth:1,borderColor:C.line,...soft},locationGateNarrow:{flexDirection:'column',alignItems:'stretch'},locationGateTitle:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:16},locationGateBody:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:12,lineHeight:18,marginTop:4},locationActions:{flexDirection:'row',flexWrap:'wrap',gap:8,marginTop:16},locationActionsNarrow:{flexDirection:'column',alignItems:'stretch'},primarySmall:{backgroundColor:C.accent,paddingHorizontal:16,paddingVertical:12,borderRadius:12,minHeight:44,justifyContent:'center'},ghostSmall:{backgroundColor:C.mint,paddingHorizontal:16,paddingVertical:12,borderRadius:12,minHeight:44,justifyContent:'center'},ghostText:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:11},
  prayerTools:{flexDirection:'row',flexWrap:'wrap',gap:8},prayerToolsTwo:{flexDirection:'row',gap:12,marginBottom:8},prayerToolTwo:{flex:1},prayerTool:{flexGrow:1,flexBasis:'30%',minWidth:220},prayerToolInner:{minHeight:86,flexDirection:'row',alignItems:'center',gap:12,backgroundColor:C.white,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line},prayerToolText:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:12,flex:1},
