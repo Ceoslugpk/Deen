@@ -7836,7 +7836,7 @@ function BackupScreen({ navigation }: any) {
   </Page>;
 }
 
-function SettingsStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="Settings" component={SettingsScreen}/><Stack.Screen name="Data sources" component={DataSourcesScreen}/><Stack.Screen name="Reader Settings" component={ReaderSettingsScreen}
+function SettingsStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="Settings" component={SettingsScreen}/><Stack.Screen name="Legal" component={LegalScreen}/><Stack.Screen name="Data sources" component={DataSourcesScreen}/><Stack.Screen name="Reader Settings" component={ReaderSettingsScreen}
       options={{presentation:'transparentModal',animation:'slide_from_bottom',contentStyle:{backgroundColor:'transparent'}}}/><Stack.Screen name="Privacy Lock" component={PrivacyLockScreen}/><Stack.Screen name="My Reports" component={ReportsScreen}/><Stack.Screen name="Backup" component={BackupScreen}/></Stack.Navigator>}
 
 /**
@@ -7856,6 +7856,81 @@ function PanelHead({ tool, glyph, title, note }: { tool?: string; glyph?: string
       <Text style={s.meta}>{note}</Text>
     </View>
   </View>;
+}
+
+/* The three documents a store listing asks for, written from what the app
+   actually does rather than from a template. Each is plain language on
+   purpose: a policy nobody reads is not a policy.
+
+   They are kept as data next to the screen that renders them so that the
+   text and the screen cannot drift, and so that a change to what the app
+   sends over the network is a change to one list rather than a hunt. */
+type LegalDoc = { title: string; updated: string; sections: { heading: string; body: string }[] };
+
+const LEGAL_DOCS: Record<string, LegalDoc> = {
+  privacy: {
+    title: 'Privacy Policy',
+    updated: 'Draft',
+    sections: [
+      { heading: 'There is no account',
+        body: 'This app does not ask you to sign up, log in, or give an email address. There is no account to close because there is no account.' },
+      { heading: 'What stays on your device',
+        body: 'Your prayer record, the surah and verse you last read, bookmarks, notes, reminder settings, the language you chose and the city you picked are stored on the device itself. Clearing the app’s storage or uninstalling removes them.' },
+      { heading: 'What is sent over the network',
+        body: 'When the app fetches something it sends only what that request needs — for example, the coordinates of the city you selected, in order to work out prayer times and the direction of the qibla. Those requests are not tied to you, and the app has no advertising identifier and runs no analytics.' },
+      { heading: 'Who we ask',
+        body: 'Quran text, prayer times, hadith, the Names, supplications and the countdown to Hajj come from api.islamicdata.uz. Recitation audio comes from cdn.islamic.network. The adhan recordings you choose are downloaded from audio.islamicdata.uz. Gold and silver prices used by the Zakat calculator come from misc.islamicdata.uz. Each of these receives the request needed to answer it and nothing about you.' },
+      { heading: 'Location',
+        body: 'The app works with a city you choose, and Makkah if you choose nothing. If you allow precise location it is used to resolve that city and is not stored or sent as a history of where you have been.' },
+      { heading: 'Notifications',
+        body: 'Reminders are scheduled on the device. Nothing about them is sent anywhere.' },
+      { heading: 'Children',
+        body: 'The app is suitable for all ages and knowingly collects nothing from anyone.' },
+      { heading: 'Changes',
+        body: 'If this changes, this page changes with it.' },
+    ],
+  },
+  terms: {
+    title: 'Terms of Use',
+    updated: 'Draft',
+    sections: [
+      { heading: 'Provided as it is',
+        body: 'The app is offered in good faith and without warranty. Prayer times are calculated, and calculations can differ slightly from a local mosque’s timetable. Where it matters, follow your mosque.' },
+      { heading: 'Religious content',
+        body: 'Quran text, hadith, the Names and the supplications come from the sources named in the app. Rulings and guidance are summarised for learning; for a matter that affects your worship or your obligations, ask a qualified scholar. This app is not a source of legal or religious authority.' },
+      { heading: 'Your content',
+        body: 'Notes and bookmarks you create remain yours and remain on your device.' },
+    ],
+  },
+  datasafety: {
+    title: 'Data Safety',
+    updated: 'Draft',
+    sections: [
+      { heading: 'Collected', body: 'Nothing is collected. No account, no analytics, no advertising identifier, no crash reporting that identifies you.' },
+      { heading: 'Stored on device', body: 'Prayer record, reading position, bookmarks, notes, settings, chosen city and language. Removed by clearing storage or uninstalling.' },
+      { heading: 'Shared', body: 'Nothing is sold, and nothing is shared with third parties for advertising or analytics.' },
+      { heading: 'Sent in requests', body: 'The coordinates of the city you selected, and the identifiers of the content you asked for. Not linked to you.' },
+      { heading: 'Encryption', body: 'Requests to the services named in the Privacy Policy are made over HTTPS.' },
+      { heading: 'Deletion', body: 'There is nothing held about you to delete. What is on the device can be cleared from Settings or by uninstalling.' },
+    ],
+  },
+};
+
+function LegalScreen({ route }: any) {
+  const { rtl } = useLanguage(); const T = (text: string) => tx(rtl, text);
+  const key = route?.params?.doc || 'privacy';
+  const doc = LEGAL_DOCS[key] || LEGAL_DOCS.privacy;
+  return <Page><ToolBar title={T(doc.title)} navigation={undefined} />
+    <ScrollView contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
+      <Text style={s.dataTitle}>{T(doc.title)}</Text>
+      <Text style={s.meta}>{T('Last updated')}: {doc.updated}</Text>
+      {doc.sections.map((section) => (
+        <View key={section.heading} style={{ marginTop: 18 }}>
+          <Text style={s.sourceTitle}>{T(section.heading)}</Text>
+          <Text style={s.intro}>{T(section.body)}</Text>
+        </View>
+      ))}
+    </ScrollView></Page>;
 }
 
 function SettingsScreen({navigation}:any){
@@ -8008,6 +8083,19 @@ function SettingsScreen({navigation}:any){
           {ico(rtl ? 'arrow-back' : 'arrow-forward', 17, C.chevron)}
         </View>
       </Pressable>
+      <Section title={T('Legal')} />
+      <View style={s.settings}>
+        {[['privacy', T('Privacy Policy')], ['terms', T('Terms of Use')], ['datasafety', T('Data Safety')]].map(([key, label]) => (
+          <Pressable key={key} accessibilityRole="button" onPress={() => navigation.navigate('Legal', { doc: key })} style={s.settingsRow}>
+            <Text style={s.settingName}>{label}</Text>
+            {ico(rtl ? 'arrow-back' : 'arrow-forward', 17, C.chevron)}
+          </Pressable>
+        ))}
+      </View>
+
+      <View style={s.madeWith}>
+        <Text style={s.madeWithText}>{T('Made with')} ❤️ {T('for Ummah')}</Text>
+      </View>
     </ScrollView>
   </Page>}
 import { DEFAULT_RECITER, editionsForLanguage, LANGUAGES, Language, LanguageCode, languageByCode, isRtl, pickEdition, HADITH_LANGUAGES, hadithLanguage } from './src/services/languages';
@@ -9901,7 +9989,9 @@ mushafPageNoText:{color:C.green,fontFamily:'Newsreader_700Bold',fontSize:16},mus
   trackGrid:{flexDirection:'row',gap:3,alignItems:'flex-start'},trackWeek:{gap:3},trackCell:{width:13,height:13,borderRadius:3},
   trackStats:{flexDirection:'row',flexWrap:'wrap',gap:10,marginBottom:18},trackStat:{flex:1,minWidth:88,backgroundColor:C.card,borderRadius:16,padding:12,borderWidth:1,borderColor:C.line},
   trackStatValue:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:22},trackStatLabel:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:11,marginTop:2},
-  trackLegend:{flexDirection:'row',alignItems:'center',gap:6,marginTop:14},trackLegendText:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:11},choicePill:{minHeight:44,justifyContent:'center',minWidth:44,alignItems:'center',paddingHorizontal:12,paddingVertical:8,borderRadius:12,backgroundColor:C.bg,borderWidth:1,borderColor:C.line},choicePillActive:{backgroundColor:C.accent,borderColor:C.green},choiceText:{color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:10},choiceTextActive:{color:C.onAccent},preferenceLabel:{color:C.muted,fontFamily:'DMSans_700Bold',fontSize:10,letterSpacing:1.1,marginTop:16,marginBottom:8},settings:{backgroundColor:C.card,borderRadius:24,overflow:'hidden',borderWidth:1,borderColor:C.line,...surface},setting:{minHeight:69,flexDirection:'row',alignItems:'center',gap:12,paddingHorizontal:12,borderBottomWidth:1,borderColor:C.line},settingName:{color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:13},
+  trackLegend:{flexDirection:'row',alignItems:'center',gap:6,marginTop:14},trackLegendText:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:11},
+  madeWith:{alignItems:'center',paddingTop:28,paddingBottom:8},madeWithText:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:12},
+  settingsRow:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingHorizontal:16,paddingVertical:14,borderBottomWidth:1,borderColor:C.line},choicePill:{minHeight:44,justifyContent:'center',minWidth:44,alignItems:'center',paddingHorizontal:12,paddingVertical:8,borderRadius:12,backgroundColor:C.bg,borderWidth:1,borderColor:C.line},choicePillActive:{backgroundColor:C.accent,borderColor:C.green},choiceText:{color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:10},choiceTextActive:{color:C.onAccent},preferenceLabel:{color:C.muted,fontFamily:'DMSans_700Bold',fontSize:10,letterSpacing:1.1,marginTop:16,marginBottom:8},settings:{backgroundColor:C.card,borderRadius:24,overflow:'hidden',borderWidth:1,borderColor:C.line,...surface},setting:{minHeight:69,flexDirection:'row',alignItems:'center',gap:12,paddingHorizontal:12,borderBottomWidth:1,borderColor:C.line},settingName:{color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:13},
  locationGate:{flexDirection:'row',gap:16,alignItems:'flex-start',backgroundColor:C.card,borderRadius:24,padding:20,borderWidth:1,borderColor:C.line,...soft},locationGateNarrow:{flexDirection:'column',alignItems:'stretch'},locationGateTitle:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:16},locationGateBody:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:12,lineHeight:18,marginTop:4},locationActions:{flexDirection:'row',flexWrap:'wrap',gap:8,marginTop:16},locationActionsNarrow:{flexDirection:'column',alignItems:'stretch'},primarySmall:{backgroundColor:C.accent,paddingHorizontal:16,paddingVertical:12,borderRadius:12,minHeight:44,justifyContent:'center'},ghostSmall:{backgroundColor:C.mint,paddingHorizontal:16,paddingVertical:12,borderRadius:12,minHeight:44,justifyContent:'center'},ghostText:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:11},
  prayerTools:{flexDirection:'row',flexWrap:'wrap',gap:8},prayerToolsTwo:{flexDirection:'row',gap:12,marginBottom:8},prayerToolTwo:{flex:1},prayerTool:{flexGrow:1,flexBasis:'30%',minWidth:220},prayerToolInner:{minHeight:86,flexDirection:'row',alignItems:'center',gap:12,backgroundColor:C.white,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line},prayerToolText:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:12,flex:1},
  libraryKicker:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10,letterSpacing:1.7,marginTop:24},libraryHeading:{color:C.ink,fontFamily:'Newsreader_600SemiBold',fontSize:23,marginTop:4,marginBottom:12},
