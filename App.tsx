@@ -103,7 +103,7 @@ import {
   type CorrectionReport, type CorrectionIssue as ReportIssue
 } from './src/services/reportService';
 import {
-  loadOfflineSetup, offlineProgress, replanForLanguage, resumeSavedOfflineSetup,
+  loadOfflineSetup, offlineProgress, pauseOfflineSetup, replanForLanguage, resumeSavedOfflineSetup,
   startOfflineSetup, subscribeOfflineSetup, type OfflineSetup
 } from './src/services/offlinePlan';
 import { rememberCity, searchCities, searchLocalCities, type CityResult } from './src/services/cities';
@@ -9873,6 +9873,61 @@ function Onboarding({ onFinish }: { onFinish: () => void }) {
     return [...current, ...ids.filter((id) => !current.includes(id))];
   });
 
+  /* The download button used to only record the choice, and everything came
+     down at the end. That left a tap with no answer: nothing moved, nothing
+     arrived, and there was no way to tell a download that had started from one
+     that had not. So a tap starts the download there and then.
+
+     Progress is measured in bytes actually on the device rather than in
+     surahs counted, because "114 of 114" says nothing about how long is left
+     and "38.4 MB" does. The baseline is the cache size at the moment the tap
+     landed, so the figure is what this download has added, not what the app
+     already held. */
+  const [dl, setDl] = useState<{ code: string; baseline: number; bytes: number; percent: number } | null>(null);
+
+  useEffect(() => subscribeOfflineSetup((next) => {
+    setDl((current) => {
+      if (!current) return current;
+      /* The plan covers the whole queue, not one language, so it is asked to
+         stop reporting once it is no longer running rather than when it
+         finishes — a plan that finished someone else's language is not this
+         language's progress. */
+      if (!next.running) return null;
+      return { ...current, percent: offlineProgress(next).percent };
+    });
+  }), []);
+
+  useEffect(() => {
+    if (!dl) return;
+    let alive = true;
+    const tick = async () => {
+      const u = await getCacheUsage().catch(() => null);
+      if (!alive || !u) return;
+      setDl((current) => current ? { ...current, bytes: Math.max(0, (u.byNamespace?.quran || 0) - current.baseline) } : current);
+    };
+    void tick();
+    const id = setInterval(tick, 1200);
+    return () => { alive = false; clearInterval(id); };
+  }, [dl?.code]);
+
+  const startLanguage = async (code: string) => {
+    const list = byLanguage.get(code) || [];
+    if (!list.length) return;
+    setQueued((current) => [...current, ...list.map((e) => e.id).filter((id) => !current.includes(id))]);
+    const usage = await getCacheUsage().catch(() => null);
+    setDl({ code, baseline: usage?.byNamespace?.quran || 0, bytes: 0, percent: 0 });
+    void startOfflineSetup({
+      language: code,
+      script: 'qpc-hafs',
+      translation: list[0]?.id,
+      translationName: list[0] ? editionDisplayName(list[0]) : undefined,
+      editions: list.map((e) => ({ id: e.id, name: editionDisplayName(e), language: e.language || code, category: 'quran' as const })),
+      append: true,
+    });
+  };
+
+  const cancelDownload = async () => { await pauseOfflineSetup(); setDl(null); };
+
   const visible = useMemo(() => {
     const needle = query.trim().toLowerCase();
     if (!needle) return languages;
@@ -10015,6 +10070,7 @@ function Onboarding({ onFinish }: { onFinish: () => void }) {
           const selected = chosen === entry.code;
           const list = byLanguage.get(entry.code) || [];
           const saved = hasLanguage(entry.code);
+          const downloading = dl?.code === entry.code;
           return <RiseIn key={entry.code} delay={Math.min(index, 14) * 26}>
             <MotionPress style={[s.onbCard, selected && s.onbCardOn]} onPress={() => pick(entry.code)}>
               <View style={s.onbCardTop}>
@@ -10030,14 +10086,25 @@ function Onboarding({ onFinish }: { onFinish: () => void }) {
                     every edition this language carries. */}
                 {list.length ? <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel={saved ? `${T('Stop keeping')} ${entry.label} ${T('offline')}` : `${T('Keep')} ${entry.label} ${T('for offline')}`}
-                  onPress={() => toggleLanguage(entry.code)}
-                  style={[s.onbDl, saved && s.onbDlOn]}>
-                  {ico(saved ? 'checkmark' : 'download-outline', 17, saved ? C.onAccent : C.ink)}
+                  accessibilityLabel={downloading ? `${T('Cancel')} ${entry.label}` : saved ? `${T('Stop keeping')} ${entry.label} ${T('offline')}` : `${T('Keep')} ${entry.label} ${T('for offline')}`}
+                  onPress={() => downloading ? cancelDownload() : startLanguage(entry.code)}
+                  style={[s.onbDl, (saved || downloading) && s.onbDlOn]}>
+                  {ico(downloading ? 'close-outline' : saved ? 'checkmark' : 'download-outline', 17, (saved || downloading) ? C.onAccent : C.ink)}
                 </Pressable> : null}
                 <View style={[s.onbTick, selected && s.onbTickOn]}>{selected && ico('checkmark', 16, C.onAccent)}</View>
               </View>
-              {saved && <View style={s.onbSavedRow}>
+              {downloading ? <View style={s.onbProgressRow}>
+                <View style={s.onbProgressTrack}>
+                  <View style={[s.onbProgressFill, { width: `${Math.max(3, dl?.percent || 0)}%` }]} />
+                </View>
+                <Text style={s.onbProgressText}>
+                  {formatBytes(dl?.bytes || 0)}{(dl?.percent || 0) > 0 ? ` · ${dl?.percent}%` : ''}
+                </Text>
+                <Pressable accessibilityRole="button" accessibilityLabel={T('Cancel')}
+                  onPress={() => cancelDownload()} style={s.onbCancel}>
+                  <Text style={s.onbCancelText}>{T('Cancel')}</Text>
+                </Pressable>
+              </View> : saved && <View style={s.onbSavedRow}>
                 {ico('cloud-done-outline', 12, C.success)}
                 <Text style={s.onbSavedText}>{T('Saved for offline')}</Text>
               </View>}
@@ -11001,7 +11068,14 @@ dayToolIcon:{width:52,height:52,borderRadius:26,backgroundColor:C.mint,alignItem
   storeBytes:{color:C.green,fontSize:13,fontFamily:'DMSans_700Bold'},
   storeTrack:{height:8,borderRadius:4,backgroundColor:C.mint,marginTop:7,overflow:'hidden'},
   storeFill:{height:8,borderRadius:4},
-  storeDetail:{color:C.muted,fontSize:11.5,fontFamily:'DMSans_400Regular',marginTop:5}});
+  storeDetail:{color:C.muted,fontSize:11.5,fontFamily:'DMSans_400Regular',marginTop:5},
+  /* Onboarding download: what has arrived, in bytes, and a way to stop it. */
+  onbProgressRow:{flexDirection:'row',alignItems:'center',gap:10,marginTop:10,paddingTop:10,borderTopWidth:1,borderTopColor:C.line},
+  onbProgressTrack:{flex:1,height:6,borderRadius:3,backgroundColor:C.mint,overflow:'hidden'},
+  onbProgressFill:{height:6,borderRadius:3,backgroundColor:C.green},
+  onbProgressText:{color:C.muted,fontSize:11.5,fontFamily:'DMSans_600SemiBold',minWidth:64,textAlign:'right'},
+  onbCancel:{paddingHorizontal:10,paddingVertical:5,borderRadius:10,borderWidth:1,borderColor:C.line,backgroundColor:C.card},
+  onbCancelText:{color:C.ink,fontSize:11,fontFamily:'DMSans_600SemiBold'}});
   /* Runs in both themes now: the brand remap has to land on light too. */
   return remapStyles(created);
 }
