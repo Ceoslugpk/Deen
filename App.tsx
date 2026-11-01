@@ -686,16 +686,53 @@ const LanguageContext=createContext<LanguageState>({language:'en',rtl:false,read
  * left. Only English and Arabic have finished interface copy, so the rest are
  * shown as they are and fall back to English until theirs is written.
  */
+
+/**
+ * Reloads the app so a change of direction takes effect.
+ *
+ * forceRTL cannot re-lay-out the screens that are already mounted, so the
+ * direction only truly changes on the next launch. On a phone there is no
+ * "next launch" the person is going to wait for, so we bring it about: save
+ * first, then reload, which is the documented way to apply it.
+ *
+ * expo-updates is the only mechanism that works in a release build, and it
+ * needs the app to have been built with it. Where it is not available we fall
+ * back to the dev-menu reload, and if that is missing too we leave the app
+ * running rather than crash it — the language still changes, and the direction
+ * catches up whenever the app is next opened.
+ */
+async function restartForDirection() {
+  try {
+    const Updates = require('expo-updates');
+    if (Updates?.reloadAsync) { await Updates.reloadAsync(); return; }
+  } catch { /* not built with expo-updates — try the dev path */ }
+  try {
+    const RN = require('react-native');
+    if (RN?.DevSettings?.reload) { RN.DevSettings.reload(); return; }
+  } catch { /* neither path is available */ }
+}
+
 function LanguageProvider({children}:{children:React.ReactNode}){
   const[language,setLanguageState]=useState<AppLanguage>('en');
   const[ready,setReady]=useState(false);
   const rtl=isRtl(language);
   const setLanguage=(next:AppLanguage)=>{
-    setLanguageState(next);
-    void saveLanguage(next);
     const wantsRtl=isRtl(next);
+    const flippingDirection=Platform.OS!=='web'&&isRtl(language)!==wantsRtl;
+    setLanguageState(next);
     I18nManager.allowRTL(true);
-    if(Platform.OS!=='web'&&I18nManager.isRTL!==wantsRtl)I18nManager.forceRTL(wantsRtl);
+    /* forceRTL records the new direction but cannot re-lay-out what is already
+       on screen, so on its own it changes the copy and leaves the layout where
+       it was. The reload is what applies it — and it has to wait for the
+       language to reach storage, or the app would come back in the old language
+       with the new direction, which is worse than the bug being fixed. */
+    const apply=async()=>{
+      await saveLanguage(next);
+      if(Platform.OS==='web')return;
+      if(I18nManager.isRTL!==wantsRtl)I18nManager.forceRTL(wantsRtl);
+      if(flippingDirection)await restartForDirection();
+    };
+    void apply();
   };
   useEffect(()=>{void loadLanguage().then(saved=>{if(saved&&languageByCode(saved))setLanguageState(saved as AppLanguage);setReady(true)}).catch(()=>setReady(true))},[]);
   useEffect(()=>{
