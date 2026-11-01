@@ -9798,6 +9798,14 @@ function OnboardingSleep() {
   </View>;
 }
 
+/**
+ * The languages onboarding offers before it is expanded: the ones this app
+ * speaks itself. The Quran exists in far more than these, and every one of
+ * them stays one tap away, but opening on ninety-seven rows is not an
+ * invitation to choose - it is a wall.
+ */
+const COMMON_CODES: string[] = LANGUAGES.map((entry) => entry.code);
+
 function Onboarding({ onFinish }: { onFinish: () => void }) {
   const { dark } = useTheme();
   const { rtl, language, setLanguage } = useLanguage();
@@ -9822,6 +9830,10 @@ function Onboarding({ onFinish }: { onFinish: () => void }) {
   // Edition ids marked for offline. Nothing downloads until 'Begin'.
   const [queued, setQueued] = useState<string[]>([]);
   const [query, setQuery] = useState('');
+  /* Two things stay out of the way until they are asked for: the full
+     language list, and offline downloads. Both are one tap away. */
+  const [showAll, setShowAll] = useState(false);
+  const [showOffline, setShowOffline] = useState(false);
   useEffect(() => { getEditions('quran').then(setEditions).catch(() => undefined); }, []);
 
   const languages = useMemo(
@@ -9927,13 +9939,19 @@ function Onboarding({ onFinish }: { onFinish: () => void }) {
 
   const cancelDownload = async () => { await pauseOfflineSetup(); setDl(null); };
 
+  /* Until it is expanded, the list is only the languages this app speaks
+     itself - not a judgement about the others, just a short way in. Searching
+     always looks through every language, expanded or not. */
   const visible = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    if (!needle) return languages;
-    return languages.filter(
+    const pool = !needle && !showAll
+      ? languages.filter((entry) => COMMON_CODES.includes(entry.code))
+      : languages;
+    if (!needle) return pool;
+    return pool.filter(
       (entry) => entry.label.toLowerCase().includes(needle) || entry.code.includes(needle),
     );
-  }, [languages, query]);
+  }, [languages, query, showAll]);
 
   // Each step arrives from the side rather than simply appearing.
   useEffect(() => {
@@ -9955,6 +9973,11 @@ function Onboarding({ onFinish }: { onFinish: () => void }) {
     { title: T('When do you sleep?'), caption: T('Surah Al-Mulk takes about five minutes. Say the hour you turn in and we will remind you before it — or skip this entirely. The hour stays on your device and is never used for tracking.') },
   ];
   const active = steps[step];
+  /* The offline controls belong to a question the person may never ask, so
+     they stay folded away. They open themselves if there is a download to
+     watch or if more has been queued than the reading language alone, so a
+     choice already made is never hidden behind a collapsed section. */
+  const offlineOpen = showOffline || !!dl || queued.length > textEditionIds.length;
 
   /** A short line under a card saying honestly what that choice can offer. */
   const hint = (entry: Language) => {
@@ -10032,23 +10055,9 @@ function Onboarding({ onFinish }: { onFinish: () => void }) {
         <Text style={s.onbCaption}>{active.caption}</Text>
       </Animated.View>
       {step === 1 ? <View style={s.onbList} key="languages">
-        {/* Keeping everything is the plainest way to say what this does, and
-            the number is stated rather than implied: nobody should tick ninety
-            seven boxes expecting nine to survive on a full phone. */}
-        <View style={s.onbAllBar}>
-          <View style={s.onbAllText}>
-            <Text style={s.onbAllTitle}>{T('Download all languages')}</Text>
-            <Text style={s.onbAllSub}>{everyId.length ? T('Every translation in every language, kept on this device. Around 725 MB of free space.') : T('Every translation in every language.')}</Text>
-          </View>
-          <MotionPress
-            accessibilityLabel={allQueued ? T('Remove all languages from offline') : T('Select all languages for offline')}
-            onPress={toggleAll}
-            style={[s.onbAllBtn, allQueued && s.onbAllBtnOn]}>
-            {ico(allQueued ? 'checkmark' : 'download-outline', 16, C.onAccent)}
-            <Text style={s.onbAllBtnText}>{T('All')}</Text>
-          </MotionPress>
-        </View>
-
+        {/* Search comes first because it is the short way through ninety-seven
+            languages: someone who knows they read Kiswahili should never have
+            to scroll to it. */}
         <View style={s.onbSearch}>
           {ico('search-outline', 16, C.muted)}
           <TextInput
@@ -10060,6 +10069,35 @@ function Onboarding({ onFinish }: { onFinish: () => void }) {
             accessibilityLabel={T('Search a language')}
           />
           {!!query && <Pressable accessibilityLabel={T('Clear search')} onPress={() => setQuery('')}>{ico('close', 16, C.muted)}</Pressable>}
+        </View>
+
+        {/* Offline is a separate question from "which meaning will you read",
+            so it stays folded until it is asked for. Opening it is what puts
+            the download controls on the rows below. */}
+        <View style={s.onbOffline}>
+          <MotionPress
+            accessibilityLabel={T('Keep translations for offline')}
+            onPress={() => setShowOffline(!offlineOpen)}
+            style={s.onbOfflineHead}>
+            <View style={s.onbAllText}>
+              <Text style={s.onbOfflineTitle}>{T('Keep translations for offline')}</Text>
+              <Text style={s.onbAllSub}>{T('Optional. Nothing is downloaded until you finish setting up.')}</Text>
+            </View>
+            {ico(offlineOpen ? 'chevron-up-outline' : 'chevron-down-outline', 18, C.muted)}
+          </MotionPress>
+          {offlineOpen && <View style={s.onbAllBar}>
+            <View style={s.onbAllText}>
+              <Text style={s.onbAllTitle}>{T('Download all languages')}</Text>
+              <Text style={s.onbAllSub}>{everyId.length ? T('Every translation in every language, kept on this device. Around 725 MB of free space.') : T('Every translation in every language.')}</Text>
+            </View>
+            <MotionPress
+              accessibilityLabel={allQueued ? T('Remove all languages from offline') : T('Select all languages for offline')}
+              onPress={toggleAll}
+              style={[s.onbAllBtn, allQueued && s.onbAllBtnOn]}>
+              {ico(allQueued ? 'checkmark' : 'download-outline', 16, C.onAccent)}
+              <Text style={s.onbAllBtnText}>{T('All')}</Text>
+            </MotionPress>
+          </View>}
         </View>
 
         {!editions.length && <Spinner />}
@@ -10083,7 +10121,7 @@ function Onboarding({ onFinish }: { onFinish: () => void }) {
                 {/* Marking only records the choice. Nothing downloads until
                     the last step, so onboarding stays quick. One tap keeps
                     every edition this language carries. */}
-                {list.length ? <Pressable
+{offlineOpen && list.length ? <Pressable
                   accessibilityRole="button"
                   accessibilityLabel={downloading ? `${T('Cancel')} ${entry.label}` : saved ? `${T('Stop keeping')} ${entry.label} ${T('offline')}` : `${T('Keep')} ${entry.label} ${T('for offline')}`}
                   onPress={() => downloading ? cancelDownload() : startLanguage(entry.code)}
@@ -10103,13 +10141,25 @@ function Onboarding({ onFinish }: { onFinish: () => void }) {
                   onPress={() => cancelDownload()} style={s.onbCancel}>
                   <Text style={s.onbCancelText}>{T('Cancel')}</Text>
                 </Pressable>
-              </View> : saved && <View style={s.onbSavedRow}>
+              </View> : (offlineOpen && saved) && <View style={s.onbSavedRow}>
                 {ico('cloud-done-outline', 12, C.success)}
                 <Text style={s.onbSavedText}>{T('Saved for offline')}</Text>
               </View>}
             </MotionPress>
           </RiseIn>;
         })}
+
+        {/* The rest of the languages, behind one tap. The count is stated so
+            that expanding is a decision rather than a surprise. */}
+        {!showAll && !query && languages.length > visible.length && <MotionPress
+          accessibilityLabel={T('Show all languages')}
+          onPress={() => setShowAll(true)}
+          style={s.onbMore}>
+          <Text style={s.onbMoreText}>
+            {T('Show all')} {languages.length} {T('languages')}
+          </Text>
+          {ico('chevron-down-outline', 16, C.muted)}
+        </MotionPress>}
       </View> : step < 3 ? <View style={s.onbList} key={step}>
         {LANGUAGES.map((entry, index) => {
           const selected = chosen === entry.code;
@@ -10491,20 +10541,20 @@ function makeStyles() {
  splashTagline:{color:'rgba(255,255,255,.68)',fontSize:13,fontFamily:'DMSans_400Regular',textAlign:'center',letterSpacing:.2},
  splashTrack:{position:'absolute',bottom:56,left:'22%',right:'22%',height:3,borderRadius:2,backgroundColor:'rgba(255,255,255,.22)',overflow:'hidden'},
  splashBar:{height:3,borderRadius:2,backgroundColor:C.onHero},
- onbTop:{paddingHorizontal:20,paddingTop:20,paddingBottom:4},
- onbScroll:{paddingHorizontal:20,paddingTop:8,paddingBottom:20},
- onbHead:{marginBottom:20},
- onbCaption:{color:C.muted,fontSize:14,fontFamily:'DMSans_400Regular',lineHeight:22,marginTop:10},
- onbList:{gap:10},
- onbCard:{backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line},
+ onbTop:{paddingHorizontal:20,paddingTop:12,paddingBottom:2},
+ onbScroll:{paddingHorizontal:20,paddingTop:4,paddingBottom:12},
+ onbHead:{marginBottom:12},
+ onbCaption:{color:C.muted,fontSize:13,fontFamily:'DMSans_400Regular',lineHeight:19,marginTop:5},
+ onbList:{gap:8},
+ onbCard:{backgroundColor:C.card,borderRadius:16,padding:11,borderWidth:1,borderColor:C.line},
  onbCardOn:{borderColor:C.green,backgroundColor:C.mint},
- onbCardTop:{flexDirection:'row',alignItems:'center',gap:12},
+ onbCardTop:{flexDirection:'row',alignItems:'center',gap:10},
  onbCardText:{flex:1,gap:2},
- onbCardName:{color:C.ink,fontSize:17,fontFamily:'DMSans_600SemiBold'},
+ onbCardName:{color:C.ink,fontSize:15,fontFamily:'DMSans_600SemiBold'},
  onbCardNameRtl:{textAlign:'right'},
  onbCardSub:{color:C.muted,fontSize:12,fontFamily:'DMSans_400Regular'},
- onbCardNote:{color:C.muted,fontSize:11,fontFamily:'DMSans_400Regular',marginTop:8},
- onbTick:{width:26,height:26,borderRadius:13,backgroundColor:C.blue,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line},
+ onbCardNote:{color:C.muted,fontSize:11,fontFamily:'DMSans_400Regular',marginTop:6},
+ onbTick:{width:22,height:22,borderRadius:11,backgroundColor:C.blue,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line},
  onbTickOn:{backgroundColor:C.green,borderColor:C.green},
  /* --- offline downloads on the language step --- */
  onbAllBar:{flexDirection:'row',alignItems:'center',gap:12,backgroundColor:C.mint,borderRadius:18,padding:14,borderWidth:1,borderColor:C.line,marginBottom:12},
@@ -10515,23 +10565,29 @@ function makeStyles() {
  onbAllBtnOn:{backgroundColor:C.success},
  onbAllBtnText:{color:C.onAccentInk,fontSize:12,fontFamily:'DMSans_600SemiBold'},
  onbCount:{color:C.muted,fontSize:11,fontFamily:'DMSans_400Regular'},
- onbDl:{width:34,height:34,borderRadius:17,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,backgroundColor:C.blue},
+ onbDl:{width:30,height:30,borderRadius:15,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,backgroundColor:C.blue},
  onbDlOn:{backgroundColor:C.success,borderColor:C.success},
  onbDlBusy:{backgroundColor:C.blue,borderColor:C.green},
- onbFlag:{fontSize:20,marginRight:10},
- onbSearch:{flexDirection:'row',alignItems:'center',gap:8,backgroundColor:C.card,borderRadius:14,paddingHorizontal:12,paddingVertical:10,borderWidth:1,borderColor:C.line,marginBottom:10},
+ onbFlag:{fontSize:18,marginRight:8},
+ onbSearch:{flexDirection:'row',alignItems:'center',gap:8,backgroundColor:C.card,borderRadius:14,paddingHorizontal:12,paddingVertical:8,borderWidth:1,borderColor:C.line,marginBottom:8},
  onbSearchInput:{flex:1,color:C.ink,fontSize:14,fontFamily:'DMSans_400Regular',padding:0},
  onbSavedRow:{flexDirection:'row',alignItems:'center',gap:6,marginTop:6},
+ onbOffline:{backgroundColor:C.card,borderRadius:16,borderWidth:1,borderColor:C.line,overflow:'hidden',marginBottom:8},
+ onbOfflineHead:{flexDirection:'row',alignItems:'center',gap:10,padding:12},
+ onbOfflineTitle:{color:C.ink,fontSize:14,fontFamily:'DMSans_600SemiBold'},
+ onbAllBarFlat:{margin:12,marginTop:0},
+ onbMore:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:6,paddingVertical:12,borderRadius:14,borderWidth:1,borderColor:C.line,borderStyle:'dashed'},
+ onbMoreText:{color:C.muted,fontSize:13,fontFamily:'DMSans_600SemiBold'},
  onbSavedText:{color:C.success,fontSize:11,fontFamily:'DMSans_500Medium'},
- onbFoot:{paddingHorizontal:20,paddingTop:12,paddingBottom:24,gap:14,borderTopWidth:1,borderColor:C.line,backgroundColor:C.bg},
+ onbFoot:{paddingHorizontal:20,paddingTop:10,paddingBottom:16,gap:10,borderTopWidth:1,borderColor:C.line,backgroundColor:C.bg},
  onbDots:{flexDirection:'row',justifyContent:'center',gap:6},
  onbDot:{width:7,height:7,borderRadius:4,backgroundColor:C.line},
  onbDotOn:{width:24,backgroundColor:C.green},
  onbActions:{flexDirection:'row',gap:10},
- onbCta:{flex:1,flexDirection:'row',alignItems:'center',justifyContent:'center',minHeight:52,borderRadius:18,backgroundColor:C.green},
+ onbCta:{flex:1,flexDirection:'row',alignItems:'center',justifyContent:'center',minHeight:46,borderRadius:16,backgroundColor:C.green},
  onbCtaOff:{opacity:.6},
  onbCtaText:{color:C.onAccentInk,fontSize:15,fontFamily:'DMSans_700Bold'},
- onbGhost:{flexDirection:'row',alignItems:'center',justifyContent:'center',minHeight:52,paddingHorizontal:22,borderRadius:18,borderWidth:1,borderColor:C.line},
+ onbGhost:{flexDirection:'row',alignItems:'center',justifyContent:'center',minHeight:46,paddingHorizontal:20,borderRadius:16,borderWidth:1,borderColor:C.line},
  onbGhostText:{color:C.ink,fontSize:15,fontFamily:'DMSans_600SemiBold'},
   journeyCard:{flexDirection:'row',alignItems:'center',gap:CARD.gap,backgroundColor:C.card,borderRadius:RADIUS.xl,borderWidth:1,borderColor:C.line,padding:CARD.padding,marginBottom:CARD_GAP,...surface},
   journeyTitleRow:{flexDirection:'row',alignItems:'center',gap:SPACE.sm},
