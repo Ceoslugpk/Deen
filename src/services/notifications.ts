@@ -1,4 +1,4 @@
-import { Platform } from 'react-native';
+import { Platform, Linking } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { arNoun, clockTime, prayerName } from './arabicCopy';
 import type { PrayerSnapshot } from './api';
@@ -247,11 +247,33 @@ export async function ensureNotificationChannels(rtl = false) {
   ]);
 }
 
+/**
+ * Ask for the notification permission.
+ *
+ * The permission is named rather than left to the library's default. On
+ * Android 13 and later `POST_NOTIFICATIONS` is a runtime permission, and
+ * while current versions of the library request it on their own, naming it
+ * makes the ask explicit and means the request cannot silently become a no-op
+ * on a device where the default set differs.
+ *
+ * The channels are built either way: granting permission later should not mean
+ * re-answering this screen to get a channel that exists.
+ */
 export async function requestNotificationPermission(rtl = false): Promise<NotificationHealth> {
   if (Platform.OS === 'web') return 'unsupported';
-  const result = await Notifications.requestPermissionsAsync();
+  const requested = Platform.OS === 'android'
+    ? await Notifications.requestPermissionsAsync({
+        android: { permissions: ['android.permission.POST_NOTIFICATIONS'] },
+      } as any).catch(() => Notifications.requestPermissionsAsync())
+    : await Notifications.requestPermissionsAsync();
   await ensureNotificationChannels(rtl);
-  return result.status as NotificationHealth;
+  return requested.status as NotificationHealth;
+}
+
+/** Opens the app's own page in the system settings, where permission can be granted after a refusal. */
+export async function openNotificationSettings() {
+  if (Platform.OS === 'web') return;
+  await Linking.openSettings().catch(() => undefined);
 }
 
 export async function sendTestNotification(rtl = false) {

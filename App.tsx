@@ -62,8 +62,7 @@ import {
 import {
   actionFromResponse, adhanOption, ADHAN_OPTIONS, cancelAllNotifications, FAJR_OPTIONS, fajrOption, getNotificationHealth, getScheduledCount,
   NotificationHealth, prayerFromNotification, requestNotificationPermission, schedulePrayerNotifications, sendTestNotification,
-  SLEEP_SURAH
-} from './src/services/notifications';
+  SLEEP_SURAH, openNotificationSettings } from './src/services/notifications';
 import {
   clearNotificationLog, loadNotificationLog, markDelivered, markOpened, newestFirst,
   type NotificationRecord,
@@ -9672,6 +9671,7 @@ function OnboardingNotifications() {
   const { rtl } = useLanguage(); const T = (text: string) => tx(rtl, text);
   const [health, setHealth] = useState<NotificationHealth>('undetermined');
   const [asking, setAsking] = useState(false);
+  const [stuck, setStuck] = useState(false);
 
   useEffect(() => { void getNotificationHealth().then(setHealth); }, []);
 
@@ -9679,6 +9679,13 @@ function OnboardingNotifications() {
     setAsking(true);
     const next = await requestNotificationPermission(rtl);
     setHealth(next);
+    /* Nothing happened. The system can decline to show the prompt without
+       refusing the permission — a device that has already answered for this
+       install, or a build where the permission was not declared in the
+       manifest. Either way the screen used to sit there as though the tap had
+       simply missed, so the outcome is said out loud and the settings page is
+       offered, where the permission can always be granted. */
+    setStuck(next !== 'granted' && next !== 'denied');
     setAsking(false);
   };
 
@@ -9713,10 +9720,21 @@ function OnboardingNotifications() {
         ? <View style={s.onbNote}>
             <Text style={s.onbNoteText}>{T('Permission was declined earlier, so reminders stay off. You can turn them on in the system settings for this app at any time.')}</Text>
           </View>
-        : <Pressable accessibilityLabel={T('Allow notifications')} onPress={() => { void ask(); }} style={[s.onbWideBtn, asking && { opacity: 0.6 }]}>
-            {ico('notifications-outline', 19, C.green)}
-            <Text style={s.onbWideBtnText}>{T('Allow notifications')}</Text>
-          </Pressable>}
+        : <View>
+            {stuck && <View style={s.onbNote}>
+              <Text style={s.onbNoteText}>{T('Nothing came up. That happens when the phone has already answered for this app, or when the permission is off for the whole device. You can allow it in the system settings at any time.')}</Text>
+            </View>}
+            <View style={s.onbBtnRow}>
+              <Pressable accessibilityLabel={T('Allow notifications')} onPress={() => { void ask(); }} style={[s.onbWideBtn, { flex: 1 }, asking && { opacity: 0.6 }]}>
+                {ico('notifications-outline', 19, C.green)}
+                <Text style={s.onbWideBtnText}>{T('Allow notifications')}</Text>
+              </Pressable>
+              {stuck && <Pressable accessibilityRole="button" accessibilityLabel={T('Open system settings')}
+                onPress={() => { void openNotificationSettings(); }} style={s.onbSettingsBtn}>
+                <Text style={s.onbSettingsBtnText}>{T('Open settings')}</Text>
+              </Pressable>}
+            </View>
+          </View>}
 
     <Text style={s.onbNoteText}>
       {T('Nothing is scheduled unless you allow it, and every reminder has its own switch in Settings.')}
@@ -11086,7 +11104,11 @@ dayToolIcon:{width:52,height:52,borderRadius:26,backgroundColor:C.mint,alignItem
   onbProgressFill:{height:6,borderRadius:3,backgroundColor:C.green},
   onbProgressText:{color:C.muted,fontSize:11.5,fontFamily:'DMSans_600SemiBold',minWidth:64,textAlign:'right'},
   onbCancel:{paddingHorizontal:10,paddingVertical:5,borderRadius:10,borderWidth:1,borderColor:C.line,backgroundColor:C.card},
-  onbCancelText:{color:C.ink,fontSize:11,fontFamily:'DMSans_600SemiBold'}});
+  onbCancelText:{color:C.ink,fontSize:11,fontFamily:'DMSans_600SemiBold'},
+  /* Onboarding permission: the ask, and somewhere to go if it is not shown. */
+  onbBtnRow:{flexDirection:'row',alignItems:'center',gap:8},
+  onbSettingsBtn:{paddingHorizontal:14,paddingVertical:13,borderRadius:14,borderWidth:1,borderColor:C.line,backgroundColor:C.card,justifyContent:'center'},
+  onbSettingsBtnText:{color:C.ink,fontSize:12.5,fontFamily:'DMSans_600SemiBold'}});
   /* Runs in both themes now: the brand remap has to land on light too. */
   return remapStyles(created);
 }
