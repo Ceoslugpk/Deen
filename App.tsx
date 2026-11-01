@@ -4380,6 +4380,65 @@ function ExploreHome({navigation}:any){
   return <Page><ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}><AppHeader/><Text style={s.intro}>{T('Remembrance, trusted learning and step-by-step guidance—organized by purpose rather than hidden in a feature grid.')}</Text>{libraryGroups.map(group=><View key={group.label}><Text style={s.libraryKicker}>{T(group.label)}</Text><Text style={s.libraryHeading}>{T(group.title)}</Text><View style={s.exploreGrid}>{group.items.map((item)=>{return <MotionPress key={item.title} onPress={()=>open(item)} style={s.exploreCard}><View style={s.exploreCardInner}><ToolGraphic tool={item.title} size={72}/><Text style={s.exploreTitle}>{T(item.title)}</Text><Text style={s.exploreBody}>{T(item.caption)}</Text><View style={s.exploreArrow}>{ico('arrow-forward',15,C.green)}</View></View></MotionPress>})}</View></View>)}</ScrollView></Page>;}
 function ToolBar({title,navigation}:any){const{rtl}=useLanguage();return <View style={s.readerBar}><IconButton name={rtl?'arrow-forward':'arrow-back'} onPress={()=>navigation.goBack()}/><Text style={s.readerName}>{title}</Text><View style={{width:44}}/></View>}
 function QiblaScreen({navigation}:any){const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);const{location}=useAppLocation();const[direction,setDirection]=useState<number|null>(null);const[error,setError]=useState('');const load=async()=>{if(!location)return;setDirection(null);setError('');try{setDirection(await getQibla(location.latitude,location.longitude))}catch(e:any){setError(T(e.message))}};useEffect(()=>{load()},[location?.latitude,location?.longitude]);return <Page><ToolBar title={T('Qibla direction')} navigation={navigation}/>{!location?<View style={s.dataPage}><LocationPrompt compact/></View>:<View style={s.toolPage}><Text style={s.toolEyebrow}>{T(location.label)}</Text>{error?<ErrorState message={error} retry={load}/>:direction===null?<Spinner/>:<><View style={s.compass}><Text style={s.north}>N</Text><View style={[s.compassArrow,{transform:[{rotate:`${direction}deg`}]}]}>{ico('navigate',74,C.green)}</View><View style={s.kaaba}><View style={s.kaabaGold}/></View></View><Text style={s.direction}>{direction.toFixed(1)}°</Text><Text style={s.directionText}>{T('clockwise from true north')}</Text><Pressable onPress={load} style={s.primary}><Text style={s.primaryText}>{T('Refresh direction')}</Text></Pressable></>}</View>}</Page>}
+/* A tasbih is a ring of beads, so the counter is one: the beads fill as the
+   round goes round, and the one under your thumb is the one that moves. The
+   number in the middle is there because you still want to know where you are,
+   not because the counter needed a number. */
+function TasbihRing({ count, goal, size, onPress, label, children }: {
+  count: number; goal: number; size: number; onPress: () => void; label: string; children?: React.ReactNode;
+}) {
+  const beads = Math.max(1, Math.min(goal, 99));
+  const bead = beads > 60 ? 8 : beads > 40 ? 10 : beads > 24 ? 12 : 15;
+  const radius = size / 2 - bead - 6;
+  const centre = size / 2;
+  const pulse = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    pulse.setValue(0);
+    Animated.spring(pulse, { toValue: 1, friction: 5, tension: 190, useNativeDriver: true }).start();
+  }, [count, pulse]);
+
+  const nodes = [];
+  for (let i = 0; i < beads; i += 1) {
+    const angle = (i / beads) * Math.PI * 2 - Math.PI / 2;
+    const lit = i < count;
+    const active = i === count - 1;
+    const x = centre + radius * Math.cos(angle) - bead / 2;
+    const y = centre + radius * Math.sin(angle) - bead / 2;
+    const dot = (
+      <View
+        key={i}
+        style={{
+          position: 'absolute', left: x, top: y,
+          width: bead, height: bead, borderRadius: bead / 2,
+          backgroundColor: lit ? C.gold : C.line,
+          opacity: lit ? 1 : 0.6,
+        }}
+      />
+    );
+    nodes.push(active
+      ? <Animated.View key={i} style={{ position: 'absolute', left: x - bead * 0.35, top: y - bead * 0.35,
+          width: bead * 1.7, height: bead * 1.7, borderRadius: bead, alignItems: 'center', justifyContent: 'center',
+          transform: [{ scale: pulse }] }}>
+          <View style={{ width: bead, height: bead, borderRadius: bead / 2, backgroundColor: C.gold }} />
+        </Animated.View>
+      : dot);
+  }
+
+  return (
+    <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress}
+      style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+      <View style={{ position: 'absolute', width: size, height: size, borderRadius: size / 2,
+        borderWidth: 1, borderColor: C.line }} />
+      {nodes}
+      <View style={{ width: size - radius * 0.95, height: size - radius * 0.95, borderRadius: (size - radius * 0.95) / 2,
+        backgroundColor: C.card, alignItems: 'center', justifyContent: 'center' }}>
+        {children}
+      </View>
+    </Pressable>
+  );
+}
+
 function TasbihScreen({ navigation }: any) {const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);
   const state = useTasbih();
   const { width } = useWindowDimensions();
@@ -4414,12 +4473,15 @@ function TasbihScreen({ navigation }: any) {const{rtl}=useLanguage();const T=(te
       <View style={s.tasbihCard}>
         <Text style={s.tasbihAr}>{phrase.arabic}</Text>
         <Text style={s.directionText}>{dhikrMeaning(phrase, rtl)}</Text>
-        <Pressable accessibilityLabel={T('Count one dhikr')} onPress={tap} style={[s.counter, width < 360 && { width: width - 80, height: width - 80 }]}>
-          <Animated.View style={{ transform: [{ scale: press }], alignItems: 'center' }}>
-            <Text style={s.counterNo}>{state.count}</Text>
-            <Text style={s.counterGoal}>{celebrated ? T('COMPLETE') : (rtl ? `الهدف · ${state.goal}` : `GOAL · ${state.goal}`)}</Text>
-          </Animated.View>
-        </Pressable>
+        <View style={{ alignItems: 'center' }}>
+          <TasbihRing count={state.count} goal={state.goal} size={width < 360 ? width - 60 : 268} onPress={tap} label={T('Count one dhikr')}>
+            <Animated.View style={{ transform: [{ scale: press }], alignItems: 'center' }}>
+              <Text style={s.counterNo}>{state.count}</Text>
+              <Text style={s.counterGoal}>{celebrated ? T('COMPLETE') : (rtl ? `الهدف · ${state.goal}` : `GOAL · ${state.goal}`)}</Text>
+              {!!state.rounds && <Text style={s.counterGoal}>{rtl ? `${state.rounds} ${arNoun(state.rounds, 'دورة', 'دورتان', 'دورات', 'دورة')}` : `${state.rounds} ${state.rounds === 1 ? 'round' : 'rounds'}`}</Text>}
+            </Animated.View>
+          </TasbihRing>
+        </View>
         <View style={s.hadithTrack}><View style={[s.hadithFill, { width: `${progress}%` }]} /></View>
         <View style={s.actionRow}>
           <Pressable accessibilityLabel={T('Reset the current count')} onPress={() => void resetTasbihCount()} style={s.secondary}>{ico('refresh-outline', 16, C.green)}<Text style={s.secondaryText}>{T('Reset')}</Text></Pressable>
