@@ -45,7 +45,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import CustomIcon, { iconTheme } from './src/components/CustomIcon';
 import { LinearGradient } from 'expo-linear-gradient';
-import Svg, { Circle, Defs, Ellipse, Path, RadialGradient, Stop } from 'react-native-svg';
+import Svg, { Circle, Defs, Ellipse, Path, Polygon, RadialGradient, Stop } from 'react-native-svg';
 import { StatusBar as ExpoStatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import {
@@ -9356,53 +9356,150 @@ function RiseIn({ delay = 0, distance = 14, children, style }: { delay?: number;
 }
 
 /**
- * The splash. The mark settles in, the wordmark follows it, and an aura drifts
- * behind them. It leaves the moment the app behind it is ready, and never
- * before it has held long enough to read as a beginning rather than a flash.
+ * The splash.
+ *
+ * The emblem is built the way this pattern has always been built: two squares,
+ * one turned inside the other, and the eight-pointed star that appears where
+ * they cross. It is drawn rather than faded in — the squares turn towards each
+ * other until they meet, the star resolves out of them, and only then does the
+ * mark settle into the middle of what they made.
+ *
+ * It leaves the moment the app behind it is ready, and never before it has
+ * held long enough to read as a beginning rather than a flash.
  */
-function Splash({ ready, onDone }: { ready: boolean; onDone: () => void }) {
+
+/* ------------------------------------------------------------------ *
+ * The eight-pointed star
+ * ------------------------------------------------------------------ */
+
+/** The square the emblem is drawn in. */
+const KHATAM_BOX = 216;
+/** Its centre. */
+const KHATAM_C = KHATAM_BOX / 2;
+/** How far the points of the star reach. */
+const KHATAM_R = 90;
+/**
+ * How far out the two squares cross.
+ *
+ * This is exact rather than chosen, and it has to be. A square on this circle
+ * has its sides at r/sqrt(2); the turned square's side meets it at
+ * r(1 - 1/sqrt(2)); and that puts every crossing at sqrt(2 - sqrt(2)) of the
+ * radius, one sixteenth of a turn — 22.5 degrees — round from each point.
+ * Approximate it and the star comes out visibly lopsided.
+ */
+const KHATAM_I = KHATAM_R * Math.sqrt(2 - Math.SQRT2);
+
+const khatamPoint = (deg: number, radius: number) => {
+  const a = (deg * Math.PI) / 180;
+  return `${(KHATAM_C + radius * Math.cos(a)).toFixed(2)},${(KHATAM_C + radius * Math.sin(a)).toFixed(2)}`;
+};
+
+/** The star: a point, then a crossing, all the way round. */
+const KHATAM_STAR = Array.from({ length: 16 }, (_, i) =>
+  khatamPoint(-90 + i * 22.5, i % 2 === 0 ? KHATAM_R : KHATAM_I)).join(' ');
+
+/** The two squares that make it. Drawn whole, they show the construction. */
+const KHATAM_SQUARES = [
+  [45, 135, 225, 315].map((deg) => khatamPoint(deg, KHATAM_R)).join(' '),
+  [0, 90, 180, 270].map((deg) => khatamPoint(deg, KHATAM_R)).join(' '),
+];
+
+/**
+ * One stroke of the emblem, brought in over its own slice of the draw.
+ *
+ * Each stroke is a separate drawing layered over the last rather than one path
+ * cut into several pieces, so each can carry its own timing and its own turn.
+ * That is what lets the pattern assemble instead of simply appearing.
+ */
+function KhatamStroke({ draw, from, to, turn = 0, children }: {
+  draw: Animated.Value; from: number; to: number; turn?: number; children: React.ReactNode;
+}) {
+  const opacity = draw.interpolate({ inputRange: [from, to], outputRange: [0, 1], extrapolate: 'clamp' });
+  const scale = draw.interpolate({ inputRange: [from, to], outputRange: [0.9, 1], extrapolate: 'clamp' });
+  const rotate = draw.interpolate({ inputRange: [from, to], outputRange: [`${turn}deg`, '0deg'], extrapolate: 'clamp' });
+  return <Animated.View style={[s.khatamStroke, { opacity, transform: [{ scale }, { rotate }] }]}>{children}</Animated.View>;
+}
+
+/**
+ * The emblem.
+ *
+ * The two squares turn towards each other until they meet, the star resolves
+ * out of where they cross, and then the whole thing settles back — it is the
+ * frame, not the picture, and the mark is what is being introduced.
+ */
+function Khatam({ draw, settle }: { draw: Animated.Value; settle: Animated.Value }) {
+  const line = BRAND.radiantGold;
+  const box = `0 0 ${KHATAM_BOX} ${KHATAM_BOX}`;
+  return <Animated.View style={[s.khatamWrap, { opacity: settle }]}>
+    <KhatamStroke draw={draw} from={0} to={0.26}>
+      <Svg width={KHATAM_BOX} height={KHATAM_BOX} viewBox={box}>
+        <Circle cx={KHATAM_C} cy={KHATAM_C} r={KHATAM_R + 14} fill="none" stroke={line} strokeWidth={1} opacity={0.3} />
+      </Svg>
+    </KhatamStroke>
+    <KhatamStroke draw={draw} from={0.08} to={0.58} turn={-24}>
+      <Svg width={KHATAM_BOX} height={KHATAM_BOX} viewBox={box}>
+        <Polygon points={KHATAM_SQUARES[0]} fill="none" stroke={line} strokeWidth={1} opacity={0.4} />
+      </Svg>
+    </KhatamStroke>
+    <KhatamStroke draw={draw} from={0.14} to={0.64} turn={24}>
+      <Svg width={KHATAM_BOX} height={KHATAM_BOX} viewBox={box}>
+        <Polygon points={KHATAM_SQUARES[1]} fill="none" stroke={line} strokeWidth={1} opacity={0.4} />
+      </Svg>
+    </KhatamStroke>
+    <KhatamStroke draw={draw} from={0.46} to={0.86}>
+      <Svg width={KHATAM_BOX} height={KHATAM_BOX} viewBox={box}>
+        <Polygon points={KHATAM_STAR} fill="none" stroke={line} strokeWidth={1.7} opacity={0.95} />
+      </Svg>
+    </KhatamStroke>
+    <KhatamStroke draw={draw} from={0.6} to={0.94}>
+      <Svg width={KHATAM_BOX} height={KHATAM_BOX} viewBox={box}>
+        <Circle cx={KHATAM_C} cy={KHATAM_C} r={KHATAM_I * 0.58} fill="none" stroke={line} strokeWidth={1} opacity={0.45} />
+      </Svg>
+    </KhatamStroke>
+  </Animated.View>;
+}
+
+function Splash({ ready, progress, onDone }: { ready: boolean; progress: number; onDone: () => void }) {
   const { dark } = useTheme();
   const { rtl } = useLanguage();
   const T = (text: string) => tx(rtl, text);
   const still = useCalmMotion();
-  const mark = useRef(new Animated.Value(.74)).current;
+  const draw = useRef(new Animated.Value(0)).current;
+  const settle = useRef(new Animated.Value(1)).current;
+  const mark = useRef(new Animated.Value(0.86)).current;
   const words = useRef(new Animated.Value(0)).current;
-  const halo = useRef(new Animated.Value(0)).current;
-  const progress = useRef(new Animated.Value(0)).current;
+  const bar = useRef(new Animated.Value(0)).current;
   const fade = useRef(new Animated.Value(1)).current;
-  const driftY = useDrift(9000, -26, 26, still);
-  const driftX = useDrift(11000, 18, -18, still);
   const [held, setHeld] = useState(false);
   const leaving = useRef(false);
 
   useEffect(() => {
-    Animated.spring(mark, { toValue: 1, friction: 5, tension: 64, useNativeDriver: true }).start();
-    Animated.timing(words, { toValue: 1, duration: 520, delay: 280, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+    if (still) {
+      /* Nothing is withheld from somebody who asked for less movement: the
+         emblem is simply there, already built. */
+      draw.setValue(1); settle.setValue(0.6); mark.setValue(1); words.setValue(1);
+      setHeld(true);
+      return;
+    }
+    /* Linear, and deliberately so. Every stroke owns a slice of this one
+       value, and easing it here would bunch those slices up at the start
+       instead of spreading them across the second. */
+    Animated.timing(draw, { toValue: 1, duration: 900, easing: Easing.linear, useNativeDriver: true }).start();
+    /* Once it is built the pattern steps back out of the way of the mark. */
+    Animated.timing(settle, { toValue: 0.55, duration: 420, delay: 880, easing: Easing.out(Easing.quad), useNativeDriver: true }).start();
+    Animated.spring(mark, { toValue: 1, friction: 5, tension: 64, delay: 560, useNativeDriver: true }).start();
+    Animated.timing(words, { toValue: 1, duration: 460, delay: 700, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
     const timer = setTimeout(() => setHeld(true), SPLASH_MIN_MS);
     return () => clearTimeout(timer);
-  }, []);
-
-  useEffect(() => {
-    if (still) { halo.setValue(.5); return; }
-    const loop = Animated.loop(Animated.sequence([
-      Animated.timing(halo, { toValue: 1, duration: 1900, easing: Easing.out(Easing.quad), useNativeDriver: true }),
-      Animated.timing(halo, { toValue: 0, duration: 1900, easing: Easing.in(Easing.quad), useNativeDriver: true }),
-    ]));
-    loop.start();
-    return () => loop.stop();
   }, [still]);
 
+  /* How much of the startup work has actually landed, not a sweep that looks
+     busy while the app is really just waiting. */
   useEffect(() => {
-    if (ready) { progress.setValue(1); return; }
-    const loop = Animated.loop(Animated.sequence([
-      Animated.timing(progress, { toValue: 1, duration: 1200, easing: Easing.inOut(Easing.quad), useNativeDriver: false }),
-      Animated.timing(progress, { toValue: 0, duration: 900, easing: Easing.inOut(Easing.quad), useNativeDriver: false }),
-    ]));
-    loop.start();
-    return () => loop.stop();
-  }, [ready]);
+    Animated.timing(bar, { toValue: Math.max(0, Math.min(1, progress)), duration: 280, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start();
+  }, [progress]);
 
-  // It goes as soon as the app behind it is ready and the mark has had its moment.
+  // It goes as soon as the app behind it is ready and the emblem has had its moment.
   useEffect(() => {
     if (!ready || !held || leaving.current) return;
     leaving.current = true;
@@ -9412,11 +9509,9 @@ function Splash({ ready, onDone }: { ready: boolean; onDone: () => void }) {
   return <Animated.View style={[s.splashRoot, { opacity: fade }]}>
     <StatusBar barStyle="light-content" />
     <LinearGradient colors={dark ? [C.heroA, mix(BRAND.deepIndigo, BRAND.midnightInk, .35), C.deep] : [C.heroA, C.heroB, mix(BRAND.royalIndigo, BRAND.midnightInk, .25)]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.splashFill} />
-    <Animated.View style={[s.splashAuraA, { transform: [{ translateX: driftX }, { translateY: driftY }] }]} />
-    <Animated.View style={[s.splashAuraB, { transform: [{ translateX: driftY }, { translateY: driftX }] }]} />
     <View style={s.splashStage}>
       <View style={s.splashMarkWrap}>
-        <Animated.View style={[s.splashHalo, { opacity: halo, transform: [{ scale: halo.interpolate({ inputRange: [0, 1], outputRange: [.9, 1.22] }) }] }]} />
+        <Khatam draw={draw} settle={settle} />
         <Animated.View style={{ transform: [{ scale: mark }] }}>
           <Image source={LOGO_MARK} resizeMode="contain" style={s.splashMark} />
         </Animated.View>
@@ -9427,7 +9522,7 @@ function Splash({ ready, onDone }: { ready: boolean; onDone: () => void }) {
       </Animated.View>
     </View>
     <View style={s.splashTrack}>
-      <Animated.View style={[s.splashBar, { width: progress.interpolate({ inputRange: [0, 1], outputRange: ['12%', '76%'] }) }]} />
+      <Animated.View style={[s.splashBar, { width: bar.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }) }]} />
     </View>
   </Animated.View>;
 }
@@ -10285,9 +10380,18 @@ function AppShell() {
     sleep: settings?.sleepReminderEnabled, sleepAt: settings?.sleepReminderTime
   })]);
 
+  /* What the splash is waiting for. Three storage reads have to land before
+     the app can show anything, and the bar counts them off rather than
+     sweeping back and forth: what it shows is how far the start has actually
+     got. The sixth-second fallback is still there for a read that never
+     settles, and it counts as done. */
+  const bootSteps = [ready, hydrated, onboarding !== null];
+  const bootProgress = bootSteps.filter(Boolean).length / bootSteps.length;
+  const bootSettled = bootSteps.every(Boolean) || stalled;
+
   return <View style={s.shellRoot}>
     <Root />
-    {splash && <View style={s.shellLayer}><Splash ready={(ready && hydrated) || stalled} onDone={() => setSplash(false)} /></View>}
+    {splash && <View style={s.shellLayer}><Splash ready={bootSettled} progress={bootProgress} onDone={() => setSplash(false)} /></View>}
     {!splash && onboarding === true && <View style={s.shellLayer}><Onboarding onFinish={() => setOnboarding(false)} /></View>}
   </View>;
 }
@@ -10351,11 +10455,12 @@ function makeStyles() {
  shellLayer:{position:'absolute',left:0,right:0,top:0,bottom:0},
  splashRoot:{flex:1,backgroundColor:C.heroA,alignItems:'center',justifyContent:'center',overflow:'hidden'},
  splashFill:{position:'absolute',left:0,right:0,top:0,bottom:0},
- splashAuraA:{position:'absolute',top:-90,left:-70,width:320,height:320,borderRadius:160,backgroundColor:C.gold,opacity:.16},
- splashAuraB:{position:'absolute',bottom:-120,right:-90,width:360,height:360,borderRadius:180,backgroundColor:C.green,opacity:.24},
+ /* Splash emblem: every stroke is its own small drawing stacked on the same
+       centre, so each one can be timed and turned on its own. */
+    khatamWrap:{position:'absolute',width:KHATAM_BOX,height:KHATAM_BOX,alignItems:'center',justifyContent:'center'},
+    khatamStroke:{position:'absolute',width:KHATAM_BOX,height:KHATAM_BOX},
  splashStage:{alignItems:'center',justifyContent:'center',gap:26,paddingHorizontal:40},
  splashMarkWrap:{width:112,height:112,alignItems:'center',justifyContent:'center'},
- splashHalo:{position:'absolute',width:112,height:112,borderRadius:56,backgroundColor:C.gold,opacity:.22},
  splashMark:{width:88,height:88},
  splashWords:{alignItems:'center',gap:8},
  splashName:{color:C.onHero,fontSize:30,fontFamily:'Newsreader_600SemiBold',letterSpacing:-.6,textAlign:'center'},
