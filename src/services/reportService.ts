@@ -21,14 +21,14 @@ import { Linking } from 'react-native';
  */
 export const CORRECTIONS_EMAIL = 'corrections@deencompanion.app';
 
-export type CorrectionKind = 'ayah' | 'hadith';
+export type CorrectionKind = 'ayah' | 'hadith' | 'dua';
 
 /**
  * Which part is wrong. Kept separate from the kind because "the Arabic is
  * wrong" and "the translation is wrong" are different problems for different
  * people to fix, and a report that does not say which one is nearly useless.
  */
-export type CorrectionIssue = 'arabic' | 'translation' | 'grading' | 'reference' | 'other';
+export type CorrectionIssue = 'arabic' | 'transliteration' | 'translation' | 'grading' | 'reference' | 'other';
 
 export type CorrectionReport = {
   id: string;
@@ -120,6 +120,7 @@ export function subscribeReports(listener: (next: CorrectionReport[]) => void) {
 
 const ISSUE_LABEL: Record<CorrectionIssue, string> = {
   arabic: 'The Arabic text',
+  transliteration: 'The transliteration',
   translation: 'The translation',
   grading: 'The grading or authenticity',
   reference: 'The reference or numbering',

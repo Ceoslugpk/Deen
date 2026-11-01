@@ -14,7 +14,7 @@ import {
   AccessibilityInfo, ActivityIndicator, Alert, Animated, BackHandler, Easing, Image, ImageBackground, Linking, Platform,
   Pressable as BarePressable,
   I18nManager, RefreshControl, SafeAreaView, ScrollView, Share, StatusBar, StyleSheet, Switch, Text, TextInput,
-  PanResponder, useColorScheme, useWindowDimensions, View
+  PanResponder, useColorScheme, useWindowDimensions, View, Modal
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { haptic, isHapticsSupported, setHapticsEnabled, withHaptic, type HapticKind } from './src/services/haptics';
@@ -110,6 +110,7 @@ import { loadDuaCategories, loadDuas } from './src/services/duaService';
 import { loadNameLanguage, loadNameOfDay, loadNames, saveNameLanguage } from './src/services/namesService';
 import { ARABIC_UI, ARABIC_UI_SEMIBOLD, ensureQuranFont, quranFontFamily as quranFont, QURAN_FONTS, useQuranFont } from './src/services/fonts';
 import { shareVerseCard } from './src/services/verseCard';
+import { shareCard } from './src/services/shareCard';
 import { VerseShareCard } from './src/components/VerseShareCard';
 import Flag from './src/components/Flag';
 import EditionPicker from './src/components/EditionPicker';
@@ -2681,7 +2682,7 @@ function MushafCorners({ color = C.gold }: { color?: string }) {
  */
 function CorrectionSheet({ target, rtl, T, appLanguage, onClose }: {
   target: {
-    kind: 'ayah' | 'hadith';
+    kind: 'ayah' | 'hadith' | 'dua';
     reference: string;
     source: string;
     arabic?: string;
@@ -2698,6 +2699,14 @@ function CorrectionSheet({ target, rtl, T, appLanguage, onClose }: {
       { key: 'arabic', label: T('The Arabic text') },
       { key: 'translation', label: T('The English rendering') },
       { key: 'grading', label: T('The grading or authenticity') },
+      { key: 'reference', label: T('The reference or numbering') },
+      { key: 'other', label: T('Something else') },
+    ]
+    : target.kind === 'dua'
+    ? [
+      { key: 'arabic', label: T('The Arabic text') },
+      { key: 'transliteration', label: T('The transliteration') },
+      { key: 'translation', label: T('The translation') },
       { key: 'reference', label: T('The reference or numbering') },
       { key: 'other', label: T('Something else') },
     ]
@@ -4459,14 +4468,27 @@ const DUA_SHORTCUT_LABELS: Record<string, string> = {
 };
 
 function DuaCard({ dua }: { dua: Dua }) {const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);
+  const { preferences } = useQuranPreferences();
   const [openSource, setOpenSource] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [reporting, setReporting] = useState(false);
   const text = [dua.arabic, dua.transliteration, dua.translation].filter(Boolean).join('\n\n');
   const copy = async () => {
     try { await Clipboard.setStringAsync(text); setCopied(true); setTimeout(() => setCopied(false), 1800); } catch { /* clipboard unavailable */ }
   };
+  /* Shared as the same picture a verse is, so a dua forwarded to someone
+     arrives as the thing itself rather than as a wall of copied text. */
   const share = async () => {
-    try { await Share.share({ message: `${text}${dua.reference ? `\n\n${dua.reference}` : ''}` }); } catch { /* sharing unavailable */ }
+    await shareCard({
+      kicker: T('Dua and remembrance'),
+      arabic: dua.arabic,
+      body: dua.translation || '',
+      footer: dua.reference || dua.transliteration || '',
+      arabicFontFamily: preferences.arabicFont,
+      filename: `dua-${dua.id}.png`,
+      shareTitle: T('A dua'),
+      fallbackText: `${text}${dua.reference ? `\n\n${dua.reference}` : ''}`,
+    });
   };
   return <View style={s.dataCard}>
     <Text style={s.dataArabic}>{dua.arabic}</Text>
@@ -4483,7 +4505,20 @@ function DuaCard({ dua }: { dua: Dua }) {const{rtl}=useLanguage();const T=(text:
     <View style={s.actionRow}>
       <Pressable accessibilityLabel={T('Copy this dua')} onPress={copy} style={s.secondary}>{ico('copy-outline', 16, C.green)}<Text style={s.secondaryText}>{copied ? 'Copied' : 'Copy'}</Text></Pressable>
       <Pressable accessibilityLabel={T('Share this dua')} onPress={share} style={s.secondary}>{ico('share-outline', 16, C.green)}<Text style={s.secondaryText}>{T('Share')}</Text></Pressable>
+      <Pressable accessibilityLabel={T('Report a correction')} onPress={() => setReporting(true)} style={s.secondary}>{ico('flag-outline', 16, C.green)}<Text style={s.secondaryText}>{T('Report')}</Text></Pressable>
     </View>
+    <Modal visible={reporting} transparent animationType="slide" onRequestClose={() => setReporting(false)}>
+      <CorrectionSheet
+        target={{
+          kind: 'dua',
+          reference: dua.reference || T('Dua'),
+          source: T('Dua and remembrance'),
+          arabic: dua.arabic,
+          text: dua.translation,
+        }}
+        rtl={rtl} T={T} appLanguage={rtl ? 'ar' : 'en'} onClose={() => setReporting(false)}
+      />
+    </Modal>
   </View>;
 }
 
@@ -4589,6 +4624,22 @@ function NamesScreen({ navigation }: any) {const{rtl}=useLanguage();const T=(tex
   const [query, setQuery] = useState('');
   const [offline, setOffline] = useState(false);
   const [error, setError] = useState('');
+  /* Shared as the same artefact as a verse: dark brand card, Arabic set in
+     the family the reader is using, meaning in the language they picked. */
+  const shareNameCard = async (name: DivineName) => {
+    const value = meaning(name);
+    await shareCard({
+      kicker: `${T('Name')} ${name.number} · ${T('The Beautiful Names')}`,
+      arabic: name.name,
+      body: value,
+      footer: name.transliteration,
+      arabicFontFamily: preferences.arabicFont,
+      filename: `name-${name.number}.png`,
+      shareTitle: name.transliteration,
+      fallbackText: `${name.name}\n\n${name.transliteration}\n\n${value}`,
+    });
+  };
+
   const load = () => {
     setError('');
     return Promise.all([loadNames(), loadNameOfDay(), loadNameLanguage()])
@@ -4637,6 +4688,10 @@ function NamesScreen({ navigation }: any) {const{rtl}=useLanguage();const T=(tex
         <Text style={s.namesTransliteration}>{name.transliteration}</Text>
         <Text style={s.dataBody}>{meaning(name)}</Text>
       </View>
+      <Pressable accessibilityRole="button" accessibilityLabel={T('Share this Name as an image')}
+        onPress={() => void shareNameCard(name)} style={s.nameShare}>
+        {ico('share-outline', 18, C.green)}
+      </Pressable>
     </View>)}
     {!!names.length && <View style={s.apiPanel}><Text style={s.apiTitle}>{T('Kept on this device')}</Text><Text style={s.apiText}>{rtl?`يُخزَّن الدليل بعد أول زيارة، فتُقرأ الأسماء بلا اتصال. وترجمة القرآن التي تقرأ بها في موضع آخر (${preferences.translationEdition}) لا أثر لها على هذه المعاني.`:`The catalogue is stored after the first visit, so the Names can be read without a connection. The Qur'an translation you use elsewhere (${preferences.translationEdition}) does not affect these meanings.`}</Text></View>}
     <Pressable accessibilityLabel={T('Open the prophets catalogue')} onPress={() => navigation.navigate('Prophet Names')} style={s.secondary}><Text style={s.secondaryText}>{T("Prophets named in the Qur'an")}</Text></Pressable>
@@ -9608,7 +9663,8 @@ mushafPageNoText:{color:C.green,fontFamily:'Newsreader_700Bold',fontSize:16},mus
   inboxRow:{flexDirection:'row',gap:12,padding:14,borderBottomWidth:1,borderColor:C.line,alignItems:'flex-start'},inboxDot:{width:8,height:8,borderRadius:4,marginTop:6},
   inboxKind:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:9,letterSpacing:.8},inboxTime:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:11,marginTop:2},dataPage:{width:'100%',maxWidth:860,alignSelf:'center',padding:20,paddingBottom:BOTTOM_RESERVE},empty:{backgroundColor:C.white,borderRadius:24,padding:24,alignItems:'center',borderWidth:1,borderColor:C.line},dataTitle:{color:C.ink,fontSize:29,fontFamily:'Newsreader_600SemiBold',letterSpacing:-.5,marginTop:16,marginBottom:8},dataCard:{backgroundColor:C.card,borderRadius:20,padding:16,marginBottom:12,borderWidth:1,borderColor:C.line,...surface},bookmarkMain:{flex:1},bookmarkRemove:{paddingStart:10,paddingVertical:4,justifyContent:'center'},dataArabic:{color:C.green,fontFamily:'KFGQPCUthmanicHafs',fontSize:27,lineHeight:48,textAlign:'right'},dataName:{color:C.ink,fontSize:14,fontFamily:'DMSans_700Bold',marginTop:4},dataBody:{color:'#7B7671',fontFamily:'DMSans_400Regular',fontSize:13,lineHeight:18,marginTop:4},dataMeta:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold',marginTop:12,textTransform:'uppercase'},inputLabel:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.2,marginTop:12},moneyInput:{backgroundColor:C.white,borderWidth:1,borderColor:C.line,borderRadius:20,padding:16,fontSize:24,fontFamily:'DMSans_700Bold',color:C.ink,marginTop:8,outlineStyle:'none'} as any,zakatResult:{borderRadius:24,padding:20,marginTop:12},zakatNo:{color:C.onAccent,fontSize:34,fontFamily:'DMSans_700Bold',marginTop:8},
  profileName:{color:C.onAccent,fontSize:18,fontFamily:'DMSans_700Bold'},profileSub:{color:'#EBD3A6',fontSize:10,marginTop:4},privacyHero:{borderRadius:24,padding:20,flexDirection:'row',alignItems:'center',gap:12,...shadow},privacyPoints:{flexDirection:'row',gap:8,marginTop:12},privacyPoint:{flex:1,backgroundColor:C.card,borderRadius:16,paddingVertical:12,alignItems:'center',gap:4,borderWidth:1,borderColor:C.line},privacyPointText:{color:C.ink,fontSize:10,fontFamily:'DMSans_700Bold',textAlign:'center'},preferencePanel:{backgroundColor:C.card,borderRadius:24,padding:16,borderWidth:1,borderColor:C.line,...surface},preferenceHead:{flexDirection:'row',alignItems:'center',gap:12,marginBottom:16},prefIconTile:{width:54,height:54,borderRadius:18,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},choiceGrid:{flexDirection:'row',flexWrap:'wrap',gap:8},choiceRow:{flexDirection:'row',gap:8},
-  hadithPick:{marginTop:4,marginBottom:20},hadithSearch:{marginBottom:20},hadithResults:{marginBottom:10},choicePill:{minHeight:44,justifyContent:'center',minWidth:44,alignItems:'center',paddingHorizontal:12,paddingVertical:8,borderRadius:12,backgroundColor:C.bg,borderWidth:1,borderColor:C.line},choicePillActive:{backgroundColor:C.accent,borderColor:C.green},choiceText:{color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:10},choiceTextActive:{color:C.onAccent},preferenceLabel:{color:C.muted,fontFamily:'DMSans_700Bold',fontSize:10,letterSpacing:1.1,marginTop:16,marginBottom:8},settings:{backgroundColor:C.card,borderRadius:24,overflow:'hidden',borderWidth:1,borderColor:C.line,...surface},setting:{minHeight:69,flexDirection:'row',alignItems:'center',gap:12,paddingHorizontal:12,borderBottomWidth:1,borderColor:C.line},settingName:{color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:13},
+  hadithPick:{marginTop:4,marginBottom:20},hadithSearch:{marginBottom:20},hadithResults:{marginBottom:10},
+  nameShare:{width:40,height:40,borderRadius:20,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,flexShrink:0},choicePill:{minHeight:44,justifyContent:'center',minWidth:44,alignItems:'center',paddingHorizontal:12,paddingVertical:8,borderRadius:12,backgroundColor:C.bg,borderWidth:1,borderColor:C.line},choicePillActive:{backgroundColor:C.accent,borderColor:C.green},choiceText:{color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:10},choiceTextActive:{color:C.onAccent},preferenceLabel:{color:C.muted,fontFamily:'DMSans_700Bold',fontSize:10,letterSpacing:1.1,marginTop:16,marginBottom:8},settings:{backgroundColor:C.card,borderRadius:24,overflow:'hidden',borderWidth:1,borderColor:C.line,...surface},setting:{minHeight:69,flexDirection:'row',alignItems:'center',gap:12,paddingHorizontal:12,borderBottomWidth:1,borderColor:C.line},settingName:{color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:13},
  locationGate:{flexDirection:'row',gap:16,alignItems:'flex-start',backgroundColor:C.card,borderRadius:24,padding:20,borderWidth:1,borderColor:C.line,...soft},locationGateNarrow:{flexDirection:'column',alignItems:'stretch'},locationGateTitle:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:16},locationGateBody:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:12,lineHeight:18,marginTop:4},locationActions:{flexDirection:'row',flexWrap:'wrap',gap:8,marginTop:16},locationActionsNarrow:{flexDirection:'column',alignItems:'stretch'},primarySmall:{backgroundColor:C.accent,paddingHorizontal:16,paddingVertical:12,borderRadius:12,minHeight:44,justifyContent:'center'},ghostSmall:{backgroundColor:C.mint,paddingHorizontal:16,paddingVertical:12,borderRadius:12,minHeight:44,justifyContent:'center'},ghostText:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:11},
  prayerTools:{flexDirection:'row',flexWrap:'wrap',gap:8},prayerToolsTwo:{flexDirection:'row',gap:12,marginBottom:8},prayerToolTwo:{flex:1},prayerTool:{flexGrow:1,flexBasis:'30%',minWidth:220},prayerToolInner:{minHeight:86,flexDirection:'row',alignItems:'center',gap:12,backgroundColor:C.white,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line},prayerToolText:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:12,flex:1},
  libraryKicker:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10,letterSpacing:1.7,marginTop:24},libraryHeading:{color:C.ink,fontFamily:'Newsreader_600SemiBold',fontSize:23,marginTop:4,marginBottom:12},

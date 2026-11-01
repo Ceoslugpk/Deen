@@ -27,100 +27,14 @@ const W = 1080;
 const PAD = 84;
 const INNER = W - PAD * 2;
 
-/* The share card is a brand artefact, so it is painted from the same ten
-   colours as the rest of the app rather than its own set. */
-const GOLD = '#DFB163';                       // Radiant Gold
-const CREAM = '#F9F2EB';                      // Pearl
-const CREAM_SOFT = 'rgba(249,242,235,0.72)';
-const HERO_A = '#2D187D';                     // Deep Indigo
-const HERO_B = '#452D9F';                     // Royal Indigo
-
-const UI_STACK = '"IBMPlexSansArabic_400Regular","DMSans_400Regular",system-ui,-apple-system,"Segoe UI",sans-serif';
-const BRAND_MARK = require('../../assets/logo-mark.png');
-const FALLBACK_ARABIC = '"NotoNaskhArabic_400Regular","Amiri_400Regular","Geeza Pro","Al Bayan",Tahoma,serif';
-
-function font(size: number, weight: number, stack: string) {
-  return `${weight} ${size}px ${stack}`;
-}
-
-/** Greedy word wrap. Words longer than the measure are hard-split so they can never overflow. */
-function wrapLines(ctx: CanvasRenderingContext2D, text: string, maxWidth: number, dir: 'rtl' | 'ltr') {
-  ctx.direction = dir;
-  const tokens = String(text || '')
-    .split(/\s+/)
-    .filter(Boolean)
-    .flatMap((word) => {
-      if (ctx.measureText(word).width <= maxWidth) return [word];
-      // A single unbreakable run: cut it into pieces that fit.
-      const pieces: string[] = [];
-      let piece = '';
-      for (const char of word) {
-        if (piece && ctx.measureText(piece + char).width > maxWidth) {
-          pieces.push(piece);
-          piece = char;
-        } else {
-          piece += char;
-        }
-      }
-      if (piece) pieces.push(piece);
-      return pieces;
-    });
-
-  const lines: string[] = [];
-  let line = '';
-  for (const token of tokens) {
-    const candidate = line ? `${line} ${token}` : token;
-    if (!line || ctx.measureText(candidate).width <= maxWidth) line = candidate;
-    else {
-      lines.push(line);
-      line = token;
-    }
-  }
-  if (line) lines.push(line);
-  return lines;
-}
-
-/** Largest Arabic size that keeps the verse inside a comfortable block. */
-function fitArabic(ctx: CanvasRenderingContext2D, text: string, family: string) {
-  const stack = `"${family}",${FALLBACK_ARABIC}`;
-  for (const size of [78, 72, 66, 60, 54, 48, 42, 38]) {
-    ctx.font = font(size, 400, stack);
-    const lines = wrapLines(ctx, text, INNER, 'rtl');
-    if (lines.length * Math.round(size * 1.75) <= 660) return { size, lines };
-  }
-  ctx.font = font(38, 400, stack);
-  return { size: 38, lines: wrapLines(ctx, text, INNER, 'rtl') };
-}
-
-/**
- * The header's mark, loaded so the canvas can draw it. The card is a dark
- * gradient, so this is the light-on-dark variant. If it cannot be decoded we
- * simply draw the wordmark without it rather than failing the whole share.
- */
-async function loadBrandMark(): Promise<HTMLImageElement | null> {
-  try {
-    const raw: any = BRAND_MARK;
-    const src = typeof raw === 'string' ? raw : (raw?.default ?? raw?.uri ?? raw);
-    if (!src || typeof src !== 'string') return null;
-    const img = new Image();
-    img.src = src;
-    if (typeof (img as any).decode === 'function') await (img as any).decode();
-    else await new Promise<void>((resolve, reject) => { img.onload = () => resolve(); img.onerror = () => reject(new Error('mark')); });
-    return img;
-  } catch {
-    return null;
-  }
-}
-
-function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.arcTo(x + w, y, x + w, y + h, r);
-  ctx.arcTo(x + w, y + h, x, y + h, r);
-  ctx.arcTo(x, y + h, x, y, r);
-  ctx.arcTo(x, y, x + w, y, r);
-  ctx.closePath();
-}
+/* The palette, the text measuring and the brand mark used to live in this
+   file. They are shared with the other share cards now and live in
+   ./shareCard, so a fix to word wrapping reaches every card rather than
+   only the verse. */
+import {
+  CREAM, CREAM_SOFT, FALLBACK_ARABIC, fitArabic, font, GOLD, HERO_A, HERO_B,
+  loadBrandMark, roundRect, UI_STACK, wrapLines,
+} from './shareCard';
 
 /**
  * Draws the card and returns a PNG blob. Web only.
