@@ -360,6 +360,9 @@ function remapStyles(created: Record<string, any>): Record<string, any> {
          come up with it. This lift is only correct when the ground has actually
          gone dark — applying it on light would bleach dark text to near-white
          and make it invisible on a Pearl card. */
+      if (prop === 'fontFamily' && arabicFontOverride && typeof value === 'string' && ARABIC_FACES.has(value)) {
+        next[prop] = arabicFontOverride;
+      }
       if (themeDark && prop === 'color' && typeof next[prop] === 'string' && /^#[0-9a-fA-F]{6}$/.test(next[prop])
           && next[prop] !== C.onAccentInk) {
         /* `onAccentInk` is text sitting on the accent fill, which rises to a
@@ -487,7 +490,7 @@ const Pressable = React.forwardRef<React.ElementRef<typeof BarePressable>, Hapti
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
-type QuranPreferencesState={preferences:QuranPreferences;hydrated:boolean;update:(patch:Partial<QuranPreferences>)=>Promise<void>};
+type QuranPreferencesState={preferences:QuranPreferences;hydrated:boolean;update:(patch:Partial<QuranPreferences>)=>Promise<void>;fontTick:number};
 /**
  * Whether the reading chrome is currently hidden.
  *
@@ -612,8 +615,23 @@ function useOverlaySheet(key: string, active: boolean, render: () => React.React
 /* The same defaults the service uses, so the two cannot drift: this is only
    what is on screen until the stored preferences have been read. */
 const DEFAULT_QURAN_PREFERENCES:QuranPreferences=DEFAULTS;
-const QuranPreferencesContext=createContext<QuranPreferencesState>({preferences:DEFAULT_QURAN_PREFERENCES,hydrated:false,update:async()=>{}});
-function QuranPreferencesProvider({children}:{children:React.ReactNode}){const[preferences,setPreferences]=useState(DEFAULT_QURAN_PREFERENCES);const[hydrated,setHydrated]=useState(false);useEffect(()=>{loadQuranPreferences().then(value=>{setPreferences(value);setHydrated(true)})},[]);const update=async(patch:Partial<QuranPreferences>)=>{const next={...preferences,...patch};setPreferences(next);await saveQuranPreferences(next)};return <QuranPreferencesContext.Provider value={{preferences,hydrated,update}}>{children}</QuranPreferencesContext.Provider>}
+const QuranPreferencesContext=createContext<QuranPreferencesState>({preferences:DEFAULT_QURAN_PREFERENCES,hydrated:false,update:async()=>{},fontTick:0});
+function QuranPreferencesProvider({children}:{children:React.ReactNode}){const[preferences,setPreferences]=useState(DEFAULT_QURAN_PREFERENCES);const[hydrated,setHydrated]=useState(false);useEffect(()=>{loadQuranPreferences().then(value=>{setPreferences(value);setHydrated(true)})},[]);
+  /* The chosen face is fetched on demand, so it may not be there yet. Once it
+     is, the sheet is rebuilt with it and everyone wearing it re-renders. */
+  useEffect(()=>{
+    let alive=true;
+    void ensureQuranFont(preferences.arabicFont).then((ok)=>{
+      if(!alive)return;
+      arabicFontOverride = ok ? quranFont(preferences.arabicFont) : null;
+      s = makeStyles();
+      hajjStyles = makeHajjStyles();
+      consistency = makeConsistency();
+      setFontTick((value)=>value+1);
+    });
+    return ()=>{alive=false};
+  },[preferences.arabicFont]);
+  const [fontTick,setFontTick]=useState(0);const update=async(patch:Partial<QuranPreferences>)=>{const next={...preferences,...patch};setPreferences(next);await saveQuranPreferences(next)};return <QuranPreferencesContext.Provider value={{preferences,hydrated,update,fontTick}}>{children}</QuranPreferencesContext.Provider>}
 function useQuranPreferences(){return useContext(QuranPreferencesContext)}
 type WorshipSettingsState={settings:WorshipSettings;hydrated:boolean;update:(patch:Partial<WorshipSettings>)=>Promise<void>};
 const WorshipSettingsContext=createContext<WorshipSettingsState>({settings:DEFAULT_WORSHIP_SETTINGS,hydrated:false,update:async()=>{}});
@@ -9199,10 +9217,14 @@ function Root() {
 
      Nothing is read from or written to disk here. On a real cold start the ref
      is empty and the app opens on Home. */
+  /* The Arabic face is written into the sheet the same way, so it needs the
+     same remount to reach screens that are not re-rendering at the moment the
+     choice is made. */
+  const { fontTick } = useQuranPreferences();
   const liveState = useRef<any>(undefined);
   useBackIntegration(navigationRef);
   useEffect(() => { clearSavedNavState(); }, []);
-  return <NavigationContainer ref={navigationRef} key={(dark ? 'dark' : 'light') + ':' + tick} initialState={liveState.current} onStateChange={(state: any) => { liveState.current = state; }}>
+  return <NavigationContainer ref={navigationRef} key={(dark ? 'dark' : 'light') + ':' + tick + ':' + fontTick} initialState={liveState.current} onStateChange={(state: any) => { liveState.current = state; }}>
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Main" component={Tabs} />
       <Stack.Screen name="Settings" component={SettingsStack} />
@@ -10109,6 +10131,23 @@ export default function App(){const[fontsLoaded]=useFonts({DMSans_400Regular,DMS
 useEffect(()=>{if(restoreTick>0){void reloadAllState()}},[restoreTick]);
 useEffect(()=>{if(fontsLoaded){void loadOfflineSetup();void resumeSavedOfflineSetup();resumeSavedQuranPreload();void loadAudioSettings().then(() => restoreSavedSession());void loadHadithState();void loadTasbihState();void loadDownloads();void loadActivity();void loadFastingState();void loadJourneys();void loadWomensState();void loadZakatState();void loadLockConfig();void loadBackupSettings();void refreshMarket();startLockWatch();startBackupWatch()}},[fontsLoaded]);if(!fontsLoaded)return <SafeAreaView style={s.safe}><Spinner/></SafeAreaView>;return <ThemeProvider key={restoreTick}><LanguageProvider><QuranPreferencesProvider><WorshipSettingsProvider><LocationProvider><ScreenBoundary><AppShell/></ScreenBoundary></LocationProvider></WorshipSettingsProvider></QuranPreferencesProvider></LanguageProvider></ThemeProvider>}
 
+/**
+ * The Arabic face used everywhere, once someone has chosen one.
+ *
+ * The app used two: a Quranic hand for the Quran and IBM Plex Sans Arabic for
+ * everything else — buttons, names, headings. That is the right default, but it
+ * means picking a face for the Quran changed the Quran and nothing else, so the
+ * app wore two different Arabic hands at once. When a face is chosen it is now
+ * carried through the whole sheet; the null default keeps the split.
+ */
+let arabicFontOverride: string | null = null;
+const ARABIC_FACES = new Set([
+  'KFGQPCUthmanicHafs',
+  'IBMPlexSansArabic_400Regular',
+  'IBMPlexSansArabic_600SemiBold',
+  'IBMPlexSansArabic_700Bold',
+]);
+
 let s: Record<string, any> = makeStyles();
 
 /** Builds the style sheet for the palette that is currently in use. */
@@ -10298,7 +10337,7 @@ surahCard:{width:'100%',minHeight:64,backgroundColor:C.card,borderRadius:16,bord
   sheetOptionIcon:{width:38,height:38,borderRadius:14,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},
   sheetOptionLabel:{color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:14},
   sheetOptionDetail:{color:C.muted,fontSize:11,marginTop:2},
-  langSheet:{maxHeight:'62%'},
+  langSheet:{maxHeight:'78%'},
   langRow:{flexDirection:'row',alignItems:'center',gap:12,paddingHorizontal:12,paddingVertical:11,borderRadius:16,borderWidth:1,borderColor:C.line,backgroundColor:C.bg,marginBottom:7},
   langRowOn:{backgroundColor:C.mint,borderColor:C.green},
   langFlag:{fontSize:19,width:26,textAlign:'center'},
@@ -10315,7 +10354,7 @@ surahCard:{width:'100%',minHeight:64,backgroundColor:C.card,borderRadius:16,bord
   reflectProse:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:14,lineHeight:22,marginTop:14},
   reflectSource:{backgroundColor:C.bg,borderRadius:18,padding:14,marginTop:18,borderWidth:1,borderColor:C.line},
   reflectSourceHead:{color:C.muted,fontFamily:'DMSans_700Bold',fontSize:10,letterSpacing:1.2,marginBottom:10},
-  reflectScroll:{maxHeight:210},
+  reflectScroll:{maxHeight:260},
   reportQuote:{backgroundColor:C.bg,borderRadius:14,padding:12,marginTop:12,borderWidth:1,borderColor:C.line},
   reportQuoteAr:{color:C.ink,fontFamily:'IBMPlexSansArabic_400Regular',fontSize:16,lineHeight:28,textAlign:'right',direction:'rtl'} as any,
   reportQuoteEn:{color:C.muted,fontSize:12,lineHeight:18,marginTop:6},
@@ -10331,7 +10370,7 @@ surahCard:{width:'100%',minHeight:64,backgroundColor:C.card,borderRadius:16,bord
   reflectValue:{color:C.ink,fontSize:12,lineHeight:18,flex:1},
   noteSheetHead:{flexDirection:'row',alignItems:'center',gap:12,marginBottom:14},
   noteSheetArabic:{color:C.ink,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:17,lineHeight:30,textAlign:'right',marginBottom:12,direction:'rtl'} as any,
-  noteSheetInput:{minHeight:104,maxHeight:170,backgroundColor:C.bg,borderRadius:18,padding:14,textAlignVertical:'top',fontFamily:'DMSans_400Regular',fontSize:14,color:C.ink,borderWidth:1,borderColor:C.line,outlineStyle:'none'} as any,
+  noteSheetInput:{minHeight:104,maxHeight:200,backgroundColor:C.bg,borderRadius:18,padding:14,textAlignVertical:'top',fontFamily:'DMSans_400Regular',fontSize:14,color:C.ink,borderWidth:1,borderColor:C.line,outlineStyle:'none'} as any,
   noteSheetActions:{flexDirection:'row',alignItems:'center',gap:9,marginTop:14},
 mushafFrame:{backgroundColor:C.dark?mix(BRAND.midnightInk,BRAND.lavender,.12):brandHex('#FCFAF6'),borderRadius:8,borderWidth:MUSHAF_FRAME_BORDER,borderColor:C.gold,padding:MUSHAF_FRAME_PAD,marginTop:4,...soft,overflow:'hidden'},
 mushafFrameInner:{borderRadius:4,borderWidth:MUSHAF_INNER_BORDER,borderColor:C.gold,borderStyle:'solid',opacity:.999,paddingHorizontal:MUSHAF_INNER_PAD_H,paddingVertical:MUSHAF_INNER_PAD_V},
