@@ -7,7 +7,7 @@ function ExploreStack(){return <Stack.Navigator screenOptions={{headerShown:fals
  */
 function PrayerStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="Prayer" component={PrayerScreen}/><Stack.Screen name="Ramadan" component={RamadanScreen}/></Stack.Navigator>}
 /** The tools tab: what you calculate, look up, travel for, or record. */
-function ToolsStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="ToolsHome" component={ToolsHomeScreen}/><Stack.Screen name="Zakat" component={ZakatScreen}/><Stack.Screen name="Holy site channels" component={HolyChannelsScreen}/><Stack.Screen name="Women" component={WomenHubScreen}/><Stack.Screen name="Istihada" component={IstihadaScreen}/><Stack.Screen name="Ramadan Planner" component={RamadanPlannerScreen}/><Stack.Screen name="These Days" component={TheseDaysScreen}/><Stack.Screen name="Cycle" component={CycleScreen}/><Stack.Screen name="Qada" component={QadaScreen}/><Stack.Screen name="Women Guides" component={WomenGuidesScreen}/><Stack.Screen name="Privacy Lock" component={PrivacyLockScreen}/><Stack.Screen name="Fasting" component={FastingScreen}/><Stack.Screen name="Weekly Summary" component={WeeklySummaryScreen}/><Stack.Screen name="Qibla" component={QiblaScreen}/><Stack.Screen name="Location Setup" component={LocationSetupScreen}/><Stack.Screen name="Notifications" component={NotificationScreen}/><Stack.Screen name="Notification Inbox" component={NotificationInboxScreen}/><Stack.Screen name="Salah Tracker" component={SalahTrackerScreen}/><Stack.Screen name="Adhan" component={AdhanScreen}/><Stack.Screen name="Hijri Calendar" component={HijriCalendarScreen}/><Stack.Screen name="Tasbih" component={TasbihScreen}/><Stack.Screen name="Umrah Packing" component={UmrahPackingScreen}/><Stack.Screen name="Hajj Live" component={HajjLiveScreen}/></Stack.Navigator>}
+function ToolsStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="ToolsHome" component={ToolsHomeScreen}/><Stack.Screen name="Zakat" component={ZakatScreen}/><Stack.Screen name="Holy site channels" component={HolyChannelsScreen}/><Stack.Screen name="Women" component={WomenHubScreen}/><Stack.Screen name="Istihada" component={IstihadaScreen}/><Stack.Screen name="Ramadan Planner" component={RamadanPlannerScreen}/><Stack.Screen name="These Days" component={TheseDaysScreen}/><Stack.Screen name="Cycle" component={CycleScreen}/><Stack.Screen name="Qada" component={QadaScreen}/><Stack.Screen name="Women Guides" component={WomenGuidesScreen}/><Stack.Screen name="Privacy Lock" component={PrivacyLockScreen}/><Stack.Screen name="Fasting" component={FastingScreen}/><Stack.Screen name="Weekly Summary" component={WeeklySummaryScreen}/><Stack.Screen name="Qibla" component={QiblaScreen}/><Stack.Screen name="Location Setup" component={LocationSetupScreen}/><Stack.Screen name="Notifications" component={NotificationScreen}/><Stack.Screen name="Salah Tracker" component={SalahTrackerScreen}/><Stack.Screen name="Adhan" component={AdhanScreen}/><Stack.Screen name="Hijri Calendar" component={HijriCalendarScreen}/><Stack.Screen name="Tasbih" component={TasbihScreen}/><Stack.Screen name="Umrah Packing" component={UmrahPackingScreen}/><Stack.Screen name="Hajj Live" component={HajjLiveScreen}/></Stack.Navigator>}
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -1055,7 +1055,7 @@ function useCanGoBack() {
  * it lands the same way whichever screen the header is on.
  */
 function openNotifications() {
-  navigateWhenReady('Tools', { screen: 'Notification Inbox' });
+  navigateWhenReady('Inbox');
 }
 function AppHeader() {
   const { rtl } = useLanguage();
@@ -9203,6 +9203,10 @@ function Root() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Main" component={Tabs} />
       <Stack.Screen name="Settings" component={SettingsStack} />
+      {/* The inbox sits above the tabs, not inside one of them. It is
+          reached from a header that any tab can be showing, and a screen
+          reached from anywhere belongs above all of them. */}
+      <Stack.Screen name="Inbox" component={NotificationInboxScreen} />
     </Stack.Navigator>
     <ExpoStatusBar style={dark ? 'light' : 'dark'} /><MiniPlayer /><OverlayHost /><ExitPrompt />
   </NavigationContainer>;
@@ -9854,6 +9858,59 @@ function useAudioLanguageSync() {
   }, [hydrated, language]);
 }
 
+
+/**
+ * Catches a screen that throws on render.
+ *
+ * There was nowhere in the app for an error to land, so one bad screen took the
+ * whole tree down with it: the app went blank and stayed blank, and reloading
+ * ran straight back into the same throw, which is why the only way out was to
+ * clear storage. Now the failure is contained to the part that failed, and the
+ * rest of the app — and a way back — stays on screen.
+ *
+ * The boundary is keyed on the message so that a second, different failure
+ * resets it rather than leaving the first one's message up.
+ */
+class ScreenBoundary extends React.Component<
+  { children: React.ReactNode; onReset?: () => void },
+  { error: Error | null }
+> {
+  state: { error: Error | null } = { error: null };
+
+  static getDerivedStateFromError(error: Error) { return { error }; }
+
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    // Kept on the console: this is the trace you need when a screen will not
+    // open, and it is otherwise impossible to recover after the fact.
+    console.error('[screen]', error?.message, info?.componentStack);
+  }
+
+  reset = () => {
+    this.setState({ error: null });
+    this.props.onReset?.();
+  };
+
+  render() {
+    if (!this.state.error) return this.props.children;
+    const rtl = I18nManager.isRTL;
+    const heading = rtl ? 'تعذّر فتح هذه الصفحة' : 'This screen could not open';
+    const body = rtl
+      ? 'حدث خطأ أثناء عرضها. بقية التطبيق تعمل، ويمكنك المحاولة مرة أخرى.'
+      : 'Something went wrong while drawing it. The rest of the app is fine, and you can try again.';
+    const action = rtl ? 'إعادة المحاولة' : 'Try again';
+    return <View style={s.crashScreen}>
+      <View style={s.crashCard}>
+        <Text style={s.crashTitle}>{heading}</Text>
+        <Text style={s.crashBody}>{body}</Text>
+        {!!this.state.error?.message && <Text style={s.crashDetail}>{String(this.state.error.message).slice(0, 200)}</Text>}
+        <Pressable accessibilityRole="button" accessibilityLabel={action} onPress={this.reset} style={s.primary}>
+          <Text style={s.primaryText}>{action}</Text>
+        </Pressable>
+      </View>
+    </View>;
+  }
+}
+
 function AppShell() {
   const { ready, rtl: rtlNow } = useLanguage();  /* rtlNow is a flag here, not a function */
   const { location } = useAppLocation();
@@ -10047,7 +10104,7 @@ async function reloadAllState() {
 
 export default function App(){const[fontsLoaded]=useFonts({DMSans_400Regular,DMSans_600SemiBold,DMSans_700Bold,Newsreader_600SemiBold,NotoNaskhArabic_400Regular,NotoNaskhArabic_600SemiBold,Amiri_400Regular,KFGQPCUthmanicHafs,IBMPlexSansArabic_400Regular,IBMPlexSansArabic_600SemiBold});const restoreTick=useRestoreNonce();
 useEffect(()=>{if(restoreTick>0){void reloadAllState()}},[restoreTick]);
-useEffect(()=>{if(fontsLoaded){void loadOfflineSetup();void resumeSavedOfflineSetup();resumeSavedQuranPreload();void loadAudioSettings().then(() => restoreSavedSession());void loadHadithState();void loadTasbihState();void loadDownloads();void loadActivity();void loadFastingState();void loadJourneys();void loadWomensState();void loadZakatState();void loadLockConfig();void loadBackupSettings();void refreshMarket();startLockWatch();startBackupWatch()}},[fontsLoaded]);if(!fontsLoaded)return <SafeAreaView style={s.safe}><Spinner/></SafeAreaView>;return <ThemeProvider key={restoreTick}><LanguageProvider><QuranPreferencesProvider><WorshipSettingsProvider><LocationProvider><AppShell/></LocationProvider></WorshipSettingsProvider></QuranPreferencesProvider></LanguageProvider></ThemeProvider>}
+useEffect(()=>{if(fontsLoaded){void loadOfflineSetup();void resumeSavedOfflineSetup();resumeSavedQuranPreload();void loadAudioSettings().then(() => restoreSavedSession());void loadHadithState();void loadTasbihState();void loadDownloads();void loadActivity();void loadFastingState();void loadJourneys();void loadWomensState();void loadZakatState();void loadLockConfig();void loadBackupSettings();void refreshMarket();startLockWatch();startBackupWatch()}},[fontsLoaded]);if(!fontsLoaded)return <SafeAreaView style={s.safe}><Spinner/></SafeAreaView>;return <ThemeProvider key={restoreTick}><LanguageProvider><QuranPreferencesProvider><WorshipSettingsProvider><LocationProvider><ScreenBoundary><AppShell/></ScreenBoundary></LocationProvider></WorshipSettingsProvider></QuranPreferencesProvider></LanguageProvider></ThemeProvider>}
 
 let s: Record<string, any> = makeStyles();
 
@@ -10334,6 +10391,11 @@ mushafPageNoText:{color:C.green,fontFamily:'Newsreader_700Bold',fontSize:16},mus
   zHeadRight:{flexDirection:'row',alignItems:'center',gap:8,flexShrink:0},
   zHeadAction:{color:C.gold,fontFamily:'DMSans_600SemiBold',fontSize:11,flexShrink:1,textAlign:'right'},
   zBody:{paddingTop:16},
+  crashScreen:{flex:1,backgroundColor:C.bg,alignItems:'center',justifyContent:'center',padding:24},
+  crashCard:{backgroundColor:C.card,borderRadius:24,padding:22,borderWidth:1,borderColor:C.line,gap:10,maxWidth:420,width:'100%'},
+  crashTitle:{color:C.ink,fontFamily:'Newsreader_600SemiBold',fontSize:20},
+  crashBody:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:13.5,lineHeight:20},
+  crashDetail:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:11,lineHeight:16,marginTop:2},
   liveFrame:{height:211,borderRadius:18,overflow:'hidden',backgroundColor:'#000',marginTop:12,borderWidth:1,borderColor:C.line},
   liveWeb:{flex:1,backgroundColor:'#000'},
   liveFallback:{position:'absolute',top:0,left:0,right:0,bottom:0,alignItems:'center',justifyContent:'center',padding:20},
