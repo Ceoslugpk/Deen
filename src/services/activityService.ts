@@ -25,6 +25,11 @@ export type ActivityDay = {
   surahs: number[];
   pages: number[];
   hifz: number;
+  /**
+   * Optional because records written before this existed do not have it.
+   * Everything that reads it treats a missing value as none.
+   */
+  adhkar?: number;
 };
 
 export type WeekRow = {
@@ -38,11 +43,12 @@ export type WeekRow = {
   pages: number;
   hifz: number;
   dhikr: number;
+  adhkar: number;
 };
 
 export type WeeklySummary = {
   rows: WeekRow[];
-  totals: { prayers: number; verses: number; surahs: number; pages: number; hifz: number; dhikr: number };
+  totals: { prayers: number; verses: number; surahs: number; pages: number; hifz: number; dhikr: number; adhkar: number };
   prayerStreak: number;
   activeStreak: number;
   bestDay: WeekRow | null;
@@ -101,7 +107,7 @@ export async function loadActivity() {
 }
 
 function blank(date = dayKey()): ActivityDay {
-  return { date, verses: [], surahs: [], pages: [], hifz: 0 };
+  return { date, verses: [], surahs: [], pages: [], hifz: 0, adhkar: 0 };
 }
 
 /** Opens (or reuses) today's record, applies the change, and saves it. */
@@ -141,6 +147,11 @@ export function logHifzReview() {
   return record((day) => ({ ...day, hifz: day.hifz + 1 })).catch(() => blank());
 }
 
+/** One remembrance read. Counted once per dua, however many times it is opened. */
+export function logAdhkarRead() {
+  return record((day) => ({ ...day, adhkar: (day.adhkar || 0) + 1 })).catch(() => blank());
+}
+
 /**
  * Builds the last seven days from every local store: prayer completion, the
  * reading record kept here, and the Tasbih totals.
@@ -168,6 +179,7 @@ export function buildWeeklySummary(options: {
       pages: entry?.pages.length || 0,
       hifz: entry?.hifz || 0,
       dhikr: tasbihDays[key] || 0,
+      adhkar: entry?.adhkar || 0,
     };
   });
 
@@ -179,8 +191,9 @@ export function buildWeeklySummary(options: {
       pages: sum.pages + row.pages,
       hifz: sum.hifz + row.hifz,
       dhikr: sum.dhikr + row.dhikr,
+      adhkar: sum.adhkar + row.adhkar,
     }),
-    { prayers: 0, verses: 0, surahs: 0, pages: 0, hifz: 0, dhikr: 0 },
+    { prayers: 0, verses: 0, surahs: 0, pages: 0, hifz: 0, dhikr: 0, adhkar: 0 },
   );
 
   let prayerStreak = 0;
@@ -190,7 +203,7 @@ export function buildWeeklySummary(options: {
     date.setDate(date.getDate() - i);
     const key = dayKey(date);
     const prayers = (prayerHistory[key] || []).length >= 5;
-    const active = (prayerHistory[key] || []).length > 0 || (log[key]?.verses.length || 0) > 0 || (log[key]?.pages.length || 0) > 0 || (log[key]?.hifz || 0) > 0 || (tasbihDays[key] || 0) > 0;
+    const active = (prayerHistory[key] || []).length > 0 || (log[key]?.verses.length || 0) > 0 || (log[key]?.pages.length || 0) > 0 || (log[key]?.hifz || 0) > 0 || (tasbihDays[key] || 0) > 0 || (log[key]?.adhkar || 0) > 0;
     if (prayers) prayerStreak += 1;
     else if (i > 0) break;
     if (active) activeStreak += 1;

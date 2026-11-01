@@ -150,7 +150,7 @@ import { MOTION, easeOut, useEntrance, usePressDepth } from './src/design/motion
 import { completeJourney, clearJourney, journeyMeta, JOURNEY_META, JOURNEY_STEPS, localizeJourneyStep, JourneyKind, JourneyStep, journeyProgress, setStepCount, setStepNote, startJourney, toggleStep, useJourneys, loadJourneys, setJourneyDateLocale } from './src/services/journeyService';
 import { HOLY_CHANNELS, openChannel } from './src/services/holyChannels';
 import { clearFastDay, FastType, labelForEntry, loadFastingState, missedReasons, MISSED_REASONS, MissedReason, recordFast, readableDate, setFastingOwed, summariseFasting, useFasting, setFastingDateLocale } from './src/services/fastingService';
-import { buildWeeklySummary, loadActivity, logHifzReview, logMushafPage, logSurahOpen, logVerseRead, useActivity, setActivityDateLocale } from './src/services/activityService';
+import { buildWeeklySummary, loadActivity, logAdhkarRead, logHifzReview, logMushafPage, logSurahOpen, logVerseRead, useActivity, setActivityDateLocale } from './src/services/activityService';
 import { addDays, addQada, ADVISORY, assessBleeding, BISMILLAH_ARABIC, BLEEDING_GUIDANCE, cycleStats, dayKey, daysBetween, deleteCycle, deleteNifas, deleteQada, endCycle, endNifas, EXPLANATIONS, FLOW_LEVELS, formatDay, formatLongDay, GHUSL_FARD, GHUSL_SUNNAH, LIMITS, loadWomensState, logPurity, nifasStats, NIYYAH_ARABIC, NIYYAH_MEANING, NIYYAH_TRANSLITERATION, PurityStatus, QadaReason, QADA_REASONS, qadaStats, RAMADAN_ADVISORY, RAMADAN_NOTES, RAMADAN_STATE_LABEL, ramadanPlan, RamadanPlanDay, recentPurity, REFERENCES, SCHOOL_NOTE, setFlow, setOptedIn, startCycle, startNifas, THESE_DAYS_ACTS, THESE_DAYS_ADVISORY, THESE_DAYS_ANCHOR, THESE_DAYS_DISPUTED, TheseDaysAct, toggleQada, TUHR_SIGNS, useWomens, WORSHIP_GUIDANCE } from './src/services/womensService';
 import { BiometricInfo, biometricInfo, checkPin, removePin, RELOCK_OPTIONS, setPin, startLockWatch, unlockSession, unlockWithBiometric, updateLockSettings, useIsLocked, useLockConfig, loadLockConfig } from './src/services/privacyService';
 import { CURRENCIES, clearHistory, computeZakat, currencySymbol, deleteCalculation, formatMoney, livePrices, loadZakatState, marketIsFresh, NISAB_GOLD_GRAMS, NISAB_SILVER_GRAMS, refreshMarket, saveCalculation, setAssetAmount, setBasis, setCurrency, setLiabilityAmount, setMetalPrice, setMoneyLocale, useLiveMetalPrices, useMarket, useZakat } from './src/services/zakatService';
@@ -4543,7 +4543,7 @@ const DUA_SHORTCUT_LABELS: Record<string, string> = {
   hajj: 'Hajj and Umrah'
 };
 
-function DuaCard({ dua }: { dua: Dua }) {const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);
+function DuaCard({ dua, read, onRead }: { dua: Dua; read?: boolean; onRead?: () => void }) {const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);
   const { preferences } = useQuranPreferences();
   const [openSource, setOpenSource] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -4582,6 +4582,11 @@ function DuaCard({ dua }: { dua: Dua }) {const{rtl}=useLanguage();const T=(text:
       <Pressable accessibilityLabel={T('Copy this dua')} onPress={copy} style={s.secondary}>{ico('copy-outline', 16, C.green)}<Text style={s.secondaryText}>{copied ? 'Copied' : 'Copy'}</Text></Pressable>
       <Pressable accessibilityLabel={T('Share this dua')} onPress={share} style={s.secondary}>{ico('share-outline', 16, C.green)}<Text style={s.secondaryText}>{T('Share')}</Text></Pressable>
       <Pressable accessibilityLabel={T('Report a correction')} onPress={() => setReporting(true)} style={s.secondary}>{ico('flag-outline', 16, C.green)}<Text style={s.secondaryText}>{T('Report')}</Text></Pressable>
+      {!!onRead && <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: !!read }}
+        accessibilityLabel={T('Mark this remembrance as read')} onPress={onRead} style={s.secondary}>
+        {ico(read ? 'checkmark-circle' : 'ellipse-outline', 16, read ? C.gold : C.green)}
+        <Text style={s.secondaryText}>{read ? T('Read') : T('Mark read')}</Text>
+      </Pressable>}
     </View>
     <Modal visible={reporting} transparent animationType="slide" onRequestClose={() => setReporting(false)}>
       <CorrectionSheet
@@ -4885,6 +4890,15 @@ function DuaCategoryScreen({ route, navigation }: any) {const{rtl}=useLanguage()
 
 function AdhkarScreen({ route, navigation }: any) {const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);
   const [category, setCategory] = useState(route.params?.initial || 'morning');
+  /* Which of these have been said today. The count is what the week adds up;
+     the tick is only so you can see where you are, and it resets when the
+     screen does. */
+  const [read, setRead] = useState<Record<string, boolean>>({});
+  const markRead = (id: string) => {
+    if (read[id]) return;
+    setRead((prev) => ({ ...prev, [id]: true }));
+    void logAdhkarRead();
+  };
   const [duas, setDuas] = useState<Dua[]>([]);
   const [offline, setOffline] = useState(false);
   const [error, setError] = useState('');
@@ -4917,7 +4931,7 @@ function AdhkarScreen({ route, navigation }: any) {const{rtl}=useLanguage();cons
       {!!error && <ErrorState message={error} retry={load} />}
       {!error && !duas.length && <Spinner />}
       {offline && <View style={s.offlineNote}><Text style={s.offlineNoteText}>{T('Read from this device — the network is not reachable right now.')}</Text></View>}
-      {duas.map((dua) => <DuaCard key={dua.id} dua={dua} />)}
+      {duas.map((dua) => <DuaCard key={dua.id} dua={dua} read={!!read[dua.id]} onRead={() => markRead(dua.id)} />)}
     </ScrollView></Page>}
 
 function DataTool({route,navigation}:any){const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);
@@ -5206,7 +5220,7 @@ function WeeklySummaryScreen({navigation}:any){const{rtl}=useLanguage();const T=
     <View style={s.summaryScore}><View><Text style={s.nextCardLabel}>{T('LAST 7 DAYS')}</Text><Text style={s.zakatNo}>{total.prayers} / 35</Text><Text style={s.weekScoreBody}>{T('prayers marked')}</Text></View><View style={{alignItems:'flex-end'}}><Text style={s.nextCardLabel}>{T('STREAKS')}</Text><Text style={s.zakatNo}>{week.prayerStreak} {T(week.prayerStreak===1?'day':'days')}</Text><Text style={s.weekScoreBody}>{rtl?`${week.activeStreak} ${arNoun(week.activeStreak,'يوم نشط','يومان نشطان','أيام نشطة','يومًا نشطًا')}`:`${week.activeStreak} active ${week.activeStreak===1?'day':'days'}`}</Text></View></View>
     <View style={s.twoCol}>
       <View style={[s.dataCard,{flex:1,marginBottom:0}]}><Text style={s.dataMeta}>{T('VERSES MARKED')}</Text><Text style={s.weekStatValue}>{total.verses}</Text><Text style={s.meta}>{rtl?`${total.surahs} ${arNoun(total.surahs,'سورة','سورتان','سور','سورة')} · ${total.pages} ${arNoun(total.pages,'صفحة','صفحتان','صفحات','صفحة')}`:`${total.surahs} Surahs · ${total.pages} pages`}</Text></View>
-      <View style={[s.dataCard,{flex:1,marginBottom:0}]}><Text style={s.dataMeta}>{T('DHIKR COUNTED')}</Text><Text style={s.weekStatValue}>{total.dhikr}</Text><Text style={s.meta}>{rtl?`${total.hifz} مراجعة حفظ`:`${total.hifz} hifz reviews`}</Text></View>
+      <View style={[s.dataCard,{flex:1,marginBottom:0}]}><Text style={s.dataMeta}>{T('DHIKR COUNTED')}</Text><Text style={s.weekStatValue}>{total.dhikr}</Text><Text style={s.meta}>{rtl?`${total.adhkar} ${arNoun(total.adhkar,'ذكر مقروء','ذكران مقروءان','أذكار مقروءة','ذكرًا مقروءًا')} · ${total.hifz} مراجعة حفظ`:`${total.adhkar} ${total.adhkar===1?'remembrance':'remembrances'} · ${total.hifz} hifz reviews`}</Text></View>
     </View>
     {!active && <View style={[s.empty,{marginTop:12}]}><Text style={s.dataBody}>{T('Nothing recorded in the last seven days yet. Mark a prayer, read a Surah, count dhikr or practise a verse and this page fills in.')}</Text></View>}
     <Section title={T('Daily salah')} action={week.bestDay && week.bestDay.prayers ? (rtl?`${T('Best')}: ${week.bestDay.label}`:`Best: ${week.bestDay.label}`) : ''} />
