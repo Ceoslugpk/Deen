@@ -7,7 +7,7 @@ function ExploreStack(){return <Stack.Navigator screenOptions={{headerShown:fals
  */
 function PrayerStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="Prayer" component={PrayerScreen}/><Stack.Screen name="Ramadan" component={RamadanScreen}/></Stack.Navigator>}
 /** The tools tab: what you calculate, look up, travel for, or record. */
-function ToolsStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="ToolsHome" component={ToolsHomeScreen}/><Stack.Screen name="Zakat" component={ZakatScreen}/><Stack.Screen name="Holy site channels" component={HolyChannelsScreen}/><Stack.Screen name="Women" component={WomenHubScreen}/><Stack.Screen name="Istihada" component={IstihadaScreen}/><Stack.Screen name="Ramadan Planner" component={RamadanPlannerScreen}/><Stack.Screen name="These Days" component={TheseDaysScreen}/><Stack.Screen name="Cycle" component={CycleScreen}/><Stack.Screen name="Qada" component={QadaScreen}/><Stack.Screen name="Women Guides" component={WomenGuidesScreen}/><Stack.Screen name="Privacy Lock" component={PrivacyLockScreen}/><Stack.Screen name="Fasting" component={FastingScreen}/><Stack.Screen name="Weekly Summary" component={WeeklySummaryScreen}/><Stack.Screen name="Qibla" component={QiblaScreen}/><Stack.Screen name="Location Setup" component={LocationSetupScreen}/><Stack.Screen name="Notifications" component={NotificationScreen}/><Stack.Screen name="Salah Tracker" component={SalahTrackerScreen}/><Stack.Screen name="Adhan" component={AdhanScreen}/><Stack.Screen name="Hijri Calendar" component={HijriCalendarScreen}/><Stack.Screen name="Tasbih" component={TasbihScreen}/><Stack.Screen name="Umrah Packing" component={UmrahPackingScreen}/><Stack.Screen name="Hajj Live" component={HajjLiveScreen}/></Stack.Navigator>}
+function ToolsStack(){return <Stack.Navigator screenOptions={{headerShown:false}}><Stack.Screen name="ToolsHome" component={ToolsHomeScreen}/><Stack.Screen name="Zakat" component={ZakatScreen}/><Stack.Screen name="Holy site channels" component={HolyChannelsScreen}/><Stack.Screen name="Women" component={WomenHubScreen}/><Stack.Screen name="Istihada" component={IstihadaScreen}/><Stack.Screen name="Ramadan Planner" component={RamadanPlannerScreen}/><Stack.Screen name="These Days" component={TheseDaysScreen}/><Stack.Screen name="Cycle" component={CycleScreen}/><Stack.Screen name="Qada" component={QadaScreen}/><Stack.Screen name="Women Guides" component={WomenGuidesScreen}/><Stack.Screen name="Privacy Lock" component={PrivacyLockScreen}/><Stack.Screen name="Fasting" component={FastingScreen}/><Stack.Screen name="Weekly Summary" component={WeeklySummaryScreen}/><Stack.Screen name="Qibla" component={QiblaScreen}/><Stack.Screen name="Location Setup" component={LocationSetupScreen}/><Stack.Screen name="Notifications" component={NotificationScreen}/><Stack.Screen name="Salah Tracker" component={SalahTrackerScreen}/><Stack.Screen name="Adhan" component={AdhanScreen}/><Stack.Screen name="Hijri Calendar" component={HijriCalendarScreen}/><Stack.Screen name="Tasbih" component={TasbihScreen}/><Stack.Screen name="Umrah Packing" component={UmrahPackingScreen}/></Stack.Navigator>}
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -52,7 +52,6 @@ import {
   AudioEdition, Chapter, DailyAyah, DailyHadith, DivineName, getAyahEditions, getAyahOfDay, getChapters, getDailyHadith, getDuas, getQuranEditions,
   getAyahForDate, getCalendarSpan, getGregorianCalendar, getNameOfDay, getNames, getPrayerCalendar, getPrayerSnapshot, getQibla, qiblaDistance, getRamadanCalendar,
   getHizbVerses, getJuzVerses, getPageVerses, getVerses, searchQuran, CalendarDay, Prayer, PrayerSnapshot, QuranEdition, QuranSearchResult, SurahReciter, Verse,
-  HajjCountdown, getHajjCountdown
 } from './src/services/api';
 import {
   DEFAULT_DAY_TOOLS, DEFAULT_WORSHIP_SETTINGS, loadDailyContent, loadPrayerCache, loadPrayerCompletion, loadPrayerHistory, loadQuickTasbih, loadStoredLocation, loadWorshipSettings,
@@ -413,7 +412,6 @@ function applyPalette(dark: boolean) {
   /* These two were built once at module load, which baked the light palette
      into them: they stayed white after everything else went dark. They have to
      be rebuilt with the rest. */
-  hajjStyles = makeHajjStyles();
   consistency = makeConsistency();
 }
 
@@ -624,8 +622,7 @@ function QuranPreferencesProvider({children}:{children:React.ReactNode}){const[p
       if(!alive)return;
       arabicFontOverride = ok ? quranFont(preferences.arabicFont) : null;
       s = makeStyles();
-      hajjStyles = makeHajjStyles();
-      consistency = makeConsistency();
+          consistency = makeConsistency();
       setFontTick((value)=>value+1);
     });
     return ()=>{alive=false};
@@ -851,7 +848,6 @@ const TOOL_IMAGES:Record<string,any>={
   'Qada fasts':require('./assets/tool-icons/qada-fasts.png'),
   'Privacy lock':require('./assets/tool-icons/privacy-lock.png'),
   'Umrah Resources':require('./assets/tool-icons/pilgrimage.png'),
-  'Hajj Live':require('./assets/tool-icons/hajj-live.png'),
   'Madinah Live':require('./assets/tool-icons/madinah-live.png'),
   'Makkah Live':require('./assets/tool-icons/holy-sites.png'),
   'Salah Tracker':require('./assets/tool-icons/prayer-fajr.png'),
@@ -949,7 +945,6 @@ const TOOL_IMAGES_DARK:Record<string,any>={
   'Qada fasts':require('./assets/tool-icons/qada-fasts-dark.png'),
   'Privacy lock':require('./assets/tool-icons/privacy-lock-dark.png'),
   'Umrah Resources':require('./assets/tool-icons/pilgrimage-dark.png'),
-  'Hajj Live':require('./assets/tool-icons/hajj-live-dark.png'),
   'Madinah Live':require('./assets/tool-icons/madinah-live-dark.png'),
   'Makkah Live':require('./assets/tool-icons/holy-sites-dark.png'),
   'Salah Tracker':require('./assets/tool-icons/prayer-fajr-dark.png')
@@ -1610,7 +1605,6 @@ const TOOL_GROUPS: ToolGroup[] = [
   { label: 'WATCH', title: 'Live broadcasts', items: [
     { title: 'Makkah Live', caption: 'Al-Masjid al-Haram, around the clock', route: 'Holy site channels', params: { site: 'Makkah' } },
     { title: 'Madinah Live', caption: 'Al-Masjid an-Nabawi, around the clock', route: 'Holy site channels', params: { site: 'Madinah' } },
-    { title: 'Hajj Live', caption: 'The days of Hajj, and the countdown to Arafah', route: 'Hajj Live' },
   ]},
   /* Last, and only once it has been turned on. The three cards here are the
      hub, the record it is built on, and the question the record raises. */
@@ -1965,194 +1959,6 @@ function UmrahPackingScreen({ navigation }: any) {
         })}
       </View>;})}
     </ScrollView></Page>;
-}
-
-/**
- * The days of Hajj, in order. Everything here is fixed by the Sunnah rather
- * than by us: 8 to 13 Dhul-Hijjah, and Arafah is the day the pilgrimage
- * stands on — the Prophet ﷺ said Hajj is Arafah.
- */
-const HAJJ_DAYS: { day: string; name: string; place: string; note: string; steps: string[] }[] = [
-  { day: '8', name: 'Yawm at-Tarwiyah', place: 'Mina', note: 'The day of preparing', steps: [
-    'Enter ihram where you are and make the intention for Hajj',
-    'Begin the Talbiyah and keep it going until the stoning on the 10th',
-    'Travel to Mina and pray Dhuhr, Asr, Maghrib and Isha there',
-    'Spend the night in Mina',
-  ]},
-  { day: '9', name: 'Yawm al-Arafah', place: 'Arafah, then Muzdalifah', note: 'Hajj itself', steps: [
-    'Pray Fajr in Mina, then head for Arafah after sunrise',
-    'Hear the khutbah at Namirah, then pray Dhuhr and Asr together, shortened',
-    'Stand in supplication from noon to sunset — this is the pillar of Hajj',
-    'Leave for Muzdalifah after sunset without praying Maghrib at Arafah',
-    'Pray Maghrib and Isha together in Muzdalifah and sleep under the sky',
-  ]},
-  { day: '10', name: 'Yawm an-Nahr', place: 'Mina, then Makkah', note: 'Eid al-Adha', steps: [
-    'Pray Fajr in Muzdalifah and gather your pebbles',
-    'Stone Jamarat al-Aqabah with seven pebbles, saying Allahu Akbar each time',
-    'Offer the sacrifice',
-    'Shave the head or trim the hair — shaving is better for men',
-    'Tawaf al-Ifadah and Sa’i back in Makkah',
-  ]},
-  { day: '11', name: 'First day of Tashriq', place: 'Mina', note: 'All three jamarat', steps: [
-    'After midday, stone the small, then the middle, then the large jamarah',
-    'Seven pebbles each — twenty-one for the day',
-    'Fill the rest of the day with dhikr, Qur’an and rest',
-  ]},
-  { day: '12', name: 'Second day of Tashriq', place: 'Mina', note: 'Most pilgrims leave today', steps: [
-    'Stone all three jamarat again after midday',
-    'You may leave Mina before sunset once every rite is done',
-    'Stay another night only if you intend to stone on the 13th',
-  ]},
-  { day: '13', name: 'Last day of Tashriq', place: 'Mina', note: 'For those who stayed', steps: [
-    'Stone all three jamarat after midday',
-    'Leave Mina for Makkah once the stoning is finished',
-    'Tawaf al-Wada, the farewell tawaf, before you leave Makkah',
-  ]},
-];
-
-function makeHajjStyles() { return StyleSheet.create({
-
-  /* Reserves the floating tab bar. This screen carries its own stylesheet, so
-     it does not pick up the shared screen padding and has to leave the room
-     itself - measured, 40px left the last of the page behind the bar. */
-  wrap: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: BOTTOM_RESERVE },
-  hero: { borderRadius: 26, padding: 22, marginBottom: 18, overflow: 'hidden' },
-  overline: { color: 'rgba(255,255,255,.72)', fontSize: 10, fontFamily: 'DMSans_600SemiBold', letterSpacing: 1.2, marginBottom: 10 },
-  countRow: { flexDirection: 'row', alignItems: 'flex-end', marginBottom: 6 },
-  count: { color: C.white, fontSize: 62, fontFamily: 'Newsreader_600SemiBold', letterSpacing: -2, lineHeight: 64 },
-  countUnit: { color: 'rgba(255,255,255,.8)', fontSize: 15, fontFamily: 'DMSans_600SemiBold', marginBottom: 12, marginStart: 10 },
-  until: { color: C.white, fontSize: 17, fontFamily: 'DMSans_600SemiBold', marginBottom: 14 },
-  meta: { color: 'rgba(255,255,255,.75)', fontSize: 12.5, fontFamily: 'DMSans_400Regular', lineHeight: 19 },
-      dateCard:{backgroundColor:C.card,borderRadius:20,padding:16,marginBottom:12,borderWidth:1,borderColor:C.line},
-      dateTop:{flexDirection:'row',alignItems:'center',gap:12},
-      dateHijri:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10,letterSpacing:.8},
-      dateName:{color:C.ink,fontFamily:'Newsreader_600SemiBold',fontSize:18,marginTop:2},
-      dateNote:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:11,marginTop:1},
-      dateGreg:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:12,marginTop:6},
-      dateCount:{alignItems:'center',minWidth:62},
-      dateCountNum:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:26},
-      dateCountUnit:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:10},
-  sectionTitle: { color: C.ink, fontSize: 18, fontFamily: 'Newsreader_600SemiBold', letterSpacing: -.3, marginBottom: 4, marginTop: 8 },
-  sectionNote: { color: C.muted, fontSize: 12.5, fontFamily: 'DMSans_400Regular', lineHeight: 19, marginBottom: 14 },
-  dayCard: { backgroundColor: C.card, borderRadius: 20, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: C.line },
-  dayTop: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
-  dayBadge: { width: 38, height: 38, borderRadius: 13, backgroundColor: C.heroA, alignItems: 'center', justifyContent: 'center', marginEnd: 12 },
-  dayNum: { color: C.white, fontSize: 16, fontFamily: 'DMSans_700Bold' },
-  dayName: { color: C.ink, fontSize: 15.5, fontFamily: 'DMSans_600SemiBold', letterSpacing: -.2 },
-  dayPlace: { color: C.green, fontSize: 11.5, fontFamily: 'DMSans_600SemiBold', marginTop: 2 },
-  dayNote: { marginStart: 'auto', backgroundColor: C.mint, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
-  dayNoteText: { color: C.green, fontSize: 10.5, fontFamily: 'DMSans_600SemiBold' },
-  step: { flexDirection: 'row', marginBottom: 7 },
-  bullet: { color: C.green, fontSize: 13, lineHeight: 19, marginEnd: 8, marginTop: 1 },
-  stepText: { flex: 1, color: C.body, fontSize: 13, fontFamily: 'DMSans_400Regular', lineHeight: 19 },
-  note: { backgroundColor: C.mint, borderRadius: 16, padding: 14, marginTop: 6, marginBottom: 18 },
-  noteText: { color: C.body, fontSize: 12.5, fontFamily: 'DMSans_400Regular', lineHeight: 19 },
-  action: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.heroA, borderRadius: 18, padding: 15, marginBottom: 10 },
-  actionText: { flex: 1, color: C.white, fontSize: 14, fontFamily: 'DMSans_600SemiBold' },
-  actionSub: { color: 'rgba(255,255,255,.7)', fontSize: 11.5, fontFamily: 'DMSans_400Regular', marginTop: 2 }
-
-});}
-let hajjStyles: Record<string, any> = makeHajjStyles();
-
-
-function HajjLiveScreen({ navigation }: any) {
-  const { rtl } = useLanguage(); const T = (text: string) => tx(rtl, text);
-  const [count, setCount] = useState<HajjCountdown | null>(null);
-  const [error, setError] = useState('');
-  const load = useCallback(async () => {
-    setError('');
-    try { setCount(await getHajjCountdown()); }
-    catch (e: any) { setError(e?.message || T('Could not reach the calendar')); }
-  }, [T]);
-  useEffect(() => { load(); }, [load]);
-  const st = hajjStyles;
-
-  return (
-    <Page>
-      <ScrollView contentContainerStyle={st.wrap} showsVerticalScrollIndicator={false}>
-        <AppHeader />
-        {!!error && <ErrorState message={error} retry={load} />}
-        {!error && !count && <Spinner />}
-        {!!count && (
-          <LinearGradient colors={[C.heroA, C.green]} style={st.hero}>
-            <Text style={st.overline}>{T(`HAJJ ${count.hijriYear} AH`)}</Text>
-            <View style={st.countRow}>
-              <Text style={st.count}>{count.daysToArafah}</Text>
-              <Text style={st.countUnit}>{count.daysToArafah === 1 ? T('day') : T('days')}</Text>
-            </View>
-            <Text style={st.until}>{T('until Arafah, 9 Dhul-Hijjah')}</Text>
-            <Text style={st.meta}>{count.arafahGregorian}</Text>
-            <Text style={st.meta}>{T('Today')} · {count.todayHijri}</Text>
-          </LinearGradient>
-        )}
-
-        {!!count && (<>
-        {/* The countdown above answers "how long until Arafah"; these answer
-              "how long until the rites begin" and "when is Eid", which are the
-              other two questions people actually arrive with. All three come
-              from the same hijri table — nothing here is worked out by hand. */}
-          <Text style={st.sectionTitle}>{T('Key dates')}</Text>
-          <Text style={st.sectionNote}>{T('The days the pilgrimage turns on, with the days still to go.')}</Text>
-          {[
-            { day: '8', name: 'Yawm at-Tarwiyah', note: T('The day of preparing'), days: count.daysToTarwiyah, greg: count.tarwiyahGregorian },
-            { day: '9', name: 'Yawm al-Arafah', note: T('Hajj itself'), days: count.daysToArafah, greg: count.arafahGregorian },
-            { day: '10', name: 'Yawm an-Nahr', note: T('Eid al-Adha'), days: count.daysToEid, greg: count.eidGregorian },
-          ].filter((d) => !!d.greg).map((d) => (
-            <View style={st.dateCard} key={d.day}>
-              <View style={st.dateTop}>
-                <View style={{ flex: 1 }}>
-                  <Text style={st.dateHijri}>{d.day} {T('Dhul-Hijjah')}</Text>
-                  <Text style={st.dateName}>{T(d.name)}</Text>
-                  <Text style={st.dateNote}>{d.note}</Text>
-                  <Text style={st.dateGreg}>{d.greg}</Text>
-                </View>
-                <View style={st.dateCount}>
-                  <Text style={st.dateCountNum}>{d.days}</Text>
-                  <Text style={st.dateCountUnit}>{d.days === 1 ? T('day') : T('days')}</Text>
-                </View>
-              </View>
-            </View>
-          ))}
-        </>)}
-
-
-        <Text style={st.sectionTitle}>{T('The six days')}</Text>
-        <Text style={st.sectionNote}>{T('What happens on each day of Hajj, from entering ihram to the farewell tawaf.')}</Text>
-        {HAJJ_DAYS.map((d, i) => (
-          <RiseIn key={d.day} delay={i * 45}>
-            <View style={st.dayCard}>
-              <View style={st.dayTop}>
-                <View style={st.dayBadge}><Text style={st.dayNum}>{d.day}</Text></View>
-                <View style={{ flex: 1 }}>
-                  <Text style={st.dayName}>{T(d.name)}</Text>
-                  <Text style={st.dayPlace}>{T(d.place)}</Text>
-                </View>
-                <View style={st.dayNote}><Text style={st.dayNoteText}>{T(d.note)}</Text></View>
-              </View>
-              {d.steps.map((step) => (
-                <View style={st.step} key={step}>
-                  <Text style={st.bullet}>›</Text>
-                  <Text style={st.stepText}>{T(step)}</Text>
-                </View>
-              ))}
-            </View>
-          </RiseIn>
-        ))}
-
-        <View style={st.note}>
-          <Text style={st.noteText}>{T('Fasting on the day of Arafah expiates the sins of the year before it and the year after it. It is for those not standing at Arafah — the pilgrim does not fast that day.')}</Text>
-        </View>
-
-        <MotionPress style={st.action} onPress={() => navigation.navigate('Tools',{screen:'Holy site channels',params:{site:'Hajj'},initial:false})}>
-          <View style={{ flex: 1 }}>
-            <Text style={st.actionText}>{T('Hajj broadcast')}</Text>
-            <Text style={st.actionSub}>{T('The Ministry of Hajj and Umrah channel — live during the days of Hajj')}</Text>
-          </View>
-          {ico('chevron-right', 18, 'rgba(255,255,255,.8)')}
-        </MotionPress>
-      </ScrollView>
-    </Page>
-  );
 }
 
 function ToolsHomeScreen({ navigation }: any) {
@@ -5507,7 +5313,7 @@ function HolyChannelsScreen({ route, navigation }: any) {
   const [opened, setOpened] = useState('');
   const site = route?.params?.site;
   const channels = site ? HOLY_CHANNELS.filter((channel) => channel.site === site) : HOLY_CHANNELS;
-  const heading = site === 'Madinah' ? 'Madinah Live' : site === 'Hajj' ? 'Hajj Live' : 'Makkah Live';
+  const heading = site === 'Madinah' ? 'Madinah Live' : 'Makkah Live';
   const open = async (channel: (typeof HOLY_CHANNELS)[number]) => { setOpened(channel.id); await openChannel(channel); };
   return <Page><ToolBar title={site ? T(heading) : (rtl ? 'بثّ الحرمين' : 'Holy site channels')} navigation={navigation} />
     <ScrollView contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>

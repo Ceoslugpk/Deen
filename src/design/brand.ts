@@ -108,6 +108,12 @@ export const C_LIGHT: Palette = {
   card:     RAMP.pearlLift,                           // card sits above the ground
   ink:      BRAND.midnightInk,
   muted:    mix(BRAND.midnightInk, BRAND.pearl, 0.38), // 5.0:1 on Pearl
+  /* Running text — a paragraph, a hadith, a verse's meaning. Softer than
+     `ink`, which is for headings, and darker than `muted`, which is for
+     labels. Three styles already asked for this key and it was never in
+     either palette, so they fell through to the inherited colour and came
+     out black — legible on Pearl, invisible on Midnight Ink. */
+  body:     mix(BRAND.midnightInk, BRAND.pearl, 0.14), // 12.2:1 on Pearl
   green:    BRAND.royalIndigo,                        // primary (legacy key name)
   green2:   BRAND.violet,
   accent:   BRAND.royalIndigo,
@@ -140,6 +146,7 @@ export const C_DARK: Palette = {
   card:     mix(BRAND.midnightInk, BRAND.lavender, 0.075),
   ink:      BRAND.pearl,
   muted:    mix(BRAND.pearl, BRAND.midnightInk, 0.38), // 6.9:1 on ink
+  body:     mix(BRAND.pearl, BRAND.midnightInk, 0.16),  // 11.4:1 on Midnight Ink
   /* Lavender on a dark card measures 4.1:1, just under AA. Lifting the
      accent toward Pearl keeps the same hue at a readable 5.4:1, and it is
      still plainly the brand indigo as a fill. */
