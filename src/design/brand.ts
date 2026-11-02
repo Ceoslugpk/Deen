@@ -329,7 +329,12 @@ export const C_PALESTINE: Palette = {
   body:     mix(mix(FLAG.black, FLAG.white, 0.07), mix(FLAG.white, FLAG.black, 0.035), 0.18), // 10.4:1
   green:    mix(FLAG.green, FLAG.black, 0.18),         // primary, 5.0:1
   green2:   mix(FLAG.green, FLAG.black, 0.34),
-  accent:   mix(FLAG.green, FLAG.black, 0.10),         // fill; white on it 4.6:1
+  /* The primary fill is the flag's red, with white on it.
+     White on the pure flag red measures 4.18:1, a third of a point under the
+     4.5:1 the small print wants — the flag's red is simply a light colour.
+     It is kept as the flag has it on purpose; #E02732 would clear the bar and
+     is all but indistinguishable, if that ever matters more. */
+  accent:   FLAG.red,
   deep:     FLAG.black,
   teal:     mix(FLAG.green, FLAG.black, 0.18),         // teal retired -> primary
   mint:     mix(FLAG.white, FLAG.green, 0.10),
@@ -340,11 +345,14 @@ export const C_PALESTINE: Palette = {
   cyan:     mix(FLAG.white, FLAG.green, 0.10),
   gold:     mix(FLAG.green, FLAG.black, 0.14),         // the lit state, 4.6:1
   line:     mix(FLAG.white, FLAG.black, 0.12),
-  coral:    mix(FLAG.red, FLAG.black, 0.10),           // destructive, 4.7:1
+  /* Destructive is a red of its own, taken well down toward black, so that
+     "Remove" never reads as the same colour as the button next to it.
+     Text and icons only — nothing destructive is ever a filled button. */
+  coral:    mix(FLAG.red, FLAG.black, 0.30),           // destructive, 6.9:1
   white:    FLAG.white,
   chevron:  mix(FLAG.black, FLAG.white, 0.55),
   onAccent: FLAG.white,
-  onAccentInk: FLAG.white,
+  onAccentInk: FLAG.white,                            // white on the red fill
   onHero:   FLAG.white,
   link:     mix(FLAG.green, FLAG.black, 0.18),         // 5.0:1
   success:  FLAG.green,
@@ -374,7 +382,7 @@ export const C_PALESTINE_DARK: Palette = {
   body:     mix(mix(FLAG.white, FLAG.black, 0.03), mix(FLAG.black, FLAG.white, 0.075), 0.16), // 11.4:1
   green:    mix(FLAG.green, FLAG.white, 0.14),        // primary, 5.4:1 on card
   green2:   mix(FLAG.green, FLAG.white, 0.28),
-  accent:   mix(FLAG.green, FLAG.white, 0.18),        // fill; dark text on it 6.4:1
+  accent:   FLAG.red,                                 // the same red in the dark
   deep:     mix(mix(FLAG.black, FLAG.white, 0.075), FLAG.black, 0.30),
   teal:     mix(FLAG.green, FLAG.white, 0.14),        // teal retired -> primary
   mint:     mix(mix(FLAG.black, FLAG.white, 0.075), FLAG.green, 0.30),
@@ -385,13 +393,15 @@ export const C_PALESTINE_DARK: Palette = {
   cyan:     mix(mix(FLAG.black, FLAG.white, 0.075), FLAG.green, 0.22),
   gold:     mix(FLAG.green, FLAG.white, 0.14),        // the lit state, 5.4:1
   line:     mix(mix(FLAG.black, FLAG.white, 0.075), FLAG.white, 0.16),
+  /* Destructive on dark is lifted rather than taken down, so it reads on the
+     black ground — and it stays clear of the button red either way. */
   coral:    mix(FLAG.red, FLAG.white, 0.24),          // destructive, 5.3:1
   white:    mix(mix(FLAG.black, FLAG.white, 0.075), FLAG.green, 0.16),
   chevron:  mix(mix(FLAG.white, FLAG.black, 0.03), mix(FLAG.black, FLAG.white, 0.075), 0.48),
   onAccent: FLAG.white,
-  /* Text on the accent FILL. The fill is a lifted green on dark, so its text
-     has to be dark — the same flip C_DARK makes for the same reason. */
-  onAccentInk: mix(mix(FLAG.black, FLAG.white, 0.075), FLAG.black, 0.18),
+  /* Text on the accent FILL. The fill is the flag's red in both brightnesses,
+     so its text is white in both — unlike C_DARK, which has to flip. */
+  onAccentInk: FLAG.white,
   onHero:   FLAG.white,
   link:     mix(FLAG.green, FLAG.white, 0.14),        // 5.4:1
   success:  FLAG.green,                               // fills/dots
