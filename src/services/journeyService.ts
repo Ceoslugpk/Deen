@@ -84,7 +84,7 @@ export const JOURNEY_STEPS: Record<JourneyKind, JourneyStep[]> = {
       title: 'Shave or trim the hair',
       short: 'The step that releases you from Ihram',
       detail: 'Men shave the head or trim the hair all over; a shave is preferable. Women cut a fingertip’s length from the ends of the hair. With this, the Umrah is complete and everything Ihram had forbidden becomes lawful again.',
-      icon: 'ritual-ihram',
+      icon: 'ritual-shave-or-trim-hair',
       verseKeys: ['48:27'],
     },
     {
@@ -92,7 +92,7 @@ export const JOURNEY_STEPS: Record<JourneyKind, JourneyStep[]> = {
       title: 'Remember, and close the journey',
       short: 'Pray two rak‘ahs and give thanks',
       detail: 'Pray where you can in the Haram, give charity if you are able, and keep the supplication that is offered after a completed rite. Many then repeat the Umrah from Al-Tan‘īm or perform it again for someone else — that is a matter of your own intention and capacity.',
-      icon: 'pilgrimage',
+      icon: 'pray-rakah',
       verseKeys: ['2:200'],
     },
   ],
@@ -157,7 +157,7 @@ export const JOURNEY_STEPS: Record<JourneyKind, JourneyStep[]> = {
       title: '10th — Sacrifice and shaving',
       short: 'The Hady, then shave or trim',
       detail: 'Offer the sacrificial animal that is due for Tamattu‘ and Qirān — today most pilgrims appoint an authorised agent, which is accepted. Then shave the head or trim the hair; women cut a fingertip’s length. With stoning, sacrifice and shaving done, everything Ihram had forbidden becomes lawful apart from intimacy with a spouse.',
-      icon: 'ritual-ihram',
+      icon: 'ritual-shave-or-trim-hair',
     },
     {
       id: 'ifadah',
