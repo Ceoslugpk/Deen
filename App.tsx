@@ -1040,7 +1040,10 @@ const TOOL_IMAGES:Record<string,any>={
   'Umrah Resources':require('./assets/tool-icons/pilgrimage.png'),
   'Madinah Live':require('./assets/tool-icons/madinah-live.png'),
   'Makkah Live':require('./assets/tool-icons/holy-sites.png'),
-  'Salah Tracker':require('./assets/tool-icons/prayer-fajr.png'),
+  /* Given its own file rather than sharing Fajr's. The tracker used to point
+     at prayer-fajr.png, which is also the Fajr row in the prayer list, so
+     replacing that art would have changed the Fajr icon with it. */
+  'Salah Tracker':require('./assets/tool-icons/salah-tracker.png'),
   'Qada Fasts':require('./assets/tool-icons/qada-fasts.png'),
   'Cycle Tracker':require('./assets/tool-icons/cycle.png'),
   'Hijri Calendar':require('./assets/tool-icons/hijri.png'),
@@ -1148,7 +1151,7 @@ const TOOL_IMAGES_DARK:Record<string,any>={
   'Umrah Resources':require('./assets/tool-icons/pilgrimage-dark.png'),
   'Madinah Live':require('./assets/tool-icons/madinah-live-dark.png'),
   'Makkah Live':require('./assets/tool-icons/holy-sites-dark.png'),
-  'Salah Tracker':require('./assets/tool-icons/prayer-fajr-dark.png')
+  'Salah Tracker':require('./assets/tool-icons/salah-tracker-dark.png')
 };
 function ToolGraphic({tool,size=64}:{tool:string;size?:number}){const{dark}=useTheme();const image=dark?(TOOL_IMAGES_DARK[tool]||TOOL_IMAGES[tool]):TOOL_IMAGES[tool];const enter=useRef(new Animated.Value(.78)).current;const fade=useRef(new Animated.Value(0)).current;useEffect(()=>{Animated.parallel([Animated.spring(enter,{toValue:1,friction:6,tension:75,useNativeDriver:true}),Animated.timing(fade,{toValue:1,duration:350,useNativeDriver:true})]).start()},[]);return <Animated.View accessibilityElementsHidden style={[s.graphicFrame,{width:size,height:size,opacity:fade,transform:[{scale:enter}]}]}>{image?<Image source={image} resizeMode="contain" style={{width:size-6,height:size-6}}/>:ico('sparkles-outline',size*.48,C.green)}</Animated.View>}
 /** Hadith bodies arrive with markup; the card shows them as plain text. */
