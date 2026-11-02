@@ -1024,6 +1024,18 @@ const TOOL_IMAGES:Record<string,any>={
   Cycle:require('./assets/tool-icons/cycle.png'),
   Purity:require('./assets/tool-icons/purity.png'),
   'Qada fasts':require('./assets/tool-icons/qada-fasts.png'),
+  /* The five newest screens. Their keys are the ones the screens pass to
+     ToolGraphic, so a key that does not match the tool name exactly falls
+     back to the generic glyph and the art silently goes unused. */
+  'Sadaqah':require('./assets/tool-icons/sadaqah.png'),
+  'Qada Prayer':require('./assets/tool-icons/qada-prayer.png'),
+    'Qada Prayers':require('./assets/tool-icons/qada-prayer.png'),
+  /* The tile says "Qada Prayers" and the screen says "Qada Prayer". Both are
+     the same tool, and ToolGraphic matches the key exactly, so without this
+     alias the tile keeps the generic glyph while the screen gets the art. */
+  'Journal':require('./assets/tool-icons/journal.png'),
+  'Khatam':require('./assets/tool-icons/khatam.png'),
+  'Sunnah Prayers':require('./assets/tool-icons/sunnah-prayers.png'),
   'Privacy lock':require('./assets/tool-icons/privacy-lock.png'),
   'Umrah Resources':require('./assets/tool-icons/pilgrimage.png'),
   'Madinah Live':require('./assets/tool-icons/madinah-live.png'),
@@ -1126,6 +1138,12 @@ const TOOL_IMAGES_DARK:Record<string,any>={
   Cycle:require('./assets/tool-icons/cycle-dark.png'),
   Purity:require('./assets/tool-icons/purity-dark.png'),
   'Qada fasts':require('./assets/tool-icons/qada-fasts-dark.png'),
+  'Sadaqah':require('./assets/tool-icons/sadaqah-dark.png'),
+  'Qada Prayer':require('./assets/tool-icons/qada-prayer-dark.png'),
+  'Qada Prayers':require('./assets/tool-icons/qada-prayer-dark.png'),
+  'Journal':require('./assets/tool-icons/journal-dark.png'),
+  'Khatam':require('./assets/tool-icons/khatam-dark.png'),
+  'Sunnah Prayers':require('./assets/tool-icons/sunnah-prayers-dark.png'),
   'Privacy lock':require('./assets/tool-icons/privacy-lock-dark.png'),
   'Umrah Resources':require('./assets/tool-icons/pilgrimage-dark.png'),
   'Madinah Live':require('./assets/tool-icons/madinah-live-dark.png'),
