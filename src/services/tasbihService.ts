@@ -133,6 +133,23 @@ export async function resetTasbihCount() {
   await persist({ ...state, count: 0 });
 }
 
+/**
+ * Every count you have ever made, all phrases together.
+ *
+ * Nothing new is stored for this — `days` already holds one tally per day and
+ * has since the counter first ran, so the lifetime figure is simply that map
+ * added up. It is a sum rather than a stored total because a stored total can
+ * drift from the days it claims to summarise, and a sum cannot.
+ */
+export function tasbihLifetime(value: TasbihState = state) {
+  return Object.values(value.days || {}).reduce((sum, count) => sum + (count || 0), 0);
+}
+
+/** The number of distinct days anything was counted on. */
+export function tasbihDays(value: TasbihState = state) {
+  return Object.keys(value.days || {}).filter((key) => (value.days[key] || 0) > 0).length;
+}
+
 export async function saveTasbihSession() {
   if (!state.count) return;
   const session: TasbihSession = {

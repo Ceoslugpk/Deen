@@ -7,7 +7,7 @@ function ExploreStack(){const subtle=useSubtleTransitions();return <Stack.Naviga
  */
 function PrayerStack(){const subtle=useSubtleTransitions();return <Stack.Navigator screenOptions={{...subtle,headerShown:false}}><Stack.Screen name="Prayer" component={PrayerScreen}/></Stack.Navigator>}
 /** The tools tab: what you calculate, look up, travel for, or record. */
-function ToolsStack(){const subtle=useSubtleTransitions();return <Stack.Navigator screenOptions={{...subtle,headerShown:false}}><Stack.Screen name="ToolsHome" component={ToolsHomeScreen}/><Stack.Screen name="Zakat" component={ZakatScreen}/><Stack.Screen name="Holy site channels" component={HolyChannelsScreen}/><Stack.Screen name="Women" component={WomenHubScreen}/><Stack.Screen name="Istihada" component={IstihadaScreen}/><Stack.Screen name="Ramadan Planner" component={RamadanPlannerScreen}/><Stack.Screen name="These Days" component={TheseDaysScreen}/><Stack.Screen name="Cycle" component={CycleScreen}/><Stack.Screen name="Qada" component={QadaScreen}/><Stack.Screen name="Qada Prayer" component={QadaPrayerScreen}/><Stack.Screen name="Women Guides" component={WomenGuidesScreen}/><Stack.Screen name="Privacy Lock" component={PrivacyLockScreen}/><Stack.Screen name="Fasting" component={FastingScreen}/><Stack.Screen name="Weekly Summary" component={WeeklySummaryScreen}/><Stack.Screen name="Qibla" component={QiblaScreen}/><Stack.Screen name="Location Setup" component={LocationSetupScreen}/><Stack.Screen name="Notifications" component={NotificationScreen}/><Stack.Screen name="Salah Tracker" component={SalahTrackerScreen}/><Stack.Screen name="Adhan" component={AdhanScreen}/><Stack.Screen name="Hijri Calendar" component={HijriCalendarScreen}/><Stack.Screen name="Tasbih" component={TasbihScreen}/><Stack.Screen name="Umrah Packing" component={UmrahPackingScreen}/></Stack.Navigator>}
+function ToolsStack(){const subtle=useSubtleTransitions();return <Stack.Navigator screenOptions={{...subtle,headerShown:false}}><Stack.Screen name="ToolsHome" component={ToolsHomeScreen}/><Stack.Screen name="Zakat" component={ZakatScreen}/><Stack.Screen name="Holy site channels" component={HolyChannelsScreen}/><Stack.Screen name="Women" component={WomenHubScreen}/><Stack.Screen name="Istihada" component={IstihadaScreen}/><Stack.Screen name="Ramadan Planner" component={RamadanPlannerScreen}/><Stack.Screen name="These Days" component={TheseDaysScreen}/><Stack.Screen name="Cycle" component={CycleScreen}/><Stack.Screen name="Qada" component={QadaScreen}/><Stack.Screen name="Qada Prayer" component={QadaPrayerScreen}/><Stack.Screen name="Sadaqah" component={SadaqahScreen}/><Stack.Screen name="Journal" component={JournalScreen}/><Stack.Screen name="Women Guides" component={WomenGuidesScreen}/><Stack.Screen name="Privacy Lock" component={PrivacyLockScreen}/><Stack.Screen name="Fasting" component={FastingScreen}/><Stack.Screen name="Weekly Summary" component={WeeklySummaryScreen}/><Stack.Screen name="Qibla" component={QiblaScreen}/><Stack.Screen name="Location Setup" component={LocationSetupScreen}/><Stack.Screen name="Notifications" component={NotificationScreen}/><Stack.Screen name="Salah Tracker" component={SalahTrackerScreen}/><Stack.Screen name="Adhan" component={AdhanScreen}/><Stack.Screen name="Hijri Calendar" component={HijriCalendarScreen}/><Stack.Screen name="Tasbih" component={TasbihScreen}/><Stack.Screen name="Umrah Packing" component={UmrahPackingScreen}/></Stack.Navigator>}
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -171,7 +171,9 @@ import { NAME_LANGUAGES } from './src/services/api';
 import { PROPHETS } from './src/content/prophets';
 import { NAMES_MEANING_AR } from './src/content/namesAr';
 import { countMuslimNames, findMuslimNames, letterCounts, loadMuslimNames, type MuslimName, type NameFilter } from './src/services/muslimNames';
-import { currentPhrase, dhikrMeaning, DHIKR_PHRASES, loadTasbihState, removeTasbihSession, resetTasbihCount, saveTasbihSession, setTasbihGoal, setTasbihPhrase, TASBIH_GOALS, tapTasbih, todayTotal, useTasbih } from './src/services/tasbihService';
+import { currentPhrase, dhikrMeaning, DHIKR_PHRASES, loadTasbihState, removeTasbihSession, resetTasbihCount, saveTasbihSession, setTasbihGoal, setTasbihPhrase, tasbihDays, tasbihLifetime, TASBIH_GOALS, tapTasbih, todayTotal, useTasbih } from './src/services/tasbihService';
+import { formatSadaqah, loadSadaqahState, logSadaqah, removeSadaqah, resetSadaqah, sadaqahSummary, setSadaqahCurrency, useSadaqah } from './src/services/sadaqahService';
+import { journalSummary, loadJournalState, removeJournalEntry, resetJournal, saveJournalEntry, useJournal } from './src/services/journalService';
 import { Dua, DuaCategory } from './src/services/api';
 import { clearPreparedQuran, getPreloadState, pauseQuranPreload, refreshPreload, resumeSavedQuranPreload, startQuranPreload, subscribePreload } from './src/services/quranPreload';
 
@@ -1802,7 +1804,9 @@ const TOOL_GROUPS: ToolGroup[] = [
     { title: 'Qada Prayers', caption: 'Prayers you owe, and a pace to clear them', route: 'Qada Prayer' },
     { title: 'Fasting', caption: 'Ramadan, voluntary and missed fasts', route: 'Fasting' },
     { title: 'Zakat', caption: 'Gold, silver, cash and investments', route: 'Zakat' },
+    { title: 'Sadaqah', caption: 'Voluntary giving, recorded privately', route: 'Sadaqah' },
     { title: 'Tasbih', caption: 'A quiet, tactile dhikr counter', route: 'Tasbih' },
+    { title: 'Journal', caption: 'A private place to reflect', route: 'Journal' },
     { title: 'Weekly Summary', caption: 'Your past seven days at a glance', route: 'Weekly Summary' },
   ]},
   { label: 'FIND', title: 'Utilities and location', items: [
@@ -1888,6 +1892,10 @@ const DAY_TOOL_POOL: DayTool[] = [
     open: (n) => n.navigate('Tools', { screen: 'Fasting', initial: false }) },
   { id: 'zakat', label: 'Zakat', icon: 'Zakat',
     open: (n) => n.navigate('Tools', { screen: 'Zakat', initial: false }) },
+  { id: 'sadaqah', label: 'Sadaqah', icon: 'Sadaqah',
+    open: (n) => n.navigate('Tools', { screen: 'Sadaqah', initial: false }) },
+  { id: 'journal', label: 'Journal', icon: 'Journal',
+    open: (n) => n.navigate('Tools', { screen: 'Journal', initial: false }) },
   { id: 'qada', label: 'Qada Fasts', icon: 'Qada Fasts',
     open: (n) => n.navigate('Tools', { screen: 'Qada', initial: false }) },
   { id: 'hijri', label: 'Hijri Calendar', icon: 'Hijri Calendar',
@@ -4764,11 +4772,44 @@ function TasbihScreen({ navigation }: any) {const{rtl}=useLanguage();const T=(te
     }
   };
   const progress = Math.min(100, Math.round((state.count / state.goal) * 100));
+  /**
+   * Share the phrase being counted as a card.
+   *
+   * The lifetime figure goes on the bottom line rather than a running count —
+   * a card is a thing you keep, and a number that changes would be wrong on it
+   * by tomorrow.
+   */
+  const sharePhrase = () => {
+    const lifetime = tasbihLifetime(state);
+    void shareCard({
+      kicker: T('Dhikr'),
+      arabic: phrase.arabic,
+      body: dhikrMeaning(phrase, rtl),
+      footer: lifetime ? `${lifetime.toLocaleString('en-US')} ${T('counted so far')}` : phrase.transliteration,
+      arabicFontFamily: undefined,
+      filename: `dhikr-${phrase.id}.png`,
+      shareTitle: phrase.transliteration,
+      fallbackText: `${phrase.arabic}\n\n${dhikrMeaning(phrase, rtl)}\n\n${phrase.transliteration}`,
+    });
+  };
   return <Page><ToolBar title={T('Tasbih')} navigation={navigation} />
     <ScrollView keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
       <ToolGraphic tool="Tasbih" size={76} />
       <Text style={s.dataTitle}>{T('Dhikr counter')}</Text>
       <Text style={s.intro}>{T('Count privately on this device. Nothing is sent anywhere and no account is needed.')}</Text>
+
+      <LinearGradient colors={[C.heroA, C.green]} style={s.summaryScore}>
+        <View>
+          <Text style={s.nextCardLabel}>{T('ALL TIME')}</Text>
+          <Text style={s.zakatNo}>{tasbihLifetime(state).toLocaleString('en-US')}</Text>
+          <Text style={s.weekScoreBody}>{tasbihDays(state)} {tasbihDays(state) === 1 ? T('day') : T('days')}</Text>
+        </View>
+        <View style={{ alignItems: 'flex-end' }}>
+          <Text style={s.nextCardLabel}>{T('TODAY')}</Text>
+          <Text style={s.zakatNo}>{total.toLocaleString('en-US')}</Text>
+          <Text style={s.weekScoreBody}>{phrase.transliteration}</Text>
+        </View>
+      </LinearGradient>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.choiceRow}>
         {DHIKR_PHRASES.map((item) => <ChoicePill key={item.id} label={rtl ? item.arabic : item.transliteration} selected={item.id === state.phraseId} onPress={() => { void setTasbihPhrase(item.id); }} />)}
@@ -4790,6 +4831,7 @@ function TasbihScreen({ navigation }: any) {const{rtl}=useLanguage();const T=(te
         <View style={s.actionRow}>
           <Tactile accessibilityLabel={T('Reset the current count')} onPress={() => void resetTasbihCount()} style={s.secondary}>{ico('refresh-outline', 16, C.green)}<Text style={s.secondaryText}>{T('Reset')}</Text></Tactile>
           <Tactile accessibilityLabel={T('Save this round to history')} onPress={() => void saveTasbihSession()} style={s.secondary}>{ico('checkmark-outline', 16, C.green)}<Text style={s.secondaryText}>{T('Save round')}</Text></Tactile>
+          <Tactile accessibilityLabel={T('Share this dhikr as a card')} onPress={sharePhrase} style={s.secondary}>{ico('share-outline', 16, C.green)}<Text style={s.secondaryText}>{T('Share')}</Text></Tactile>
         </View>
       </View>
 
@@ -7878,6 +7920,212 @@ function QadaPrayerScreen({ navigation }: any) {
             </View>
             <View style={s.actionRow}>
               <Tactile onPress={() => void resetQada()} style={s.dangerButton}><Text style={s.dangerText}>{T('Clear the ledger')}</Text></Tactile>
+            </View>
+          </>
+        )}
+      </ScrollView>
+    </Page>
+  );
+}
+
+/**
+ * Sadaqah — voluntary giving, kept privately.
+ *
+ * Zakat is an obligation with an arithmetic behind it and has its own screen.
+ * This is the other half: whatever you gave because you wanted to. No nisab,
+ * no rate, no threshold — just what, when, and what it came to.
+ *
+ * Amounts are never converted between currencies. A gift given in one currency
+ * stays in that currency, because that is what it actually was.
+ */
+function SadaqahScreen({ navigation }: any) {
+  const { rtl } = useLanguage();
+  const T = (text: string) => tx(rtl, text);
+  const sadaqah = useSadaqah();
+  const summary = sadaqahSummary(sadaqah);
+  const [amount, setAmount] = useState('');
+  const [note, setNote] = useState('');
+  const [message, setMessage] = useState('');
+
+  const give = () => {
+    const value = Number(amount);
+    if (!Number.isFinite(value) || value <= 0) {
+      setMessage(rtl ? 'أدخل مبلغاً أكبر من صفر' : 'Enter an amount greater than zero');
+      return;
+    }
+    void logSadaqah(value, note);
+    setAmount('');
+    setNote('');
+    setMessage(rtl ? 'سُجِّل' : 'Recorded');
+  };
+
+  return (
+    <Page>
+      <ToolBar title={T('Sadaqah')} navigation={navigation} />
+      <ScrollView {...SCROLL} contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
+        <ToolGraphic tool="Sadaqah" size={87} />
+        <Text style={s.dataTitle}>{T('Voluntary giving')}</Text>
+        <Text style={s.intro}>{T('Zakat is what is owed and has its own calculation. This is what you gave because you wanted to. Nothing here is sent anywhere.')}</Text>
+
+        <LinearGradient colors={[C.heroA, C.green]} style={s.summaryScore}>
+          <View>
+            <Text style={s.nextCardLabel}>{T('GIVEN')}</Text>
+            <Text style={s.zakatNo}>{formatSadaqah(summary.total, sadaqah.currency)}</Text>
+            <Text style={s.weekScoreBody}>{summary.count} {summary.count === 1 ? T('gift') : T('gifts')}</Text>
+          </View>
+          <View style={{ alignItems: 'flex-end' }}>
+            <Text style={s.nextCardLabel}>{T('THIS MONTH')}</Text>
+            <Text style={s.zakatNo}>{formatSadaqah(summary.thisMonth, sadaqah.currency)}</Text>
+            <Text style={s.weekScoreBody}>{T('this year')} {formatSadaqah(summary.thisYear, sadaqah.currency)}</Text>
+          </View>
+        </LinearGradient>
+
+        <Section title={T('Record a gift')} />
+        <View style={s.dataCard}>
+          <Text style={s.preferenceLabel}>{T('AMOUNT')}</Text>
+          <TextInput
+            style={s.searchInput}
+            value={amount}
+            onChangeText={setAmount}
+            keyboardType="decimal-pad"
+            placeholder="0"
+            placeholderTextColor={C.muted}
+            returnKeyType="done"
+          />
+          <Text style={s.preferenceLabel}>{T('WHAT IT WAS FOR (OPTIONAL)')}</Text>
+          <TextInput
+            style={s.searchInput}
+            value={note}
+            onChangeText={setNote}
+            placeholder={T('Water, a neighbour, a mosque…')}
+            placeholderTextColor={C.muted}
+            returnKeyType="done"
+          />
+          {!!message && <Text style={s.meta}>{message}</Text>}
+          <View style={s.actionRow}>
+            <Tactile onPress={give} style={s.primary}><Text style={s.primaryText}>{T('Record')}</Text></Tactile>
+          </View>
+        </View>
+
+        <Section title={T('Currency')} />
+        <View style={s.dataCard}>
+          <Text style={s.preferenceLabel}>{T('RECORDED IN')}</Text>
+          <View style={s.memChipWrap}>
+            {['USD', 'EUR', 'GBP', 'AED', 'SAR', 'PKR', 'INR', 'TRY', 'MYR', 'IDR'].map((code) => (
+              <ChoicePill key={code} label={code} selected={sadaqah.currency === code} onPress={() => void setSadaqahCurrency(code)} />
+            ))}
+          </View>
+          <Text style={s.meta}>{T('Only changes what new entries are recorded in — past gifts keep the currency they were given in.')}</Text>
+        </View>
+
+        {!!sadaqah.entries.length && (
+          <>
+            <Section title={T('Given')} />
+            <View style={s.settings}>
+              {sadaqah.entries.slice().reverse().slice(0, 60).map((entry) => (
+                <View key={entry.id} style={s.translationRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.settingName}>{formatSadaqah(entry.amount, entry.currency)}</Text>
+                    <Text style={s.meta}>{entry.note ? `${entry.note} · ` : ''}{new Date(entry.dateKey).toLocaleDateString()}</Text>
+                  </View>
+                  <Pressable onPress={() => void removeSadaqah(entry.id)}>{ico('trash-outline', 18, C.muted)}</Pressable>
+                </View>
+              ))}
+            </View>
+            <View style={s.actionRow}>
+              <Tactile onPress={() => void resetSadaqah()} style={s.dangerButton}><Text style={s.dangerText}>{T('Clear the record')}</Text></Tactile>
+            </View>
+          </>
+        )}
+      </ScrollView>
+    </Page>
+  );
+}
+
+/**
+ * A private journal.
+ *
+ * Deliberately has no streak, no target and no reminder. The verse notes are
+ * tied to an ayah and belong to it; this belongs only to the day it was
+ * written on. Counting days would turn reflection into a task, and a task is
+ * the one thing it should not be.
+ */
+function JournalScreen({ navigation }: any) {
+  const { rtl } = useLanguage();
+  const T = (text: string) => tx(rtl, text);
+  const journal = useJournal();
+  const summary = journalSummary(journal);
+  const [text, setText] = useState('');
+  const [editing, setEditing] = useState<string | null>(null);
+
+  const save = () => {
+    if (!text.trim()) return;
+    void saveJournalEntry(text, editing || undefined);
+    setText('');
+    setEditing(null);
+  };
+
+  const startEdit = (id: string, body: string) => {
+    setEditing(id);
+    setText(body);
+  };
+
+  return (
+    <Page>
+      <ToolBar title={T('Journal')} navigation={navigation} />
+      <ScrollView {...SCROLL} contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
+        <ToolGraphic tool="Journal" size={87} />
+        <Text style={s.dataTitle}>{T('A private journal')}</Text>
+        <Text style={s.intro}>{T('Not notes on a verse — those live beside the ayah they belong to. This is only for you and the day you are in. Nothing is shared, and there is no streak to keep.')}</Text>
+
+        <LinearGradient colors={[C.heroA, C.green]} style={s.summaryScore}>
+          <View>
+            <Text style={s.nextCardLabel}>{T('ENTRIES')}</Text>
+            <Text style={s.zakatNo}>{summary.count}</Text>
+            <Text style={s.weekScoreBody}>{summary.days} {summary.days === 1 ? T('day') : T('days')}</Text>
+          </View>
+          <View style={{ alignItems: 'flex-end' }}>
+            <Text style={s.nextCardLabel}>{T('LAST WRITTEN')}</Text>
+            <Text style={s.zakatNo}>{summary.lastAt ? new Date(summary.lastAt).toLocaleDateString() : '—'}</Text>
+            <Text style={s.weekScoreBody}>{T('on this device')}</Text>
+          </View>
+        </LinearGradient>
+
+        <Section title={editing ? T('Edit the entry') : T('Write')} />
+        <View style={s.dataCard}>
+          <TextInput
+            style={s.noteInput}
+            value={text}
+            onChangeText={setText}
+            multiline
+            placeholder={T('Write a private reflection…')}
+            placeholderTextColor={C.muted}
+          />
+          <View style={s.actionRow}>
+            <Tactile onPress={save} style={s.primary}><Text style={s.primaryText}>{editing ? T('Save changes') : T('Save entry')}</Text></Tactile>
+            {!!editing && (
+              <Tactile onPress={() => { setEditing(null); setText(''); }} style={s.secondary}><Text style={s.secondaryText}>{T('Cancel')}</Text></Tactile>
+            )}
+          </View>
+        </View>
+
+        {!!journal.entries.length && (
+          <>
+            <Section title={T('Entries')} />
+            <View style={s.settings}>
+              {journal.entries.map((entry) => (
+                <View key={entry.id} style={s.dataCard}>
+                  <Text style={s.meta}>{new Date(entry.dateKey).toLocaleDateString()}</Text>
+                  <Text style={s.noteText}>{entry.text}</Text>
+                  <View style={s.actionRow}>
+                    <Tactile onPress={() => startEdit(entry.id, entry.text)} style={s.secondary}>{ico('create-outline', 16, C.green)}<Text style={s.secondaryText}>{T('Edit')}</Text></Tactile>
+                    <Tactile onPress={() => void removeJournalEntry(entry.id)} style={s.dangerButton}>{ico('trash-outline', 16, C.danger)}<Text style={s.dangerText}>{T('Delete')}</Text></Tactile>
+                  </View>
+                </View>
+              ))}
+            </View>
+            <View style={s.actionRow}>
+              <Tactile onPress={() => void resetJournal()} style={s.dangerButton}><Text style={s.dangerText}>{T('Clear the journal')}</Text></Tactile>
             </View>
           </>
         )}
@@ -11276,13 +11524,13 @@ async function reloadAllState() {
     loadOfflineSetup(), loadAudioSettings(), loadHadithState(), loadTasbihState(),
     loadDownloads(), loadActivity(), loadFastingState(), loadJourneys(),
     loadWomensState(), loadZakatState(), loadLockConfig(), loadMemorization(),
-    loadReports(), loadKhatamState(), loadQadaState(),
+    loadReports(), loadKhatamState(), loadQadaState(), loadSadaqahState(), loadJournalState(),
   ]).catch(() => undefined);
 }
 
 export default function App(){const[fontsLoaded]=useFonts({DMSans_400Regular,DMSans_600SemiBold,DMSans_700Bold,Newsreader_600SemiBold,NotoNaskhArabic_400Regular,NotoNaskhArabic_600SemiBold,Amiri_400Regular,KFGQPCUthmanicHafs,IBMPlexSansArabic_400Regular,IBMPlexSansArabic_600SemiBold});const restoreTick=useRestoreNonce();
 useEffect(()=>{if(restoreTick>0){void reloadAllState()}},[restoreTick]);
-useEffect(()=>{if(fontsLoaded){void loadOfflineSetup();void resumeSavedOfflineSetup();resumeSavedQuranPreload();void loadAudioSettings().then(() => restoreSavedSession());void loadHadithState();void loadTasbihState();void loadDownloads();void loadActivity();void loadFastingState();void loadJourneys();void loadWomensState();void loadZakatState();void loadKhatamState();void loadQadaState();void loadLockConfig();void loadBackupSettings();void refreshMarket();startLockWatch();startBackupWatch()}},[fontsLoaded]);if(!fontsLoaded)return <SafeAreaView style={s.safe}><Spinner/></SafeAreaView>;return <ThemeProvider key={restoreTick}><LanguageProvider><QuranPreferencesProvider><WorshipSettingsProvider><LocationProvider><ScreenBoundary><AppShell/></ScreenBoundary></LocationProvider></WorshipSettingsProvider></QuranPreferencesProvider></LanguageProvider></ThemeProvider>}
+useEffect(()=>{if(fontsLoaded){void loadOfflineSetup();void resumeSavedOfflineSetup();resumeSavedQuranPreload();void loadAudioSettings().then(() => restoreSavedSession());void loadHadithState();void loadTasbihState();void loadDownloads();void loadActivity();void loadFastingState();void loadJourneys();void loadWomensState();void loadZakatState();void loadKhatamState();void loadQadaState();void loadSadaqahState();void loadJournalState();void loadLockConfig();void loadBackupSettings();void refreshMarket();startLockWatch();startBackupWatch()}},[fontsLoaded]);if(!fontsLoaded)return <SafeAreaView style={s.safe}><Spinner/></SafeAreaView>;return <ThemeProvider key={restoreTick}><LanguageProvider><QuranPreferencesProvider><WorshipSettingsProvider><LocationProvider><ScreenBoundary><AppShell/></ScreenBoundary></LocationProvider></WorshipSettingsProvider></QuranPreferencesProvider></LanguageProvider></ThemeProvider>}
 
 /**
  * The Arabic face used everywhere, once someone has chosen one.
