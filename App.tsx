@@ -165,12 +165,61 @@ import { currentPhrase, dhikrMeaning, DHIKR_PHRASES, loadTasbihState, removeTasb
 import { Dua, DuaCategory } from './src/services/api';
 import { clearPreparedQuran, getPreloadState, pauseQuranPreload, refreshPreload, resumeSavedQuranPreload, startQuranPreload, subscribePreload } from './src/services/quranPreload';
 
-const SCENE_QURAN = require('./assets/quran-scene.webp');
-const SCENE_QURAN_DARK = require('./assets/quran-scene-dark.webp');
-const SCENE_MOSQUE = require('./assets/hero-mosque-scene.webp');
-const SCENE_MOSQUE_DARK = require('./assets/hero-mosque-scene-dark.webp');
-const PRAYER_CARD_SCENE = require('./assets/prayer-card-scene.webp');
-const PRAYER_CARD_SCENE_DARK = require('./assets/prayer-card-scene-dark.webp');
+/**
+ * The three posters.
+ *
+ * Each exists in four versions — one per theme in each of its two brightnesses
+ * — because a poster is part of the theme, not decoration hung on top of it.
+ * An indigo poster under the Palestine theme would be the one thing on screen
+ * that does not belong to it.
+ *
+ * In every one the subject sits in the right of the frame and the left is left
+ * quiet, because all three are covered by a scrim that runs from near-solid on
+ * the left to clear on the right, with the text over the solid end.
+ */
+const SCENE_HOME_ISLAMIC = require('./assets/scene-home-islamic.webp');
+const SCENE_HOME_ISLAMIC_DARK = require('./assets/scene-home-islamic-dark.webp');
+const SCENE_HOME_PALESTINE = require('./assets/scene-home-palestine.webp');
+const SCENE_HOME_PALESTINE_DARK = require('./assets/scene-home-palestine-dark.webp');
+const SCENE_PRAYER_ISLAMIC = require('./assets/scene-prayer-islamic.webp');
+const SCENE_PRAYER_ISLAMIC_DARK = require('./assets/scene-prayer-islamic-dark.webp');
+const SCENE_PRAYER_PALESTINE = require('./assets/scene-prayer-palestine.webp');
+const SCENE_PRAYER_PALESTINE_DARK = require('./assets/scene-prayer-palestine-dark.webp');
+const SCENE_QURAN_ISLAMIC = require('./assets/scene-quran-islamic.webp');
+const SCENE_QURAN_ISLAMIC_DARK = require('./assets/scene-quran-islamic-dark.webp');
+/* The two Palestine Quran posters are still being drawn. Until they land the
+   Islamic ones stand in, so the slot is never empty and never a wrong colour
+   — merely a borrowed one. */
+const SCENE_QURAN_PALESTINE = SCENE_QURAN_ISLAMIC;
+const SCENE_QURAN_PALESTINE_DARK = SCENE_QURAN_ISLAMIC_DARK;
+
+type SceneSet = { islamic: any; islamicDark: any; palestine: any; palestineDark: any };
+function pickScene(set: SceneSet, theme: ResolvedTheme) {
+  return theme === 'palestineDark' ? set.palestineDark
+    : theme === 'palestineLight' ? set.palestine
+    : theme === 'islamicDark' ? set.islamicDark
+    : set.islamic;
+}
+const SCENE_HOME: SceneSet = { islamic: SCENE_HOME_ISLAMIC, islamicDark: SCENE_HOME_ISLAMIC_DARK, palestine: SCENE_HOME_PALESTINE, palestineDark: SCENE_HOME_PALESTINE_DARK };
+const SCENE_PRAYER: SceneSet = { islamic: SCENE_PRAYER_ISLAMIC, islamicDark: SCENE_PRAYER_ISLAMIC_DARK, palestine: SCENE_PRAYER_PALESTINE, palestineDark: SCENE_PRAYER_PALESTINE_DARK };
+const SCENE_QURAN: SceneSet = { islamic: SCENE_QURAN_ISLAMIC, islamicDark: SCENE_QURAN_ISLAMIC_DARK, palestine: SCENE_QURAN_PALESTINE, palestineDark: SCENE_QURAN_PALESTINE_DARK };
+
+/**
+ * The scrim laid over each poster: near-solid on the left where the text goes,
+ * clearing to nothing on the right where the artwork shows.
+ *
+ * These used to be hardcoded indigo, which meant a Palestine poster was still
+ * washed indigo on the side you actually read. They follow the theme now.
+ */
+const SCRIM = {
+  islamic:      ['rgba(34,27,62,.92)', 'rgba(60,47,101,.54)', 'rgba(77,60,145,.08)'],
+  palestine:    ['rgba(8,12,9,.92)',   'rgba(0,60,25,.54)',   'rgba(0,120,50,.08)'],
+  prayerIslamic:   ['rgba(15,11,25,.95)', 'rgba(38,28,79,.74)', 'rgba(77,60,145,.26)'],
+  prayerPalestine: ['rgba(0,0,0,.95)',    'rgba(6,40,18,.74)',  'rgba(0,120,50,.26)'],
+  quranIslamic:    ['rgba(42,32,81,.96)', 'rgba(92,63,141,.52)', 'transparent'],
+  quranPalestine:  ['rgba(6,10,7,.96)',   'rgba(0,70,28,.52)',   'transparent'],
+} as const;
+const isPal = (theme: ResolvedTheme) => theme === 'palestineLight' || theme === 'palestineDark';
 /* One mark for both themes. A logo-mark-dark.png used to sit beside it, but it
    was byte-for-byte the same file, so the ternaries that picked between them
    were doing nothing. The mark carries its own colours and reads on either
@@ -402,7 +451,7 @@ export type ThemeName = 'islamic' | 'palestine';
 export type ThemeMode = 'system' | 'light' | 'dark';
 /** What is on screen once both the theme and the mode have been resolved. */
 export type ResolvedTheme = 'islamicLight' | 'islamicDark' | 'palestineLight' | 'palestineDark';
-type ThemeState = { theme: ThemeName; mode: ThemeMode; dark: boolean; tick: number;
+type ThemeState = { theme: ThemeName; mode: ThemeMode; dark: boolean; resolved: ResolvedTheme; tick: number;
   setTheme: (theme: ThemeName) => void; setMode: (mode: ThemeMode) => void;
   /**
    * Drives the change-over. It falls to 0 while the palette is swapped and
@@ -411,7 +460,7 @@ type ThemeState = { theme: ThemeName; mode: ThemeMode; dark: boolean; tick: numb
   swap: Animated.Value };
 const THEME_KEY = 'deen-theme-v1';
 const THEME_NAME_KEY = 'deen-theme-name-v1';
-const ThemeContext = createContext<ThemeState>({ theme: 'islamic', mode: 'system', dark: false, tick: 0, setTheme: () => {}, setMode: () => {}, swap: new Animated.Value(1) });
+const ThemeContext = createContext<ThemeState>({ theme: 'islamic', mode: 'system', dark: false, resolved: 'islamicLight', tick: 0, setTheme: () => {}, setMode: () => {}, swap: new Animated.Value(1) });
 
 async function loadThemeMode(): Promise<ThemeMode> {
   try {
@@ -541,7 +590,7 @@ function ThemeProvider({ children }: { children: React.ReactNode }) {
     setThemeState(next);
     AsyncStorage.setItem(THEME_NAME_KEY, next).catch(() => undefined);
   };
-  const value = useMemo(() => ({ theme, mode, dark, setTheme, setMode, tick, swap }), [theme, mode, dark, setTheme, tick, swap]);
+  const value = useMemo(() => ({ theme, mode, dark, resolved, setTheme, setMode, tick, swap }), [theme, mode, dark, resolved, setTheme, tick, swap]);
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
 
@@ -1410,7 +1459,19 @@ function useDrift(duration: number, from: number, to: number, still: boolean) {
 }
 
 /** Soft light that moves behind the hero text — three slow, low-contrast auras. */
-function HeroAura({ still }: { still: boolean }) {
+/**
+ * The slow glow behind the hero.
+ *
+ * It was painted in the brand's own gold, indigo and violet, which meant a
+ * Palestine poster still had brand colours breathing over it. It takes its
+ * colours from the theme now: warm red and green for Palestine, gold and
+ * indigo for Islamic.
+ */
+function HeroAura({ still, palestine = false }: { still: boolean; palestine?: boolean }) {
+  const warmIn = palestine ? FLAG.red : BRAND.radiantGold;
+  const warmOut = palestine ? mix(FLAG.red, '#000000', 0.45) : BRAND.antiqueGold;
+  const cool = palestine ? FLAG.green : BRAND.royalIndigo;
+  const deep = palestine ? mix(FLAG.green, '#000000', 0.45) : BRAND.violet;
   const x1 = useDrift(26000, -24, 24, still);
   const y1 = useDrift(31000, -10, 12, still);
   const x2 = useDrift(34000, 18, -16, still);
@@ -1421,13 +1482,13 @@ function HeroAura({ still }: { still: boolean }) {
       <Svg width="100%" height="100%" viewBox="0 0 200 200">
         <Defs>
           <RadialGradient id="auraGold" cx="50%" cy="50%" r="50%">
-            <Stop offset="0%" stopColor={BRAND.radiantGold} stopOpacity="0.5" />
-            <Stop offset="55%" stopColor={BRAND.antiqueGold} stopOpacity="0.2" />
-            <Stop offset="100%" stopColor={BRAND.antiqueGold} stopOpacity="0" />
+            <Stop offset="0%" stopColor={warmIn} stopOpacity="0.5" />
+            <Stop offset="55%" stopColor={warmOut} stopOpacity="0.2" />
+            <Stop offset="100%" stopColor={warmOut} stopOpacity="0" />
           </RadialGradient>
           <RadialGradient id="auraTeal" cx="50%" cy="50%" r="50%">
-            <Stop offset="0%" stopColor={BRAND.royalIndigo} stopOpacity="0.34" />
-            <Stop offset="100%" stopColor={BRAND.royalIndigo} stopOpacity="0" />
+            <Stop offset="0%" stopColor={cool} stopOpacity="0.34" />
+            <Stop offset="100%" stopColor={cool} stopOpacity="0" />
           </RadialGradient>
         </Defs>
         <Ellipse cx="72" cy="78" rx="96" ry="80" fill="url(#auraGold)" />
@@ -1438,8 +1499,8 @@ function HeroAura({ still }: { still: boolean }) {
       <Svg width="100%" height="100%" viewBox="0 0 200 200">
         <Defs>
           <RadialGradient id="auraViolet" cx="50%" cy="50%" r="50%">
-            <Stop offset="0%" stopColor={BRAND.violet} stopOpacity="0.32" />
-            <Stop offset="100%" stopColor={BRAND.royalIndigo} stopOpacity="0" />
+            <Stop offset="0%" stopColor={deep} stopOpacity="0.32" />
+            <Stop offset="100%" stopColor={cool} stopOpacity="0" />
           </RadialGradient>
         </Defs>
         <Ellipse cx="100" cy="100" rx="92" ry="82" fill="url(#auraViolet)" />
@@ -1450,7 +1511,7 @@ function HeroAura({ still }: { still: boolean }) {
 
 function HomeScreen() {
   const { rtl } = useLanguage(); const T = (text: string) => tx(rtl, text);
-  const { dark } = useTheme();
+  const { dark, resolved } = useTheme();
   const [hour,setHour]=useState(new Date().getHours());const still=useCalmMotion();const scrollY=useRef(new Animated.Value(0)).current;const heroShift=scrollY.interpolate({inputRange:[0,300],outputRange:[0,54],extrapolate:'clamp'});const heroZoom=useDrift(30000,1,1.07,still);const sheenShift=useDrift(20000,-0.85,0.85,still);const greeting=T(hour<12?'A purposeful morning':hour<18?'A purposeful afternoon':'A peaceful evening'); const nav = useNavigation<any>(); const locationState=useAppLocation(); const { width } = useWindowDimensions(); const wide = width >= 760; const data = useHomeData(); const next = data.snapshot ? getNext(data.snapshot.prayers) : undefined; const dateKey=new Date().toISOString().slice(0,10); const[completed,setCompleted]=useState<string[]>([]);const[history,setHistory]=useState<Record<string,string[]>>({});const[quickCount,setQuickCount]=useState(0);const tasbih=useTasbih();const{preferences}=useQuranPreferences();
 const[quranPosition,setQuranPosition]=useState<any>(null);const[openReflection,setOpenReflection]=useState<'ayah'|'name'|'dua'|null>(null);const[reportHadith,setReportHadith]=useState<any|null>(null);const[refreshing,setRefreshing]=useState(false);
   /* null while it is still arriving, empty if it never did. The card only
@@ -1554,8 +1615,8 @@ const[quranPosition,setQuranPosition]=useState<any>(null);const[openReflection,s
     <AppHeader/>
     <View style={s.greeting}><View><Text style={s.salam}>السَّلَامُ عَلَيْكُمْ</Text><Text style={s.greetingTitle}>{greeting}</Text></View></View>
     {!data.location?<LocationPrompt/>:data.error && !data.snapshot ? <ErrorState message={data.error} retry={data.load} /> : <>
-      <View style={[s.hero,wide&&s.heroWide]}><Animated.View style={[StyleSheet.absoluteFill,{transform:[{translateY:heroShift},{scale:heroZoom}]}]}><Image source={(dark?SCENE_MOSQUE_DARK:SCENE_MOSQUE)} resizeMode="cover" style={s.heroBg}/></Animated.View>
-        <LinearGradient colors={['rgba(34,27,62,.92)','rgba(60,47,101,.54)','rgba(77,60,145,.08)']} start={{x:0,y:.5}} end={{x:1,y:.5}} style={StyleSheet.absoluteFill} /> <HeroAura still={still}/> <Animated.View pointerEvents="none" style={[s.heroSheen,{transform:[{translateX:Animated.multiply(sheenShift,width)},{skewX:'-16deg'}]}]}><LinearGradient colors={['rgba(255,255,255,0)','rgba(255,255,255,.16)','rgba(255,255,255,0)']} start={{x:0,y:0}} end={{x:1,y:0}} style={StyleSheet.absoluteFill}/></Animated.View> 
+      <View style={[s.hero,wide&&s.heroWide]}><Animated.View style={[StyleSheet.absoluteFill,{transform:[{translateY:heroShift},{scale:heroZoom}]}]}><Image source={pickScene(SCENE_HOME, resolved)} resizeMode="cover" style={s.heroBg}/></Animated.View>
+        <LinearGradient colors={isPal(resolved)?SCRIM.palestine:SCRIM.islamic} start={{x:0,y:.5}} end={{x:1,y:.5}} style={StyleSheet.absoluteFill} /> <HeroAura still={still} palestine={isPal(resolved)} /> <Animated.View pointerEvents="none" style={[s.heroSheen,{transform:[{translateX:Animated.multiply(sheenShift,width)},{skewX:'-16deg'}]}]}><LinearGradient colors={['rgba(255,255,255,0)','rgba(255,255,255,.16)','rgba(255,255,255,0)']} start={{x:0,y:0}} end={{x:1,y:0}} style={StyleSheet.absoluteFill}/></Animated.View> 
         <Pressable onPress={locationState.clear} style={s.locationPill}>{ico('location',13,C.onHero)}<Text numberOfLines={1} style={s.locationText}>{T(data.location?.label || '')}</Text></Pressable>
         <Text style={s.hijri}>{(rtl ? data.snapshot?.hijriAr || data.snapshot?.hijri : data.snapshot?.hijri) || T('Loading Hijri date…')} · {new Date().toLocaleDateString(rtl ? 'ar-u-nu-latn' : undefined, { day: 'numeric', month: 'short', year: 'numeric' })}{data.cached ? (rtl ? ' · مخزَّن' : ' · CACHED') : ''}</Text>
         <Text style={s.nextLabel}>{rtl ? 'التالي · ' : 'NEXT · '}{next ? prayerName(rtl, next.name) : '—'}</Text><Text style={s.heroTime}>{next?.time || '—'}</Text>
@@ -1679,7 +1740,7 @@ const[quranPosition,setQuranPosition]=useState<any>(null);const[openReflection,s
     <Section title={T('Continue reading')} action={T('Open Quran')} onPress={()=>nav.navigate('Quran')} />
     <DepthCard index={0} radius={28} padded={false} style={s.readWrap} cardStyle={s.readSurface} bodyStyle={s.readPad}
       onPress={()=>nav.navigate('Quran')}>
-      <Image source={(dark?SCENE_QURAN_DARK:SCENE_QURAN)} resizeMode="cover" style={s.heroBg}/>
+      <Image source={pickScene(SCENE_QURAN, resolved)} resizeMode="cover" style={s.heroBg}/>
       <LinearGradient colors={['rgba(42,32,81,.95)','rgba(77,59,129,.55)','rgba(77,60,145,.08)']} start={{x:0,y:.5}} end={{x:1,y:.5}} style={StyleSheet.absoluteFill} />
       <Text style={s.readKicker}>{T(quranPosition ? 'CONTINUE READING' : 'FEATURED READING')}</Text><Text style={s.readArabic}>{quranPosition?'۝':'يس'}</Text><Text style={s.readTitle}>{quranPosition ? quranPosition.surahName : T('Surah Ya-Sin')}</Text><Text style={s.readMeta}>{quranPosition ? `${quranPosition.verseKey} · ${rtl ? 'صفحة' : 'Page'} ${quranPosition.page || '—'}` : (rtl ? '83 آية · مكية' : '83 verses · Makkan')}</Text><Tactile onPress={()=>nav.navigate('Quran',{screen:'Reader',params:{chapter:quranPosition?{id:quranPosition.surahId,name_simple:quranPosition.surahName,name_arabic:'',verses_count:0}:{id:36,name_simple:'Ya-Sin',name_arabic:'يس',verses_count:83},focusVerse:quranPosition?.verseKey},initial:false})} style={s.whiteButton}><Text style={s.whiteButtonText}>{T(quranPosition ? 'Continue' : 'Read now')}</Text>{ico('arrow-forward',14,C.green)}</Tactile>
     </DepthCard>
@@ -2262,7 +2323,7 @@ function PrayerScreen({navigation}:any) {
      the Home hero, so the two read as the same app. `still` parks both when
      reduced motion is on, and the scene is drawn twice - once for light, once
      for dark - rather than dimming one picture to serve both. */
-  const {dark}=useTheme(); const still=useCalmMotion();
+  const {dark,resolved}=useTheme(); const still=useCalmMotion();
   const prayerZoom=useDrift(30000,1,1.07,still); const prayerSheen=useDrift(20000,-0.85,0.85,still);
   const {width:prayerW}=useWindowDimensions();
   /* The week ahead, from the same source today's times come from. Loaded for
@@ -2300,7 +2361,7 @@ function PrayerScreen({navigation}:any) {
   return <Page><ScrollView keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}><AppHeader/><View style={s.prayerHeader}><View><Text style={s.prayerOverline}>{cached?T('SAVED ON DEVICE'):T('TODAY')}</Text><Text style={s.prayerTitle}>{T('Prayer times')}</Text></View><ToolGraphic tool="Qibla" size={52}/></View>
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.dayStripScroll}><View style={s.dayStrip}>{days.map((d,i)=><Pressable key={i} accessibilityRole="button" accessibilityState={{selected:i===dayIndex}} accessibilityLabel={`${d.toLocaleDateString(rtl?'ar-u-nu-latn':'en',{weekday:'long'})} ${d.getDate()}`} onPress={()=>setDayIndex(i)} style={[s.day,i===dayIndex&&s.dayActive]}><Text style={[s.dayName,i===dayIndex&&s.dayText]}>{d.toLocaleDateString(rtl?'ar-u-nu-latn':'en',{weekday:'short'})}</Text><Text style={[s.dayNum,i===dayIndex&&s.dayText]}>{d.getDate()}</Text>{!calendar.length&&i>0&&<View style={s.dayDot}/>}</Pressable>)}</View></ScrollView>
     {!!chosenDay && dayIndex>0 && <Text style={s.dayChosen}>{rtl?`${chosenDay.hijriDay} ${chosenDay.hijriMonthAr||chosenDay.hijriMonth} ${chosenDay.hijriYear} هـ`:`${chosenDay.weekday} ${chosenDay.gregorian} · ${chosenDay.hijriDay} ${chosenDay.hijriMonth} ${chosenDay.hijriYear} AH`}</Text>}
-    {!location?<LocationPrompt compact/>:error?<ErrorState message={error} retry={load}/>:!snap?<Spinner/>:<><View style={s.nextCard}><Animated.View style={[StyleSheet.absoluteFill,{transform:[{scale:prayerZoom}]}]}><Image source={(dark?PRAYER_CARD_SCENE_DARK:PRAYER_CARD_SCENE)} resizeMode="cover" style={s.heroBg}/></Animated.View>{/* A scrim rather than a flat fill: the artwork shows through on the right and settles to near-solid behind the text on the left. */}<LinearGradient colors={['rgba(15,11,25,.95)','rgba(38,28,79,.74)','rgba(77,60,145,.26)']} start={{x:0,y:.5}} end={{x:1,y:.5}} style={StyleSheet.absoluteFill}/><HeroAura still={still}/><Animated.View pointerEvents="none" style={[s.heroSheen,{transform:[{translateX:Animated.multiply(prayerSheen,prayerW)},{skewX:'-16deg'}]}]}><LinearGradient colors={['rgba(255,255,255,0)','rgba(255,255,255,.16)','rgba(255,255,255,0)']} start={{x:0,y:0}} end={{x:1,y:0}} style={StyleSheet.absoluteFill}/></Animated.View><View style={s.nextCardBody}>{!!cached && <LiveBadge source="SAVED ON DEVICE"/>}<Text style={s.nextCardLabel}>{T('NEXT PRAYER')}</Text><Text style={s.nextCardName}>{next ? prayerName(rtl, next.name) : ''}</Text><Text style={s.nextCardTime}>{clockTime(rtl, next?.time || '')}</Text><View style={s.countPill}><Text style={s.countText}>{T('Begins in')} {next ? <PrayerCountdown raw={next.raw}/> : ''}</Text></View></View></View>
+    {!location?<LocationPrompt compact/>:error?<ErrorState message={error} retry={load}/>:!snap?<Spinner/>:<><View style={s.nextCard}><Animated.View style={[StyleSheet.absoluteFill,{transform:[{scale:prayerZoom}]}]}><Image source={pickScene(SCENE_PRAYER, resolved)} resizeMode="cover" style={s.heroBg}/></Animated.View>{/* A scrim rather than a flat fill: the artwork shows through on the right and settles to near-solid behind the text on the left. */}<LinearGradient colors={isPal(resolved)?SCRIM.prayerPalestine:SCRIM.prayerIslamic} start={{x:0,y:.5}} end={{x:1,y:.5}} style={StyleSheet.absoluteFill}/><HeroAura still={still} palestine={isPal(resolved)} /><Animated.View pointerEvents="none" style={[s.heroSheen,{transform:[{translateX:Animated.multiply(prayerSheen,prayerW)},{skewX:'-16deg'}]}]}><LinearGradient colors={['rgba(255,255,255,0)','rgba(255,255,255,.16)','rgba(255,255,255,0)']} start={{x:0,y:0}} end={{x:1,y:0}} style={StyleSheet.absoluteFill}/></Animated.View><View style={s.nextCardBody}>{!!cached && <LiveBadge source="SAVED ON DEVICE"/>}<Text style={s.nextCardLabel}>{T('NEXT PRAYER')}</Text><Text style={s.nextCardName}>{next ? prayerName(rtl, next.name) : ''}</Text><Text style={s.nextCardTime}>{clockTime(rtl, next?.time || '')}</Text><View style={s.countPill}><Text style={s.countText}>{T('Begins in')} {next ? <PrayerCountdown raw={next.raw}/> : ''}</Text></View></View></View>
       <View style={s.prayerProgress}><View style={{flex:1}}><Text style={s.sourceTitle}>{T('Today’s Salah')}</Text><Text style={s.sourceBody}>{rtl?`${done} من 5 صلوات مؤداة`:`${done} of 5 prayers marked complete`}</Text></View><View style={s.progressTrack}><View style={[s.progressFill,{width:`${done*20}%`} as any]}/></View><Text style={s.progressCount}>{done}/5</Text></View>
       <Section title={T('Your consistency')}/>
       <PrayerConsistency history={history} T={T}/>
@@ -2354,7 +2415,7 @@ function SurahRow({ chapter, onOpen, hifz }: {
     </View>
   </MotionPress>;
 });
-function QuranHome({navigation}:any){const{dark}=useTheme();
+function QuranHome({navigation}:any){const{dark,resolved}=useTheme();
  const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);
  const{width}=useWindowDimensions();const wide=width>=760;const[chapters,setChapters]=useState<Chapter[]>([]);const[query,setQuery]=useState('');const[debounced,setDebounced]=useState('');const[expanded,setExpanded]=useState(false);const[error,setError]=useState('');const[position,setPosition]=useState<any>(null);const[bookmarkCount,setBookmarkCount]=useState(0);const[noteCount,setNoteCount]=useState(0);const[recent,setRecent]=useState<number[]>([]);const[plan,setPlanState]=useState<any>(null);const[hifz,setHifzState]=useState<Record<number,HifzStatus>>({});const[preload,setPreload]=useState(getPreloadState());const[gridW,setGridW]=useState(0);const{preferences}=useQuranPreferences();
  const load=()=>getChapters().then(setChapters).catch(e=>setError(T(e.message)));const hydrate=()=>Promise.all([loadReadingPosition().then(setPosition),loadBookmarks().then(x=>setBookmarkCount(x.length)),loadNotes().then(x=>setNoteCount(x.length)),loadRecentSurahs().then(setRecent),loadPlan().then(setPlanState),loadHifz().then(setHifzState),loadAudioSettings().then(value=>setAudioReciter(value.reciterName))]);useEffect(()=>{load();hydrate();resumeSavedQuranPreload();const unsubscribePreload=subscribePreload(setPreload);const unsubscribeFocus=navigation.addListener('focus',hydrate);return()=>{unsubscribePreload();unsubscribeFocus()}},[navigation]);useEffect(()=>{const id=setTimeout(()=>setDebounced(query.trim()),250);return()=>clearTimeout(id)},[query]);
@@ -2366,7 +2427,7 @@ const compactStats=[{label:'Bookmarks',title:T('Bookmarks'),value:String(bookmar
  return <Page><ScrollView keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}><AppHeader/>
  <View style={s.search}>{ico('search-outline',19,C.muted)}<TextInput accessibilityLabel={T('Search the Quran')} value={query} onChangeText={setQuery} onSubmitEditing={submit} returnKeyType="search" style={s.searchInput} placeholder={T('Search Surah, meaning, or 2:255')} placeholderTextColor={C.muted}/>{query.length>0&&<Pressable accessibilityLabel={T('Clear Quran search')} onPress={()=>setQuery('')}>{ico('close-circle',18,C.muted)}</Pressable>}</View>
  {position&&<Pressable onPress={()=>{const chapter=chapters.find(c=>c.id===position.surahId);if(chapter)open(chapter,'both',position.verseKey)}} style={s.continueBar}><ToolGraphic tool="Quran Arabic" size={54}/><View style={{flex:1}}><Text style={s.dailyKicker}>{T('CONTINUE READING')}</Text><Text style={s.settingName}>{position.surahName} · {position.verseKey}</Text><Text style={s.meta}>{rtl ? `صفحة ${position.page || '—'} · محفوظ على هذا الجهاز` : `Page ${position.page || '—'} · saved locally`}</Text></View>{ico('arrow-forward',18,C.green)}</Pressable>}
- <View style={[s.quranHero,wide&&s.quranHeroWide]}><Image source={(dark?SCENE_QURAN_DARK:SCENE_QURAN)} resizeMode="cover" style={s.heroBg}/><LinearGradient colors={['rgba(42,32,81,.96)','rgba(92,63,141,.52)','transparent']} start={{x:0,y:.5}} end={{x:1,y:.5}} style={StyleSheet.absoluteFill}/><Text style={s.quranArabic}>الرَّحْمَٰن</Text><Text style={s.quranHeroTitle}>{T('Read. Listen. Reflect.')}</Text><Text style={s.quranHeroMeta}>{T(preferences.scriptName)} · {T(rtl ? preferences.translationLanguage : preferences.translationName)}</Text><View style={s.heroActions}><Tactile style={s.whiteButton} onPress={()=>open(featured)}><Text style={s.whiteButtonText}>{T('Start reading')}</Text>{ico('play',13,C.green)}</Tactile><Pressable style={s.ghostHeroButton} onPress={()=>navigation.navigate('Quran Audio')}><Text style={s.ghostHeroText}>{T('Listen')}</Text>{ico('headset-outline',13,C.white)}</Pressable></View></View>
+ <View style={[s.quranHero,wide&&s.quranHeroWide]}><Image source={pickScene(SCENE_QURAN, resolved)} resizeMode="cover" style={s.heroBg}/><LinearGradient colors={isPal(resolved)?SCRIM.quranPalestine:SCRIM.quranIslamic} start={{x:0,y:.5}} end={{x:1,y:.5}} style={StyleSheet.absoluteFill}/><Text style={s.quranArabic}>الرَّحْمَٰن</Text><Text style={s.quranHeroTitle}>{T('Read. Listen. Reflect.')}</Text><Text style={s.quranHeroMeta}>{T(preferences.scriptName)} · {T(rtl ? preferences.translationLanguage : preferences.translationName)}</Text><View style={s.heroActions}><Tactile style={s.whiteButton} onPress={()=>open(featured)}><Text style={s.whiteButtonText}>{T('Start reading')}</Text>{ico('play',13,C.green)}</Tactile><Pressable style={s.ghostHeroButton} onPress={()=>navigation.navigate('Quran Audio')}><Text style={s.ghostHeroText}>{T('Listen')}</Text>{ico('headset-outline',13,C.white)}</Pressable></View></View>
  <Section title={T('Explore')}/>
  <View style={s.qTileGrid} onLayout={e=>setGridW(e.nativeEvent.layout.width)}>{exploreTools.map(item=><MotionPress key={item.label} testID={`qtile-${item.label}`} onPress={()=>item.tab?navigation.navigate(item.tab,{screen:item.screen,params:item.params||{}}):navigation.navigate(item.screen,item.params||{})} style={[s.qTile,tileW?{width:tileW}:{flex:1,minWidth:60}]}><ToolGraphic tool={item.tool||item.label} size={40}/><Text numberOfLines={2} style={s.qTileLabel}>{item.title}</Text></MotionPress>)}</View>
  <Section title={T('Your Quran')}/>
@@ -9410,7 +9471,7 @@ function TabButton({ route, focused, navigation, dark, rtl, state, index }: any)
 function FloatingTabBar({ state, navigation }: any) {
   const { width } = useWindowDimensions();
   const { rtl } = useLanguage();
-  const { dark } = useTheme();
+  const { dark, resolved } = useTheme();
   const hidden = useChromeHidden();
   const barWidth = Math.min(Math.max(width - 32, 300), 460);
   const drop = useRef(new Animated.Value(1)).current;
@@ -9718,7 +9779,7 @@ function Khatam({ draw, settle }: { draw: Animated.Value; settle: Animated.Value
 }
 
 function Splash({ ready, progress, onDone }: { ready: boolean; progress: number; onDone: () => void }) {
-  const { dark } = useTheme();
+  const { dark, resolved } = useTheme();
   const { rtl } = useLanguage();
   const T = (text: string) => tx(rtl, text);
   const still = useCalmMotion();
@@ -10065,7 +10126,7 @@ function OnboardingSleep() {
 const COMMON_CODES: string[] = LANGUAGES.map((entry) => entry.code);
 
 function Onboarding({ onFinish }: { onFinish: () => void }) {
-  const { dark } = useTheme();
+  const { dark, resolved } = useTheme();
   const { rtl, language, setLanguage } = useLanguage();
   const T = (text: string) => tx(rtl, text);
   const { update } = useQuranPreferences();
