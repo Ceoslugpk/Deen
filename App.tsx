@@ -6655,11 +6655,194 @@ function HijriCalendarScreen({navigation}:any){
     </>}
   </ScrollView></Page>
 }
-function RamadanScreen({navigation}:any){const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);const{location}=useAppLocation();const[days,setDays]=useState<CalendarDay[]>([]);const[year,setYear]=useState<number|null>(null);const[error,setError]=useState('');const load=async()=>{if(!location)return;setError('');setDays([]);try{const snap=await getPrayerSnapshot(location.latitude,location.longitude);const target=snap.hijriMonth>9?snap.hijriYear+1:snap.hijriYear;setYear(target);setDays(await getRamadanCalendar(location.latitude,location.longitude,target));}catch(e:any){setError(T(e.message))}};useEffect(()=>{load()},[location?.latitude,location?.longitude]);return <Page><ToolBar title={T('Ramadan')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}>{!location?<LocationPrompt compact/>:<><LinearGradient colors={[C.heroA,C.green]} style={s.ramadanHero}><Text style={s.ramadanArabic}>رَمَضَان</Text><Text style={s.ramadanTitle}>{T('Ramadan')} {year||''} {T('AH')}</Text><Text style={s.ramadanSub}>{T('A live 30-day Suhoor and Iftar timetable for')} {T(location.label)}.</Text></LinearGradient><Pressable onPress={()=>navigation.navigate('Tools',{screen:'Fasting',initial:false})} style={[s.sourceCard,{marginTop: 12}]}>{ico('create-outline',20,C.green)}<View style={{flex:1}}><Text style={s.sourceTitle}>{T('Fasting record')}</Text><Text style={s.sourceBody}>{T('Mark each day and keep your make-up ledger')}</Text></View>{ico('arrow-forward',18,C.green)}</Pressable>
-      {/* The guides live here rather than in the worship directory, so the
-          six of them are not listed twice under two different names. */}
-      <Section title={T('Guides')} action={String(RAMADAN_GUIDES.length)}/>
-      <View style={s.settings}>{RAMADAN_GUIDES.map((guide)=>{const g=localizeGuide(guide,rtl);return <Tactile key={guide.id} onPress={()=>navigation.navigate('Guide Detail',{guide})} style={s.sourceCard}><ToolGraphic tool={guide.id} size={26}/><View style={{flex:1}}><Text style={s.sourceTitle}>{g.title}</Text><Text style={s.sourceBody}>{g.subtitle}</Text></View>{ico('arrow-forward',18,C.green)}</Tactile>})}</View>{error?<ErrorState message={error} retry={load}/>:!days.length?<Spinner/>:<><Section title={T('Fasting timetable')} action={rtl?`${days.length} يومًا`:`${days.length} days`}/><View style={s.ramadanList}>{days.map(d=>{const fajr=d.prayers.find(p=>p.name==='Fajr');const maghrib=d.prayers.find(p=>p.name==='Maghrib');return <View key={d.gregorian} style={s.ramadanRow}><View style={s.ramadanDay}><Text style={s.ramadanDayNo}>{d.hijriDay}</Text><Text style={s.ramadanDayLabel}>{T('RAM')}</Text></View><View style={{flex:1}}><Text style={s.ramadanDate}>{rtl ? d.weekdayAr || d.weekday : d.weekday} · {d.gregorian}</Text><Text style={s.meta}>{T(location.label)}</Text></View><View style={s.fastTime}><Text style={s.fastLabel}>{T('SUHOOR')}</Text><Text style={s.fastValue}>{clockTime(rtl, fajr?.time || '')}</Text></View><View style={s.fastTime}><Text style={s.fastLabel}>{T('IFTAR')}</Text><Text style={s.fastValue}>{maghrib?.time}</Text></View></View>})}</View></>}</>}</ScrollView></Page>}
+/* ------------------------------------------------------------------ *
+ * Ramadan
+ * ------------------------------------------------------------------ */
+
+/** Short weekday initials for the grid header, in the order the grid runs. */
+const WEEK_INITIALS_EN = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+const WEEK_INITIALS_AR = ['ح', 'ن', 'ث', 'ر', 'خ', 'ج', 'س'];
+/** Sunday first, to put the first of the month in the right column. */
+const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+/** Today, in the DD-MM-YYYY shape the calendar is keyed by. */
+function todayKey() {
+  const now = new Date();
+  return `${String(now.getDate()).padStart(2, '0')}-${String(now.getMonth() + 1).padStart(2, '0')}-${now.getFullYear()}`;
+}
+
+/** Whole days from one DD-MM-YYYY key to another. Negative once `to` has gone. */
+function dayGap(from: string, to: string) {
+  const at = (v: string) => {
+    const [d, m, y] = v.split('-').map(Number);
+    return Date.UTC(y, m - 1, d);
+  };
+  return Math.round((at(to) - at(from)) / 86400000);
+}
+
+/** `5:03 AM` down to `5:03`: a grid cell is 46 wide and has no room for the half. */
+const shortTime = (value: string) => value.replace(/\s*(AM|PM|ص|م)\s*$/i, '').trim();
+
+/**
+ * The running count to whichever of the two times comes next.
+ *
+ * Before dawn it is Suhoor that is coming; between dawn and sunset, Iftar;
+ * after sunset the day's fast is behind you and it is tomorrow's Suhoor being
+ * counted to. It ticks on its own, so the number is never a second stale.
+ */
+function RamadanCount({ suhoor, iftar, rtl }: { suhoor: string; iftar: string; rtl: boolean }) {
+  const T = (text: string) => tx(rtl, text);
+  const [, tick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => tick((v) => v + 1), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const at = (raw: string) => {
+    const [h, m] = raw.split(':').map(Number);
+    const d = new Date();
+    d.setHours(h, m, 0, 0);
+    return d.getTime();
+  };
+  const now = Date.now();
+  const suhoorAt = at(suhoor);
+  const iftarAt = at(iftar);
+  const [label, target] =
+    now < suhoorAt ? [T('Suhoor in'), suhoorAt] :
+    now < iftarAt ? [T('Iftar in'), iftarAt] :
+    [T('Suhoor in'), suhoorAt + 86400000];
+  const left = Math.max(0, Math.floor((target - now) / 1000));
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const hh = Math.floor(left / 3600);
+  const mm = Math.floor((left - hh * 3600) / 60);
+  return <Text style={s.ramCountValue}>{label} {hh}:{pad(mm)}:{pad(left % 60)}</Text>;
+}
+
+/**
+ * Ramadan.
+ *
+ * Two questions are asked of this screen and they are not the same question.
+ * Once a day, inside the month, it is asked what time to eat — and that wants
+ * the one day you are standing in, with the count running against it. Once a
+ * year it is asked what the month looks like — and that wants all thirty at
+ * once, in the shape they are actually held in the mind.
+ *
+ * So it answers them in that order, and each in the form it wants: the day you
+ * are in first, whole, with the clock ticking; the month underneath as a grid
+ * rather than as thirty identical rows, which is what it used to be.
+ *
+ * The guides come last. They are read once and kept, while the timetable is
+ * looked at every evening of the month — burying it under them was backwards.
+ */
+function RamadanScreen({ navigation }: any) {
+  const { rtl } = useLanguage();
+  const T = (text: string) => tx(rtl, text);
+  const { resolved } = useTheme();
+  const { location } = useAppLocation();
+  const [days, setDays] = useState<CalendarDay[]>([]);
+  const [year, setYear] = useState<number | null>(null);
+  const [error, setError] = useState('');
+  const load = async () => {
+    if (!location) return;
+    setError('');
+    setDays([]);
+    try {
+      const snap = await getPrayerSnapshot(location.latitude, location.longitude);
+      const target = snap.hijriMonth > 9 ? snap.hijriYear + 1 : snap.hijriYear;
+      setYear(target);
+      setDays(await getRamadanCalendar(location.latitude, location.longitude, target));
+    } catch (e: any) {
+      setError(T(e.message));
+    }
+  };
+  useEffect(() => {
+    load();
+  }, [location?.latitude, location?.longitude]);
+
+  const key = todayKey();
+  const index = days.findIndex((d) => d.gregorian === key);
+  const today = index >= 0 ? days[index] : null;
+  /* The calendar is always the *next* Ramadan, so for eleven months of the
+     year the panel looks forward to it rather than standing empty. */
+  const opening = days.length ? days[0] : null;
+  const away = opening ? dayGap(key, opening.gregorian) : 0;
+  const focus = today || opening;
+  const suhoor = focus?.prayers.find((p) => p.name === 'Fajr');
+  const iftar = focus?.prayers.find((p) => p.name === 'Maghrib');
+  const lead = opening ? Math.max(0, WEEKDAY_NAMES.indexOf(opening.weekday)) : 0;
+  const initials = rtl ? WEEK_INITIALS_AR : WEEK_INITIALS_EN;
+
+  return <Page><ToolBar title={T('Ramadan')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}>{!location ? <LocationPrompt compact/> : <>
+    {/* The day you are in — or, for eleven months of the year, the opening one.
+        Palestine takes the deep green off the flag: the theme's own green is
+        too light to carry white type at this size. */}
+    <LinearGradient colors={isPal(resolved) ? [C.heroA, mix(FLAG.green, FLAG.black, 0.30)] : [C.heroA, C.green]} style={s.ramToday}>
+      <View style={s.ramTodayTop}>
+        <Text style={s.ramArabic}>رَمَضَان</Text>
+        <Text style={s.ramStatus}>{
+          today
+            ? (rtl ? `يوم ${index + 1} من ${days.length}` : `Day ${index + 1} of ${days.length}`)
+            : away > 0
+              ? (rtl ? `يبدأ بعد ${away} يومًا` : `Begins in ${away} ${away === 1 ? 'day' : 'days'}`)
+              : `${T('Ramadan')} ${year || ''} ${T('AH')}`
+        }</Text>
+      </View>
+      {!!focus && <View style={s.ramTodayTimes}>
+        <View style={s.ramTimeBlock}>
+          <Text style={s.ramTimeLabel}>{T('SUHOOR')}</Text>
+          <Text style={s.ramTimeValue}>{clockTime(rtl, suhoor?.time || '')}</Text>
+        </View>
+        <View style={s.ramTimeBlock}>
+          <Text style={s.ramTimeLabel}>{T('IFTAR')}</Text>
+          <Text style={s.ramTimeValue}>{clockTime(rtl, iftar?.time || '')}</Text>
+        </View>
+      </View>}
+      <View style={s.ramCountRow}>
+        {ico('time-outline', 14, C.onAccent)}
+        {today
+          ? <RamadanCount suhoor={suhoor?.raw || '00:00'} iftar={iftar?.raw || '00:00'} rtl={rtl}/>
+          : <Text style={s.ramCountValue}>{rtl
+              ? `${focus?.weekdayAr || ''} · ${focus?.gregorian}`
+              : `${focus?.weekday} · ${focus?.gregorian}`}</Text>}
+      </View>
+    </LinearGradient>
+
+    {error ? <ErrorState message={error} retry={load}/> : !days.length ? <Spinner/> : <>
+      <Section title={T('Fasting timetable')} action={rtl ? `${days.length} يومًا` : `${days.length} days`}/>
+      <View style={s.ramMonth}>
+        <View style={s.ramWeekRow}>{initials.map((initial, i) => <View key={i} style={s.ramWeekCell}><Text style={s.ramWeekText}>{initial}</Text></View>)}</View>
+        <View style={s.ramGrid}>
+          {Array.from({ length: lead }).map((_, i) => <View key={`pad${i}`} style={s.ramCellSpacer}/>)}
+          {days.map((d) => {
+            const dawn = d.prayers.find((p) => p.name === 'Fajr');
+            const dusk = d.prayers.find((p) => p.name === 'Maghrib');
+            const isToday = d.gregorian === key;
+            const past = dayGap(d.gregorian, key) > 0;
+            return <View key={d.gregorian} style={[s.ramCell, past && s.ramCellPast, isToday && s.ramCellToday]}>
+              <Text style={[s.ramCellNum, past && s.ramCellNumPast]}>{d.hijriDay}</Text>
+              <View style={s.ramCellRule}/>
+              <Text style={[s.ramCellTime, past && s.ramCellTimePast]}>{shortTime(dawn?.time || '')}</Text>
+              <Text style={[s.ramCellTime, s.ramCellIftar, past && s.ramCellTimePast]}>{shortTime(dusk?.time || '')}</Text>
+            </View>;
+          })}
+        </View>
+        <View style={s.ramLegend}>
+          <View style={s.ramLegendItem}><View style={s.ramSwatch}/><Text style={s.ramLegendText}>{T('Suhoor')}</Text></View>
+          <View style={s.ramLegendItem}><View style={[s.ramSwatch, s.ramSwatchIftar]}/><Text style={s.ramLegendText}>{T('Iftar')}</Text></View>
+          <Text style={s.ramLegendNote}>{T(location.label)}</Text>
+        </View>
+      </View>
+    </>}
+
+    <Pressable onPress={() => navigation.navigate('Tools', { screen: 'Fasting', initial: false })} style={[s.sourceCard, { marginTop: 16 }]}>{ico('create-outline', 20, C.green)}<View style={{ flex: 1 }}><Text style={s.sourceTitle}>{T('Fasting record')}</Text><Text style={s.sourceBody}>{T('Mark each day and keep your make-up ledger')}</Text></View>{ico('arrow-forward', 18, C.green)}</Pressable>
+
+    {/* The guides live here rather than in the worship directory, so the
+        six of them are not listed twice under two different names. */}
+    <Section title={T('Guides')} action={String(RAMADAN_GUIDES.length)}/>
+    <View style={s.settings}>{RAMADAN_GUIDES.map((guide) => {
+      const g = localizeGuide(guide, rtl);
+      return <Tactile key={guide.id} onPress={() => navigation.navigate('Guide Detail', { guide })} style={s.sourceCard}><ToolGraphic tool={guide.id} size={26}/><View style={{ flex: 1 }}><Text style={s.sourceTitle}>{g.title}</Text><Text style={s.sourceBody}>{g.subtitle}</Text></View>{ico('arrow-forward', 18, C.green)}</Tactile>;
+    })}</View>
+  </>}</ScrollView></Page>}
 /* ==================== Phase 4 · women's area ==================== */
 
 // `title` is what is shown, so it is translated; `label` is what a screen reader
@@ -11197,7 +11380,6 @@ dayDetailPrayer:{flexDirection:'row',alignItems:'center',justifyContent:'space-b
 dayDetailPrayerName:{color:C.muted,fontFamily:'DMSans_500Medium',fontSize:12},
 dayDetailPrayerTime:{color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:13},
 legendDot:{width:8,height:8,borderRadius:4,backgroundColor:C.green},
- ramadanHero:{borderRadius:28,padding:20,...shadow},ramadanArabic:{color:C.onHero,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:36,marginTop:16},ramadanTitle:{color:C.onAccent,fontFamily:'Newsreader_600SemiBold',fontSize:27},ramadanSub:{color:C.onAccent,fontFamily:'DMSans_400Regular',fontSize:12,lineHeight:18,marginTop:8,maxWidth:390},ramadanList:{backgroundColor:C.white,borderRadius:24,overflow:'hidden',borderWidth:1,borderColor:C.line},ramadanRow:{minHeight:78,flexDirection:'row',alignItems:'center',gap:12,paddingHorizontal:12,borderBottomWidth:1,borderColor:C.line},ramadanDay:{width:43,height:48,borderRadius:16,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},ramadanDayNo:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:17},ramadanDayLabel:{color:C.muted,fontFamily:'DMSans_700Bold',fontSize:9},ramadanDate:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:11},fastTime:{alignItems:'flex-end',minWidth:58},fastLabel:{color:C.muted,fontFamily:'DMSans_700Bold',fontSize:9,letterSpacing:.7},fastValue:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:10,marginTop:4},
  
  seekTrack:{height:26,justifyContent:'center',marginTop:8},
  seekFill:{position:'absolute',left:0,height:5,borderRadius:4,backgroundColor:C.green},
@@ -11494,6 +11676,40 @@ dayToolIcon:{width:52,height:52,borderRadius:26,backgroundColor:C.mint,alignItem
     /* The backdrop that holds the screen while it dips out and back during a
        theme change. Opaque and full-height, so what shows through the dip is
        the new ground colour rather than whatever sits behind the app. */
+    /* ---------------------------------------------------------------- *
+       Ramadan
+     * ---------------------------------------------------------------- */
+    ramToday:{borderRadius:24,padding:18,...shadow},
+    ramTodayTop:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:12},
+    ramArabic:{color:C.onHero,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:30},
+    ramStatus:{color:C.onAccent,fontFamily:'DMSans_700Bold',fontSize:12},
+    ramTodayTimes:{flexDirection:'row',gap:10,marginTop:16},
+    ramTimeBlock:{flex:1,backgroundColor:'rgba(255,255,255,.15)',borderRadius:14,padding:11},
+    ramTimeLabel:{color:C.onAccent,fontFamily:'DMSans_700Bold',fontSize:9,letterSpacing:.8,opacity:.85},
+    ramTimeValue:{color:C.onAccent,fontFamily:'DMSans_700Bold',fontSize:20,marginTop:3},
+    ramCountRow:{flexDirection:'row',alignItems:'center',gap:7,marginTop:14},
+    ramCountValue:{color:C.onAccent,fontFamily:'DMSans_600SemiBold',fontSize:12.5},
+    ramMonth:{backgroundColor:C.card,borderRadius:24,borderWidth:1,borderColor:C.line,padding:12,...surface},
+    ramWeekRow:{flexDirection:'row',gap:6},
+    ramWeekCell:{flex:1,alignItems:'center',paddingVertical:5},
+    ramWeekText:{color:C.muted,fontFamily:'DMSans_700Bold',fontSize:10},
+    ramGrid:{flexDirection:'row',flexWrap:'wrap',gap:6},
+    ramCellSpacer:{flexGrow:1,flexShrink:1,flexBasis:'13%',height:64},
+    ramCell:{flexGrow:1,flexShrink:1,flexBasis:'13%',height:64,borderRadius:12,borderWidth:1,borderColor:C.line,backgroundColor:C.bg,alignItems:'center',justifyContent:'center'},
+    ramCellPast:{backgroundColor:'transparent'},
+    ramCellToday:{borderWidth:2,borderColor:C.green,backgroundColor:C.mint},
+    ramCellNum:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:14},
+    ramCellNumPast:{color:C.muted},
+    ramCellRule:{height:1,width:15,backgroundColor:C.line,marginVertical:3},
+    ramCellTime:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:10,lineHeight:12},
+    ramCellIftar:{color:C.body,fontFamily:'DMSans_700Bold'},
+    ramCellTimePast:{color:C.chevron},
+    ramLegend:{flexDirection:'row',alignItems:'center',gap:14,marginTop:10,paddingHorizontal:4},
+    ramLegendItem:{flexDirection:'row',alignItems:'center',gap:6},
+    ramSwatch:{width:9,height:9,borderRadius:3,backgroundColor:C.muted},
+    ramSwatchIftar:{backgroundColor:C.body},
+    ramLegendText:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:11},
+    ramLegendNote:{marginLeft:'auto',color:C.muted,fontFamily:'DMSans_400Regular',fontSize:11},
     themeSwap:{flex:1,backgroundColor:C.bg}});
   /* Runs in both themes now: the brand remap has to land on light too. */
   return remapStyles(created);
