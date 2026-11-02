@@ -1037,9 +1037,14 @@ const TOOL_IMAGES:Record<string,any>={
   'Khatam':require('./assets/tool-icons/khatam.png'),
   'Sunnah Prayers':require('./assets/tool-icons/sunnah-prayers.png'),
   'Privacy lock':require('./assets/tool-icons/privacy-lock.png'),
-  'Umrah Resources':require('./assets/tool-icons/pilgrimage.png'),
+  /* Given its own file. It was pointing at pilgrimage.png, which is also
+     the Pilgrimage graphic on the rites screens, so replacing that art
+     would have changed those with it. */
+  'Umrah Resources':require('./assets/tool-icons/umrah-resources.png'),
   'Madinah Live':require('./assets/tool-icons/madinah-live.png'),
-  'Makkah Live':require('./assets/tool-icons/holy-sites.png'),
+  /* Likewise its own file: holy-sites.png is the Holy site channels
+     graphic too. */
+  'Makkah Live':require('./assets/tool-icons/makkah-live.png'),
   /* Given its own file rather than sharing Fajr's. The tracker used to point
      at prayer-fajr.png, which is also the Fajr row in the prayer list, so
      replacing that art would have changed the Fajr icon with it. */
@@ -1148,9 +1153,9 @@ const TOOL_IMAGES_DARK:Record<string,any>={
   'Khatam':require('./assets/tool-icons/khatam-dark.png'),
   'Sunnah Prayers':require('./assets/tool-icons/sunnah-prayers-dark.png'),
   'Privacy lock':require('./assets/tool-icons/privacy-lock-dark.png'),
-  'Umrah Resources':require('./assets/tool-icons/pilgrimage-dark.png'),
+  'Umrah Resources':require('./assets/tool-icons/umrah-resources-dark.png'),
   'Madinah Live':require('./assets/tool-icons/madinah-live-dark.png'),
-  'Makkah Live':require('./assets/tool-icons/holy-sites-dark.png'),
+  'Makkah Live':require('./assets/tool-icons/makkah-live-dark.png'),
   'Salah Tracker':require('./assets/tool-icons/salah-tracker-dark.png')
 };
 function ToolGraphic({tool,size=64}:{tool:string;size?:number}){const{dark}=useTheme();const image=dark?(TOOL_IMAGES_DARK[tool]||TOOL_IMAGES[tool]):TOOL_IMAGES[tool];const enter=useRef(new Animated.Value(.78)).current;const fade=useRef(new Animated.Value(0)).current;useEffect(()=>{Animated.parallel([Animated.spring(enter,{toValue:1,friction:6,tension:75,useNativeDriver:true}),Animated.timing(fade,{toValue:1,duration:350,useNativeDriver:true})]).start()},[]);return <Animated.View accessibilityElementsHidden style={[s.graphicFrame,{width:size,height:size,opacity:fade,transform:[{scale:enter}]}]}>{image?<Image source={image} resizeMode="contain" style={{width:size-6,height:size-6}}/>:ico('sparkles-outline',size*.48,C.green)}</Animated.View>}
