@@ -9751,7 +9751,9 @@ function KhatamStroke({ draw, from, to, turn = 0, children }: {
  * frame, not the picture, and the mark is what is being introduced.
  */
 function Khatam({ draw, settle }: { draw: Animated.Value; settle: Animated.Value }) {
-  const line = BRAND.radiantGold;
+  /* The emblem is drawn in whatever the theme puts on a hero: the brand's
+     own gold for Islamic, the flag's white for Palestine. */
+  const line = C.onHero;
   const box = `0 0 ${KHATAM_BOX} ${KHATAM_BOX}`;
   return <Animated.View style={[s.khatamWrap, { opacity: settle }]}>
     <KhatamStroke draw={draw} from={0} to={0.26}>
@@ -9835,7 +9837,20 @@ function Splash({ ready, progress, onDone }: { ready: boolean; progress: number;
 
   return <Animated.View style={[s.splashRoot, { opacity: fade }]}>
     <StatusBar barStyle="light-content" />
-    <LinearGradient colors={dark ? [C.heroA, mix(BRAND.deepIndigo, BRAND.midnightInk, .35), C.deep] : [C.heroA, C.heroB, mix(BRAND.royalIndigo, BRAND.midnightInk, .25)]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.splashFill} />
+    /* The field behind the emblem. It used to put the brand's own indigo in
+       the middle stops whichever theme was on, so a Palestine splash came up
+       purple and an Islamic one read correct by accident. Each theme now
+       fills its own colours: indigo for Islamic, a green field off the flag
+       for Palestine. The Islamic values are unchanged. */
+    <LinearGradient colors={
+      isPal(resolved)
+        ? (dark
+            ? [C.heroA, mix(FLAG.black, FLAG.green, 0.38), C.deep]
+            : [C.heroA, C.heroB, mix(FLAG.green, FLAG.black, 0.30)])
+        : (dark
+            ? [C.heroA, mix(BRAND.deepIndigo, BRAND.midnightInk, .35), C.deep]
+            : [C.heroA, C.heroB, mix(BRAND.royalIndigo, BRAND.midnightInk, .25)])
+    } start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.splashFill} />
     <View style={s.splashStage}>
       <View style={s.splashMarkWrap}>
         <Khatam draw={draw} settle={settle} />
