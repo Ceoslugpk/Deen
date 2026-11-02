@@ -143,7 +143,7 @@ const languageOf = (identifier?: string, language?: string) => {
   return LANGUAGE_NAME_TO_CODE[(language || '').toLowerCase()] || (language || '');
 };
 import { CARD, CARD_GAP, RADIUS, SPACE } from './src/design/tokens';
-import { BRAND, C_DARK, C_LIGHT, C_PALESTINE, DEPTH, FLAG, brandHex, mix, snapToBrand } from './src/design/brand';
+import { BRAND, C_DARK, C_LIGHT, C_PALESTINE, C_PALESTINE_DARK, DEPTH, FLAG, brandHex, mix, snapToBrand } from './src/design/brand';
 import { useCalmMotion } from './src/design/useCalmMotion';
 import { Tactile } from './src/components/Tactile';
 import { useSubtleTransitions } from './src/design/transitions';
@@ -230,7 +230,7 @@ const MUSHAF_FILL = 0.97;
 
 let C: Record<string, string> = { ...C_LIGHT };
 /** The palette built into the sheet right now, so a swap happens only once. */
-let themeApplied: ResolvedTheme = 'light';
+let themeApplied: ResolvedTheme = 'islamicLight';
 /** Whether that palette is the dark one. A few colours are chosen on this
  *  rather than on the palette itself. */
 let themeDark = false;
@@ -382,45 +382,70 @@ function remapStyles(created: Record<string, any>): Record<string, any> {
 }
 
 /**
- * What can be chosen.
+ * Two separate choices, and they are worth keeping apart.
  *
- * 'palestine' is a third palette rather than a third brightness: it is built
- * from the flag's four colours — black, white, green and red — and every value
- * in it is one of those, or a tint of one toward another.
+ * `ThemeName` is which set of colours the app wears. Islamic is the app's own
+ * — Midnight Ink, Royal Indigo and gold. Palestine is the flag's four
+ * colours, black, white, green and red, every value in it one of those or a
+ * tint of one toward another.
  *
- * It follows the device. Somebody who has chosen it and whose phone turns dark
- * at night gets the app's dark palette, not a darkened flag: the four colours
- * are the point of the theme, and a half-lit version of them would be neither
- * the flag nor the dark they already have.
+ * `ThemeMode` is light or dark, within whichever theme is chosen. It is the
+ * same question whichever theme you are in, and it is answered the same way:
+ * follow the device, or hold it at light or dark.
+ *
+ * So there are four palettes, not two. A theme is not a brightness, and
+ * choosing Palestine at night should not quietly hand back somebody else's
+ * dark — Palestine has a dark of its own, made the same way and to the same
+ * standard, so the flag still reads as the flag after sunset.
  */
-export type ThemeMode = 'system' | 'light' | 'dark' | 'palestine';
-/** What is on screen once 'system' has been resolved. */
-export type ResolvedTheme = 'light' | 'dark' | 'palestine';
-type ThemeState = { mode: ThemeMode; dark: boolean; tick: number; setMode: (mode: ThemeMode) => void;
+export type ThemeName = 'islamic' | 'palestine';
+export type ThemeMode = 'system' | 'light' | 'dark';
+/** What is on screen once both the theme and the mode have been resolved. */
+export type ResolvedTheme = 'islamicLight' | 'islamicDark' | 'palestineLight' | 'palestineDark';
+type ThemeState = { theme: ThemeName; mode: ThemeMode; dark: boolean; tick: number;
+  setTheme: (theme: ThemeName) => void; setMode: (mode: ThemeMode) => void;
   /**
    * Drives the change-over. It falls to 0 while the palette is swapped and
    * comes back to 1, so the swap itself is never seen.
    */
   swap: Animated.Value };
 const THEME_KEY = 'deen-theme-v1';
-const ThemeContext = createContext<ThemeState>({ mode: 'system', dark: false, tick: 0, setMode: () => {}, swap: new Animated.Value(1) });
+const THEME_NAME_KEY = 'deen-theme-name-v1';
+const ThemeContext = createContext<ThemeState>({ theme: 'islamic', mode: 'system', dark: false, tick: 0, setTheme: () => {}, setMode: () => {}, swap: new Animated.Value(1) });
 
 async function loadThemeMode(): Promise<ThemeMode> {
   try {
     const raw = await AsyncStorage.getItem(THEME_KEY);
-    return raw === 'light' || raw === 'dark' || raw === 'palestine' || raw === 'system' ? raw : 'system';
+    return raw === 'light' || raw === 'dark' || raw === 'system' ? raw : 'system';
   } catch {
     return 'system';
+  }
+}
+
+async function loadThemeName(): Promise<ThemeName> {
+  try {
+    const raw = await AsyncStorage.getItem(THEME_NAME_KEY);
+    return raw === 'palestine' || raw === 'islamic' ? raw : 'islamic';
+  } catch {
+    return 'islamic';
   }
 }
 
 /** Puts one palette in place and rebuilds the style sheet from it. */
 function applyPalette(theme: ResolvedTheme) {
   themeApplied = theme;
-  const palette = theme === 'dark' ? C_DARK : theme === 'palestine' ? C_PALESTINE : C_LIGHT;
+  const palette =
+    theme === 'islamicDark' ? C_DARK :
+    theme === 'palestineLight' ? C_PALESTINE :
+    theme === 'palestineDark' ? C_PALESTINE_DARK :
+    C_LIGHT;
   Object.keys(palette).forEach((key) => { C[key] = palette[key]; });
-  const d = theme === 'dark' ? DEPTH.dark : theme === 'palestine' ? DEPTH.palestine : DEPTH.light;
-  const dark = theme === 'dark';
+  const d =
+    theme === 'islamicDark' ? DEPTH.dark :
+    theme === 'palestineLight' ? DEPTH.palestine :
+    theme === 'palestineDark' ? DEPTH.palestineDark :
+    DEPTH.light;
+  const dark = theme === 'islamicDark' || theme === 'palestineDark';
   themeDark = dark;
   shadow = { ...shadow, shadowColor: d.shadow, shadowOpacity: dark ? 0.5 : 0.11 };
   surface = { ...surface, borderTopColor: depth.edge, ...depth.ambient };
@@ -445,19 +470,25 @@ function applyPalette(theme: ResolvedTheme) {
 
 function ThemeProvider({ children }: { children: React.ReactNode }) {
   const system = useColorScheme();
+  const [theme, setThemeState] = useState<ThemeName>('islamic');
   const [mode, setModeState] = useState<ThemeMode>('system');
   const [hydrated, setHydrated] = useState(false);
   const [tick, setTick] = useState(0);
-  useEffect(() => { void loadThemeMode().then((next) => { setModeState(next); setHydrated(true); }); }, []);
-  /* 'palestine' follows the device: chosen and it is night, the app is dark
-     like anybody else's. The mode is a preference, the resolved theme is what
-     is on screen, and only the latter decides colours. */
+  useEffect(() => {
+    void Promise.all([loadThemeMode(), loadThemeName()]).then(([nextMode, nextTheme]) => {
+      setModeState(nextMode);
+      setThemeState(nextTheme);
+      setHydrated(true);
+    });
+  }, []);
+  /* The theme is which colours, the mode is how bright. Neither alone is
+     enough to pick a palette, so both are resolved into one answer and only
+     that answer decides what is on screen. */
   const systemDark = system === 'dark';
+  const dark = mode === 'system' ? systemDark : mode === 'dark';
   const resolved: ResolvedTheme =
-    mode === 'palestine' ? (systemDark ? 'dark' : 'palestine') :
-    mode === 'system' ? (systemDark ? 'dark' : 'light') :
-    mode;
-  const dark = resolved === 'dark';
+    theme === 'palestine' ? (dark ? 'palestineDark' : 'palestineLight') :
+    dark ? 'islamicDark' : 'islamicLight';
   const swap = useRef(new Animated.Value(1)).current;
   /* Painted once, during render, so the opening screen is already in the right
      palette. Every change after that goes through the animation below instead
@@ -473,7 +504,7 @@ function ThemeProvider({ children }: { children: React.ReactNode }) {
     if (themeApplied === resolved) return;
     const paper = (next: ResolvedTheme) => {
       if (Platform.OS !== 'web' || typeof document === 'undefined') return;
-      const value = next === 'dark' ? C_DARK.bg : next === 'palestine' ? C_PALESTINE.bg : C_LIGHT.bg;
+      const value = next === 'islamicDark' ? C_DARK.bg : next === 'palestineLight' ? C_PALESTINE.bg : next === 'palestineDark' ? C_PALESTINE_DARK.bg : C_LIGHT.bg;
       document.documentElement.style.background = value;
       document.body.style.background = value;
     };
@@ -506,7 +537,11 @@ function ThemeProvider({ children }: { children: React.ReactNode }) {
     setModeState(next);
     AsyncStorage.setItem(THEME_KEY, next).catch(() => undefined);
   };
-  const value = useMemo(() => ({ mode, dark, setMode, tick, swap }), [mode, dark, tick, swap]);
+  const setTheme = (next: ThemeName) => {
+    setThemeState(next);
+    AsyncStorage.setItem(THEME_NAME_KEY, next).catch(() => undefined);
+  };
+  const value = useMemo(() => ({ theme, mode, dark, setTheme, setMode, tick, swap }), [theme, mode, dark, setTheme, tick, swap]);
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
 
@@ -7932,21 +7967,30 @@ const PRAYER_METHODS=[{id:8,name:'Gulf Region',ar:'منطقة الخليج'},{id
  * they give slightly under the finger - so the whole app feels consistent.
  */
 /**
- * The flag, small enough to sit inside a pill.
+ * A theme, small enough to sit inside a pill.
  *
- * Three bands and a triangle at the hoist, drawn from FLAG so it is the same
- * four colours the theme is made of. The triangle is a border triangle: a box
- * of no size whose left border is red and whose top and bottom borders are
- * nothing, which React Native paints as the wedge the flag has.
+ * Palestine is the flag: three bands and a triangle at the hoist, drawn from
+ * FLAG so it is the same four colours the theme itself is made of. The
+ * triangle is a border triangle — a box of no size whose left border is red
+ * and whose top and bottom borders are nothing, which React Native paints as
+ * the wedge the flag has.
+ *
+ * Islamic is the app's own two: Deep Indigo beside Radiant Gold.
  */
-function FlagMark({height=12}:{height?:number}){
+function ThemeMark({theme,height=12}:{theme:'islamic'|'palestine';height?:number}){
   const w=height*2, h=height;
-  return <View style={{width:w,height:h,borderRadius:2,overflow:'hidden',backgroundColor:FLAG.white}}>
-    <View style={{position:'absolute',left:0,right:0,top:0,height:h/3,backgroundColor:FLAG.black}}/>
-    <View style={{position:'absolute',left:0,right:0,bottom:0,height:h/3,backgroundColor:FLAG.green}}/>
-    <View style={{position:'absolute',left:0,top:0,width:0,height:0,
-      borderTopWidth:h/2,borderBottomWidth:h/2,borderLeftWidth:w/3,
-      borderTopColor:'transparent',borderBottomColor:'transparent',borderLeftColor:FLAG.red}}/>
+  if (theme === 'palestine') {
+    return <View style={{width:w,height:h,borderRadius:2,overflow:'hidden',backgroundColor:FLAG.white}}>
+      <View style={{position:'absolute',left:0,right:0,top:0,height:h/3,backgroundColor:FLAG.black}}/>
+      <View style={{position:'absolute',left:0,right:0,bottom:0,height:h/3,backgroundColor:FLAG.green}}/>
+      <View style={{position:'absolute',left:0,top:0,width:0,height:0,
+        borderTopWidth:h/2,borderBottomWidth:h/2,borderLeftWidth:w/3,
+        borderTopColor:'transparent',borderBottomColor:'transparent',borderLeftColor:FLAG.red}}/>
+    </View>;
+  }
+  return <View style={{width:w,height:h,borderRadius:2,overflow:'hidden',flexDirection:'row'}}>
+    <View style={{flex:3,backgroundColor:BRAND.deepIndigo}}/>
+    <View style={{flex:2,backgroundColor:BRAND.radiantGold}}/>
   </View>;
 }
 
@@ -8563,7 +8607,7 @@ function LegalScreen({ route }: any) {
 function SettingsScreen({navigation}:any){
   const { language, rtl, setLanguage } = useLanguage();
   const T = (text: string) => tx(rtl, text);
-  const { mode: themeMode, setMode } = useTheme();
+  const { theme: themeName, mode: themeMode, setTheme, setMode } = useTheme();
   const { settings, update } = useWorshipSettings();
   const { preferences } = useQuranPreferences();
   const womens = useWomens();
@@ -8605,14 +8649,22 @@ function SettingsScreen({navigation}:any){
         </View>
       </View>
 
+      <Section title={T('Theme')} />
+      <View style={s.preferencePanel}>
+        <PanelHead glyph="color-palette-outline" title={T('Theme')} note={T('Which colours the app wears. Each theme has its own light and dark.')} />
+        <View style={s.choiceGrid}>
+          <ChoicePill label={T('Islamic')} selected={themeName === 'islamic'} onPress={() => setTheme('islamic')} swatch={<ThemeMark theme="islamic" height={11} />} />
+          <ChoicePill label={T('Palestine')} selected={themeName === 'palestine'} onPress={() => setTheme('palestine')} swatch={<ThemeMark theme="palestine" height={11} />} />
+        </View>
+      </View>
+
       <Section title={T('Appearance')} />
       <View style={s.preferencePanel}>
-        <PanelHead glyph={themeMode === 'dark' ? 'moon-outline' : themeMode === 'light' ? 'sunny-outline' : themeMode === 'palestine' ? 'flag-outline' : 'contrast-outline'} title={T('Appearance')} note={T('Light, dark, the flag colours, or whatever the device is set to')} />
+        <PanelHead glyph={themeMode === 'dark' ? 'moon-outline' : themeMode === 'light' ? 'sunny-outline' : 'contrast-outline'} title={T('Appearance')} note={T('Light, dark, or whatever the device is set to')} />
         <View style={s.choiceGrid}>
           <ChoicePill label={T('System')} selected={themeMode === 'system'} onPress={() => setMode('system')} />
           <ChoicePill label={T('Light')} selected={themeMode === 'light'} onPress={() => setMode('light')} />
           <ChoicePill label={T('Dark')} selected={themeMode === 'dark'} onPress={() => setMode('dark')} />
-          <ChoicePill label={T('Palestine')} selected={themeMode === 'palestine'} onPress={() => setMode('palestine')} swatch={<FlagMark height={11} />} />
         </View>
       </View>
 
@@ -9837,7 +9889,7 @@ function OnboardingLocation() {
  */
 function OnboardingNotifications() {
   const { rtl } = useLanguage(); const T = (text: string) => tx(rtl, text);
-  const { mode, setMode } = useTheme();
+  const { theme, setTheme } = useTheme();
   const [health, setHealth] = useState<NotificationHealth>('undetermined');
   const [asking, setAsking] = useState(false);
   const [stuck, setStuck] = useState(false);
@@ -9905,17 +9957,17 @@ function OnboardingNotifications() {
             </View>
           </View>}
 
-    {/* The look lives here rather than on a screen of its own. It is not
-        needed for the app to work, so it does not earn a step; but it is the
-        one question asked on this screen that somebody might want to answer,
-        and burying it four screens deep in Settings means most people never
-        find it. Asked once, here, and changeable in Settings afterwards. */}
+    {/* Which colours the app wears. It lives here rather than on a screen of
+        its own because it is not needed for the app to work, so it does not
+        earn a step; but it is the one question asked on this screen that
+        somebody might want to answer, and buried in Settings most people
+        never find it. Light and dark are not asked here — the app starts on
+        System, which is the answer nearly everybody wants, and Appearance in
+        Settings holds it. Asked once, here, changeable in Settings. */}
     <Text style={s.preferenceLabel}>{T('HOW THE APP SHOULD LOOK')}</Text>
     <View style={s.choiceGrid}>
-      <ChoicePill label={T('System')} selected={mode === 'system'} onPress={() => setMode('system')} />
-      <ChoicePill label={T('Light')} selected={mode === 'light'} onPress={() => setMode('light')} />
-      <ChoicePill label={T('Dark')} selected={mode === 'dark'} onPress={() => setMode('dark')} />
-      <ChoicePill label={T('Palestine')} selected={mode === 'palestine'} onPress={() => setMode('palestine')} swatch={<FlagMark height={11} />} />
+      <ChoicePill label={T('Islamic')} selected={theme === 'islamic'} onPress={() => setTheme('islamic')} swatch={<ThemeMark theme="islamic" height={11} />} />
+      <ChoicePill label={T('Palestine')} selected={theme === 'palestine'} onPress={() => setTheme('palestine')} swatch={<ThemeMark theme="palestine" height={11} />} />
     </View>
 
     <Text style={s.onbNoteText}>

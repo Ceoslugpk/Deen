@@ -354,6 +354,52 @@ export const C_PALESTINE: Palette = {
   heroB:    mix(FLAG.green, FLAG.black, 0.10),
 };
 
+/**
+ * The same four colours, carried onto a dark ground.
+ *
+ * On dark the flag's own values go the other way: pure green measures 4.5:1
+ * on the black ground but only 4.1:1 on a card, and pure red is under 4.5:1
+ * on both. So the greens and reds that carry text are lifted toward white
+ * instead of shaded toward black — the mirror of what the light palette does,
+ * and for the same reason. Fills and graphics keep the flag's own values.
+ *
+ * The ground is the flag's black lifted a little, and cards are lifted off it
+ * toward green, so the four colours still read as themselves in the dark.
+ */
+export const C_PALESTINE_DARK: Palette = {
+  bg:       mix(FLAG.black, FLAG.white, 0.075),
+  card:     mix(mix(FLAG.black, FLAG.white, 0.075), FLAG.green, 0.09),
+  ink:      mix(FLAG.white, FLAG.black, 0.03),
+  muted:    mix(mix(FLAG.white, FLAG.black, 0.03), mix(FLAG.black, FLAG.white, 0.075), 0.38), // 6.5:1
+  body:     mix(mix(FLAG.white, FLAG.black, 0.03), mix(FLAG.black, FLAG.white, 0.075), 0.16), // 11.4:1
+  green:    mix(FLAG.green, FLAG.white, 0.14),        // primary, 5.4:1 on card
+  green2:   mix(FLAG.green, FLAG.white, 0.28),
+  accent:   mix(FLAG.green, FLAG.white, 0.18),        // fill; dark text on it 6.4:1
+  deep:     mix(mix(FLAG.black, FLAG.white, 0.075), FLAG.black, 0.30),
+  teal:     mix(FLAG.green, FLAG.white, 0.14),        // teal retired -> primary
+  mint:     mix(mix(FLAG.black, FLAG.white, 0.075), FLAG.green, 0.30),
+  blue:     mix(mix(FLAG.black, FLAG.white, 0.075), FLAG.green, 0.22),
+  peach:    mix(mix(FLAG.black, FLAG.white, 0.075), FLAG.red, 0.14),
+  lilac:    mix(mix(FLAG.black, FLAG.white, 0.075), FLAG.green, 0.28),
+  yellow:   mix(mix(FLAG.black, FLAG.white, 0.075), FLAG.red, 0.18),
+  cyan:     mix(mix(FLAG.black, FLAG.white, 0.075), FLAG.green, 0.22),
+  gold:     mix(FLAG.green, FLAG.white, 0.14),        // the lit state, 5.4:1
+  line:     mix(mix(FLAG.black, FLAG.white, 0.075), FLAG.white, 0.16),
+  coral:    mix(FLAG.red, FLAG.white, 0.24),          // destructive, 5.3:1
+  white:    mix(mix(FLAG.black, FLAG.white, 0.075), FLAG.green, 0.16),
+  chevron:  mix(mix(FLAG.white, FLAG.black, 0.03), mix(FLAG.black, FLAG.white, 0.075), 0.48),
+  onAccent: FLAG.white,
+  /* Text on the accent FILL. The fill is a lifted green on dark, so its text
+     has to be dark — the same flip C_DARK makes for the same reason. */
+  onAccentInk: mix(mix(FLAG.black, FLAG.white, 0.075), FLAG.black, 0.18),
+  onHero:   FLAG.white,
+  link:     mix(FLAG.green, FLAG.white, 0.14),        // 5.4:1
+  success:  FLAG.green,                               // fills/dots
+  successInk: mix(FLAG.green, FLAG.white, 0.14),      // 5.4:1
+  heroA:    mix(FLAG.black, FLAG.green, 0.14),
+  heroB:    mix(FLAG.green, FLAG.black, 0.18),        // white on it 5.4:1
+};
+
 /** Brand-derived depth tokens, replacing the old off-palette shadow tints. */
 export const DEPTH = {
   light: {
@@ -376,5 +422,12 @@ export const DEPTH = {
     edge:   alpha(FLAG.white, 0.90),
     veil:   alpha(FLAG.black, 0.035),
     scrim:  alpha(FLAG.black, 0.62),
+  },
+  palestineDark: {
+    shadow: BLACK,
+    soft:   BLACK,
+    edge:   alpha(FLAG.white, 0.10),
+    veil:   alpha(FLAG.white, 0.05),
+    scrim:  alpha(FLAG.black, 0.72),
   },
 } as const;
