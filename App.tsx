@@ -168,30 +168,33 @@ import { clearPreparedQuran, getPreloadState, pauseQuranPreload, refreshPreload,
 /**
  * The three posters.
  *
- * Each exists in four versions — one per theme in each of its two brightnesses
- * — because a poster is part of the theme, not decoration hung on top of it.
- * An indigo poster under the Palestine theme would be the one thing on screen
- * that does not belong to it.
+ * Islamic keeps the artwork it has always had. It is deliberately plain — a
+ * mosque, a prayer card, a Quran — scenery rather than a statement, which is
+ * what the app's own theme wants.
  *
- * In every one the subject sits in the right of the frame and the left is left
- * quiet, because all three are covered by a scrim that runs from near-solid on
- * the left to clear on the right, with the text over the solid end.
+ * Palestine is drawn separately, once per brightness, because a poster is
+ * part of a theme and not decoration hung on top of one. An indigo poster
+ * under the Palestine theme was the one thing on screen that did not belong
+ * to it. Home is the Al-Aqsa compound, Prayer a minaret at the call, Quran an
+ * illuminated page.
+ *
+ * In the Palestine set the subject sits in the right of the frame with the
+ * left left quiet, because all three are covered by a scrim that runs from
+ * near-solid on the left to clear on the right, with the text over the solid
+ * end.
  */
-const SCENE_HOME_ISLAMIC = require('./assets/scene-home-islamic.webp');
-const SCENE_HOME_ISLAMIC_DARK = require('./assets/scene-home-islamic-dark.webp');
+const SCENE_HOME_ISLAMIC = require('./assets/hero-mosque-scene.webp');
+const SCENE_HOME_ISLAMIC_DARK = require('./assets/hero-mosque-scene-dark.webp');
 const SCENE_HOME_PALESTINE = require('./assets/scene-home-palestine.webp');
 const SCENE_HOME_PALESTINE_DARK = require('./assets/scene-home-palestine-dark.webp');
-const SCENE_PRAYER_ISLAMIC = require('./assets/scene-prayer-islamic.webp');
-const SCENE_PRAYER_ISLAMIC_DARK = require('./assets/scene-prayer-islamic-dark.webp');
+const SCENE_PRAYER_ISLAMIC = require('./assets/prayer-card-scene.webp');
+const SCENE_PRAYER_ISLAMIC_DARK = require('./assets/prayer-card-scene-dark.webp');
 const SCENE_PRAYER_PALESTINE = require('./assets/scene-prayer-palestine.webp');
 const SCENE_PRAYER_PALESTINE_DARK = require('./assets/scene-prayer-palestine-dark.webp');
-const SCENE_QURAN_ISLAMIC = require('./assets/scene-quran-islamic.webp');
-const SCENE_QURAN_ISLAMIC_DARK = require('./assets/scene-quran-islamic-dark.webp');
-/* The two Palestine Quran posters are still being drawn. Until they land the
-   Islamic ones stand in, so the slot is never empty and never a wrong colour
-   — merely a borrowed one. */
-const SCENE_QURAN_PALESTINE = SCENE_QURAN_ISLAMIC;
-const SCENE_QURAN_PALESTINE_DARK = SCENE_QURAN_ISLAMIC_DARK;
+const SCENE_QURAN_ISLAMIC = require('./assets/quran-scene.webp');
+const SCENE_QURAN_ISLAMIC_DARK = require('./assets/quran-scene-dark.webp');
+const SCENE_QURAN_PALESTINE = require('./assets/scene-quran-palestine-light.webp');
+const SCENE_QURAN_PALESTINE_DARK = require('./assets/scene-quran-palestine-dark.webp');
 
 type SceneSet = { islamic: any; islamicDark: any; palestine: any; palestineDark: any };
 function pickScene(set: SceneSet, theme: ResolvedTheme) {
@@ -208,8 +211,9 @@ const SCENE_QURAN: SceneSet = { islamic: SCENE_QURAN_ISLAMIC, islamicDark: SCENE
  * The scrim laid over each poster: near-solid on the left where the text goes,
  * clearing to nothing on the right where the artwork shows.
  *
- * These used to be hardcoded indigo, which meant a Palestine poster was still
- * washed indigo on the side you actually read. They follow the theme now.
+ * These were hardcoded indigo, which meant a Palestine poster was still washed
+ * indigo on the side you actually read. They follow the theme now. The Islamic
+ * values are the original ones, unchanged.
  */
 const SCRIM = {
   islamic:      ['rgba(34,27,62,.92)', 'rgba(60,47,101,.54)', 'rgba(77,60,145,.08)'],
