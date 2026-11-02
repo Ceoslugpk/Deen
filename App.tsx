@@ -7,7 +7,8 @@ function ExploreStack(){const subtle=useSubtleTransitions();return <Stack.Naviga
  */
 function PrayerStack(){const subtle=useSubtleTransitions();return <Stack.Navigator screenOptions={{...subtle,headerShown:false}}><Stack.Screen name="Prayer" component={PrayerScreen}/></Stack.Navigator>}
 /** The tools tab: what you calculate, look up, travel for, or record. */
-function ToolsStack(){const subtle=useSubtleTransitions();return <Stack.Navigator screenOptions={{...subtle,headerShown:false}}><Stack.Screen name="ToolsHome" component={ToolsHomeScreen}/><Stack.Screen name="Zakat" component={ZakatScreen}/><Stack.Screen name="Holy site channels" component={HolyChannelsScreen}/><Stack.Screen name="Women" component={WomenHubScreen}/><Stack.Screen name="Istihada" component={IstihadaScreen}/><Stack.Screen name="Ramadan Planner" component={RamadanPlannerScreen}/><Stack.Screen name="These Days" component={TheseDaysScreen}/><Stack.Screen name="Cycle" component={CycleScreen}/><Stack.Screen name="Qada" component={QadaScreen}/><Stack.Screen name="Qada Prayer" component={QadaPrayerScreen}/><Stack.Screen name="Sadaqah" component={SadaqahScreen}/><Stack.Screen name="Journal" component={JournalScreen}/><Stack.Screen name="Women Guides" component={WomenGuidesScreen}/><Stack.Screen name="Privacy Lock" component={PrivacyLockScreen}/><Stack.Screen name="Fasting" component={FastingScreen}/><Stack.Screen name="Weekly Summary" component={WeeklySummaryScreen}/><Stack.Screen name="Qibla" component={QiblaScreen}/><Stack.Screen name="Location Setup" component={LocationSetupScreen}/><Stack.Screen name="Notifications" component={NotificationScreen}/><Stack.Screen name="Salah Tracker" component={SalahTrackerScreen}/><Stack.Screen name="Adhan" component={AdhanScreen}/><Stack.Screen name="Hijri Calendar" component={HijriCalendarScreen}/><Stack.Screen name="Tasbih" component={TasbihScreen}/><Stack.Screen name="Umrah Packing" component={UmrahPackingScreen}/></Stack.Navigator>}
+function ToolsStack(){const subtle=useSubtleTransitions();return <Stack.Navigator screenOptions={{...subtle,headerShown:false}}><Stack.Screen name="ToolsHome" component={ToolsHomeScreen}/><Stack.Screen name="Zakat" component={ZakatScreen}/><Stack.Screen name="Holy site channels" component={HolyChannelsScreen}/><Stack.Screen name="Women" component={WomenHubScreen}/><Stack.Screen name="Istihada" component={IstihadaScreen}/><Stack.Screen name="Ramadan Planner" component={RamadanPlannerScreen}/><Stack.Screen name="These Days" component={TheseDaysScreen}/><Stack.Screen name="Cycle" component={CycleScreen}/><Stack.Screen name="Qada" component={QadaScreen}/><Stack.Screen name="Qada Prayer" component={QadaPrayerScreen}/><Stack.Screen name="Sadaqah" component={SadaqahScreen}/>
+      <Stack.Screen name="Sunnah Prayers" component={SunnahScreen}/><Stack.Screen name="Journal" component={JournalScreen}/><Stack.Screen name="Women Guides" component={WomenGuidesScreen}/><Stack.Screen name="Privacy Lock" component={PrivacyLockScreen}/><Stack.Screen name="Fasting" component={FastingScreen}/><Stack.Screen name="Weekly Summary" component={WeeklySummaryScreen}/><Stack.Screen name="Qibla" component={QiblaScreen}/><Stack.Screen name="Location Setup" component={LocationSetupScreen}/><Stack.Screen name="Notifications" component={NotificationScreen}/><Stack.Screen name="Salah Tracker" component={SalahTrackerScreen}/><Stack.Screen name="Adhan" component={AdhanScreen}/><Stack.Screen name="Hijri Calendar" component={HijriCalendarScreen}/><Stack.Screen name="Tasbih" component={TasbihScreen}/><Stack.Screen name="Umrah Packing" component={UmrahPackingScreen}/></Stack.Navigator>}
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -173,6 +174,7 @@ import { NAMES_MEANING_AR } from './src/content/namesAr';
 import { countMuslimNames, findMuslimNames, letterCounts, loadMuslimNames, type MuslimName, type NameFilter } from './src/services/muslimNames';
 import { currentPhrase, dhikrMeaning, DHIKR_PHRASES, loadTasbihState, removeTasbihSession, resetTasbihCount, saveTasbihSession, setTasbihGoal, setTasbihPhrase, tasbihDays, tasbihLifetime, TASBIH_GOALS, tapTasbih, todayTotal, useTasbih } from './src/services/tasbihService';
 import { formatSadaqah, loadSadaqahState, logSadaqah, removeSadaqah, resetSadaqah, sadaqahSummary, setSadaqahCurrency, useSadaqah } from './src/services/sadaqahService';
+import { loadSunnahState, resetSunnah, sunnahDayKey, sunnahForDay, sunnahHistory, sunnahSummary, SUNNAH_ORDER, SUNNAH_PRAYERS, toggleSunnah, useSunnah } from './src/services/sunnahService';
 import { journalSummary, loadJournalState, removeJournalEntry, resetJournal, saveJournalEntry, useJournal } from './src/services/journalService';
 import { Dua, DuaCategory } from './src/services/api';
 import { clearPreparedQuran, getPreloadState, pauseQuranPreload, refreshPreload, resumeSavedQuranPreload, startQuranPreload, subscribePreload } from './src/services/quranPreload';
@@ -1805,6 +1807,7 @@ const TOOL_GROUPS: ToolGroup[] = [
     { title: 'Fasting', caption: 'Ramadan, voluntary and missed fasts', route: 'Fasting' },
     { title: 'Zakat', caption: 'Gold, silver, cash and investments', route: 'Zakat' },
     { title: 'Sadaqah', caption: 'Voluntary giving, recorded privately', route: 'Sadaqah' },
+    { title: 'Sunnah Prayers', caption: 'Witr, Duha and Tahajjud, kept apart from the five', route: 'Sunnah Prayers' },
     { title: 'Tasbih', caption: 'A quiet, tactile dhikr counter', route: 'Tasbih' },
     { title: 'Journal', caption: 'A private place to reflect', route: 'Journal' },
     { title: 'Weekly Summary', caption: 'Your past seven days at a glance', route: 'Weekly Summary' },
@@ -1896,6 +1899,8 @@ const DAY_TOOL_POOL: DayTool[] = [
     open: (n) => n.navigate('Tools', { screen: 'Sadaqah', initial: false }) },
   { id: 'journal', label: 'Journal', icon: 'Journal',
     open: (n) => n.navigate('Tools', { screen: 'Journal', initial: false }) },
+  { id: 'sunnah', label: 'Sunnah Prayers', icon: 'Sunnah Prayers',
+    open: (n) => n.navigate('Tools', { screen: 'Sunnah Prayers', initial: false }) },
   { id: 'qada', label: 'Qada Fasts', icon: 'Qada Fasts',
     open: (n) => n.navigate('Tools', { screen: 'Qada', initial: false }) },
   { id: 'hijri', label: 'Hijri Calendar', icon: 'Hijri Calendar',
@@ -5982,6 +5987,9 @@ function SalahTrackerScreen({ navigation }: any) {
   const { rtl } = useLanguage(); const T = (text: string) => tx(rtl, text);
   const [history, setHistory] = useState<Record<string, string[]>>({});
   const [busy, setBusy] = useState(true);
+  /* The day whose detail is showing under the map. Tapping a square opens it,
+     tapping the same square again closes it. */
+  const [openDay, setOpenDay] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setBusy(true);
@@ -6054,6 +6062,16 @@ function SalahTrackerScreen({ navigation }: any) {
     });
   }, [rtl]);
 
+  /* Correcting a day you forgot to mark. This writes straight to the same
+     record the Prayer screen uses, so a correction here is a correction there
+     and the two never disagree about what happened. */
+  const toggleDay = (day: string, prayer: string) => {
+    const current = history[day] || [];
+    const next = current.includes(prayer) ? current.filter((p) => p !== prayer) : [...current, prayer];
+    setHistory((prev) => ({ ...prev, [day]: next }));
+    void savePrayerCompletion(day, next).then(() => setOpenDay(null));
+  };
+
   return <Page><ToolBar title={T('Salah Tracker')} navigation={navigation} />
     <ScrollView keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
       <Text style={s.intro}>{T('Every day you have marked, going back as far as your record does. A square is a day; the deeper the gold, the more of the five you prayed.')}</Text>
@@ -6097,7 +6115,17 @@ function SalahTrackerScreen({ navigation }: any) {
                         {week.map((day) => {
                           const n = counted(day);
                           const future = new Date(`${day}T00:00:00`) > new Date();
-                          return <View key={day} style={[s.trackCell, { backgroundColor: future ? 'transparent' : heatColour(n) }]} />;
+                          if (future) return <View key={day} style={[s.trackCell, { backgroundColor: 'transparent' }]} />;
+                          const open = openDay === day;
+                          return (
+                            <Pressable
+                              key={day}
+                              onPress={() => setOpenDay(open ? null : day)}
+                              accessibilityRole="button"
+                              accessibilityLabel={T('Day') + ' ' + day}
+                              style={[s.trackCell, { backgroundColor: heatColour(n) }, open && s.trackCellOpen]}
+                            />
+                          );
                         })}
                       </View>
                     ))}
@@ -6114,9 +6142,149 @@ function SalahTrackerScreen({ navigation }: any) {
             ))}
             <Text style={s.trackLegendText}>{T('More')}</Text>
           </View>
+
+          {openDay ? (
+            <View style={s.dataCard}>
+              <Text style={s.preferenceLabel}>{openDay}</Text>
+              <View style={s.memChipWrap}>
+                {PRAYER_FIVE.map((prayer) => {
+                  const done = (history[openDay] || []).includes(prayer);
+                  return (
+                    <Tactile
+                      key={prayer}
+                      onPress={() => toggleDay(openDay, prayer)}
+                      accessibilityLabel={`${prayer}${done ? ' ' + T('done') : ''}`}
+                      style={[s.memChip, done && s.choicePillActive]}
+                    >
+                      <Text style={[s.choiceText, done && s.choiceTextActive]}>{T(prayer)}</Text>
+                    </Tactile>
+                  );
+                })}
+              </View>
+              <Text style={s.meta}>{rtl
+                ? 'اضغط لتصحيح هذا اليوم.'
+                : 'Tap to correct this day.'}</Text>
+            </View>
+          ) : (
+            <Text style={s.meta}>{rtl
+              ? 'اضغط أي مربع لعرض تفاصيل ذلك اليوم.'
+              : 'Tap any square to see that day.'}</Text>
+          )}
         </>
       )}
     </ScrollView></Page>;
+}
+
+function SunnahScreen({ navigation }: any) {
+  const { rtl } = useLanguage();
+  const T = (text: string) => tx(rtl, text);
+  const sunnah = useSunnah();
+  const summary = sunnahSummary(sunnah.days);
+  const history = useMemo(() => sunnahHistory(sunnah.days, 60), [sunnah.days]);
+  const todayKey = sunnahDayKey();
+  const todays = sunnahForDay(sunnah.days, todayKey);
+
+  const clear = () => Alert.alert(
+    T('Clear this record?'),
+    T('Removes every sunnah prayer you have marked. Your five daily prayers are kept in their own record and are not touched.'),
+    [
+      { text: T('Cancel'), style: 'cancel' },
+      { text: T('Clear'), style: 'destructive', onPress: () => void resetSunnah() },
+    ],
+  );
+
+  return (
+    <Page>
+      <ToolBar title={T('Sunnah Prayers')} navigation={navigation} />
+      <ScrollView {...SCROLL} contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
+        <ToolGraphic tool="Sunnah Prayers" size={87} />
+        <Text style={s.dataTitle}>{T('Sunnah prayers')}</Text>
+        <Text style={s.intro}>{T('Witr, Duha and Tahajjud are voluntary, so they are kept apart from the five. Counting them together would flatter the obligation and turn these into a task.')}</Text>
+
+        <LinearGradient colors={[C.heroA, C.green]} style={s.summaryScore}>
+          <View>
+            <Text style={s.nextCardLabel}>{T('PRAYED')}</Text>
+            <Text style={s.zakatNo}>{summary.total}</Text>
+            <Text style={s.weekScoreBody}>{summary.daysKept} {rtl ? 'يوم' : 'days'}</Text>
+          </View>
+          <View style={{ alignItems: 'flex-end' }}>
+            <Text style={s.nextCardLabel}>{T('ALL THREE')}</Text>
+            <Text style={s.zakatNo}>{summary.fullDays}</Text>
+            <Text style={s.weekScoreBody}>{rtl ? 'أيام كاملة' : 'full days'}</Text>
+          </View>
+        </LinearGradient>
+
+        <Section title={T('Today')} />
+        <View style={s.dataCard}>
+          {SUNNAH_PRAYERS.map((prayer) => {
+            const done = todays.includes(prayer);
+            const stat = summary.per[prayer];
+            return (
+              <Tactile
+                key={prayer}
+                onPress={() => void toggleSunnah(prayer, todayKey)}
+                accessibilityLabel={`${prayer}${done ? ' ' + T('done') : ''}`}
+                style={[s.memChip, done && s.choicePillActive]}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <View style={[s.trackCell, { backgroundColor: done ? C.green : C.line }]} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.preferenceLabel}>{T(prayer)}</Text>
+                    <Text style={s.meta}>{T(SUNNAH_ORDER[prayer])}</Text>
+                  </View>
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={s.trackStatValue}>{stat.streak}</Text>
+                    <Text style={s.trackStatLabel}>{rtl ? 'يوم' : 'days'}</Text>
+                  </View>
+                </View>
+              </Tactile>
+            );
+          })}
+        </View>
+
+        <Text style={s.meta}>{rtl
+          ? 'اضغط للتبديل. يُحسب كل عدد متتالٍ على حدة.'
+          : 'Tap to toggle. Each run is counted on its own.'}</Text>
+
+        <Section title={T('So far')} />
+        <View style={s.trackStats}>
+          {SUNNAH_PRAYERS.map((prayer) => (
+            <View style={s.trackStat} key={prayer}>
+              <Text style={s.trackStatValue}>{summary.per[prayer].count}</Text>
+              <Text style={s.trackStatLabel}>{T(prayer)}</Text>
+            </View>
+          ))}
+        </View>
+
+        <Section title={T('Recent days')} />
+        {!history.length ? (
+          <View style={s.inboxEmpty}>
+            <Text style={s.emptyTitle}>{T('Nothing marked yet')}</Text>
+            <Text style={s.emptyBody}>{T('Mark one above and this day will appear here.')}</Text>
+          </View>
+        ) : (
+          history.map(({ key, prayers }) => (
+            <View style={s.dataCard} key={key}>
+              <Text style={s.preferenceLabel}>{key}</Text>
+              <View style={s.memChipWrap}>
+                {SUNNAH_PRAYERS.map((p) => (
+                  <View key={p} style={[s.memChip, prayers.includes(p) && s.choicePillActive]}>
+                    <Text style={[s.choiceText, prayers.includes(p) && s.choiceTextActive]}>{T(p)}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          ))
+        )}
+
+        <View style={s.actionRow}>
+          <Tactile onPress={clear} style={s.primary}>
+            <Text style={s.primaryText}>{T('Clear this record')}</Text>
+          </Tactile>
+        </View>
+      </ScrollView>
+    </Page>
+  );
 }
 
 function NotificationInboxScreen({navigation}:any){
@@ -11524,7 +11692,7 @@ async function reloadAllState() {
     loadOfflineSetup(), loadAudioSettings(), loadHadithState(), loadTasbihState(),
     loadDownloads(), loadActivity(), loadFastingState(), loadJourneys(),
     loadWomensState(), loadZakatState(), loadLockConfig(), loadMemorization(),
-    loadReports(), loadKhatamState(), loadQadaState(), loadSadaqahState(), loadJournalState(),
+    loadReports(), loadKhatamState(), loadQadaState(), loadSadaqahState(), loadJournalState(), loadSunnahState(),
   ]).catch(() => undefined);
 }
 
@@ -11831,7 +11999,7 @@ mushafPageNoText:{color:C.green,fontFamily:'Newsreader_700Bold',fontSize:16},mus
  profileName:{color:C.onAccent,fontSize:18,fontFamily:'DMSans_700Bold'},profileSub:{color:C.onHero,fontSize:10,marginTop:4},privacyHero:{borderRadius:24,padding:20,flexDirection:'row',alignItems:'center',gap:12,...shadow},privacyPoints:{flexDirection:'row',gap:8,marginTop:12},privacyPoint:{flex:1,backgroundColor:C.card,borderRadius:16,paddingVertical:12,alignItems:'center',gap:4,borderWidth:1,borderColor:C.line},privacyPointText:{color:C.ink,fontSize:10,fontFamily:'DMSans_700Bold',textAlign:'center'},preferencePanel:{backgroundColor:C.card,borderRadius:24,padding:16,borderWidth:1,borderColor:C.line,...surface},preferenceHead:{flexDirection:'row',alignItems:'center',gap:12,marginBottom:16},prefIconTile:{width:54,height:54,borderRadius:18,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},choiceGrid:{flexDirection:'row',flexWrap:'wrap',gap:8},choiceRow:{flexDirection:'row',gap:8},
   hadithPick:{marginTop:4,marginBottom:20},hadithSearch:{marginBottom:0},hadithResults:{marginBottom:10},
   nameShare:{width:40,height:40,borderRadius:20,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,flexShrink:0},
-  trackGrid:{flexDirection:'row',gap:3,alignItems:'flex-start'},trackWeek:{gap:3},trackCell:{width:13,height:13,borderRadius:3},
+  trackGrid:{flexDirection:'row',gap:3,alignItems:'flex-start'},trackWeek:{gap:3},trackCell:{width:13,height:13,borderRadius:3},trackCellOpen:{borderWidth:2,borderColor:C.ink},
   trackStats:{flexDirection:'row',flexWrap:'wrap',gap:10,marginBottom:18},trackStat:{flex:1,minWidth:88,backgroundColor:C.card,borderRadius:16,padding:12,borderWidth:1,borderColor:C.line},
   trackStatValue:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:22},trackStatLabel:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:11,marginTop:2},
   trackLegend:{flexDirection:'row',alignItems:'center',gap:6,marginTop:14},trackLegendText:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:11},
