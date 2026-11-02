@@ -1067,7 +1067,11 @@ const TOOL_IMAGES:Record<string,any>={
   Backup:require('./assets/tool-icons/backup.png'),
   Storage:require('./assets/tool-icons/storage.png'),
   Corrections:require('./assets/tool-icons/my-reports.png'),
-  'My Reports':require('./assets/tool-icons/my-reports.png')
+  'My Reports':require('./assets/tool-icons/my-reports.png'),
+  /* The biometric row on the Lock and PIN screen. It was showing the
+     Privacy lock artwork because that is what both rows on that screen
+     pointed at; this one now has its own. */
+  'Biometric Unlock':require('./assets/tool-icons/biometric-unlock.png')
 };
 /** The same icons, re-toned for the dark palette. */
 const TOOL_IMAGES_DARK:Record<string,any>={
@@ -1174,7 +1178,8 @@ const TOOL_IMAGES_DARK:Record<string,any>={
   Backup:require('./assets/tool-icons/backup-dark.png'),
   Storage:require('./assets/tool-icons/storage-dark.png'),
   Corrections:require('./assets/tool-icons/my-reports-dark.png'),
-  'My Reports':require('./assets/tool-icons/my-reports-dark.png')
+  'My Reports':require('./assets/tool-icons/my-reports-dark.png'),
+  'Biometric Unlock':require('./assets/tool-icons/biometric-unlock-dark.png')
 };
 function ToolGraphic({tool,size=64}:{tool:string;size?:number}){const{dark}=useTheme();const image=dark?(TOOL_IMAGES_DARK[tool]||TOOL_IMAGES[tool]):TOOL_IMAGES[tool];const enter=useRef(new Animated.Value(.78)).current;const fade=useRef(new Animated.Value(0)).current;useEffect(()=>{Animated.parallel([Animated.spring(enter,{toValue:1,friction:6,tension:75,useNativeDriver:true}),Animated.timing(fade,{toValue:1,duration:350,useNativeDriver:true})]).start()},[]);return <Animated.View accessibilityElementsHidden style={[s.graphicFrame,{width:size,height:size,opacity:fade,transform:[{scale:enter}]}]}>{image?<Image source={image} resizeMode="contain" style={{width:size-6,height:size-6}}/>:ico('sparkles-outline',size*.48,C.green)}</Animated.View>}
 /** Hadith bodies arrive with markup; the card shows them as plain text. */
@@ -8440,7 +8445,7 @@ function PrivacyLockScreen({ navigation }: any) {
             <View style={{ direction: 'ltr' } as any}><Switch accessibilityLabel={T('Lock the women’s area')} value={config.required} onValueChange={(value) => void updateLockSettings({ required: value })} trackColor={{ true: C.green }} /></View>
           </View>
           <View style={[s.setting, ]}>
-            <ToolGraphic tool="Privacy lock" size={49} />
+            <ToolGraphic tool="Biometric Unlock" size={49} />
             <View style={{ flex: 1, marginHorizontal: 12 }}><Text style={s.settingName}>{info.available ? `Use ${info.label}` : T('Biometric unlock')}</Text><Text style={s.meta}>{info.available ? (info.enrolled ? T('Set up on this device') : T('Not enrolled on this device yet')) : T('This device cannot use face or fingerprint unlock, so the PIN is used')}</Text></View>
             <View style={{ direction: 'ltr' } as any}><Switch accessibilityLabel={T('Use biometric unlock')} disabled={!info.available} value={config.biometric && info.available} onValueChange={(value) => void updateLockSettings({ biometric: value })} trackColor={{ true: C.green }} /></View>
           </View>
