@@ -1055,7 +1055,19 @@ const TOOL_IMAGES:Record<string,any>={
   'Prayer Reminders':require('./assets/tool-icons/prayer-reminders.png'),
   Istihada:require('./assets/tool-icons/istihada.png'),
   'Ramadan Planner':require('./assets/tool-icons/ramadan-planner.png'),
-  'These Days':require('./assets/tool-icons/these-days.png')
+  'These Days':require('./assets/tool-icons/these-days.png'),
+  /* The Settings rows. Storage, Backup and Corrections had no entry at all
+     and were quietly falling back to the generic glyph - on the row and on
+     their own screens. The other two were borrowing another tool's artwork:
+     Data Sources was showing the Quran icon, and Quran Reading shared a file
+     with Quran Arabic. Each row now owns its own. 'My Reports' is the row's
+     label; 'Corrections' is the key the row and its screen both resolve. */
+  'Data Sources':require('./assets/tool-icons/data-sources.png'),
+  'Quran Reading':require('./assets/tool-icons/quran-reading.png'),
+  Backup:require('./assets/tool-icons/backup.png'),
+  Storage:require('./assets/tool-icons/storage.png'),
+  Corrections:require('./assets/tool-icons/my-reports.png'),
+  'My Reports':require('./assets/tool-icons/my-reports.png')
 };
 /** The same icons, re-toned for the dark palette. */
 const TOOL_IMAGES_DARK:Record<string,any>={
@@ -1156,7 +1168,13 @@ const TOOL_IMAGES_DARK:Record<string,any>={
   'Umrah Resources':require('./assets/tool-icons/umrah-resources-dark.png'),
   'Madinah Live':require('./assets/tool-icons/madinah-live-dark.png'),
   'Makkah Live':require('./assets/tool-icons/makkah-live-dark.png'),
-  'Salah Tracker':require('./assets/tool-icons/salah-tracker-dark.png')
+  'Salah Tracker':require('./assets/tool-icons/salah-tracker-dark.png'),
+  'Data Sources':require('./assets/tool-icons/data-sources-dark.png'),
+  'Quran Reading':require('./assets/tool-icons/quran-reading-dark.png'),
+  Backup:require('./assets/tool-icons/backup-dark.png'),
+  Storage:require('./assets/tool-icons/storage-dark.png'),
+  Corrections:require('./assets/tool-icons/my-reports-dark.png'),
+  'My Reports':require('./assets/tool-icons/my-reports-dark.png')
 };
 function ToolGraphic({tool,size=64}:{tool:string;size?:number}){const{dark}=useTheme();const image=dark?(TOOL_IMAGES_DARK[tool]||TOOL_IMAGES[tool]):TOOL_IMAGES[tool];const enter=useRef(new Animated.Value(.78)).current;const fade=useRef(new Animated.Value(0)).current;useEffect(()=>{Animated.parallel([Animated.spring(enter,{toValue:1,friction:6,tension:75,useNativeDriver:true}),Animated.timing(fade,{toValue:1,duration:350,useNativeDriver:true})]).start()},[]);return <Animated.View accessibilityElementsHidden style={[s.graphicFrame,{width:size,height:size,opacity:fade,transform:[{scale:enter}]}]}>{image?<Image source={image} resizeMode="contain" style={{width:size-6,height:size-6}}/>:ico('sparkles-outline',size*.48,C.green)}</Animated.View>}
 /** Hadith bodies arrive with markup; the card shows them as plain text. */
@@ -9680,7 +9698,7 @@ function SettingsScreen({navigation}:any){
         </View>
         <Tactile accessibilityRole="button" accessibilityLabel={T('Quran reading')}
           onPress={() => navigation.navigate('Reader Settings')} style={s.setting}>
-          <ToolGraphic tool="Arabic Quran" size={49} />
+          <ToolGraphic tool="Quran Reading" size={49} />
           <View style={{ flex: 1, marginHorizontal: 12 }}>
             <Text style={s.settingName}>{rtl ? 'قراءة القرآن' : 'Quran reading'}</Text>
             <Text style={s.meta}>{scriptLabel} · {translationLabel}</Text>
@@ -9736,7 +9754,7 @@ function SettingsScreen({navigation}:any){
       <Section title={rtl ? 'عن التطبيق' : 'About'} />
       <Pressable onPress={() => navigation.navigate('Data sources')} style={s.settings} accessibilityRole="button" accessibilityLabel={T('Data sources')}>
         <View style={s.setting}>
-          <ToolGraphic tool="Quran" size={49} />
+          <ToolGraphic tool="Data Sources" size={49} />
           <View style={{ flex: 1, marginHorizontal: 12 }}>
             <Text style={s.settingName}>{rtl ? 'مصادر البيانات' : 'Data sources'}</Text>
             <Text style={s.meta}>{rtl ? 'من أين يأتي نص القرآن والمواقيت والحديث والصوت' : 'Where the Quran text, prayer times, hadith and audio come from'}</Text>
