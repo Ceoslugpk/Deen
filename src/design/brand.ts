@@ -126,6 +126,11 @@ export const C_LIGHT: Palette = {
   yellow:   mix(BRAND.pearl, BRAND.radiantGold, 0.16),
   cyan:     BRAND.mist,
   gold:     BRAND.antiqueGold,
+  /* The surah number sits in a small filled medallion. On a gold ground the
+     number has to be dark: white on antiqueGold is only 2.4:1, well under
+     the 4.5:1 small text needs. This pairing measures 4.55:1. */
+  surahBadge:    BRAND.antiqueGold,
+  surahBadgeInk: '#3A2E0F',
   line:     BRAND.mist,
   coral:    BRAND.bronze,                             // destructive (Bronze)
   white:    WHITE,                                    // 100% lift of Pearl
@@ -162,6 +167,12 @@ export const C_DARK: Palette = {
   yellow:   mix(BRAND.midnightInk, BRAND.antiqueGold, 0.18),
   cyan:     mix(BRAND.midnightInk, BRAND.royalIndigo, 0.22),
   gold:     BRAND.radiantGold,
+  /* Lifted a little off Radiant Gold on purpose. The bare #DFB163 is one of
+     the legacy literal hexes the sheet re-maps, and in dark mode that
+     re-map drives it down to a muddy brown. This value is not on that
+     list, so the medallion stays gold on the dark ground. */
+  surahBadge:    mix(BRAND.radiantGold, BRAND.pearl, 0.10),   // #E2B871
+  surahBadgeInk: '#3A2E0F',                                  // 7.18:1
   line:     mix(BRAND.midnightInk, BRAND.lavender, 0.16),
   coral:    mix(BRAND.bronze, BRAND.radiantGold, 0.45), // 5.3:1 on card
   white:    mix(BRAND.midnightInk, BRAND.lavender, 0.10),
@@ -344,6 +355,11 @@ export const C_PALESTINE: Palette = {
   yellow:   mix(FLAG.white, FLAG.red, 0.10),
   cyan:     mix(FLAG.white, FLAG.green, 0.10),
   gold:     mix(FLAG.green, FLAG.black, 0.14),         // the lit state, 4.6:1
+  /* The Palestine palette is the four flag colours and nothing else, so the
+     medallion is green rather than gold. Taken down toward black so a white
+     number clears 4.5:1 on it — the pure flag green is only 3.83:1. */
+  surahBadge:    mix(FLAG.green, FLAG.black, 0.14),
+  surahBadgeInk: FLAG.white,                         // 4.96:1
   line:     mix(FLAG.white, FLAG.black, 0.12),
   /* Destructive is a red of its own, taken well down toward black, so that
      "Remove" never reads as the same colour as the button next to it.
@@ -392,6 +408,11 @@ export const C_PALESTINE_DARK: Palette = {
   yellow:   mix(mix(FLAG.black, FLAG.white, 0.075), FLAG.red, 0.18),
   cyan:     mix(mix(FLAG.black, FLAG.white, 0.075), FLAG.green, 0.22),
   gold:     mix(FLAG.green, FLAG.white, 0.14),        // the lit state, 5.4:1
+  /* Dark mode uses the same green as light rather than lifting it. The lifted
+     green is 3.16:1 against white and nothing clears 4.5:1 on it, so both
+     modes take the darker green and keep the white number. */
+  surahBadge:    mix(FLAG.green, FLAG.black, 0.14),
+  surahBadgeInk: FLAG.white,                         // 4.96:1
   line:     mix(mix(FLAG.black, FLAG.white, 0.075), FLAG.white, 0.16),
   /* Destructive on dark is lifted rather than taken down, so it reads on the
      black ground — and it stays clear of the button red either way. */

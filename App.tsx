@@ -435,10 +435,13 @@ function remapStyles(created: Record<string, any>): Record<string, any> {
         next[prop] = arabicFontOverride;
       }
       if (themeDark && prop === 'color' && typeof next[prop] === 'string' && /^#[0-9a-fA-F]{6}$/.test(next[prop])
-          && next[prop] !== C.onAccentInk) {
+          && next[prop] !== C.onAccentInk && next[prop] !== C.surahBadgeInk) {
         /* `onAccentInk` is text sitting on the accent fill, which rises to a
            light Lavender on dark — so this is the one colour the lift must
-           leave dark, or the button's label goes pale on its own button. */
+           leave dark, or the button's label goes pale on its own button.
+           `surahBadgeInk` is the same case: a dark numeral on a gold
+           medallion, not on the card. Left to the lift it would go cream on
+           gold, which is unreadable. */
         const [h, sat, l] = hexToHsl(next[prop]);
         if (l < 0.62) next[prop] = snapToBrand(hslToHex(h, Math.min(sat, 0.35), 0.84));
       }
@@ -2439,7 +2442,7 @@ function SurahRow({ chapter, onOpen, hifz }: {
         declared here or the number, the name and the Arabic stack up rather
         than sitting side by side. */}
     <View style={s.surahRowInner}>
-      <View style={s.surahNum}><Text style={s.surahNumText}>{chapter.id}</Text></View>
+      <View style={s.surahMedal}><Text style={s.surahMedalText}>{chapter.id}</Text></View>
       <View style={{ flex: 1 }}>
         <Text style={s.surahName} numberOfLines={1}>{chapter.name_simple}</Text>
         <Text style={s.meta} numberOfLines={1}>
@@ -4287,7 +4290,7 @@ function MemorizeHubScreen({ navigation }: any) {
       </Tactile>
       {working.length ? <View style={s.settings}>
         {working.map((chapter) => <Pressable key={chapter.id} onPress={() => open(chapter.id, chapter.name_simple)} style={s.memRow}>
-          <View style={s.surahNum}><Text style={s.surahNumText}>{chapter.id}</Text></View>
+          <View style={s.surahMedal}><Text style={s.surahMedalText}>{chapter.id}</Text></View>
           <View style={s.memRowMain}>
             <Text style={s.memKey}>{chapter.name_simple}</Text>
             <Text style={s.meta}>{T((hifz[chapter.id] || 'not-started').replace('-', ' '))}</Text>
@@ -11884,7 +11887,14 @@ surahChipMadani:{backgroundColor:mix(BRAND.pearl,BRAND.radiantGold,.14),borderCo
 surahChipTextMakki:{color:C.green},
 surahChipTextMadani:{color:BRAND.bronze},
 surahArWrap:{alignItems:'flex-end',justifyContent:'center',paddingStart:4},surahRight:{alignItems:'flex-end',justifyContent:'center',gap:5},surahRing:{width:17,height:17,borderRadius:9,backgroundColor:C.gold,alignItems:'center',justifyContent:'center',marginBottom:3},surahRingHalf:{backgroundColor:'transparent',borderWidth:1.6,borderColor:C.gold},surahRingDot:{width:6,height:6,borderRadius:3,backgroundColor:C.gold},
-surahCard:{width:'100%',minHeight:64,backgroundColor:C.card,borderRadius:16,borderWidth:1,borderColor:C.line,paddingHorizontal:13,paddingVertical:9,...surface},surahRowInner:{flex:1,flexDirection:'row',alignItems:'center',gap:11},surahPlace:{color:C.muted,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.2,textTransform:'uppercase',marginTop:SPACE.xs},surahNum:{width:36,height:36,borderRadius:12,backgroundColor:C.mint,borderWidth:1,borderColor:C.line,alignItems:'center',justifyContent:'center'},surahNumText:{color:C.green,fontSize:13,fontFamily:'Newsreader_700Bold'},surahName:{color:C.ink,fontSize:14.5,fontFamily:'DMSans_700Bold'},surahAr:{color:C.green,fontSize:20,fontFamily:'KFGQPCUthmanicHafs'},
+surahCard:{width:'100%',minHeight:64,backgroundColor:C.card,borderRadius:16,borderWidth:1,borderColor:C.line,paddingHorizontal:13,paddingVertical:9,...surface},surahRowInner:{flex:1,flexDirection:'row',alignItems:'center',gap:11},surahPlace:{color:C.muted,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.2,textTransform:'uppercase',marginTop:SPACE.xs},surahNum:{width:36,height:36,borderRadius:12,backgroundColor:C.mint,borderWidth:1,borderColor:C.line,alignItems:'center',justifyContent:'center'},
+  /* The surah number as a small filled medallion. The fill and the number are
+     a matched pair - on a gold ground the numeral has to be dark, because
+     white on gold is 2.4:1 and the number is small text. The Khatam screen
+     reuses surahNum for its cycle count, which is not a surah, so this is a
+     separate token rather than a change to that one. */
+  surahMedal:{width:36,height:36,borderRadius:12,backgroundColor:C.surahBadge,borderWidth:1,borderColor:C.surahBadge,alignItems:'center',justifyContent:'center'},
+  surahMedalText:{color:C.surahBadgeInk,fontSize:13,fontFamily:'Newsreader_700Bold'},surahNumText:{color:C.green,fontSize:13,fontFamily:'Newsreader_700Bold'},surahName:{color:C.ink,fontSize:14.5,fontFamily:'DMSans_700Bold'},surahAr:{color:C.green,fontSize:20,fontFamily:'KFGQPCUthmanicHafs'},
  readerModes:{flexDirection:'row',gap:12,marginTop:12},readerMode:{flex:1,minHeight:56,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:8,backgroundColor:C.white,borderRadius:20,borderWidth:1,borderColor:C.line},readerModeActive:{backgroundColor:C.mint,borderColor:C.line},readerModeText:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:11},readerBar:{height:56,flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingHorizontal:8,borderBottomWidth:1,borderColor:C.line},surahStep:{width:32,height:32,alignItems:'center',justifyContent:'center',marginHorizontal:2},/* Hidden off the top of the screen, but not transparent.
 
      The capture reads the view back off the GPU, and a view at opacity 0 is
