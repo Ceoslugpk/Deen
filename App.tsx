@@ -7,7 +7,7 @@ function ExploreStack(){const subtle=useSubtleTransitions();return <Stack.Naviga
  */
 function PrayerStack(){const subtle=useSubtleTransitions();return <Stack.Navigator screenOptions={{...subtle,headerShown:false}}><Stack.Screen name="Prayer" component={PrayerScreen}/></Stack.Navigator>}
 /** The tools tab: what you calculate, look up, travel for, or record. */
-function ToolsStack(){const subtle=useSubtleTransitions();return <Stack.Navigator screenOptions={{...subtle,headerShown:false}}><Stack.Screen name="ToolsHome" component={ToolsHomeScreen}/><Stack.Screen name="Zakat" component={ZakatScreen}/><Stack.Screen name="Holy site channels" component={HolyChannelsScreen}/><Stack.Screen name="Women" component={WomenHubScreen}/><Stack.Screen name="Istihada" component={IstihadaScreen}/><Stack.Screen name="Ramadan Planner" component={RamadanPlannerScreen}/><Stack.Screen name="These Days" component={TheseDaysScreen}/><Stack.Screen name="Cycle" component={CycleScreen}/><Stack.Screen name="Qada" component={QadaScreen}/><Stack.Screen name="Women Guides" component={WomenGuidesScreen}/><Stack.Screen name="Privacy Lock" component={PrivacyLockScreen}/><Stack.Screen name="Fasting" component={FastingScreen}/><Stack.Screen name="Weekly Summary" component={WeeklySummaryScreen}/><Stack.Screen name="Qibla" component={QiblaScreen}/><Stack.Screen name="Location Setup" component={LocationSetupScreen}/><Stack.Screen name="Notifications" component={NotificationScreen}/><Stack.Screen name="Salah Tracker" component={SalahTrackerScreen}/><Stack.Screen name="Adhan" component={AdhanScreen}/><Stack.Screen name="Hijri Calendar" component={HijriCalendarScreen}/><Stack.Screen name="Tasbih" component={TasbihScreen}/><Stack.Screen name="Umrah Packing" component={UmrahPackingScreen}/></Stack.Navigator>}
+function ToolsStack(){const subtle=useSubtleTransitions();return <Stack.Navigator screenOptions={{...subtle,headerShown:false}}><Stack.Screen name="ToolsHome" component={ToolsHomeScreen}/><Stack.Screen name="Zakat" component={ZakatScreen}/><Stack.Screen name="Holy site channels" component={HolyChannelsScreen}/><Stack.Screen name="Women" component={WomenHubScreen}/><Stack.Screen name="Istihada" component={IstihadaScreen}/><Stack.Screen name="Ramadan Planner" component={RamadanPlannerScreen}/><Stack.Screen name="These Days" component={TheseDaysScreen}/><Stack.Screen name="Cycle" component={CycleScreen}/><Stack.Screen name="Qada" component={QadaScreen}/><Stack.Screen name="Qada Prayer" component={QadaPrayerScreen}/><Stack.Screen name="Women Guides" component={WomenGuidesScreen}/><Stack.Screen name="Privacy Lock" component={PrivacyLockScreen}/><Stack.Screen name="Fasting" component={FastingScreen}/><Stack.Screen name="Weekly Summary" component={WeeklySummaryScreen}/><Stack.Screen name="Qibla" component={QiblaScreen}/><Stack.Screen name="Location Setup" component={LocationSetupScreen}/><Stack.Screen name="Notifications" component={NotificationScreen}/><Stack.Screen name="Salah Tracker" component={SalahTrackerScreen}/><Stack.Screen name="Adhan" component={AdhanScreen}/><Stack.Screen name="Hijri Calendar" component={HijriCalendarScreen}/><Stack.Screen name="Tasbih" component={TasbihScreen}/><Stack.Screen name="Umrah Packing" component={UmrahPackingScreen}/></Stack.Navigator>}
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -106,6 +106,16 @@ import {
 } from './src/services/offlinePlan';
 import { rememberCity, searchCities, searchLocalCities, type CityResult } from './src/services/cities';
 import { loadDuaCategories, loadDuas } from './src/services/duaService';
+import {
+  completeKhatamCycle, isPageRead, khatamSummary, loadKhatamState, markPageRead,
+  markPagesRead, removeKhatamCycle, resetKhatamCycle, TOTAL_PAGES, unmarkPage,
+  useKhatam,
+} from './src/services/khatamService';
+import {
+  clearQada, clearQadaEntry, loadQadaState, logMissedPrayer, QADA_PRAYERS,
+  qadaSummary, removeQadaEntry, reopenQadaEntry, resetQada, setQadaDailyGoal,
+  useQada, type QadaPrayer,
+} from './src/services/qadaService';
 import { loadNameLanguage, loadNameOfDay, loadNames, saveNameLanguage } from './src/services/namesService';
 import { ARABIC_UI, ARABIC_UI_SEMIBOLD, ensureQuranFont, quranFontFamily as quranFont, QURAN_FONTS, useQuranFont } from './src/services/fonts';
 import { shareVerseCard } from './src/services/verseCard';
@@ -1789,6 +1799,7 @@ const WOMENS_ONLY_TOOLS = ['Women', 'Cycle', 'Qada'];
 const TOOL_GROUPS: ToolGroup[] = [
   { label: 'TRACK', title: 'Trackers and calculators', items: [
     { title: 'Salah Tracker', caption: 'Every day you have marked, on one map', route: 'Salah Tracker' },
+    { title: 'Qada Prayers', caption: 'Prayers you owe, and a pace to clear them', route: 'Qada Prayer' },
     { title: 'Fasting', caption: 'Ramadan, voluntary and missed fasts', route: 'Fasting' },
     { title: 'Zakat', caption: 'Gold, silver, cash and investments', route: 'Zakat' },
     { title: 'Tasbih', caption: 'A quiet, tactile dhikr counter', route: 'Tasbih' },
@@ -1867,6 +1878,10 @@ const DAY_TOOL_POOL: DayTool[] = [
     open: (n) => n.navigate('Quran', { screen: 'Bookmarks', initial: false }) },
   { id: 'plans', label: 'Reading Plans', icon: 'Reading Plans',
     open: (n) => n.navigate('Quran', { screen: 'Reading Plans', initial: false }) },
+  { id: 'khatam', label: 'Khatam', icon: 'Khatam',
+    open: (n) => n.navigate('Quran', { screen: 'Khatam', initial: false }) },
+  { id: 'qada-prayer', label: 'Qada Prayers', icon: 'Qada Prayer',
+    open: (n) => n.navigate('Tools', { screen: 'Qada Prayer', initial: false }) },
   { id: 'memorize', label: 'Memorize', icon: 'Hifz',
     open: (n) => n.navigate('Quran', { screen: 'Memorize', initial: false }) },
   { id: 'fasting', label: 'Fasting', icon: 'Fasting',
@@ -2434,7 +2449,7 @@ function QuranHome({navigation}:any){const{dark,resolved}=useTheme();
  const shown=chapters.filter(c=>`${c.id} ${c.name_simple} ${c.name_arabic} ${c.translated_name?.name}`.toLowerCase().includes(debounced.toLowerCase()));const visible=expanded||debounced.length>0?shown:shown.slice(0,30);const openSurah=useCallback((chapter:Chapter)=>navigation.navigate('Reader',{chapter,mode:'both'}),[navigation]);const open=(chapter:Chapter,mode='both',focusVerse?:string)=>navigation.navigate('Reader',{chapter,mode,focusVerse});const featured={id:55,name_simple:'Ar-Rahman',name_arabic:'الرحمن',translated_name:{name:'The Most Merciful'},verses_count:78};const submit=()=>{const ref=query.match(/^(\d{1,3}):(\d{1,3})$/);if(ref){const chapter=chapters.find(c=>c.id===Number(ref[1]));if(chapter)return open(chapter,'both',query)}navigation.navigate('Quran Search',{initialQuery:query})};
  const[audioReciter,setAudioReciter]=useState(T('Choose a reciter'));const memorized=Object.values(hifz).filter(value=>value==='memorized').length;const contentWidth=Math.min(Math.max(width-36,280),980);
 const gridGap=8;const gridCols=gridW>=640?10:4;const tileW=gridW?Math.floor((gridW-gridGap*(gridCols-1))/gridCols):0;
-const exploreTools:{label:string;title:string;screen:string;tab?:string;params?:Record<string,any>;tool?:string}[]=[{label:'Transliteration',title:T('Sounds'),screen:'Transliteration'},{label:'30 Juz',title:T('Juz'),screen:'Juz Directory'},{label:'60 Hizb',title:T('Hizb'),screen:'Hizb Directory'},{label:'Quran Topics',title:T('Topics'),screen:'Quran Topics'},{label:'Translation Compare',title:T('Tafsir'),screen:'Tafsir Compare',tool:'Tafsir'},{label:'Tajweed',title:T('Tajweed'),screen:'Tajweed Study'},{label:'Quran Vocabulary',title:T('Vocab'),screen:'Quran Vocabulary'},{label:'Recitations',title:T('Audio'),screen:'Quran Audio',tool:'Audio'}];
+const exploreTools:{label:string;title:string;screen:string;tab?:string;params?:Record<string,any>;tool?:string}[]=[{label:'Transliteration',title:T('Sounds'),screen:'Transliteration'},{label:'30 Juz',title:T('Juz'),screen:'Juz Directory'},{label:'60 Hizb',title:T('Hizb'),screen:'Hizb Directory'},{label:'Quran Topics',title:T('Topics'),screen:'Quran Topics'},{label:'Translation Compare',title:T('Tafsir'),screen:'Tafsir Compare',tool:'Tafsir'},{label:'Tajweed',title:T('Tajweed'),screen:'Tajweed Study'},{label:'Quran Vocabulary',title:T('Vocab'),screen:'Quran Vocabulary'},{label:'Khatam',title:T('Khatam'),screen:'Khatam'},{label:'Recitations',title:T('Audio'),screen:'Quran Audio',tool:'Audio'}];
 const compactStats=[{label:'Bookmarks',title:T('Bookmarks'),value:String(bookmarkCount),screen:'Bookmarks',icon:'bookmark-outline',tool:'Bookmarks'},{label:'Notes',title:T('Notes'),value:String(noteCount),screen:'Notes',icon:'create-outline',tool:'Notes'},{label:'Reading Plans',title:T('Plans'),value:plan?`${plan.days}d`:'—',screen:'Reading Plans',icon:'calendar-outline',tool:'Reading Plans'},{label:'Hifz',title:T('Hifz'),value:String(memorized),screen:'Hifz',icon:'school-outline',tool:'Hifz'},{label:'Offline Quran',title:T('Offline'),value:`${preload.cached}/114`,screen:'Quran Preload',icon:'download-outline',tool:'Offline Quran'}];
  return <Page><ScrollView keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}><AppHeader/>
  <View style={s.search}>{ico('search-outline',19,C.muted)}<TextInput accessibilityLabel={T('Search the Quran')} value={query} onChangeText={setQuery} onSubmitEditing={submit} returnKeyType="search" style={s.searchInput} placeholder={T('Search Surah, meaning, or 2:255')} placeholderTextColor={C.muted}/>{query.length>0&&<Pressable accessibilityLabel={T('Clear Quran search')} onPress={()=>setQuery('')}>{ico('close-circle',18,C.muted)}</Pressable>}</View>
@@ -2614,6 +2629,14 @@ function ReaderScreen({route,navigation}:any){
        the tap is haptic. That is the whole confirmation the act warrants. */};
   const share=(v:Verse)=>Share.share({message:`${v.text_uthmani}\n\n${v.translation||''}\n\nQuran ${v.verse_key} · ${preferences.translationName}`});
   const goPage=(value:number)=>setPage(Math.max(1,Math.min(604,value)));
+  /**
+   * Reading a Mushaf page counts towards the khatam.
+   *
+   * Turning the page is the only signal needed — there is nothing to confirm
+   * and nothing to remember to do. Reaching the last page closes the reading
+   * on its own inside the service.
+   */
+  useEffect(()=>{if(page!==null) void markPageRead(page)},[page]);
   const title=section==='juz'?(rtl?`الجزء ${juz}`:`Juz ${juz}`):section==='hizb'?(rtl?`الحزب ${hizb}`:`Hizb ${hizb}`):section==='page'||isMushaf?(rtl?`صفحة المصحف ${page||1}`:`Mushaf page ${page||1}`):full.name_simple;
   const subtitle=(isMushaf||section==='page')?((cached?(rtl?'متاح دون اتصال · ':'Offline · '):'')+(verses.length?(verses[0].surah_name||''):'')):section==='juz'?(rtl?`الأرباع ${(juz-1)*8+1}–${juz*8}`:`HIZBS ${(juz-1)*2+1}–${juz*2}`):section==='hizb'?(rtl?`الأرباع ${(hizb-1)*4+1}–${hizb*4}`:`QUARTERS ${(hizb-1)*4+1}–${hizb*4}`):(cached?(rtl?'متاح دون اتصال · ':'Available offline · '):'')+`${full.verses_count}${rtl?' آية':' verses'}`;
   /* Stepper: Surah to Surah, Juz to Juz, Hizb to Hizb. The Mushaf script pages
@@ -4587,7 +4610,7 @@ function TransliterationScreen({navigation}:any){
 
 function QuranStack(){const subtle=useSubtleTransitions();return <Stack.Navigator screenOptions={{...subtle,headerShown:false}}><Stack.Screen name="QuranHome" component={QuranHome}/><Stack.Screen name="Downloads" component={DownloadsScreen}/><Stack.Screen name="Reader" component={ReaderScreen}/><Stack.Screen name="Translations" component={TranslationScreen}/><Stack.Screen name="Quran Vocabulary" component={VocabularyScreen}/><Stack.Screen name="Tajweed Study" component={TajweedStudyScreen}/><Stack.Screen name="Quran Search" component={QuranSearchScreen}/><Stack.Screen name="Bookmarks" component={BookmarkScreen}/><Stack.Screen name="Notes" component={NotesScreen}/><Stack.Screen name="Note Editor" component={needsPayload(NoteEditorScreen, 'Note')}/><Stack.Screen name="Reader Settings" component={ReaderSettingsScreen}
       options={{presentation:'transparentModal',animation:'slide_from_bottom',contentStyle:{backgroundColor:'transparent'}}}/>{/* 'Ayah Actions' was a screen; it is the verse actions sheet now. The route is
-    gone on purpose - a restored stack naming it is dropped by the navigator. */}<Stack.Screen name="Tafsir" component={TafsirScreen}/><Stack.Screen name="Tafsir Compare" component={TafsirCompareScreen}/><Stack.Screen name="Quran Topics" component={QuranTopicsScreen}/><Stack.Screen name="Topic Detail" component={TopicDetailScreen}/><Stack.Screen name="Juz Directory" component={JuzDirectoryScreen}/><Stack.Screen name="Hizb Directory" component={HizbDirectoryScreen}/><Stack.Screen name="Reading Plans" component={ReadingPlansScreen}/><Stack.Screen name="Quran Preload" component={QuranPreloadScreen}/><Stack.Screen name="Hifz" component={HifzScreen}/><Stack.Screen name="Memorize" component={MemorizeHubScreen}/><Stack.Screen name="Memorize Test" component={MemorizeTestScreen}/><Stack.Screen name="Quran Audio" component={AudioCenterScreen}/><Stack.Screen name="Audio Player" component={AudioPlayerScreen}/><Stack.Screen name="Transliteration" component={TransliterationScreen}/></Stack.Navigator>}
+    gone on purpose - a restored stack naming it is dropped by the navigator. */}<Stack.Screen name="Tafsir" component={TafsirScreen}/><Stack.Screen name="Tafsir Compare" component={TafsirCompareScreen}/><Stack.Screen name="Quran Topics" component={QuranTopicsScreen}/><Stack.Screen name="Topic Detail" component={TopicDetailScreen}/><Stack.Screen name="Juz Directory" component={JuzDirectoryScreen}/><Stack.Screen name="Hizb Directory" component={HizbDirectoryScreen}/><Stack.Screen name="Reading Plans" component={ReadingPlansScreen}/><Stack.Screen name="Quran Preload" component={QuranPreloadScreen}/><Stack.Screen name="Hifz" component={HifzScreen}/><Stack.Screen name="Khatam" component={KhatamScreen}/><Stack.Screen name="Memorize" component={MemorizeHubScreen}/><Stack.Screen name="Memorize Test" component={MemorizeTestScreen}/><Stack.Screen name="Quran Audio" component={AudioCenterScreen}/><Stack.Screen name="Audio Player" component={AudioPlayerScreen}/><Stack.Screen name="Transliteration" component={TransliterationScreen}/></Stack.Navigator>}
 
 /**
  * The library holds what you read, recite and learn. Nothing here calculates
@@ -7620,6 +7643,247 @@ function QadaScreen({ navigation }: any) {
       </View>)}</View></>}
     </ScrollView>
   </Page></PrivateArea>;
+}
+
+/**
+ * Khatam — how many times the Qur'an has been finished, and how far the
+ * reading in progress has got.
+ *
+ * Progress is counted in pages because that is the shape of the book: the
+ * Madinah Mushaf is 604 pages, and a sitting is measured in pages, not in
+ * verses. Marking a page here is the same marking the reader makes as you
+ * turn the page, so the two never disagree.
+ *
+ * Reaching the last page closes the reading by itself. It is filed in the
+ * history below and a fresh one begins, so the count of completed readings
+ * only ever goes up.
+ */
+function KhatamScreen({ navigation }: any) {
+  const { rtl } = useLanguage();
+  const T = (text: string) => tx(rtl, text);
+  const khatam = useKhatam();
+  const summary = khatamSummary(khatam);
+  const [pageText, setPageText] = useState('');
+  const [message, setMessage] = useState('');
+
+  const submit = () => {
+    const page = Math.round(Number(pageText));
+    if (!Number.isFinite(page) || page < 1 || page > TOTAL_PAGES) {
+      setMessage(rtl ? `أدخل رقم صفحة بين ١ و${TOTAL_PAGES}` : `Enter a page between 1 and ${TOTAL_PAGES}`);
+      return;
+    }
+    void markPageRead(page);
+    setMessage(rtl ? `صُفحت ${page}` : `Page ${page} marked as read`);
+    setPageText('');
+  };
+
+  return (
+    <Page>
+      <ToolBar title={T('Khatam')} navigation={navigation} />
+      <ScrollView {...SCROLL} contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
+        <ToolGraphic tool="Khatam" size={87} />
+        <Text style={s.dataTitle}>{T("Completing the Qur'an")}</Text>
+        <Text style={s.intro}>{T('A reading is counted in pages, the way the Mushaf is printed — 604 of them. Mark the pages you have reached and the rest is worked out here, on your device.')}</Text>
+
+        <LinearGradient colors={[C.heroA, C.green]} style={s.summaryScore}>
+          <View>
+            <Text style={s.nextCardLabel}>{T('COMPLETED')}</Text>
+            <Text style={s.zakatNo}>{summary.completed}</Text>
+            <Text style={s.weekScoreBody}>{summary.completed === 1 ? T('reading') : T('readings')}</Text>
+          </View>
+          <View style={{ alignItems: 'flex-end' }}>
+            <Text style={s.nextCardLabel}>{T('THIS READING')}</Text>
+            <Text style={s.zakatNo}>{summary.read}/{summary.total}</Text>
+            <Text style={s.weekScoreBody}>{summary.percent}% · {summary.remaining} {T('to go')}</Text>
+          </View>
+        </LinearGradient>
+        <View style={s.progressTrack}><View style={[s.progressFill, { width: `${summary.percent}%` } as any]} /></View>
+
+        <Section title={T('Mark pages read')} />
+        <View style={s.dataCard}>
+          <Text style={s.preferenceLabel}>{T('A PAGE YOU HAVE REACHED')}</Text>
+          <TextInput
+            style={s.searchInput}
+            value={pageText}
+            onChangeText={setPageText}
+            keyboardType="number-pad"
+            placeholder={rtl ? 'رقم الصفحة' : 'Page number'}
+            placeholderTextColor={C.muted}
+            maxLength={3}
+            returnKeyType="done"
+            onSubmitEditing={submit}
+          />
+          {!!message && <Text style={s.meta}>{message}</Text>}
+          <View style={s.actionRow}>
+            <Tactile onPress={submit} style={s.primary}><Text style={s.primaryText}>{T('Mark as read')}</Text></Tactile>
+          </View>
+        </View>
+
+        {summary.read > 0 && (
+          <>
+            <Section title={T('Pages reached')} />
+            <View style={s.dataCard}>
+              <Text style={s.preferenceLabel}>{`${summary.read} ${T('OF')} ${summary.total} ${T('PAGES')}`}</Text>
+              <View style={s.memChipWrap}>
+                {khatam.readPages.slice().sort((a, b) => a - b).slice(-40).map((page) => (
+                  <Pressable key={page} onPress={() => void unmarkPage(page)} style={s.memChip}>
+                    <Text style={s.memChipText}>{page}</Text>
+                  </Pressable>
+                ))}
+              </View>
+              <Text style={s.meta}>{T('Tap a page to take it back. The most recent forty are shown.')}</Text>
+            </View>
+          </>
+        )}
+
+        <Section title={T('This reading')} />
+        <View style={s.dataCard}>
+          <Text style={s.preferenceLabel}>{T('BEGAN')}</Text>
+          <Text style={s.settingName}>{new Date(summary.startedAt).toLocaleDateString()}</Text>
+          <Text style={s.meta}>{summary.daysElapsed} {T('days so far')}</Text>
+          <View style={s.actionRow}>
+            <Tactile onPress={() => void completeKhatamCycle()} style={s.secondary}><Text style={s.secondaryText}>{T('Finish this reading')}</Text></Tactile>
+            <Tactile onPress={() => void resetKhatamCycle()} style={s.dangerButton}><Text style={s.dangerText}>{T('Start over')}</Text></Tactile>
+          </View>
+          <Text style={s.meta}>{T('"Finish this reading" files it as complete and begins the next one — for a reading finished before you installed the app.')}</Text>
+        </View>
+
+        {khatam.cycles.length > 0 && (
+          <>
+            <Section title={T('Completed readings')} />
+            <View style={s.settings}>
+              {khatam.cycles.slice().reverse().map((cycle, index) => (
+                <View key={cycle.id} style={s.translationRow}>
+                  <View style={s.surahNum}><Text style={s.surahNumText}>{khatam.cycles.length - index}</Text></View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.settingName}>{new Date(cycle.completedAt).toLocaleDateString()}</Text>
+                    <Text style={s.meta}>{Math.max(1, Math.ceil((cycle.completedAt - cycle.startedAt) / 86400000))} {T('days')}</Text>
+                  </View>
+                  <Pressable onPress={() => void removeKhatamCycle(cycle.id)}>{ico('trash-outline', 18, C.muted)}</Pressable>
+                </View>
+              ))}
+            </View>
+          </>
+        )}
+      </ScrollView>
+    </Page>
+  );
+}
+
+/**
+ * Qada — the prayers still owed, and the pace for clearing them.
+ *
+ * Deliberately plain. Missing a prayer happens: you slept, you travelled, you
+ * were unwell. What is owed is a debt, not a verdict, so this reads like a
+ * ledger rather than a scoreboard — what is outstanding, what is settled, and
+ * how long it will take at a pace you can actually keep.
+ */
+function QadaPrayerScreen({ navigation }: any) {
+  const { rtl } = useLanguage();
+  const T = (text: string) => tx(rtl, text);
+  const qada = useQada();
+  const summary = qadaSummary(qada);
+  const outstanding = qada.entries.filter((entry) => !entry.clearedAt);
+
+  return (
+    <Page>
+      <ToolBar title={T('Qada prayers')} navigation={navigation} />
+      <ScrollView {...SCROLL} contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
+        <ToolGraphic tool="Qada Prayer" size={87} />
+        <Text style={s.dataTitle}>{T('Prayers to make up')}</Text>
+        <Text style={s.intro}>{T('A missed prayer is made up on its own, in its own time. This is a private ledger of what is outstanding — it is not sent anywhere and no one else sees it.')}</Text>
+
+        <LinearGradient colors={[C.heroA, C.green]} style={s.summaryScore}>
+          <View>
+            <Text style={s.nextCardLabel}>{T('OUTSTANDING')}</Text>
+            <Text style={s.zakatNo}>{summary.outstanding}</Text>
+            <Text style={s.weekScoreBody}>
+              {summary.outstanding && summary.oldestOutstanding
+                ? `${T('since')} ${new Date(summary.oldestOutstanding).toLocaleDateString()}`
+                : T('nothing owed')}
+            </Text>
+          </View>
+          <View style={{ alignItems: 'flex-end' }}>
+            <Text style={s.nextCardLabel}>{T('MADE UP')}</Text>
+            <Text style={s.zakatNo}>{summary.cleared}</Text>
+            <Text style={s.weekScoreBody}>
+              {summary.etaDays ? `~${summary.etaDays} ${summary.etaDays === 1 ? T('day') : T('days')}` : '—'}
+            </Text>
+          </View>
+        </LinearGradient>
+
+        <Section title={T('Log a missed prayer')} />
+        <View style={s.dataCard}>
+          <Text style={s.preferenceLabel}>{T('WHICH PRAYER')}</Text>
+          <View style={s.memChipWrap}>
+            {QADA_PRAYERS.map((prayer) => (
+              <Tactile key={prayer} onPress={() => void logMissedPrayer(prayer)} style={s.memChip}>
+                <Text style={s.memChipText}>{T(prayer)}</Text>
+              </Tactile>
+            ))}
+          </View>
+          <Text style={s.meta}>{T('Logged against today. One tap per prayer missed.')}</Text>
+        </View>
+
+        <Section title={T('Daily pace')} />
+        <View style={s.dataCard}>
+          <Text style={s.preferenceLabel}>{T('MADE UP PER DAY')}</Text>
+          <View style={s.memChipWrap}>
+            {[1, 2, 3, 5].map((goal) => (
+              <ChoicePill key={goal} label={String(goal)} selected={qada.dailyGoal === goal} onPress={() => void setQadaDailyGoal(goal)} />
+            ))}
+          </View>
+          <Text style={s.meta}>{T('One a day is enough for most people. The pace only sets the estimate above — nothing is scheduled for you.')}</Text>
+        </View>
+
+        <Section title={T('Outstanding')} />
+        {!outstanding.length ? (
+          <View style={s.dataCard}>
+            <Text style={s.emptyTitle}>{T('Nothing outstanding')}</Text>
+            <Text style={s.meta}>{T('Every prayer you logged here has been made up.')}</Text>
+          </View>
+        ) : (
+          <View style={s.settings}>
+            {outstanding.slice(0, 60).map((entry) => (
+              <View key={entry.id} style={s.translationRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.settingName}>{T(entry.prayer)}</Text>
+                  <Text style={s.meta}>{new Date(entry.dateKey).toLocaleDateString()}</Text>
+                </View>
+                <Pressable onPress={() => void clearQadaEntry(entry.id)} accessibilityLabel={T('Made up')}>
+                  {ico('checkmark-circle-outline', 22, C.green)}
+                </Pressable>
+              </View>
+            ))}
+            {outstanding.length > 60 && (
+              <Text style={s.meta}>{`+${outstanding.length - 60} ${T('more')}`}</Text>
+            )}
+          </View>
+        )}
+
+        {!!qada.entries.length && (
+          <>
+            <Section title={T('Settled')} />
+            <View style={s.settings}>
+              {qada.entries.filter((entry) => entry.clearedAt).slice(-20).reverse().map((entry) => (
+                <View key={entry.id} style={s.translationRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.settingName}>{T(entry.prayer)}</Text>
+                    <Text style={s.meta}>{entry.clearedAt ? new Date(entry.clearedAt).toLocaleDateString() : ''}</Text>
+                  </View>
+                  <Pressable onPress={() => void reopenQadaEntry(entry.id)}>{ico('arrow-undo-outline', 18, C.muted)}</Pressable>
+                  <Pressable onPress={() => void removeQadaEntry(entry.id)}>{ico('trash-outline', 18, C.muted)}</Pressable>
+                </View>
+              ))}
+            </View>
+            <View style={s.actionRow}>
+              <Tactile onPress={() => void resetQada()} style={s.dangerButton}><Text style={s.dangerText}>{T('Clear the ledger')}</Text></Tactile>
+            </View>
+          </>
+        )}
+      </ScrollView>
+    </Page>
+  );
 }
 
 function WomenGuidesScreen({ navigation }: any) {
@@ -11012,13 +11276,13 @@ async function reloadAllState() {
     loadOfflineSetup(), loadAudioSettings(), loadHadithState(), loadTasbihState(),
     loadDownloads(), loadActivity(), loadFastingState(), loadJourneys(),
     loadWomensState(), loadZakatState(), loadLockConfig(), loadMemorization(),
-    loadReports(),
+    loadReports(), loadKhatamState(), loadQadaState(),
   ]).catch(() => undefined);
 }
 
 export default function App(){const[fontsLoaded]=useFonts({DMSans_400Regular,DMSans_600SemiBold,DMSans_700Bold,Newsreader_600SemiBold,NotoNaskhArabic_400Regular,NotoNaskhArabic_600SemiBold,Amiri_400Regular,KFGQPCUthmanicHafs,IBMPlexSansArabic_400Regular,IBMPlexSansArabic_600SemiBold});const restoreTick=useRestoreNonce();
 useEffect(()=>{if(restoreTick>0){void reloadAllState()}},[restoreTick]);
-useEffect(()=>{if(fontsLoaded){void loadOfflineSetup();void resumeSavedOfflineSetup();resumeSavedQuranPreload();void loadAudioSettings().then(() => restoreSavedSession());void loadHadithState();void loadTasbihState();void loadDownloads();void loadActivity();void loadFastingState();void loadJourneys();void loadWomensState();void loadZakatState();void loadLockConfig();void loadBackupSettings();void refreshMarket();startLockWatch();startBackupWatch()}},[fontsLoaded]);if(!fontsLoaded)return <SafeAreaView style={s.safe}><Spinner/></SafeAreaView>;return <ThemeProvider key={restoreTick}><LanguageProvider><QuranPreferencesProvider><WorshipSettingsProvider><LocationProvider><ScreenBoundary><AppShell/></ScreenBoundary></LocationProvider></WorshipSettingsProvider></QuranPreferencesProvider></LanguageProvider></ThemeProvider>}
+useEffect(()=>{if(fontsLoaded){void loadOfflineSetup();void resumeSavedOfflineSetup();resumeSavedQuranPreload();void loadAudioSettings().then(() => restoreSavedSession());void loadHadithState();void loadTasbihState();void loadDownloads();void loadActivity();void loadFastingState();void loadJourneys();void loadWomensState();void loadZakatState();void loadKhatamState();void loadQadaState();void loadLockConfig();void loadBackupSettings();void refreshMarket();startLockWatch();startBackupWatch()}},[fontsLoaded]);if(!fontsLoaded)return <SafeAreaView style={s.safe}><Spinner/></SafeAreaView>;return <ThemeProvider key={restoreTick}><LanguageProvider><QuranPreferencesProvider><WorshipSettingsProvider><LocationProvider><ScreenBoundary><AppShell/></ScreenBoundary></LocationProvider></WorshipSettingsProvider></QuranPreferencesProvider></LanguageProvider></ThemeProvider>}
 
 /**
  * The Arabic face used everywhere, once someone has chosen one.
