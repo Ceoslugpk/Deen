@@ -1474,7 +1474,11 @@ const PRAYER_ICONS: Record<string, any> = {
   Dhuhr: require('./assets/tool-icons/prayer-dhuhr.png'),
   Asr: require('./assets/tool-icons/prayer-asr.png'),
   Maghrib: require('./assets/tool-icons/prayer-maghrib.png'),
-  Isha: require('./assets/tool-icons/prayer-isha.png')
+  Isha: require('./assets/tool-icons/prayer-isha.png'),
+  /* Sunrise is a solar event rather than a prayer — it is never ticked off
+     with the five — but it sits in the same list, so it carries artwork to
+     match them instead of the bare glyph it used to fall back to. */
+  Sunrise: require('./assets/tool-icons/sunrise.png')
 };
 /**
  * The same five, drawn for the dark theme.
@@ -1489,7 +1493,8 @@ const PRAYER_ICONS_DARK: Record<string, any> = {
   Dhuhr: require('./assets/tool-icons/prayer-dhuhr-dark.png'),
   Asr: require('./assets/tool-icons/prayer-asr-dark.png'),
   Maghrib: require('./assets/tool-icons/prayer-maghrib-dark.png'),
-  Isha: require('./assets/tool-icons/prayer-isha-dark.png')
+  Isha: require('./assets/tool-icons/prayer-isha-dark.png'),
+  Sunrise: require('./assets/tool-icons/sunrise-dark.png')
 };
 const prayerIconFor = (name: string, dark: boolean) => {
   const set = dark ? PRAYER_ICONS_DARK : PRAYER_ICONS;
@@ -2435,7 +2440,7 @@ function PrayerScreen({navigation}:any) {
       <Section title={T('Your consistency')}/>
       <PrayerConsistency history={history} T={T}/>
       <Section title={T('Today’s schedule')}/>
-      <View style={s.prayerList}>{listedPrayers.map((p,i)=>{const checked=listingToday&&completed.includes(p.name);return <Pressable accessibilityRole={!listingToday||p.name==='Sunrise'?undefined:'checkbox'} accessibilityState={!listingToday||p.name==='Sunrise'?undefined:{checked}} onPress={()=>listingToday&&togglePrayer(p.name)} key={p.name} style={[s.prayerRow,p.name===next?.name&&s.prayerRowLive]}><View style={[s.prayerSymbol,checked&&s.prayerSymbolDone]}>{checked ? ico('checkmark',21,C.white) : p.name === 'Sunrise' ? ico('sunny-outline',21,C.green) : <Image source={prayerIconFor(p.name, dark)} resizeMode="contain" style={{width:32,height:32}}/>}</View><View style={{flex:1}}><Text style={s.prayerName}>{prayerName(rtl, p.name)}</Text><Text style={s.meta}>{T(p.name==='Sunrise'?'Solar event':checked?'Completed':!listingToday?'':p.name===next?.name?'Up next':'Tap to mark complete')}</Text></View><Text style={s.prayerValue}>{clockTime(rtl, p.time)}</Text>{p.name!=='Sunrise'&&ico(checked?'checkmark-circle':'ellipse-outline',18,checked?C.green:C.muted)}</Pressable>})}</View>
+      <View style={s.prayerList}>{listedPrayers.map((p,i)=>{const checked=listingToday&&completed.includes(p.name);return <Pressable accessibilityRole={!listingToday||p.name==='Sunrise'?undefined:'checkbox'} accessibilityState={!listingToday||p.name==='Sunrise'?undefined:{checked}} onPress={()=>listingToday&&togglePrayer(p.name)} key={p.name} style={[s.prayerRow,p.name===next?.name&&s.prayerRowLive]}><View style={[s.prayerSymbol,checked&&s.prayerSymbolDone]}>{checked ? ico('checkmark',21,C.white) : <Image source={prayerIconFor(p.name, dark)} resizeMode="contain" style={{width:32,height:32}}/>}</View><View style={{flex:1}}><Text style={s.prayerName}>{prayerName(rtl, p.name)}</Text><Text style={s.meta}>{T(p.name==='Sunrise'?'Solar event':checked?'Completed':!listingToday?'':p.name===next?.name?'Up next':'Tap to mark complete')}</Text></View><Text style={s.prayerValue}>{clockTime(rtl, p.time)}</Text>{p.name!=='Sunrise'&&ico(checked?'checkmark-circle':'ellipse-outline',18,checked?C.green:C.muted)}</Pressable>})}</View>
           </>}
   </ScrollView></Page>;
 }
@@ -9482,11 +9487,13 @@ function SettingsStack(){const subtle=useSubtleTransitions();return <Stack.Navig
  * one holds pills, one holds switches, one is a single link. Giving them all
  * the same head is what makes the screen read as one page rather than five.
  */
-function PanelHead({ tool, glyph, title, note }: { tool?: string; glyph?: string; title: string; note: string }) {
+function PanelHead({ tool, glyph, image, title, note }: { tool?: string; glyph?: string; image?: any; title: string; note: string }) {
   return <View style={s.preferenceHead}>
     {tool
       ? <ToolGraphic tool={tool} size={60} />
-      : <View style={s.prefIconTile}>{glyph ? <MotionGlyph name={glyph} size={22} /> : null}</View>}
+      : <View style={s.prefIconTile}>{image
+        ? <Image source={image} resizeMode="contain" style={{ width: 30, height: 30 }} />
+        : glyph ? <MotionGlyph name={glyph} size={22} /> : null}</View>}
     <View style={{ flex: 1 }}>
       <Text style={s.settingName}>{title}</Text>
       <Text style={s.meta}>{note}</Text>
@@ -9572,7 +9579,7 @@ function LegalScreen({ route }: any) {
 function SettingsScreen({navigation}:any){
   const { language, rtl, setLanguage } = useLanguage();
   const T = (text: string) => tx(rtl, text);
-  const { theme: themeName, mode: themeMode, setTheme, setMode } = useTheme();
+  const { theme: themeName, mode: themeMode, setTheme, setMode, dark } = useTheme();
   const { settings, update } = useWorshipSettings();
   const { preferences } = useQuranPreferences();
   const womens = useWomens();
@@ -9616,7 +9623,7 @@ function SettingsScreen({navigation}:any){
 
       <Section title={T('Theme')} />
       <View style={s.preferencePanel}>
-        <PanelHead glyph="color-palette-outline" title={T('Theme')} note={T('Which colours the app wears. Each theme has its own light and dark.')} />
+        <PanelHead image={dark ? require('./assets/tool-icons/theme-dark.png') : require('./assets/tool-icons/theme.png')} title={T('Theme')} note={T('Which colours the app wears. Each theme has its own light and dark.')} />
         <View style={s.choiceGrid}>
           <ChoicePill label={T('Islamic')} selected={themeName === 'islamic'} onPress={() => setTheme('islamic')} swatch={<ThemeMark theme="islamic" height={11} />} />
           <ChoicePill label={T('Palestine')} selected={themeName === 'palestine'} onPress={() => setTheme('palestine')} swatch={<ThemeMark theme="palestine" height={11} />} />
@@ -9662,7 +9669,7 @@ function SettingsScreen({navigation}:any){
       <Section title={rtl ? 'التفضيلات' : 'Preferences'} />
       <View style={s.settings}>
         <View style={s.setting}>
-          <View style={s.prefIconTile}><MotionGlyph name="language-outline" size={22} /></View>
+          <View style={s.prefIconTile}><Image source={dark ? require('./assets/tool-icons/language-dark.png') : require('./assets/tool-icons/language.png')} resizeMode="contain" style={{ width: 30, height: 30 }} /></View>
           <View style={{ flex: 1 }}>
             <Text style={s.settingName}>{rtl ? 'واجهة عربية' : 'Arabic interface'}</Text>
             <Text style={s.meta}>{rtl ? 'تخطيط من اليمين إلى اليسار' : 'Right-to-left layout throughout the app'}</Text>
