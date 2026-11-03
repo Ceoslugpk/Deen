@@ -60,7 +60,8 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "build:web": "expo export --platform web --output-dir web-build",
-    "postinstall": "patch-package"
+    "postinstall": "patch-package --error-on-fail",
+    "eas-build-post-install": "patch-package --error-on-fail"
   },
   "private": true
 }
