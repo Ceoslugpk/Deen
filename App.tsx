@@ -1632,9 +1632,41 @@ const PRAYER_ICONS_DARK: Record<string, any> = {
   Isha: require('./assets/tool-icons/prayer-isha-dark.png'),
   Sunrise: require('./assets/tool-icons/sunrise-dark.png')
 };
-const prayerIconFor = (name: string, dark: boolean) => {
-  const set = dark ? PRAYER_ICONS_DARK : PRAYER_ICONS;
-  return set[name] || set.Fajr;
+/* The five again, drawn for the Palestine theme.
+
+   Given their own files rather than replacing the ones above. The prayer rows
+   are shared by every theme, so swapping the art in place would have put
+   these on the Islamic theme too — and the two themes are meant to stay
+   separate, the way their scenes already do.
+
+   Sunrise is deliberately absent: it is no one's prayer time, it has no
+   Palestine drawing, and it falls through to the shared one below rather
+   than borrowing Fajr's. */
+const PRAYER_ICONS_PALESTINE: Record<string, any> = {
+  Fajr: require('./assets/tool-icons/prayer-fajr-palestine.png'),
+  Dhuhr: require('./assets/tool-icons/prayer-dhuhr-palestine.png'),
+  Asr: require('./assets/tool-icons/prayer-asr-palestine.png'),
+  Maghrib: require('./assets/tool-icons/prayer-maghrib-palestine.png'),
+  Isha: require('./assets/tool-icons/prayer-isha-palestine.png')
+};
+const PRAYER_ICONS_PALESTINE_DARK: Record<string, any> = {
+  Fajr: require('./assets/tool-icons/prayer-fajr-dark-palestine.png'),
+  Dhuhr: require('./assets/tool-icons/prayer-dhuhr-dark-palestine.png'),
+  Asr: require('./assets/tool-icons/prayer-asr-dark-palestine.png'),
+  Maghrib: require('./assets/tool-icons/prayer-maghrib-dark-palestine.png'),
+  Isha: require('./assets/tool-icons/prayer-isha-dark-palestine.png')
+};
+/* Chosen the way the scenes are: by theme, which carries the lightness with
+   it, rather than by a separate flag that could disagree. A name the Palestine
+   sets do not carry falls back to the shared one, so Sunrise keeps its own
+   artwork instead of silently becoming Fajr. */
+const prayerIconFor = (name: string, theme: ResolvedTheme) => {
+  const dark = theme === 'palestineDark' || theme === 'islamicDark';
+  const shared = dark ? PRAYER_ICONS_DARK : PRAYER_ICONS;
+  const themed = theme === 'palestineDark' ? PRAYER_ICONS_PALESTINE_DARK
+    : theme === 'palestineLight' ? PRAYER_ICONS_PALESTINE
+    : null;
+  return (themed && themed[name]) || shared[name] || shared.Fajr;
 };
 
 /** Honour the system setting: when reduce motion is on, everything sits still. */
@@ -1823,7 +1855,7 @@ const[quranPosition,setQuranPosition]=useState<any>(null);const[openReflection,s
         <Text style={s.nextLabel}>{rtl ? 'التالي · ' : 'NEXT · '}{next ? prayerName(rtl, next.name) : '—'}</Text><Text style={s.heroTime}>{clockTime(rtl, next?.time || '—')}</Text>
         <View style={s.heroFooter}><View style={s.countPill}>{ico('time-outline',14,C.white)}<Text style={s.countText}>{rtl ? 'بعد ' : 'in '}{next ? <HeroCountdown raw={next.raw} rtl={rtl}/> : '—'}</Text></View><Pressable onPress={()=>nav.navigate('Prayer')} style={s.heroCta}><Text style={s.heroCtaText}>{T('Prayer schedule')}</Text>{ico(rtl ? 'arrow-back' : 'arrow-forward',15,C.white)}</Pressable></View>
       </View>
-      <View style={s.prayerRail}>{data.snapshot?.prayers.filter(p=>p.name!=='Sunrise').map((p,i)=>{const checked=completed.includes(p.name);return <Pressable accessibilityRole="checkbox" accessibilityState={{checked}} onPress={()=>togglePrayer(p.name)} key={p.name} style={[s.railItem,p.name===next?.name&&s.railItemActive]}><View style={[s.railIcon,checked&&s.railIconDone]}><Image source={prayerIconFor(p.name, dark)} resizeMode="contain" style={{width:35,height:35,opacity:checked?1:.7}}/>{!!checked && <View style={s.railCheck}>{ico('checkmark',10,C.white)}</View>}</View><Text style={s.railName}>{prayerName(rtl, p.name)}</Text><Text style={s.railTime}>{clockTime(rtl, p.time).replace(' ','\n')}</Text></Pressable>})}</View><View style={s.homeProgress}><View><Text style={s.sourceTitle}>{completed.length}/5 {rtl ? 'صلاة اليوم' : 'prayers today'}</Text><Text style={s.sourceBody}>{rtl ? `${streak} ${arNoun(streak,'يوم متتابع','يومان متتابعان','أيام متتابعة','يومًا متتابعًا')} · ${weekTotal}/35 هذا الأسبوع` : `${streak} day streak · ${weekTotal}/35 this week`}</Text></View><View style={s.homeProgressRing}><Text style={s.progressCount}>{completed.length*20}%</Text></View></View>
+      <View style={s.prayerRail}>{data.snapshot?.prayers.filter(p=>p.name!=='Sunrise').map((p,i)=>{const checked=completed.includes(p.name);return <Pressable accessibilityRole="checkbox" accessibilityState={{checked}} onPress={()=>togglePrayer(p.name)} key={p.name} style={[s.railItem,p.name===next?.name&&s.railItemActive]}><View style={[s.railIcon,checked&&s.railIconDone]}><Image source={prayerIconFor(p.name, resolved)} resizeMode="contain" style={{width:35,height:35,opacity:checked?1:.7}}/>{!!checked && <View style={s.railCheck}>{ico('checkmark',10,C.white)}</View>}</View><Text style={s.railName}>{prayerName(rtl, p.name)}</Text><Text style={s.railTime}>{clockTime(rtl, p.time).replace(' ','\n')}</Text></Pressable>})}</View><View style={s.homeProgress}><View><Text style={s.sourceTitle}>{completed.length}/5 {rtl ? 'صلاة اليوم' : 'prayers today'}</Text><Text style={s.sourceBody}>{rtl ? `${streak} ${arNoun(streak,'يوم متتابع','يومان متتابعان','أيام متتابعة','يومًا متتابعًا')} · ${weekTotal}/35 هذا الأسبوع` : `${streak} day streak · ${weekTotal}/35 this week`}</Text></View><View style={s.homeProgressRing}><Text style={s.progressCount}>{completed.length*20}%</Text></View></View>
     </>}
     <Section title={T('Adhkar')} action={T('All duas')} onPress={()=>nav.navigate('Library',{screen:'Duas',initial:false})} />
     {afterPrayer === null && <View style={[s.adhkarDuaCard, s.adhkarDuaPad]}><Spinner /></View>}
@@ -2585,7 +2617,7 @@ function PrayerScreen({navigation}:any) {
       <Section title={T('Your consistency')}/>
       <PrayerConsistency history={history} T={T}/>
       <Section title={T('Today’s schedule')}/>
-      <View style={s.prayerList}>{listedPrayers.map((p,i)=>{const checked=listingToday&&completed.includes(p.name);return <Pressable accessibilityRole={!listingToday||p.name==='Sunrise'?undefined:'checkbox'} accessibilityState={!listingToday||p.name==='Sunrise'?undefined:{checked}} onPress={()=>listingToday&&togglePrayer(p.name)} key={p.name} style={[s.prayerRow,p.name===next?.name&&s.prayerRowLive]}><View style={[s.prayerSymbol,checked&&s.prayerSymbolDone]}>{checked ? ico('checkmark',21,C.white) : <Image source={prayerIconFor(p.name, dark)} resizeMode="contain" style={{width:32,height:32}}/>}</View><View style={{flex:1}}><Text style={s.prayerName}>{prayerName(rtl, p.name)}</Text><Text style={s.meta}>{T(p.name==='Sunrise'?'Solar event':checked?'Completed':!listingToday?'':p.name===next?.name?'Up next':'Tap to mark complete')}</Text></View><Text style={s.prayerValue}>{clockTime(rtl, p.time)}</Text>{p.name!=='Sunrise'&&ico(checked?'checkmark-circle':'ellipse-outline',18,checked?C.green:C.muted)}</Pressable>})}</View>
+      <View style={s.prayerList}>{listedPrayers.map((p,i)=>{const checked=listingToday&&completed.includes(p.name);return <Pressable accessibilityRole={!listingToday||p.name==='Sunrise'?undefined:'checkbox'} accessibilityState={!listingToday||p.name==='Sunrise'?undefined:{checked}} onPress={()=>listingToday&&togglePrayer(p.name)} key={p.name} style={[s.prayerRow,p.name===next?.name&&s.prayerRowLive]}><View style={[s.prayerSymbol,checked&&s.prayerSymbolDone]}>{checked ? ico('checkmark',21,C.white) : <Image source={prayerIconFor(p.name, resolved)} resizeMode="contain" style={{width:32,height:32}}/>}</View><View style={{flex:1}}><Text style={s.prayerName}>{prayerName(rtl, p.name)}</Text><Text style={s.meta}>{T(p.name==='Sunrise'?'Solar event':checked?'Completed':!listingToday?'':p.name===next?.name?'Up next':'Tap to mark complete')}</Text></View><Text style={s.prayerValue}>{clockTime(rtl, p.time)}</Text>{p.name!=='Sunrise'&&ico(checked?'checkmark-circle':'ellipse-outline',18,checked?C.green:C.muted)}</Pressable>})}</View>
           </>}
   </ScrollView></Page>;
 }
