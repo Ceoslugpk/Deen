@@ -39,7 +39,9 @@
       "expo-notifications",
       "./plugins/withBatteryExemption.js",
       "./plugins/withAdhanAlarm.js",
-      "expo-sharing"
+      "./plugins/withHaramainCleartext.js",
+      "expo-sharing",
+      "expo-video"
     ]
   }
 }

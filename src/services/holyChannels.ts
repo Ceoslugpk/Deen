@@ -3,12 +3,15 @@ import { Linking } from 'react-native';
 /**
  * Live channels from the two holy mosques.
  *
- * These are the official Saudi Broadcasting Authority channels — Quran TV carries
- * Al-Masjid al-Haram from Makkah and Sunnah TV carries Al-Masjid an-Nabawi from
- * Madinah — plus the General Authority's own channel. Every link below was
- * checked when it was added; streams open outside the app, in the browser or the
- * YouTube app, because re-broadcasting them here would need rights the app does
- * not hold.
+ * These are the official Saudi Broadcasting Authority channels — Quran TV
+ * carries Al-Masjid al-Haram from Makkah and Sunnah TV carries Al-Masjid
+ * an-Nabawi from Madinah — plus the General Authority's own channel.
+ *
+ * The two SBA channels play inside the app, from the HLS playlists the
+ * broadcaster publishes itself. The rest are links out to whoever is carrying
+ * them, because re-broadcasting those here would need rights this app does not
+ * hold. `url` is kept on every channel, including the two that play here, so
+ * there is always somewhere to go when the stream will not start.
  */
 
 export type HolyChannel = {
@@ -21,16 +24,23 @@ export type HolyChannel = {
   detail: string;
   url: string;
   icon: string;
-  /** Present only where the broadcaster is a YouTube channel we can embed. */
-  channelId?: string;
-  /** YouTube embed for whatever that channel is streaming right now. */
-  embedUrl?: string;
+  /**
+   * The broadcast itself, as an HLS playlist, for the channels we are
+   * permitted to play inside the app.
+   *
+   * Only the two Saudi Broadcasting Authority feeds carry one. The rest are
+   * links out, and say so, because playing them here would need rights the app
+   * does not hold.
+   *
+   * Plain HTTP: the broadcaster publishes no HTTPS endpoint for these. Android
+   * refuses cleartext by default from API 28, so `plugins/withHaramain-
+   * Cleartext.js` opens it for this one host and nothing else.
+   */
+  streamUrl?: string;
 };
 
-/* YouTube resolves a channel's current livestream through this path, so the
-   app does not have to know the video id, which changes with every broadcast. */
-const liveEmbed = (channelId: string) =>
-  `https://www.youtube.com/embed/live_stream?channel=${channelId}&enablejsapi=1`;
+/** The HLS playlists, published by the Saudi Broadcasting Authority. */
+const SBA_LIVE = 'http://m.live.net.sa:1935/live';
 
 
 export const HOLY_CHANNELS: HolyChannel[] = [
@@ -43,8 +53,7 @@ export const HOLY_CHANNELS: HolyChannel[] = [
     broadcaster: 'Saudi Broadcasting Authority',
     detail: 'The Ka‘bah, the Tawaf, the five daily prayers, Jumu‘ah, and Taraweeh — broadcast from Makkah, twenty-four hours a day.',
     url: 'https://www.youtube.com/channel/UCos52azQNBgW63_9uDJoPDA/live',
-    channelId: 'UCos52azQNBgW63_9uDJoPDA',
-    embedUrl: liveEmbed('UCos52azQNBgW63_9uDJoPDA'),
+    streamUrl: `${SBA_LIVE}/quran/playlist.m3u8`,
     icon: 'holy-sites',
   },
   {
@@ -67,8 +76,7 @@ export const HOLY_CHANNELS: HolyChannel[] = [
     broadcaster: 'Saudi Broadcasting Authority',
     detail: 'The Prophet’s Mosque ﷺ: the five prayers with its imams, the Friday khutbah, and the Rawdah — from Madinah, twenty-four hours a day.',
     url: 'https://www.youtube.com/channel/UCROKYPep-UuODNwyipe6JMw/live',
-    channelId: 'UCROKYPep-UuODNwyipe6JMw',
-    embedUrl: liveEmbed('UCROKYPep-UuODNwyipe6JMw'),
+    streamUrl: `${SBA_LIVE}/sunnah/playlist.m3u8`,
     icon: 'holy-sites',
   },
   {

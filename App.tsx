@@ -217,6 +217,7 @@ import { useSubtleTransitions } from './src/design/transitions';
 import { MOTION, easeOut, useEntrance, usePressDepth } from './src/design/motion';
 import { completeJourney, clearJourney, journeyMeta, JOURNEY_META, JOURNEY_STEPS, localizeJourneyStep, JourneyKind, JourneyStep, journeyProgress, setStepCount, setStepNote, startJourney, toggleStep, useJourneys, loadJourneys, setJourneyDateLocale } from './src/services/journeyService';
 import { HOLY_CHANNELS, openChannel, type HolyChannel } from './src/services/holyChannels';
+import { VideoView, useVideoPlayer, type VideoPlayerStatus } from 'expo-video';
 import { clearFastDay, FastType, labelForEntry, loadFastingState, missedReasons, MISSED_REASONS, MissedReason, recordFast, readableDate, setFastingOwed, summariseFasting, useFasting, setFastingDateLocale } from './src/services/fastingService';
 import { buildWeeklySummary, loadActivity, logAdhkarRead, logHifzReview, logMushafPage, logSurahOpen, logVerseRead, useActivity, setActivityDateLocale } from './src/services/activityService';
 import { addDays, addQada, ADVISORY, assessBleeding, BISMILLAH_ARABIC, BLEEDING_GUIDANCE, cycleStats, dayKey, daysBetween, deleteCycle, deleteNifas, deleteQada, endCycle, endNifas, EXPLANATIONS, FLOW_LEVELS, formatDay, formatLongDay, GHUSL_FARD, GHUSL_SUNNAH, LIMITS, loadWomensState, logPurity, nifasStats, NIYYAH_ARABIC, NIYYAH_MEANING, NIYYAH_TRANSLITERATION, PurityStatus, QadaReason, QADA_REASONS, qadaStats, RAMADAN_ADVISORY, RAMADAN_NOTES, RAMADAN_STATE_LABEL, ramadanPlan, RamadanPlanDay, recentPurity, REFERENCES, SCHOOL_NOTE, setFlow, setOptedIn, startCycle, startNifas, THESE_DAYS_ACTS, THESE_DAYS_ADVISORY, THESE_DAYS_ANCHOR, THESE_DAYS_DISPUTED, TheseDaysAct, toggleQada, TUHR_SIGNS, useWomens, WORSHIP_GUIDANCE } from './src/services/womensService';
@@ -5852,108 +5853,115 @@ function JourneyScreenInner({ route, navigation }: any) {
 
 
 /**
- * The embed page for one channel's current livestream.
+ * A player for one of the two broadcasts the app is allowed to carry.
  *
- * The stream is a channel's live broadcast rather than a fixed video, so it has
- * no id to give the YouTube player API — it has to go through the
- * /embed/live_stream path, which is driven by postMessage instead. YouTube's own
- * controls are switched off and the app draws its own over the top.
+ * Both are HLS playlists published by the Saudi Broadcasting Authority, played
+ * through the platform's own player, which for a live stream is the right tool:
+ * it reads the playlist, keeps up with the live edge and recovers from a stall
+ * on its own. There is no YouTube frame anywhere in this screen any more.
+ *
+ * Two things about a live feed shape how this behaves. It has no duration, so
+ * there is nothing to scrub and no timeline to show — the controls are
+ * play/pause, mute and fullscreen, and that is the whole set. And it can be
+ * interrupted at any moment by the network or by the broadcaster, so the
+ * player's own status is treated as the truth about whether anything is
+ * playing, rather than the app assuming its last command took effect.
+ *
+ * Playback starts muted. A live broadcast from the Haramain is not something
+ * that should begin by making a noise, particularly on a phone that may be
+ * opened in a quiet room; the unmute button is one tap away.
  */
-function livePlayerHtml(channelId: string) {
-  const src = 'https://www.youtube.com/embed/live_stream?channel=' + channelId
-    + '&enablejsapi=1&controls=0&modestbranding=1&rel=0&playsinline=1&fs=0&iv_load_policy=3';
-  return `<!doctype html>
-<html><head><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
-<style>html,body{margin:0;padding:0;height:100%;background:#000;overflow:hidden}
-#yt{position:absolute;top:0;left:0;width:100%;height:100%;border:0}</style></head>
-<body><iframe id="yt" width="100%" height="100%" frameborder="0"
-  allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
-  src="${src}"></iframe>
-<script>
-function cmd(func,args){
-  var f=document.getElementById('yt');
-  if(f&&f.contentWindow){f.contentWindow.postMessage(JSON.stringify({event:'command',func:func,args:args||''}),'*');}
-}
-window.addEventListener('message',function(e){
-  try{
-    var d=(typeof e.data==='string')?JSON.parse(e.data):e.data;
-    if(!d) return;
-    if(d.event==='onStateChange'&&window.ReactNativeWebView){
-      window.ReactNativeWebView.postMessage('state:'+d.info);
-    }
-  }catch(err){}
-},false);
-window.onerror=function(){window.ReactNativeWebView&&window.ReactNativeWebView.postMessage('error');};
-window.ReactNativeWebView&&window.ReactNativeWebView.postMessage('loaded');
-</script></body></html>`;
-}
-
-/**
- * A small player for a live channel, drawn over the embed so the controls are
- * ours and not YouTube's. It starts paused: a stream that begins playing the
- * moment a screen opens is startling, and mobile browsers block it anyway.
- */
-function LivePlayer({ channel, rtl, T }: { channel: HolyChannel; rtl: boolean; T: (text: string) => string }) {
-  const webRef = useRef<any>(null);
+function LiveStreamPlayer({ channel, rtl, T }: { channel: HolyChannel; rtl: boolean; T: (text: string) => string }) {
+  const viewRef = useRef<any>(null);
+  const [muted, setMuted] = useState(true);
   const [playing, setPlaying] = useState(false);
-  const [muted, setMuted] = useState(false);
-  const [buffering, setBuffering] = useState(false);
-  const [broken, setBroken] = useState(false);
+  const [status, setStatus] = useState<VideoPlayerStatus>('loading');
+  const [controlsOn, setControlsOn] = useState(true);
+  /* Bumped whenever the frame is tapped, so the fade-out timer restarts. */
+  const [nudge, setNudge] = useState(0);
+  const controlsFade = useRef(new Animated.Value(1)).current;
 
-  const command = (func: string, args = '') => {
-    try { webRef.current?.injectJavaScript(`cmd('${func}'${args ? `,'${args}'` : ''});true;`); } catch { /* the page may not be ready */ }
-  };
+  const player = useVideoPlayer(channel.streamUrl || '', (p) => {
+    p.loop = false;
+    p.muted = true;
+    p.staysActiveInBackground = false;
+  });
 
-  const onMessage = (event: any) => {
-    const data = String(event?.nativeEvent?.data || '');
-    if (data.startsWith('state:')) {
-      const code = Number(data.slice(6));
-      setPlaying(code === 1);
-      setBuffering(code === 3);
-    } else if (data === 'error') {
-      setBroken(true);
-    }
-  };
+  useEffect(() => {
+    const statusSub = player.addListener('statusChange', ({ status: next }) => {
+      setStatus(next);
+      if (next === 'readyToPlay') player.play();
+    });
+    const playingSub = player.addListener('playingChange', ({ isPlaying }) => setPlaying(isPlaying));
+    return () => { statusSub.remove(); playingSub.remove(); };
+  }, [player]);
 
-  /* YouTube's own controls are off, so every control below is ours. */
+  /* Controls rest over the picture, so they clear themselves once playback is
+     under way and come back on a tap. While paused they stay put. */
+  useEffect(() => {
+    if (!playing) { setControlsOn(true); return; }
+    setControlsOn(true);
+    const timer = setTimeout(() => setControlsOn(false), 2600);
+    return () => clearTimeout(timer);
+  }, [playing, nudge]);
+
+  useEffect(() => {
+    Animated.timing(controlsFade, {
+      toValue: controlsOn ? 1 : 0,
+      duration: 260,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: true,
+    }).start();
+  }, [controlsOn]);
+
+  const togglePlay = () => { if (playing) player.pause(); else player.play(); };
+  const toggleMute = () => { const next = !muted; setMuted(next); player.muted = next; };
+
+  const buffering = status === 'loading' || (status === 'idle' && !!channel.streamUrl);
+  const failed = status === 'error' || !channel.streamUrl;
+
   return <View style={s.liveFrame}>
-    {!broken && <WebView
-      ref={webRef}
-      source={{ html: livePlayerHtml(channel.channelId || ''), baseUrl: 'https://www.youtube.com' }}
-      style={s.liveWeb}
-      javaScriptEnabled
-      domStorageEnabled
-      mediaPlaybackRequiresUserAction={false}
-      allowsInlineMediaPlayback
-      allowsFullscreenVideo
-      originWhitelist={['*']}
-      onMessage={onMessage}
-      onError={() => setBroken(true)}
-      onHttpError={() => setBroken(true)}
-    />}
-    {broken && <View style={s.liveFallback}>
-      <Text style={s.liveFallbackText}>{T('The stream could not be loaded here. Open it in YouTube instead.')}</Text>
+    {!failed && <Pressable accessibilityRole="button" accessibilityLabel={T('Show the player controls')}
+      onPress={() => setNudge((n) => n + 1)} style={s.liveSurface}>
+      <VideoView ref={viewRef} player={player} style={s.liveWeb} contentFit="contain"
+        nativeControls={false} fullscreenOptions={{ enable: true }} />
+    </Pressable>}
+
+    {buffering && <View style={s.liveFallback} pointerEvents="none">
+      <ActivityIndicator color={C.onAccent} />
+      <Text style={s.liveFallbackText}>{T('Connecting to the broadcast…')}</Text>
     </View>}
 
-    <View style={s.liveBar} pointerEvents="box-none">
-      <View style={s.liveBadge}><View style={s.livePulse} /><Text style={s.liveBadgeText}>{T('LIVE')}</Text></View>
-      <View style={s.liveControls}>
-        <Tactile accessibilityRole="button" accessibilityLabel={muted ? T('Unmute the stream') : T('Mute the stream')}
-          onPress={() => { const next = !muted; setMuted(next); command(next ? 'mute' : 'unMute'); }} style={s.liveButton}>
-          {ico(muted ? 'volume-mute' : 'volume-high', 17, C.onAccent)}
-        </Tactile>
-        <Pressable accessibilityRole="button" accessibilityLabel={playing ? T('Pause the stream') : T('Play the stream')}
-          onPress={() => { if (playing) command('pauseVideo'); else command('playVideo'); }} style={s.livePlay}>
-          {buffering ? <Spinner /> : ico(playing ? 'pause' : 'play', 19, C.deep)}
-        </Pressable>
-        <Tactile accessibilityRole="button" accessibilityLabel={`${T('Open')} ${channel.channel} ${T('in YouTube')}`}
-          onPress={() => Linking.openURL(channel.url).catch(() => undefined)} style={s.liveButton}>
-          {ico('open-outline', 17, C.onAccent)}
-        </Tactile>
+    {failed && <View style={s.liveFallback}>
+      <Text style={s.liveFallbackText}>{T('The broadcast will not play right now. Open it in the browser instead.')}</Text>
+      <Tactile accessibilityRole="button" accessibilityLabel={`${T('Open')} ${channel.channel} ${T('outside the app')}`}
+        onPress={() => openChannel(channel)} style={s.liveFallbackButton}>
+        <Text style={s.liveFallbackAction}>{T('Open outside')}</Text>
+      </Tactile>
+    </View>}
+
+    <Animated.View style={[s.liveScrim, { opacity: controlsFade }]} pointerEvents="box-none">
+      <View style={s.liveBar} pointerEvents={controlsOn ? 'auto' : 'none'}>
+        <View style={s.liveBadge}><View style={s.livePulse} /><Text style={s.liveBadgeText}>{T('LIVE')}</Text></View>
+        <View style={s.liveControls}>
+          <Tactile accessibilityRole="button" accessibilityLabel={muted ? T('Unmute the stream') : T('Mute the stream')}
+            onPress={toggleMute} style={s.liveButton}>
+            {ico(muted ? 'volume-mute' : 'volume-high', 17, C.onAccent)}
+          </Tactile>
+          <Pressable accessibilityRole="button" accessibilityLabel={playing ? T('Pause the stream') : T('Play the stream')}
+            onPress={togglePlay} style={s.livePlay}>
+            {buffering ? <ActivityIndicator size="small" color={C.deep} /> : ico(playing ? 'pause' : 'play', 19, C.deep)}
+          </Pressable>
+          <Tactile accessibilityRole="button" accessibilityLabel={T('Watch full screen')}
+            onPress={() => viewRef.current?.enterFullscreen().catch(() => undefined)} style={s.liveButton}>
+            {ico('fullscreen', 17, C.onAccent)}
+          </Tactile>
+        </View>
       </View>
-    </View>
+    </Animated.View>
   </View>;
 }
+
 
 function HolyChannelsScreen({ route, navigation }: any) {
   const { rtl } = useLanguage();
@@ -5979,14 +5987,15 @@ function HolyChannelsScreen({ route, navigation }: any) {
         </View>
         <Text style={s.dataBody}>{T(channel.detail)}</Text>
         <Text style={s.meta}>{T(channel.broadcaster)}</Text>
-        {!!channel.embedUrl && Platform.OS !== 'web' && <LivePlayer channel={channel} rtl={rtl} T={T} />}
+        {!!channel.streamUrl && Platform.OS !== 'web' && <LiveStreamPlayer channel={channel} rtl={rtl} T={T} />}
         <Tactile accessibilityRole="button" accessibilityLabel={`${T('Watch live')} ${channel.channel}`} onPress={() => open(channel)} style={s.primary}>
-          <Text style={s.primaryText}>{opened === channel.id ? T('Opening…') : T('Open live stream')}</Text>
+          <Text style={s.primaryText}>{opened === channel.id ? T('Opening…')
+            : (channel.streamUrl ? T('Open outside the app') : T('Open live stream'))}</Text>
         </Tactile>
       </View>)}
       <View style={s.apiPanel}>
-        <Text style={s.apiTitle}>{rtl ? 'كيف يُفتح البثّ' : 'How the stream opens'}</Text>
-        <Text style={s.apiText}>{rtl ? 'يُفتح البثّ خارج التطبيق في المتصفح أو تطبيق يوتيوب، لأن إعادة بثّه هنا تحتاج حقوقاً لا يملكها التطبيق.' : 'The stream opens outside this app, in your browser or the YouTube app, because re-broadcasting it here would need rights the app does not hold.'}</Text>
+        <Text style={s.apiTitle}>{rtl ? 'عن هذه البثوث' : 'About these streams'}</Text>
+        <Text style={s.apiText}>{rtl ? 'يعمل بثّ قناة القرآن وقناة السنّة داخل التطبيق من البثّ الرسمي للقناة نفسها. وتُفتح القنوات الأخرى خارج التطبيق، لأن إعادة بثّها هنا تحتاج حقوقاً لا يملكها التطبيق.' : 'Quran TV and Sunnah TV play right here, from the broadcaster’s own stream. The other channels open outside this app, because carrying them here would need rights the app does not hold.'}</Text>
       </View>
     </ScrollView>
   </Page>;
@@ -12524,6 +12533,10 @@ mushafPageNoText:{color:C.green,fontFamily:'Newsreader_700Bold',fontSize:16},mus
   liveBar:{position:'absolute',left:0,right:0,bottom:0,flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingHorizontal:12,paddingVertical:10},
   livePulse:{width:6,height:6,borderRadius:3,backgroundColor:C.coral},
   liveBadgeText:{color:C.onAccent,fontFamily:'DMSans_700Bold',fontSize:9,letterSpacing:1.2},
+  liveSurface:{flex:1},
+  liveScrim:{position:'absolute',top:0,left:0,right:0,bottom:0,justifyContent:'flex-end',backgroundColor:'rgba(0,0,0,0.28)'},
+  liveFallbackButton:{marginTop:12,paddingHorizontal:14,paddingVertical:8,borderRadius:999,backgroundColor:C.onAccent},
+  liveFallbackAction:{color:C.deep,fontFamily:'DMSans_700Bold',fontSize:12},
   liveControls:{flexDirection:'row',alignItems:'center',gap:8},
   liveButton:{width:32,height:32,borderRadius:16,backgroundColor:'rgba(0,0,0,0.5)',alignItems:'center',justifyContent:'center'},
   livePlay:{width:38,height:38,borderRadius:19,backgroundColor:C.onAccent,alignItems:'center',justifyContent:'center'},
