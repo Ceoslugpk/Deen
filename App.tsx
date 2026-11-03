@@ -1434,7 +1434,7 @@ if(asked)return <Pressable accessibilityRole="button" accessibilityLabel={T('Cho
     <Text style={s.locationBannerTitle}>{T('No location set')}</Text>
     <Text style={s.locationBannerBody}>{T('Prayer times, Qibla and fasting times read from one place. Tap to choose a city or enter coordinates.')}</Text>
   </View>
-  {ico('arrow-forward',17,C.muted)}
+  {ico(rtl ? 'arrow-back' : 'arrow-forward',17,C.muted)}
 </Pressable>;return <View style={[s.locationGate,width<370&&s.locationGateNarrow,compact&&{marginVertical: 12}]}><ToolGraphic tool="Location" size={60}/><View style={{flex:1,width:width<370?'100%':undefined}}><Text style={s.locationGateTitle}>{T('Choose your prayer location')}</Text><Text style={s.locationGateBody}>{T('Makkah is shown until you choose. Search for your city, or enter coordinates by hand.')}</Text><View style={[s.locationActions,width<370&&s.locationActionsNarrow]}><Tactile accessibilityLabel={T('Choose prayer location manually')} onPress={manual} style={s.primarySmall}><Text style={s.primaryText}>{T('Choose a city')}</Text></Tactile></View></View></View>}
 
 type DailyContentCache={ayah:DailyAyah;hadith:DailyHadith;name:DivineName;dua:any};
@@ -1740,7 +1740,7 @@ const[quranPosition,setQuranPosition]=useState<any>(null);const[openReflection,s
         <Pressable onPress={locationState.clear} style={s.locationPill}>{ico('location',13,C.onHero)}<Text numberOfLines={1} style={s.locationText}>{T(data.location?.label || '')}</Text></Pressable>
         <Text style={s.hijri}>{(rtl ? data.snapshot?.hijriAr || data.snapshot?.hijri : data.snapshot?.hijri) || T('Loading Hijri date…')} · {new Date().toLocaleDateString(rtl ? 'ar-u-nu-latn' : undefined, { day: 'numeric', month: 'short', year: 'numeric' })}{data.cached ? (rtl ? ' · مخزَّن' : ' · CACHED') : ''}</Text>
         <Text style={s.nextLabel}>{rtl ? 'التالي · ' : 'NEXT · '}{next ? prayerName(rtl, next.name) : '—'}</Text><Text style={s.heroTime}>{clockTime(rtl, next?.time || '—')}</Text>
-        <View style={s.heroFooter}><View style={s.countPill}>{ico('time-outline',14,C.white)}<Text style={s.countText}>{rtl ? 'بعد ' : 'in '}{next ? <HeroCountdown raw={next.raw} rtl={rtl}/> : '—'}</Text></View><Pressable onPress={()=>nav.navigate('Prayer')} style={s.heroCta}><Text style={s.heroCtaText}>{T('Prayer schedule')}</Text>{ico('arrow-forward',15,C.white)}</Pressable></View>
+        <View style={s.heroFooter}><View style={s.countPill}>{ico('time-outline',14,C.white)}<Text style={s.countText}>{rtl ? 'بعد ' : 'in '}{next ? <HeroCountdown raw={next.raw} rtl={rtl}/> : '—'}</Text></View><Pressable onPress={()=>nav.navigate('Prayer')} style={s.heroCta}><Text style={s.heroCtaText}>{T('Prayer schedule')}</Text>{ico(rtl ? 'arrow-back' : 'arrow-forward',15,C.white)}</Pressable></View>
       </View>
       <View style={s.prayerRail}>{data.snapshot?.prayers.filter(p=>p.name!=='Sunrise').map((p,i)=>{const checked=completed.includes(p.name);return <Pressable accessibilityRole="checkbox" accessibilityState={{checked}} onPress={()=>togglePrayer(p.name)} key={p.name} style={[s.railItem,p.name===next?.name&&s.railItemActive]}><View style={[s.railIcon,checked&&s.railIconDone]}><Image source={prayerIconFor(p.name, dark)} resizeMode="contain" style={{width:35,height:35,opacity:checked?1:.7}}/>{!!checked && <View style={s.railCheck}>{ico('checkmark',10,C.white)}</View>}</View><Text style={s.railName}>{prayerName(rtl, p.name)}</Text><Text style={s.railTime}>{clockTime(rtl, p.time).replace(' ','\n')}</Text></Pressable>})}</View><View style={s.homeProgress}><View><Text style={s.sourceTitle}>{completed.length}/5 {rtl ? 'صلاة اليوم' : 'prayers today'}</Text><Text style={s.sourceBody}>{rtl ? `${streak} ${arNoun(streak,'يوم متتابع','يومان متتابعان','أيام متتابعة','يومًا متتابعًا')} · ${weekTotal}/35 هذا الأسبوع` : `${streak} day streak · ${weekTotal}/35 this week`}</Text></View><View style={s.homeProgressRing}><Text style={s.progressCount}>{completed.length*20}%</Text></View></View>
     </>}
@@ -1835,7 +1835,7 @@ const[quranPosition,setQuranPosition]=useState<any>(null);const[openReflection,s
         <Text style={s.homeReflectArabic}>{data.dua?.arabic||T('Loading verified dua…')}</Text>
         {!rtl && <Text style={s.homeReflectBody}>{data.dua?.translation}</Text>}
       </>}
-      <View style={s.homeReflectFoot}><Text style={s.homeReflectFootText}>{T('Read the full reflection')}</Text>{ico('arrow-forward',15,C.green)}</View>
+      <View style={s.homeReflectFoot}><Text style={s.homeReflectFootText}>{T('Read the full reflection')}</Text>{ico(rtl ? 'arrow-back' : 'arrow-forward',15,C.green)}</View>
     </Pressable>
     <DepthCard index={0} radius={RADIUS.xl} style={s.weekWrap} cardStyle={s.weekSurface}
       gradient={[C.heroA, C.heroB]}
@@ -1846,7 +1846,7 @@ const[quranPosition,setQuranPosition]=useState<any>(null);const[openReflection,s
           <Text style={s.weekSummaryTitle}>{T('This week')}</Text>
           <Text style={s.weekSummaryBody}>{rtl ? `${weekTotal} من 35 صلاة مؤداة · ${streak} ${arNoun(streak,'يوم متتابع','يومان متتابعان','أيام متتابعة','يومًا متتابعًا')}` : `${weekTotal} of 35 prayers marked · ${streak} day streak`}</Text>
         </View>
-        {ico('arrow-forward',18,C.white)}
+        {ico(rtl ? 'arrow-back' : 'arrow-forward',18,C.white)}
       </View>
       <View style={s.homeWeekRow}>{weekDays.map(day=>(
         <View key={day.key} style={s.homeWeekCol}>
@@ -1866,7 +1866,7 @@ const[quranPosition,setQuranPosition]=useState<any>(null);const[openReflection,s
       onPress={()=>nav.navigate('Quran')}>
       <View style={StyleSheet.absoluteFill}><Image source={pickScene(SCENE_QURAN, resolved)} resizeMode="cover" style={s.heroBg}/></View>
       <LinearGradient colors={['rgba(42,32,81,.95)','rgba(77,59,129,.55)','rgba(77,60,145,.08)']} start={{x:0,y:.5}} end={{x:1,y:.5}} style={StyleSheet.absoluteFill} />
-      <Text style={s.readKicker}>{T(quranPosition ? 'CONTINUE READING' : 'FEATURED READING')}</Text><Text style={s.readArabic}>{quranPosition?'۝':'يس'}</Text><Text style={s.readTitle}>{quranPosition ? quranPosition.surahName : T('Surah Ya-Sin')}</Text><Text style={s.readMeta}>{quranPosition ? `${quranPosition.verseKey} · ${rtl ? 'صفحة' : 'Page'} ${quranPosition.page || '—'}` : (rtl ? '83 آية · مكية' : '83 verses · Makkan')}</Text><Tactile onPress={()=>nav.navigate('Quran',{screen:'Reader',params:{chapter:quranPosition?{id:quranPosition.surahId,name_simple:quranPosition.surahName,name_arabic:'',verses_count:0}:{id:36,name_simple:'Ya-Sin',name_arabic:'يس',verses_count:83},focusVerse:quranPosition?.verseKey},initial:false})} style={s.whiteButton}><Text style={s.whiteButtonText}>{T(quranPosition ? 'Continue' : 'Read now')}</Text>{ico('arrow-forward',14,C.green)}</Tactile>
+      <Text style={s.readKicker}>{T(quranPosition ? 'CONTINUE READING' : 'FEATURED READING')}</Text><Text style={s.readArabic}>{quranPosition?'۝':'يس'}</Text><Text style={s.readTitle}>{quranPosition ? quranPosition.surahName : T('Surah Ya-Sin')}</Text><Text style={s.readMeta}>{quranPosition ? `${quranPosition.verseKey} · ${rtl ? 'صفحة' : 'Page'} ${quranPosition.page || '—'}` : (rtl ? '83 آية · مكية' : '83 verses · Makkan')}</Text><Tactile onPress={()=>nav.navigate('Quran',{screen:'Reader',params:{chapter:quranPosition?{id:quranPosition.surahId,name_simple:quranPosition.surahName,name_arabic:'',verses_count:0}:{id:36,name_simple:'Ya-Sin',name_arabic:'يس',verses_count:83},focusVerse:quranPosition?.verseKey},initial:false})} style={s.whiteButton}><Text style={s.whiteButtonText}>{T(quranPosition ? 'Continue' : 'Read now')}</Text>{ico(rtl ? 'arrow-back' : 'arrow-forward',14,C.green)}</Tactile>
     </DepthCard>
     <Section title={T('Hadith of the day')} />
     <View style={[s.depthCard,s.hadithSurface,{borderRadius:RADIUS.xl}]}><Text style={s.quote}>“</Text><Text numberOfLines={6} style={s.hadithText}>{data.hadith ? (rtl && data.hadith.arabic ? stripTags(data.hadith.arabic) : data.hadith.text) : T('Loading today’s authenticated hadith…')}</Text><View style={s.hadithFoot}><Text style={s.meta}>{data.hadith ? `${hadithSourceLabel(rtl, data.hadith.collection)} · ${data.hadith.number}` : ''}</Text>{!!data.hadith&&<Pressable accessibilityRole="button" accessibilityLabel={T('Report a correction in this hadith')} onPress={()=>{const h=data.hadith;if(h)setReportHadith({collection:h.collection,number:h.number,arabic:h.arabic,text:h.text})}} hitSlop={10}>{ico('flag-outline',18,C.muted)}</Pressable>}</View></View>
@@ -2313,7 +2313,7 @@ function ToolsHomeScreen({ navigation }: any) {
             <ToolGraphic tool={item.title} size={72} />
             <Text style={s.exploreTitle}>{T(item.title)}</Text>
             <Text style={s.exploreBody}>{T(item.caption)}</Text>
-            <View style={s.exploreArrow}>{ico('arrow-forward', 15, C.green)}</View>
+            <View style={s.exploreArrow}>{ico(rtl ? 'arrow-back' : 'arrow-forward', 15, C.green)}</View>
           </View>
         </MotionPress>)}</View>
       </View>)}
@@ -2539,7 +2539,15 @@ function SurahRow({ chapter, onOpen, hifz }: {
     <View style={s.surahRowInner}>
       <View style={s.surahMedal}><Text style={s.surahMedalText}>{chapter.id}</Text></View>
       <View style={{ flex: 1 }}>
-        <Text style={s.surahName} numberOfLines={1}>{chapter.name_simple}</Text>
+        {/* The Arabic name sits beside the transliteration rather than out
+            at the far end of the row, so the two are read together. It goes
+            first in whichever direction that screen reads, which is why it
+            is placed on either side of the name rather than being fixed. */}
+        <View style={s.surahNameRow}>
+          {rtl && <Text style={s.surahArInline}>{chapter.name_arabic}</Text>}
+          <Text style={s.surahName} numberOfLines={1}>{chapter.name_simple}</Text>
+          {!rtl && <Text style={s.surahArInline}>{chapter.name_arabic}</Text>}
+        </View>
         <Text style={s.meta} numberOfLines={1}>
           {chapter.translated_name?.name} · {chapter.verses_count} {T('verses')} · {T(makki ? 'Makki' : 'Madani')}
         </Text>
@@ -2548,7 +2556,6 @@ function SurahRow({ chapter, onOpen, hifz }: {
         {(memorized || revising) && <View style={[s.surahRing, revising && s.surahRingHalf]}>
           {memorized ? ico('checkmark', 11, C.white) : <View style={s.surahRingDot} />}
         </View>}
-        <Text style={s.surahAr}>{chapter.name_arabic}</Text>
       </View>
     </View>
   </MotionPress>;
@@ -2564,14 +2571,14 @@ const exploreTools:{label:string;title:string;screen:string;tab?:string;params?:
 const compactStats=[{label:'Bookmarks',title:T('Bookmarks'),value:String(bookmarkCount),screen:'Bookmarks',icon:'bookmark-outline',tool:'Bookmarks'},{label:'Notes',title:T('Notes'),value:String(noteCount),screen:'Notes',icon:'create-outline',tool:'Notes'},{label:'Reading Plans',title:T('Plans'),value:plan?`${plan.days}d`:'—',screen:'Reading Plans',icon:'calendar-outline',tool:'Reading Plans'},{label:'Hifz',title:T('Hifz'),value:String(memorized),screen:'Hifz',icon:'school-outline',tool:'Hifz'},{label:'Offline Quran',title:T('Offline'),value:`${preload.cached}/114`,screen:'Quran Preload',icon:'download-outline',tool:'Offline Quran'}];
  return <Page><ScrollView keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}><AppHeader/>
  <View style={s.search}>{ico('search-outline',19,C.muted)}<TextInput accessibilityLabel={T('Search the Quran')} value={query} onChangeText={setQuery} onSubmitEditing={submit} returnKeyType="search" style={s.searchInput} placeholder={T('Search Surah, meaning, or 2:255')} placeholderTextColor={C.muted}/>{query.length>0&&<Pressable accessibilityLabel={T('Clear Quran search')} onPress={()=>setQuery('')}>{ico('close-circle',18,C.muted)}</Pressable>}</View>
- {position&&<Pressable onPress={()=>{const chapter=chapters.find(c=>c.id===position.surahId);if(chapter)open(chapter,'both',position.verseKey)}} style={s.continueBar}><ToolGraphic tool="Quran Arabic" size={54}/><View style={{flex:1}}><Text style={s.dailyKicker}>{T('CONTINUE READING')}</Text><Text style={s.settingName}>{position.surahName} · {position.verseKey}</Text><Text style={s.meta}>{rtl ? `صفحة ${position.page || '—'} · محفوظ على هذا الجهاز` : `Page ${position.page || '—'} · saved locally`}</Text></View>{ico('arrow-forward',18,C.green)}</Pressable>}
+ {position&&<Pressable onPress={()=>{const chapter=chapters.find(c=>c.id===position.surahId);if(chapter)open(chapter,'both',position.verseKey)}} style={s.continueBar}><ToolGraphic tool="Quran Arabic" size={54}/><View style={{flex:1}}><Text style={s.dailyKicker}>{T('CONTINUE READING')}</Text><Text style={s.settingName}>{position.surahName} · {position.verseKey}</Text><Text style={s.meta}>{rtl ? `صفحة ${position.page || '—'} · محفوظ على هذا الجهاز` : `Page ${position.page || '—'} · saved locally`}</Text></View>{ico(rtl ? 'arrow-back' : 'arrow-forward',18,C.green)}</Pressable>}
  <View style={[s.quranHero,{height:qHeroH}]}><View style={StyleSheet.absoluteFill}><Image source={pickScene(SCENE_QURAN, resolved)} resizeMode="cover" style={s.heroBg}/></View><LinearGradient colors={isPal(resolved)?SCRIM.quranPalestine:SCRIM.quranIslamic} start={{x:0,y:.5}} end={{x:1,y:.5}} style={StyleSheet.absoluteFill}/><Text style={s.quranArabic}>الرَّحْمَٰن</Text><Text style={s.quranHeroTitle}>{T('Read. Listen. Reflect.')}</Text><Text style={s.quranHeroMeta}>{T(preferences.scriptName)} · {T(rtl ? preferences.translationLanguage : preferences.translationName)}</Text><View style={s.heroActions}><Tactile style={s.whiteButton} onPress={()=>open(featured)}><Text style={s.whiteButtonText}>{T('Start reading')}</Text>{ico('play',13,C.green)}</Tactile><Pressable style={s.ghostHeroButton} onPress={()=>navigation.navigate('Quran Audio')}><Text style={s.ghostHeroText}>{T('Listen')}</Text>{ico('headset-outline',13,C.white)}</Pressable></View></View>
  <Section title={T('Explore')}/>
  <View style={s.qTileGrid} onLayout={e=>setGridW(e.nativeEvent.layout.width)}>{exploreTools.map(item=><MotionPress key={item.label} testID={`qtile-${item.label}`} onPress={()=>item.tab?navigation.navigate(item.tab,{screen:item.screen,params:item.params||{}}):navigation.navigate(item.screen,item.params||{})} style={[s.qTile,tileW?{width:tileW}:{flex:1,minWidth:60}]}><ToolGraphic tool={item.tool||item.label} size={40}/><Text numberOfLines={2} style={s.qTileLabel}>{item.title}</Text></MotionPress>)}</View>
  <Section title={T('Your Quran')}/>
  <View style={s.qStatRow}>{compactStats.map(item=><MotionPress key={item.label} testID={`qstat-${item.label}`} onPress={()=>navigation.navigate(item.screen)} style={s.qStat}><View style={s.qStatIcon}>{item.tool?<Image source={(dark?TOOL_IMAGES_DARK:TOOL_IMAGES)[item.tool]} resizeMode="contain" style={{width:24,height:24}}/>:ico(item.icon,17,C.green)}</View><Text style={s.qStatValue}>{item.value}</Text><Text numberOfLines={1} style={s.qStatLabel}>{item.title}</Text></MotionPress>)}</View>
  <Section title={T('Reading preferences')}/>
- <View style={s.quranPreferenceRow}><Pressable onPress={()=>navigation.navigate('Reader Settings')} style={s.quranPreferenceCard}><ToolGraphic tool="Reader Settings" size={56}/><View style={{flex:1}}><Text style={s.settingName}>{T('Script & display')}</Text><Text numberOfLines={1} style={s.meta}>{T(preferences.scriptName)} · {T(QURAN_FONTS.find(font=>font.id===preferences.arabicFont)?.short || '')} · {preferences.fontSize}px</Text></View>{ico('arrow-forward',17,C.green)}</Pressable><Pressable onPress={()=>navigation.navigate('Translations')} style={s.quranPreferenceCard}><ToolGraphic tool="Translations" size={56}/><View style={{flex:1}}><Text style={s.settingName}>{T('Translation')}</Text><View style={s.metaRow}><Flag code={languageOf(preferences.translationEdition, preferences.translationLanguage)} size={12} /><Text numberOfLines={1} style={s.meta}>{T(rtl ? preferences.translationLanguage : preferences.translationName)}</Text></View></View>{ico('arrow-forward',17,C.green)}</Pressable></View>
+ <View style={s.quranPreferenceRow}><Pressable onPress={()=>navigation.navigate('Reader Settings')} style={s.quranPreferenceCard}><ToolGraphic tool="Reader Settings" size={56}/><View style={{flex:1}}><Text style={s.settingName}>{T('Script & display')}</Text><Text numberOfLines={1} style={s.meta}>{T(preferences.scriptName)} · {T(QURAN_FONTS.find(font=>font.id===preferences.arabicFont)?.short || '')} · {preferences.fontSize}px</Text></View>{ico(rtl ? 'arrow-back' : 'arrow-forward',17,C.green)}</Pressable><Pressable onPress={()=>navigation.navigate('Translations')} style={s.quranPreferenceCard}><ToolGraphic tool="Translations" size={56}/><View style={{flex:1}}><Text style={s.settingName}>{T('Translation')}</Text><View style={s.metaRow}><Flag code={languageOf(preferences.translationEdition, preferences.translationLanguage)} size={12} /><Text numberOfLines={1} style={s.meta}>{T(rtl ? preferences.translationLanguage : preferences.translationName)}</Text></View></View>{ico(rtl ? 'arrow-back' : 'arrow-forward',17,C.green)}</Pressable></View>
  
  {recent.length>0&&<><Section title={T('Recent Surahs')}/><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap:8,paddingRight: 16}}>{recent.map(id=>{const c=chapters.find(x=>x.id===id);return c?<Pressable key={id} onPress={()=>open(c)} style={s.recentChip}><Text style={s.settingName}>{c.name_simple}</Text><Text style={s.surahAr}>{c.name_arabic}</Text></Pressable>:null})}</ScrollView></>}
  <Section title={T('All surahs')} action={rtl ? `${shown.length} سورة` : `${shown.length} chapters`}/>{error?<ErrorState message={error} retry={load}/>:!chapters.length?<Spinner/>:<View style={s.surahList}>{visible.map(c=><SurahRow key={c.id} chapter={c} onOpen={openSurah} hifz={hifz[c.id]}/>)}{visible.length<shown.length&&<Pressable accessibilityRole="button" accessibilityLabel={T('Show all')} onPress={()=>setExpanded(true)} style={s.surahMore}><Text style={s.surahMoreText}>{T('Show all')} · {shown.length}</Text></Pressable>}</View>}</ScrollView></Page>
@@ -3302,7 +3309,7 @@ function VerseShareSheet({ verse, chapter, rtl, T, onClose }: {
             <Text style={s.sheetOptionLabel}>{option.label}</Text>
             <Text style={s.sheetOptionDetail}>{option.detail}</Text>
           </View>
-          {busy ? <ActivityIndicator color={C.green} /> : ico('arrow-forward', 17, C.muted)}
+          {busy ? <ActivityIndicator color={C.green} /> : ico(rtl ? 'arrow-back' : 'arrow-forward', 17, C.muted)}
         </Tactile>
       ))}
       <Tactile accessibilityRole="button" accessibilityLabel={T('Cancel')} onPress={onClose} style={s.sheetCancel}>
@@ -3676,14 +3683,14 @@ function MushafPageView({page,verses,error,cached,retry,preferences,rtl,T,input,
 
   return <View style={{width:'100%'}} onLayout={e=>{const w=e.nativeEvent.layout.width;if(w&&Math.abs(w-boxW)>.5)setBoxW(w);}}>
   <View style={s.mushafNav}>
-    <Pressable accessibilityLabel={T('Previous Mushaf page')} disabled={!canPrev} onPress={() => step(-1)} style={[s.stepButton, !canPrev && { opacity: .3 }]}>{ico('arrow-back', 20, C.green)}</Pressable>
+    <Pressable accessibilityLabel={T('Previous Mushaf page')} disabled={!canPrev} onPress={() => step(-1)} style={[s.stepButton, !canPrev && { opacity: .3 }]}>{ico(rtl ? 'arrow-forward' : 'arrow-back', 20, C.green)}</Pressable>
     <View style={s.pageJump}>
       <Text style={s.dataMeta}>
         {T(cached ? 'OFFLINE PAGE' : 'MADINAH MUSHAF · 604 PAGES')}
       </Text>
       <TextInput accessibilityLabel={T('Mushaf page number')} keyboardType="number-pad" value={input} onChangeText={setInput} onSubmitEditing={() => goPage(Number(input))} style={s.pageInput} />
     </View>
-    <Pressable accessibilityLabel={T('Next Mushaf page')} disabled={!canNext} onPress={() => step(1)} style={[s.stepButton, !canNext && { opacity: .3 }]}>{ico('arrow-forward', 20, C.green)}</Pressable>
+    <Pressable accessibilityLabel={T('Next Mushaf page')} disabled={!canNext} onPress={() => step(1)} style={[s.stepButton, !canNext && { opacity: .3 }]}>{ico(rtl ? 'arrow-back' : 'arrow-forward', 20, C.green)}</Pressable>
   </View>
   <View style={s.pageProgress}><View style={[s.preloadFill, { width: `${page / 604 * 100}%` } as any]} /></View>
 
@@ -4148,7 +4155,7 @@ function VerseActionsSheet({ verse, chapter, rtl, T, navigation, onClose }: {
               <Text style={s.sheetOptionLabel}>{option.label}</Text>
               <Text style={s.sheetOptionDetail}>{option.detail}</Text>
             </View>
-            {busy ? <ActivityIndicator color={C.green} /> : ico('arrow-forward', 17, C.muted)}
+            {busy ? <ActivityIndicator color={C.green} /> : ico(rtl ? 'arrow-back' : 'arrow-forward', 17, C.muted)}
           </Tactile>
         ))}
       </ScrollView>
@@ -4186,9 +4193,9 @@ function TafsirScreen({navigation}:any){const{rtl}=useLanguage();const T=(text:s
 function TafsirCompareScreen({route,navigation}:any){const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);const verse:Verse=route.params?.verse||{verse_key:'2:255',text_uthmani:''};const[reference,setReference]=useState(verse.verse_key);const{preferences}=useQuranPreferences();const{width}=useWindowDimensions();const[mode,setMode]=useState<'translation'|'tafsir'>('translation');const[editions,setEditions]=useState<QuranEdition[]>([]);const[selected,setSelected]=useState<string[]>([preferences.translationEdition,'en.pickthall'].filter((x,i,a)=>a.indexOf(x)===i));const[rows,setRows]=useState<any[]>([]);const[query,setQuery]=useState('');const[error,setError]=useState('');const loadEditions=()=>getQuranEditions(mode).then(setEditions).catch(e=>setError(T(e.message)));const load=async()=>{setError('');const ids=[preferences.scriptEdition==='quran-indopak'?'quran-uthmani':preferences.scriptEdition,...selected];const cacheKey=`${reference}:${ids.join(',')}`;const cached=mode==='tafsir'?await getCachedJson<any[]>('tafsir',cacheKey):null;if(cached)setRows(cached);try{const fresh=await getAyahEditions(reference,ids);setRows(fresh);if(mode==='tafsir')await setCachedJson('tafsir',cacheKey,fresh)}catch(e:any){if(!cached)setError(T(e.message))}};useEffect(()=>{loadEditions()},[mode]);useEffect(()=>{load()},[reference,selected.join('|'),preferences.scriptEdition]);useEffect(()=>{if(mode==='tafsir')setSelected(['ar.jalalayn']);else setSelected([preferences.translationEdition,'en.pickthall'].filter((x,i,a)=>a.indexOf(x)===i))},[mode]);const toggle=(id:string)=>setSelected(current=>current.includes(id)?current.length>1?current.filter(x=>x!==id):current:current.length<(mode==='translation'?3:1)?[...current,id]:current);const results=query.trim().length<2?[]:editions.filter(e=>`${e.englishName} ${e.name} ${e.language}`.toLowerCase().includes(query.toLowerCase())).slice(0,30);const arabic=rows[0];const compared=rows.slice(1);const wide=width>=760;const columnWidth=wide?Math.max(260,(Math.min(width-40,900)-12*(compared.length-1))/Math.max(1,compared.length)):0;return <Page><ToolBar title={T('Tafsir & comparison')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}>
       {/* Where you are. The stepper moves one verse; the field takes a typed one. */}
       <View style={s.tcRefBar}>
-        <Tactile accessibilityLabel={T('Previous verse')} onPress={()=>{const[a,v]=reference.split(':').map(Number);setReference(`${a}:${Math.max(1,v-1)}`)}} style={s.stepButton}>{ico('arrow-back',19,C.green)}</Tactile>
+        <Tactile accessibilityLabel={T('Previous verse')} onPress={()=>{const[a,v]=reference.split(':').map(Number);setReference(`${a}:${Math.max(1,v-1)}`)}} style={s.stepButton}>{ico(rtl ? 'arrow-forward' : 'arrow-back',19,C.green)}</Tactile>
         <TextInput accessibilityLabel={T('Verse reference')} value={reference} onChangeText={setReference} onSubmitEditing={load} style={[s.referenceInput,{flex:1}]}/>
-        <Tactile accessibilityLabel={T('Next verse')} onPress={()=>{const[a,v]=reference.split(':').map(Number);setReference(`${a}:${v+1}`)}} style={s.stepButton}>{ico('arrow-forward',19,C.green)}</Tactile>
+        <Tactile accessibilityLabel={T('Next verse')} onPress={()=>{const[a,v]=reference.split(':').map(Number);setReference(`${a}:${v+1}`)}} style={s.stepButton}>{ico(rtl ? 'arrow-back' : 'arrow-forward',19,C.green)}</Tactile>
       </View>
       <View style={s.choiceRow}><ChoicePill label={T('Translations')} selected={mode==='translation'} onPress={()=>setMode('translation')}/><ChoicePill label={T('Tafsir')} selected={mode==='tafsir'} onPress={()=>setMode('tafsir')}/></View>
 
@@ -4269,7 +4276,7 @@ function VocabularyScreen({navigation}:any){const[index,setIndex]=useState(0);co
     </View>;})}
   </View>}
 </>:<>
-<Pressable accessibilityLabel={`${word.arabic}. ${revealed?`${word.transliteration}, ${word.meaning}`:T('Tap to reveal meaning')}`} onPress={()=>setRevealed(value=>!value)} style={[s.flashcard,{marginTop:20}]}><Text style={s.flashIndex}>{index+1} / {QURAN_VOCABULARY.length}</Text><Text style={s.flashArabic}>{word.arabic}</Text>{revealed?<><Text style={s.flashTransliteration}>{word.transliteration}</Text><Text style={s.flashMeaning}>{word.meaning}</Text>{word.root&&<Text style={s.meta}>{T('Root')} · {word.root}</Text>}</>:<Text style={s.flashHint}>{T('Tap to reveal')}</Text>}</Pressable>{revealed&&<View style={s.actionRow}><Tactile onPress={()=>mark(false)} style={s.secondary}><Text style={s.secondaryText}>{T('Review again')}</Text></Tactile><Tactile onPress={()=>mark(true)} style={s.primary}><Text style={s.primaryText}>{T('I know this')}</Text></Tactile></View>}<View style={s.mushafNav}><Tactile onPress={()=>{setRevealed(false);setIndex((index-1+QURAN_VOCABULARY.length)%QURAN_VOCABULARY.length)}} style={s.stepButton}>{ico('arrow-back',19,C.green)}</Tactile><Tactile onPress={()=>Linking.openURL('https://corpus.quran.com/lemmas.jsp')} style={s.sectionLink}><Text style={s.sectionAction}>{T('Frequency source')}</Text></Tactile><Tactile onPress={()=>{setRevealed(false);setIndex((index+1)%QURAN_VOCABULARY.length)}} style={s.stepButton}>{ico('arrow-forward',19,C.green)}</Tactile></View></>}</ScrollView></Page>}
+<Pressable accessibilityLabel={`${word.arabic}. ${revealed?`${word.transliteration}, ${word.meaning}`:T('Tap to reveal meaning')}`} onPress={()=>setRevealed(value=>!value)} style={[s.flashcard,{marginTop:20}]}><Text style={s.flashIndex}>{index+1} / {QURAN_VOCABULARY.length}</Text><Text style={s.flashArabic}>{word.arabic}</Text>{revealed?<><Text style={s.flashTransliteration}>{word.transliteration}</Text><Text style={s.flashMeaning}>{word.meaning}</Text>{word.root&&<Text style={s.meta}>{T('Root')} · {word.root}</Text>}</>:<Text style={s.flashHint}>{T('Tap to reveal')}</Text>}</Pressable>{revealed&&<View style={s.actionRow}><Tactile onPress={()=>mark(false)} style={s.secondary}><Text style={s.secondaryText}>{T('Review again')}</Text></Tactile><Tactile onPress={()=>mark(true)} style={s.primary}><Text style={s.primaryText}>{T('I know this')}</Text></Tactile></View>}<View style={s.mushafNav}><Tactile onPress={()=>{setRevealed(false);setIndex((index-1+QURAN_VOCABULARY.length)%QURAN_VOCABULARY.length)}} style={s.stepButton}>{ico(rtl ? 'arrow-forward' : 'arrow-back',19,C.green)}</Tactile><Tactile onPress={()=>Linking.openURL('https://corpus.quran.com/lemmas.jsp')} style={s.sectionLink}><Text style={s.sectionAction}>{T('Frequency source')}</Text></Tactile><Tactile onPress={()=>{setRevealed(false);setIndex((index+1)%QURAN_VOCABULARY.length)}} style={s.stepButton}>{ico(rtl ? 'arrow-back' : 'arrow-forward',19,C.green)}</Tactile></View></>}</ScrollView></Page>}
 
 function TajweedStudyScreen({navigation}:any){const[reference,setReference]=useState('2:255');const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);const[rows,setRows]=useState<any[]>([]);const[error,setError]=useState('');const[showNormal,setShowNormal]=useState(false);const load=()=>{if(!/^([1-9]|[1-9]\d|1(?:0\d|1[0-4])):([1-9]\d*)$/.test(reference.trim())){setError(T('Enter a verse reference such as 2:255.'));return}setError('');setRows([]);getAyahEditions(reference.trim(),['quran-tajweed','quran-uthmani','en.sahih']).then(setRows).catch(e=>setError(T(e.message)))};useEffect(load,[]);return <Page><ToolBar title={T('Tajweed study')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><ToolGraphic tool="Tajweed" size={83}/><Text style={s.dataTitle}>{T('Read the rules in colour')}</Text><Text style={s.intro}>{T('Each Tajweed rule is coloured where it applies. Colours are a learning aid and do not replace study with a qualified teacher.')}</Text><View style={s.search}><TextInput value={reference} onChangeText={setReference} onSubmitEditing={load} placeholder="2:255" style={s.searchInput}/><Pressable accessibilityLabel={T('Load this verse')} onPress={load} style={s.searchGo}>{ico('arrow-forward-circle',23,C.green)}</Pressable></View><View style={s.choiceRow}><ChoicePill label={T('Tajweed colour')} selected={!showNormal} onPress={()=>setShowNormal(false)}/><ChoicePill label={T('Normal text')} selected={showNormal} onPress={()=>setShowNormal(true)}/></View>{error?<ErrorState message={error} retry={load}/>:!rows.length?<Spinner/>:<View style={s.tajweedPractice}><Text style={s.dataMeta}>{T('QURAN')} {reference}</Text>{showNormal?<Text style={s.dataArabic}>{rows[1]?.text}</Text>:<TajweedText text={rows[0]?.text||''} style={s.dataArabic}/>}<Text style={s.dataBody}>{rows[2]?.text}</Text></View>}<Section title={T('Colour legend')}/><View style={s.settings}>{TAJWEED_RULES.map(rule=><View key={rule.name} style={s.tajweedRule}><View style={[s.tajweedSwatch,{backgroundColor:rule.color}]}/><View style={{flex:1}}><Text style={s.settingName}>{tajweedName(rule,rtl)}</Text><Text style={s.meta}>{tajweedDetail(rule,rtl)}</Text></View></View>)}</View></ScrollView></Page>}
 
@@ -4277,7 +4284,7 @@ function JuzDirectoryScreen({navigation}:any){const{rtl}=useLanguage();const T=(
 function HizbDirectoryScreen({navigation}:any){const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);return <Page><ToolBar title={T('60 Hizb')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><ToolGraphic tool="60 Hizb" size={81}/><Text style={s.dataTitle}>{T('Read by Hizb')}</Text><Text style={s.intro}>{T('Each Hizb contains four quarter-Hizb sections.')}</Text><View style={s.juzGrid}>{Array.from({length:60},(_,i)=>i+1).map(hizb=><Tactile key={hizb} onPress={()=>navigation.navigate('Reader',{section:'hizb',hizb})} style={s.juzCard}><Text style={s.juzNo}>{hizb}</Text><Text style={s.meta}>{T('HIZB')}</Text></Tactile>)}</View></ScrollView></Page>}
 function QuranPreloadScreen({navigation}:any){const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);const{preferences}=useQuranPreferences();const[state,setState]=useState(getPreloadState());useEffect(()=>{const unsubscribe=subscribePreload(setState);refreshPreload({script:preferences.scriptEdition,translation:preferences.translationEdition});return unsubscribe},[preferences.scriptEdition,preferences.translationEdition]);const start=()=>startQuranPreload({script:preferences.scriptEdition,translation:preferences.translationEdition});return <Page><ToolBar title={T('Offline Quran')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><ToolGraphic tool="Offline Quran" size={85}/><Text style={s.dataTitle}>{T('Prepare for offline reading')}</Text><Text style={s.intro}>{T('Downloads the Arabic script and translation you have selected, one Surah at a time. Preparation continues while you use other screens and prioritizes your current reading Surah.')}</Text><View style={s.preloadScore}><Text style={s.planDays}>{state.cached}</Text><Text style={s.settingName}>{T('of 114 Surahs cached')}</Text><View style={s.preloadTrack}><View style={[s.preloadFill,{width:`${state.cached/114*100}%`} as any]}/></View><Text style={s.meta}>{T(preferences.scriptName)} · {T(rtl ? preferences.translationLanguage : preferences.translationName)}{state.current?(rtl?` · يجهّز سورة ${state.current}`:` · Preparing Surah ${state.current}`):''}</Text>{state.usage&&<Text style={s.cacheUsage}>{rtl?`ذاكرة المصحف ${(state.usage.byNamespace.quran/1048576).toFixed(1)} ميغابايت · الحد ${(state.usage.limits.quran/1000000).toFixed(0)} ميغابايت · الإجمالي ${(state.usage.limits.total/1000000).toFixed(0)} ميغابايت`:`Quran cache ${(state.usage.byNamespace.quran/1048576).toFixed(1)} MB · limit ${(state.usage.limits.quran/1000000).toFixed(0)} MB · total limit ${(state.usage.limits.total/1000000).toFixed(0)} MB`}</Text>}</View>{state.error&&<ErrorState message={state.error} retry={start}/>}<View style={s.actionRow}>{!state.running?<Tactile onPress={start} style={s.primary}><Text style={s.primaryText}>{T(state.cached ? 'Resume preparation' : 'Preload all')}</Text></Tactile>:<Tactile onPress={pauseQuranPreload} style={s.secondary}><Text style={s.secondaryText}>{T('Pause')}</Text></Tactile>}<Tactile onPress={clearPreparedQuran} style={s.dangerButton}><Text style={s.dangerText}>{T('Clear Quran cache')}</Text></Tactile></View><View style={s.sourceCard}>{ico('shield-checkmark-outline',21,C.green)}<View style={{flex:1}}><Text style={s.sourceTitle}>{T('Managed low-priority preparation')}</Text><Text style={s.sourceBody}>{T('Cached Surahs open first, already-saved content is skipped, and bounded LRU storage prevents unlimited growth.')}</Text></View></View></ScrollView></Page>}
 function ReadingPlansScreen({navigation}:any){const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);const[plan,setPlan]=useState<any>(null);useEffect(()=>{loadPlan().then(setPlan)},[]);const start=async(days:number)=>{const next={days,startedAt:Date.now(),completed:[]};await savePlan(next);setPlan(next)};const today=plan?Math.min(plan.days,Math.floor((Date.now()-plan.startedAt)/86400000)+1):0;const toggle=async()=>{const completed=plan.completed.includes(today)?plan.completed.filter((x:number)=>x!==today):[...plan.completed,today];const next={...plan,completed};await savePlan(next);setPlan(next)};return <Page><ToolBar title={T('Reading plans')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><ToolGraphic tool="Reading Plans" size={81}/><Text style={s.dataTitle}>{T('Complete the Quran')}</Text>{!plan?<><Text style={s.intro}>{T('Choose a private local plan. Progress stays on this device.')}</Text><View style={s.planGrid}>{[30,60,90,120].map(days=><Pressable key={days} onPress={()=>start(days)} style={s.planCard}><Text style={s.planDays}>{days}</Text><Text style={s.settingName}>{T('day plan')}</Text><Text style={s.meta}>{rtl?`${(604/days).toFixed(1)} صفحة يومياً`:`${(604/days).toFixed(1)} pages daily`}</Text></Pressable>)}</View></>:<><View style={s.summaryScore}><View><Text style={s.nextCardLabel}>{T('CURRENT DAY')}</Text><Text style={s.zakatNo}>{today} / {plan.days}</Text></View><View><Text style={s.nextCardLabel}>{T('COMPLETED')}</Text><Text style={s.zakatNo}>{plan.completed.length}</Text></View></View><Pressable onPress={toggle} style={s.planToday}><Text style={s.settingName}>{rtl?`قراءة اليوم ${today}`:`Day ${today} reading`}</Text>{ico(plan.completed.includes(today)?'checkmark-circle':'ellipse-outline',28,C.green)}</Pressable><Tactile onPress={async()=>{await savePlan(null);setPlan(null)}} style={s.dangerButton}><Text style={s.dangerText}>{T('End current plan')}</Text></Tactile></>}</ScrollView></Page>}
-function HifzScreen({navigation}:any){const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);const[chapters,setChapters]=useState<Chapter[]>([]);const[status,setStatus]=useState<Record<number,HifzStatus>>({});const[filter,setFilter]=useState<'all'|HifzStatus>('all');useEffect(()=>{getChapters().then(setChapters);loadHifz().then(setStatus)},[]);const cycle=async(id:number)=>{const current=status[id]||'not-started';const next:HifzStatus=current==='not-started'?'revising':current==='revising'?'memorized':'not-started';const value={...status,[id]:next};setStatus(value);await saveHifz(value)};const shown=chapters.filter(c=>filter==='all'||(status[c.id]||'not-started')===filter);const memorized=Object.values(status).filter(x=>x==='memorized').length;return <Page><ToolBar title={T('Hifz tracker')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><ToolGraphic tool="Hifz" size={81}/><Text style={s.dataTitle}>{rtl?`حفظت ${memorized} من 114`:`${memorized} of 114 memorized`}</Text><Tactile onPress={()=>navigation.navigate('Memorize')} style={s.practiceLaunch}><View><Text style={s.settingName}>{T('Hide-and-peek recall')}</Text><Text style={s.meta}>{T('Test a verse from your revising or memorized Surahs')}</Text></View>{ico('play-circle',28,C.green)}</Tactile><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap: 8}}>{(['all','not-started','revising','memorized'] as const).map(value=><ChoicePill key={value} label={T(value.replace('-',' '))} selected={filter===value} onPress={()=>setFilter(value)}/>)}</ScrollView><View style={{height:13}}/><View style={s.settings}>{shown.map(c=><Pressable key={c.id} onPress={()=>cycle(c.id)} style={s.translationRow}><View style={s.surahNum}><Text style={s.surahNumText}>{c.id}</Text></View><View style={{flex:1}}><Text style={s.settingName}>{c.name_simple}</Text><Text style={s.meta}>{rtl?`${c.verses_count} آية`:`${c.verses_count} verses`}</Text></View><Text style={s.hifzStatus}>{T((status[c.id]||'not-started').replace('-',' '))}</Text></Pressable>)}</View></ScrollView></Page>}
+function HifzScreen({navigation}:any){const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);const[chapters,setChapters]=useState<Chapter[]>([]);const[status,setStatus]=useState<Record<number,HifzStatus>>({});const[filter,setFilter]=useState<'all'|HifzStatus>('all');useEffect(()=>{getChapters().then(setChapters);loadHifz().then(setStatus)},[]);const cycle=async(id:number)=>{const current=status[id]||'not-started';const next:HifzStatus=current==='not-started'?'revising':current==='revising'?'memorized':'not-started';const value={...status,[id]:next};setStatus(value);await saveHifz(value)};const shown=chapters.filter(c=>filter==='all'||(status[c.id]||'not-started')===filter);const memorized=Object.values(status).filter(x=>x==='memorized').length;return <Page><ToolBar title={T('Hifz tracker')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><ToolGraphic tool="Hifz" size={81}/><Text style={s.dataTitle}>{rtl?`حفظت ${memorized} من 114`:`${memorized} of 114 memorized`}</Text><Tactile onPress={()=>navigation.navigate('Memorize')} style={s.practiceLaunch}><View><Text style={s.settingName}>{T('Hide-and-peek recall')}</Text><Text style={s.meta}>{T('Test a verse from your revising or memorized Surahs')}</Text></View>{ico('play-circle',28,C.green)}</Tactile><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap: 8}}>{(['all','not-started','revising','memorized'] as const).map(value=><ChoicePill key={value} label={T(value.replace('-',' '))} selected={filter===value} onPress={()=>setFilter(value)}/>)}</ScrollView><View style={{height:13}}/><View style={s.settings}>{shown.map(c=><Pressable key={c.id} onPress={()=>cycle(c.id)} style={s.translationRow}><View style={s.surahNum}><Text style={s.surahNumText}>{c.id}</Text></View><View style={{flex:1}}><View style={s.surahNameRow}>{rtl && <Text style={s.surahArInline}>{c.name_arabic}</Text>}<Text style={[s.settingName,{flexShrink:1}]} numberOfLines={1}>{c.name_simple}</Text>{!rtl && <Text style={s.surahArInline}>{c.name_arabic}</Text>}</View><Text style={s.meta}>{rtl?`${c.verses_count} آية`:`${c.verses_count} verses`}</Text></View><Text style={s.hifzStatus}>{T((status[c.id]||'not-started').replace('-',' '))}</Text></Pressable>)}</View></ScrollView></Page>}
 
 /** The four ways a verse can be put in front of you, in the order they get easier. */
 const MEM_MODES: MemorizationMode[] = ['hide-ayah', 'hide-words', 'progressive', 'random'];
@@ -4778,7 +4785,7 @@ function ExploreHome({navigation}:any){
     if(kind&&!journeys.active[kind])startJourney(kind,journeyMeta(kind,rtl).title);
     navigation.navigate(item.route,item.params);
   };
-  return <Page><ScrollView keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}><AppHeader/><Text style={s.intro}>{T('Remembrance, trusted learning and step-by-step guidance—organized by purpose rather than hidden in a feature grid.')}</Text>{libraryGroups.map(group=><View key={group.label}><Text style={s.libraryKicker}>{T(group.label)}</Text><Text style={s.libraryHeading}>{T(group.title)}</Text><View style={s.exploreGrid}>{group.items.map((item)=>{return <MotionPress key={item.title} onPress={()=>open(item)} style={s.exploreCard}><View style={s.exploreCardInner}><ToolGraphic tool={item.title} size={72}/><Text style={s.exploreTitle}>{T(item.title)}</Text><Text style={s.exploreBody}>{T(item.caption)}</Text><View style={s.exploreArrow}>{ico('arrow-forward',15,C.green)}</View></View></MotionPress>})}</View></View>)}</ScrollView></Page>;}
+  return <Page><ScrollView keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}><AppHeader/><Text style={s.intro}>{T('Remembrance, trusted learning and step-by-step guidance—organized by purpose rather than hidden in a feature grid.')}</Text>{libraryGroups.map(group=><View key={group.label}><Text style={s.libraryKicker}>{T(group.label)}</Text><Text style={s.libraryHeading}>{T(group.title)}</Text><View style={s.exploreGrid}>{group.items.map((item)=>{return <MotionPress key={item.title} onPress={()=>open(item)} style={s.exploreCard}><View style={s.exploreCardInner}><ToolGraphic tool={item.title} size={72}/><Text style={s.exploreTitle}>{T(item.title)}</Text><Text style={s.exploreBody}>{T(item.caption)}</Text><View style={s.exploreArrow}>{ico(rtl ? 'arrow-back' : 'arrow-forward',15,C.green)}</View></View></MotionPress>})}</View></View>)}</ScrollView></Page>;}
 function ToolBar({title,navigation}:any){const{rtl}=useLanguage();return <View style={s.readerBar}><IconButton name={rtl?'arrow-forward':'arrow-back'} onPress={()=>navigation.goBack()}/><Text style={s.readerName}>{title}</Text><View style={{width:44}}/></View>}
 /* Sixteen points, the usual navigational set. Left as the Latin abbreviations
    in both languages: they are the standard notation on a compass rather than
@@ -5528,7 +5535,7 @@ function PilgrimageScreen({ navigation }: any) {
             <View style={s.journeyBar}><View style={[s.journeyBarFill, { width: `${progress.percent}%` }]} /></View>
             <Text style={s.dataMeta}>{journey ? (rtl ? `${progress.done} من ${progress.total} من المناسك مؤداة · بدأت ${formatJourneyDay(journey.startedAt)}` : `${progress.done} OF ${progress.total} RITES DONE · STARTED ${formatJourneyDay(journey.startedAt).toUpperCase()}`) : T('NOT STARTED')}</Text>
           </View>
-          {ico('arrow-forward', 17, C.chevron)}
+          {ico(rtl ? 'arrow-back' : 'arrow-forward', 17, C.chevron)}
         </Pressable>;
       })}
       <Section title={T('Holy site channels')} />
@@ -5538,7 +5545,7 @@ function PilgrimageScreen({ navigation }: any) {
           <Text style={s.settingName}>{rtl ? 'بثّ الحرمين' : 'Watch the Haramain live'}</Text>
           <Text style={s.meta}>{rtl ? 'القنوات الرسمية من مكة والمدينة' : 'The official channels from Makkah and Madinah'}</Text>
         </View>
-        {ico('arrow-forward', 17, C.chevron)}
+        {ico(rtl ? 'arrow-back' : 'arrow-forward', 17, C.chevron)}
       </Pressable>
       <Section title={T('Completed journeys')} action={rtl?`${journeys.history.length} محفوظة`:`${journeys.history.length} kept`} />
       {!journeys.history.length ? <View style={s.empty}><Text style={s.errorText}>{rtl ? 'لا رحلات مسجلة بعد' : 'No completed journeys yet. Finish one and it is kept here.'}</Text></View>
@@ -5819,7 +5826,7 @@ function HolyChannelsScreen({ route, navigation }: any) {
           </View>
         </View>
         <Text style={s.dataBody}>{T(channel.detail)}</Text>
-        <Text style={s.meta}>{channel.broadcaster}</Text>
+        <Text style={s.meta}>{T(channel.broadcaster)}</Text>
         {!!channel.embedUrl && Platform.OS !== 'web' && <LivePlayer channel={channel} rtl={rtl} T={T} />}
         <Tactile accessibilityRole="button" accessibilityLabel={`${T('Watch live')} ${channel.channel}`} onPress={() => open(channel)} style={s.primary}>
           <Text style={s.primaryText}>{opened === channel.id ? T('Opening…') : T('Open live stream')}</Text>
@@ -6013,7 +6020,7 @@ function LocationSetupScreen({navigation}:any){const{rtl}=useLanguage();const T=
             <Text style={s.meta}>{city.countryName} · {city.latitude.toFixed(2)}, {city.longitude.toFixed(2)}</Text>
           </View>
           {city.source!=='device'&&<View style={s.citySourceTag}><Text style={s.citySourceText}>{city.source==='online'?T('online'):T('saved')}</Text></View>}
-          {ico('arrow-forward',17,C.muted)}
+          {ico(rtl ? 'arrow-back' : 'arrow-forward',17,C.muted)}
         </Tactile>)}
         <Text style={s.cityFootnote}>{T('Not in the list? Add it by coordinates below.')}</Text>
       </View>}
@@ -6732,7 +6739,7 @@ function GuideDirectory({route,navigation}:any){const{rtl}=useLanguage();const T
      screen, beside the timetable they belong with, and having them in both
      places made two tiles that look like different features show the same
      six things. */
-  const guides=WORSHIP_GUIDES.filter((guide)=>!RAMADAN_GUIDE_IDS.includes(guide.id));return <Page><ToolBar title={T('Worship guides')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><ToolGraphic tool="Worship guides" size={87}/><Text style={s.dataTitle}>{T('Learn with references')}</Text><Text style={s.intro}>{T('Concise educational overviews with transparent Qur’an and Hadith references. Detailed rulings should be learned from a qualified local scholar.')}</Text><View style={s.guideGrid}>{guides.map(guide=>{const g=localizeGuide(guide,rtl);return <MotionPress key={guide.id} onPress={()=>navigation.navigate('Guide Detail',{guide})} style={s.guideCard}><View style={s.guideCardInner}><ToolGraphic tool={guide.id} size={69}/><Text style={s.exploreTitle}>{g.title}</Text><Text style={s.exploreBody}>{g.subtitle}</Text><View style={s.exploreArrow}>{ico('arrow-forward',15,C.green)}</View></View></MotionPress>})}</View></ScrollView></Page>}
+  const guides=WORSHIP_GUIDES.filter((guide)=>!RAMADAN_GUIDE_IDS.includes(guide.id));return <Page><ToolBar title={T('Worship guides')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><ToolGraphic tool="Worship guides" size={87}/><Text style={s.dataTitle}>{T('Learn with references')}</Text><Text style={s.intro}>{T('Concise educational overviews with transparent Qur’an and Hadith references. Detailed rulings should be learned from a qualified local scholar.')}</Text><View style={s.guideGrid}>{guides.map(guide=>{const g=localizeGuide(guide,rtl);return <MotionPress key={guide.id} onPress={()=>navigation.navigate('Guide Detail',{guide})} style={s.guideCard}><View style={s.guideCardInner}><ToolGraphic tool={guide.id} size={69}/><Text style={s.exploreTitle}>{g.title}</Text><Text style={s.exploreBody}>{g.subtitle}</Text><View style={s.exploreArrow}>{ico(rtl ? 'arrow-back' : 'arrow-forward',15,C.green)}</View></View></MotionPress>})}</View></ScrollView></Page>}
 /**
  * The evidence for a guide, shown in full on the page rather than as a link
  * out. Both kinds are held on the device in guideSources, so a guide reads
@@ -7172,14 +7179,14 @@ function RamadanScreen({ navigation }: any) {
       </View>
     </>}
 
-    <Pressable onPress={() => navigation.navigate('Tools', { screen: 'Fasting', initial: false })} style={[s.sourceCard, { marginTop: 16 }]}>{ico('create-outline', 20, C.green)}<View style={{ flex: 1 }}><Text style={s.sourceTitle}>{T('Fasting record')}</Text><Text style={s.sourceBody}>{T('Mark each day and keep your make-up ledger')}</Text></View>{ico('arrow-forward', 18, C.green)}</Pressable>
+    <Pressable onPress={() => navigation.navigate('Tools', { screen: 'Fasting', initial: false })} style={[s.sourceCard, { marginTop: 16 }]}>{ico('create-outline', 20, C.green)}<View style={{ flex: 1 }}><Text style={s.sourceTitle}>{T('Fasting record')}</Text><Text style={s.sourceBody}>{T('Mark each day and keep your make-up ledger')}</Text></View>{ico(rtl ? 'arrow-back' : 'arrow-forward', 18, C.green)}</Pressable>
 
     {/* The guides live here rather than in the worship directory, so the
         six of them are not listed twice under two different names. */}
     <Section title={T('Guides')} action={String(RAMADAN_GUIDES.length)}/>
     <View style={s.settings}>{RAMADAN_GUIDES.map((guide) => {
       const g = localizeGuide(guide, rtl);
-      return <Tactile key={guide.id} onPress={() => navigation.navigate('Guide Detail', { guide })} style={s.sourceCard}><ToolGraphic tool={guide.id} size={26}/><View style={{ flex: 1 }}><Text style={s.sourceTitle}>{g.title}</Text><Text style={s.sourceBody}>{g.subtitle}</Text></View>{ico('arrow-forward', 18, C.green)}</Tactile>;
+      return <Tactile key={guide.id} onPress={() => navigation.navigate('Guide Detail', { guide })} style={s.sourceCard}><ToolGraphic tool={guide.id} size={26}/><View style={{ flex: 1 }}><Text style={s.sourceTitle}>{g.title}</Text><Text style={s.sourceBody}>{g.subtitle}</Text></View>{ico(rtl ? 'arrow-back' : 'arrow-forward', 18, C.green)}</Tactile>;
     })}</View>
   </>}</ScrollView></Page>}
 /* ==================== Phase 4 · women's area ==================== */
@@ -7360,7 +7367,7 @@ function IstihadaScreen({ navigation }: any) {
 
       <Section title={T('How it was worked out')} />
       <View style={s.dataCard}>
-        {assessment.reasons.map((reason: string, index: number) => <Text key={index} style={[s.dataBody, index > 0 && { marginTop: 8 }]}>{T(reason)}</Text>)}
+        {assessment.reasons.map((reason: string, index: number) => <Text key={index} style={[s.dataBody, index > 0 && { marginTop: 8 }]}>{rtl ? assessment.reasonsAr?.[index] || T(reason) : T(reason)}</Text>)}
         {assessment.adah !== null && <Text style={[s.meta, { marginTop: 10 }]}>{tf(rtl, 'Your recorded pattern: about {n} days.', { n: assessment.adah })}</Text>}
       </View>
 
@@ -7378,11 +7385,11 @@ function IstihadaScreen({ navigation }: any) {
       <View style={s.settings}>
         <Tactile onPress={() => navigation.navigate('Cycle')} style={s.setting}>
           <View style={{ flex: 1 }}><Text style={s.settingName}>{T('Cycle Tracker')}</Text><Text style={s.meta}>{T('Record these days so your own pattern stays accurate.')}</Text></View>
-          {ico('arrow-forward', 18, C.green)}
+          {ico(rtl ? 'arrow-back' : 'arrow-forward', 18, C.green)}
         </Tactile>
         <Tactile onPress={() => navigation.navigate('Qada')} style={s.setting}>
           <View style={{ flex: 1 }}><Text style={s.settingName}>{T('Qada Fasts')}</Text><Text style={s.meta}>{T('Fast days that fall in hayd or nifas are owed, and are kept here.')}</Text></View>
-          {ico('arrow-forward', 18, C.green)}
+          {ico(rtl ? 'arrow-back' : 'arrow-forward', 18, C.green)}
         </Tactile>
       </View>
 
@@ -7433,7 +7440,7 @@ const RAMADAN_CELL = StyleSheet.create({
 });
 
 function RamadanPlannerScreen({ navigation }: any) {
-  const { rtl } = useLanguage();
+  const { rtl, language } = useLanguage();
   const T = (text: string) => tx(rtl, text);
   const womens = useWomens();
   const plan = ramadanPlan(womens);
@@ -7488,7 +7495,7 @@ function RamadanPlannerScreen({ navigation }: any) {
 
       <View style={s.dataCard}>
         <Text style={s.dataMeta}>{tf(rtl, 'Ramadan {year}', { year: plan.hijriYear })}</Text>
-        <Text style={s.dataName}>{formatLongDay(plan.start)}{T(' — ')}{formatLongDay(plan.end)}</Text>
+        <Text style={s.dataName}>{formatLongDay(plan.start, language)}{T(' — ')}{formatLongDay(plan.end, language)}</Text>
         <Text style={s.meta}>{whenText}</Text>
 
         <Text style={RAMADAN_CELL.heroOwed}>{owedText}</Text>
@@ -7500,7 +7507,7 @@ function RamadanPlannerScreen({ navigation }: any) {
 
         {plan.hasPattern && (
           <Text style={[s.meta, { marginTop: 8 }]}>
-            {tf(rtl, 'To make up before {date} — {n} days away.', { date: formatDay(plan.deadline), n: plan.daysUntilDeadline })}
+            {tf(rtl, 'To make up before {date} — {n} days away.', { date: formatDay(plan.deadline, language), n: plan.daysUntilDeadline })}
           </Text>
         )}
       </View>
@@ -7511,7 +7518,7 @@ function RamadanPlannerScreen({ navigation }: any) {
           <Text style={s.dataBody}>{T('This is counted from your own cycles, not from an average. Record two complete cycles — a start and an end for each — and the projection appears here. Until then the honest answer is no answer, and a number invented from someone else’s pattern would be worse than a blank.')}</Text>
           <Pressable onPress={() => navigation.navigate('Cycle')} style={[s.setting, { marginTop: 8, borderBottomWidth: 0 }]}>
             <View style={{ flex: 1 }}><Text style={s.settingName}>{T('Cycle Tracker')}</Text><Text style={s.meta}>{T('Record a start and an end for each cycle.')}</Text></View>
-            {ico('arrow-forward', 18, C.green)}
+            {ico(rtl ? 'arrow-back' : 'arrow-forward', 18, C.green)}
           </Pressable>
         </View>
       )}
@@ -7574,15 +7581,15 @@ function RamadanPlannerScreen({ navigation }: any) {
       <View style={s.settings}>
         <Tactile onPress={() => navigation.navigate('Cycle')} style={s.setting}>
           <View style={{ flex: 1 }}><Text style={s.settingName}>{T('Cycle Tracker')}</Text><Text style={s.meta}>{T('The projection is only as good as the record it is built on.')}</Text></View>
-          {ico('arrow-forward', 18, C.green)}
+          {ico(rtl ? 'arrow-back' : 'arrow-forward', 18, C.green)}
         </Tactile>
         <Tactile onPress={() => navigation.navigate('Qada')} style={s.setting}>
           <View style={{ flex: 1 }}><Text style={s.settingName}>{T('Qada Fasts')}</Text><Text style={s.meta}>{T('Once a day is actually missed, keep it here.')}</Text></View>
-          {ico('arrow-forward', 18, C.green)}
+          {ico(rtl ? 'arrow-back' : 'arrow-forward', 18, C.green)}
         </Tactile>
         <Pressable onPress={() => navigation.navigate('Istihada')} style={[s.setting, { borderBottomWidth: 0 }]}>
           <View style={{ flex: 1 }}><Text style={s.settingName}>{T('Istihada')}</Text><Text style={s.meta}>{T('When bleeding runs past your pattern, this is the question it raises.')}</Text></View>
-          {ico('arrow-forward', 18, C.green)}
+          {ico(rtl ? 'arrow-back' : 'arrow-forward', 18, C.green)}
         </Pressable>
       </View>
 
@@ -7660,7 +7667,7 @@ function TheseDaysScreen({ navigation }: any) {
               <Text style={s.settingName}>{T(act.title)}</Text>
               <Text style={s.meta}>{T(act.body)}</Text>
             </View>
-            {ico('arrow-forward', 18, C.green)}
+            {ico(rtl ? 'arrow-back' : 'arrow-forward', 18, C.green)}
           </Pressable>
         ))}
       </View>
@@ -9826,7 +9833,7 @@ function SettingsScreen({navigation}:any){
 import { DEFAULT_RECITER, editionsForLanguage, LANGUAGES, Language, LanguageCode, languageByCode, isRtl, pickEdition, HADITH_LANGUAGES, hadithLanguage } from './src/services/languages';
 
 const navigationRef = createNavigationContainerRef<any>();
-/**
+if (typeof window !== 'undefined')/**
  * Navigate, even when the tap that launched the app arrived before the
  * navigator existed.
  *
@@ -10241,7 +10248,7 @@ function AudioPlayerScreen({ navigation }: any) {
       <Pressable accessibilityRole="button" accessibilityLabel={T('All translations')}
         onPress={() => navigation.navigate('Quran Audio')} style={s.playerTranslationOptionLast}>
         <Text style={[s.settingName, { flex: 1, color: C.green }]}>{T('All translations')}</Text>
-        {ico('arrow-forward', 18, C.green)}
+        {ico(rtl ? 'arrow-back' : 'arrow-forward', 18, C.green)}
       </Pressable>
     </View>}
 
@@ -10920,7 +10927,7 @@ function OnboardingLocation() {
           <Text style={s.cityResultName}>{city.name}</Text>
           <Text style={s.meta}>{city.countryName}</Text>
         </View>
-        {ico('arrow-forward', 17, C.muted)}
+        {ico(rtl ? 'arrow-back' : 'arrow-forward', 17, C.muted)}
       </Tactile>)}
     </View>}
 
@@ -12012,7 +12019,7 @@ surahCard:{width:'100%',minHeight:64,backgroundColor:C.card,borderRadius:16,bord
      reuses surahNum for its cycle count, which is not a surah, so this is a
      separate token rather than a change to that one. */
   surahMedal:{width:36,height:36,borderRadius:12,backgroundColor:C.surahBadge,borderWidth:1,borderColor:C.surahBadge,alignItems:'center',justifyContent:'center'},
-  surahMedalText:{color:C.surahBadgeInk,fontSize:13,fontFamily:'Newsreader_700Bold'},surahNumText:{color:C.green,fontSize:13,fontFamily:'Newsreader_700Bold'},surahName:{color:C.ink,fontSize:14.5,fontFamily:'DMSans_700Bold'},surahAr:{color:C.green,fontSize:20,fontFamily:'KFGQPCUthmanicHafs'},
+  surahMedalText:{color:C.surahBadgeInk,fontSize:13,fontFamily:'Newsreader_700Bold'},surahNumText:{color:C.green,fontSize:13,fontFamily:'Newsreader_700Bold'},surahName:{color:C.ink,fontSize:14.5,fontFamily:'DMSans_700Bold',flexShrink:1},surahNameRow:{flexDirection:'row',alignItems:'center',gap:9},surahArInline:{color:C.green,fontSize:16.5,fontFamily:'KFGQPCUthmanicHafs'},surahAr:{color:C.green,fontSize:20,fontFamily:'KFGQPCUthmanicHafs'},
  readerModes:{flexDirection:'row',gap:12,marginTop:12},readerMode:{flex:1,minHeight:56,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:8,backgroundColor:C.white,borderRadius:20,borderWidth:1,borderColor:C.line},readerModeActive:{backgroundColor:C.mint,borderColor:C.line},readerModeText:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:11},readerBar:{height:56,flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingHorizontal:8,borderBottomWidth:1,borderColor:C.line},surahStep:{width:32,height:32,alignItems:'center',justifyContent:'center',marginHorizontal:2},/* Hidden off the top of the screen, but not transparent.
 
      The capture reads the view back off the GPU, and a view at opacity 0 is

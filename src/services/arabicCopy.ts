@@ -2433,6 +2433,16 @@ const AR: Record<string, string> = {
   'Journey': 'الرحلة',
   'A great worshiper of Allah': 'عابد عظيم لله',
 
+  'FIND': 'اكتشف',
+  'WATCH': 'شاهد',
+  'Prayer Reminders': 'تذكيرات الصلاة',
+  'Umrah Resources': 'مصادر العمرة',
+  'Makkah Live': 'بثّ مكة',
+  'Madinah Live': 'بثّ المدينة',
+  'Ayah': 'آية',
+  'Feet': 'القدمان',
+  'A plain web page carrying the same official feed, for when a phone browser is easier than the YouTube app.': 'صفحة ويب بسيطة تحمل البثّ الرسمي نفسه، لمن كان فتح المتصفح في هاتفه أسهل عليه من تطبيق يوتيوب.',
+  'The figures used here are the ones most commonly cited: a minimum of three days and a maximum of fifteen for hayd, fifteen clear days between two periods, and forty for post-natal bleeding. Schools differ on several of them, and your own school may set them differently. Where the difference changes the answer, this screen says so rather than choosing for you.': 'الأرقام المستعملة هنا هي أشهر ما يُذكر: أقلّ الحيض ثلاثة أيام وأكثره خمسة عشر، وخمسة عشر يوماً من النقاء بين الحيضتين، وأربعون للنفاس. والمذاهب تختلف في بعضها، وقد تختلف مدرستك فيما تأخذ به. وحيث يغيّر الاختلاف الجواب، تُبيّن هذه الشاشة ذلك ولا تختار عنك.',
 };
 
 const PRAYERS: Record<string, string> = {

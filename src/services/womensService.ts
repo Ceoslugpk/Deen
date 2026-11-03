@@ -494,6 +494,9 @@ export type BleedingAssessment = {
   belowMinimum: boolean;
   /** Why it landed where it did, in the order the tests were applied. */
   reasons: string[];
+  /** The same reasons in Arabic, built alongside so an RTL screen never has to
+   *  guess at a sentence whose numbers have already been substituted. */
+  reasonsAr: string[];
 };
 
 /** The two questions the screen asks. Both are things she knows directly. */
@@ -511,16 +514,20 @@ export function assessBleeding(
   const stats = cycleStats(current);
   const adah = stats.averagePeriod || null;
   const reasons: string[] = [];
+  const reasonsAr: string[] = [];
 
   const openNifas = current.nifas.find((entry) => entry.end === null) || null;
   if (openNifas) {
     if (days > LIMITS.nifasMaxDays) {
       reasons.push(`This has run ${days} days, past the ${LIMITS.nifasMaxDays} commonly taken as the outer limit for post-natal bleeding.`);
+      reasonsAr.push(`مضى عليها ${days} ${days === 1 ? 'يوم' : 'يومًا'}، متجاوزةً ${LIMITS.nifasMaxDays} يوماً التي تُعدّ أقصى مدّة النفاس.`);
       reasons.push('Past that limit the extra days are treated as istihada rather than as nifas.');
-      return { verdict: 'nifas-ended', days, adah, purityBefore, pastMaximum: true, tooSoon: false, belowMinimum: false, reasons };
+      reasonsAr.push('وما جاوز تلك المدّة من أيام يُعدّ استحاضةً لا نفاساً.');
+      return { verdict: 'nifas-ended', days, adah, purityBefore, pastMaximum: true, tooSoon: false, belowMinimum: false, reasons, reasonsAr };
     }
     reasons.push('Post-natal bleeding is open, so bleeding in these days is counted as nifas and not as hayd.');
-    return { verdict: 'nifas', days, adah, purityBefore, pastMaximum: false, tooSoon: false, belowMinimum: false, reasons };
+    reasonsAr.push('النفاس قائم، فما يُرى في هذه الأيام من دم يُعدّ نفاساً لا حيضاً.');
+    return { verdict: 'nifas', days, adah, purityBefore, pastMaximum: false, tooSoon: false, belowMinimum: false, reasons, reasonsAr };
   }
 
   const tooSoon = purityBefore !== null && purityBefore < LIMITS.purityBetweenCycles;
@@ -529,32 +536,49 @@ export function assessBleeding(
 
   if (tooSoon) {
     reasons.push(`There were only ${purityBefore} clear days before it, and ${LIMITS.purityBetweenCycles} days of purity are commonly required between two periods.`);
+    reasonsAr.push(`لم يمضِ قبلها سوى ${purityBefore} ${purityBefore === 1 ? 'يوم' : 'أيام'} نقاءً، والمطلوب بين الحيضتين عادةً ${LIMITS.purityBetweenCycles} يوماً.`);
     reasons.push('Bleeding that begins inside that gap is not counted as a new period.');
-    return { verdict: 'istihada', days, adah, purityBefore, pastMaximum, tooSoon, belowMinimum, reasons };
+    reasonsAr.push('الدم الذي يبدأ في تلك الفترة لا يُعدّ حيضةً جديدة.');
+    return { verdict: 'istihada', days, adah, purityBefore, pastMaximum, tooSoon, belowMinimum, reasons, reasonsAr };
   }
 
   if (pastMaximum) {
     reasons.push(`This has run ${days} days, past the ${LIMITS.haydMaxDays} commonly taken as the outer limit for hayd.`);
-    if (adah) reasons.push(`Your own pattern is about ${adah} days, so hayd is taken as ending there and the days after it are not hayd.`);
-    else reasons.push('With no recorded pattern to measure against, the outer limit is what there is to go on.');
-    return { verdict: 'hayd-ended', days, adah, purityBefore, pastMaximum: true, tooSoon, belowMinimum, reasons };
+    reasonsAr.push(`مضى عليها ${days} ${days === 1 ? 'يوم' : 'يومًا'}، متجاوزةً ${LIMITS.haydMaxDays} يوماً التي تُعدّ أقصى مدّة الحيض عند الجمهور.`);
+    if (adah) {
+      reasons.push(`Your own pattern is about ${adah} days, so hayd is taken as ending there and the days after it are not hayd.`);
+      reasonsAr.push(`عادتك نحو ${adah} ${adah === 1 ? 'يوم' : 'يومًا'}، فيُحكم بانتهاء الحيض عندها وما بعدها ليس حيضاً.`);
+    } else {
+      reasons.push('With no recorded pattern to measure against, the outer limit is what there is to go on.');
+      reasonsAr.push('إذ لا عادة مسجّلة يُقاس عليها، فالمرجع هو أقصى المدّة.');
+    }
+    return { verdict: 'hayd-ended', days, adah, purityBefore, pastMaximum: true, tooSoon, belowMinimum, reasons, reasonsAr };
   }
 
   if (adah && days > adah) {
     reasons.push(`This has run ${days} days, past your own pattern of about ${adah}.`);
+    reasonsAr.push(`مضى عليها ${days} ${days === 1 ? 'يوم' : 'يومًا'}، متجاوزةً عادتك التي نحو ${adah} ${adah === 1 ? 'يوم' : 'يومًا'}.`);
     reasons.push('Hayd is taken as ending at your usual length, and what follows is counted as istihada.');
-    return { verdict: 'hayd-ended', days, adah, purityBefore, pastMaximum, tooSoon, belowMinimum, reasons };
+    reasonsAr.push('يُحكم بانتهاء الحيض عند قدر عادتك، وما يليه يُعدّ استحاضة.');
+    return { verdict: 'hayd-ended', days, adah, purityBefore, pastMaximum, tooSoon, belowMinimum, reasons, reasonsAr };
   }
 
   if (belowMinimum) {
     reasons.push(`This has run ${days} days, short of the ${LIMITS.haydMinDays} commonly taken as the minimum for hayd.`);
+    reasonsAr.push(`مضى عليها ${days} ${days === 1 ? 'يوم' : 'يومًا'}، دون ${LIMITS.haydMinDays} أيام التي تُعدّ أقلّ مدّة الحيض.`);
     reasons.push('This is the point the schools differ on most: some set no minimum at all, and treat any bleeding as hayd once it has begun.');
-    return { verdict: 'unclear', days, adah, purityBefore, pastMaximum, tooSoon, belowMinimum, reasons };
+    reasonsAr.push('هذا أشدّ موضع اختلفت فيه المذاهب: فمنهم من لا يحدّ لأقلّه حدّاً، ويجعل كلّ دم يبدأ حيضاً.');
+    return { verdict: 'unclear', days, adah, purityBefore, pastMaximum, tooSoon, belowMinimum, reasons, reasonsAr };
   }
 
-  if (adah) reasons.push(`This has run ${days} days, within your own pattern of about ${adah}.`);
-  else reasons.push(`This has run ${days} days, inside the limits commonly cited for hayd.`);
-  return { verdict: 'hayd', days, adah, purityBefore, pastMaximum, tooSoon, belowMinimum, reasons };
+  if (adah) {
+    reasons.push(`This has run ${days} days, within your own pattern of about ${adah}.`);
+    reasonsAr.push(`مضى عليها ${days} ${days === 1 ? 'يوم' : 'يومًا'}، وهو داخل عادتك التي نحو ${adah} ${adah === 1 ? 'يوم' : 'يومًا'}.`);
+  } else {
+    reasons.push(`This has run ${days} days, inside the limits commonly cited for hayd.`);
+    reasonsAr.push(`مضى عليها ${days} ${days === 1 ? 'يوم' : 'يومًا'}، وهي داخل المدّة المذكورة للحيض.`);
+  }
+  return { verdict: 'hayd', days, adah, purityBefore, pastMaximum, tooSoon, belowMinimum, reasons, reasonsAr };
 }
 
 /** What each answer means for what she does next. Guidance, not rulings. */

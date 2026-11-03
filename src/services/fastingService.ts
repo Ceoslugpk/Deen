@@ -204,7 +204,7 @@ function summariseMonths(entries: FastEntry[]): FastMonth[] {
     const own = entries.filter((entry) => entry.date.slice(0, 7) === key);
     out.push({
       key,
-      label: d.toLocaleDateString('en-US', { month: 'short' }),
+      label: d.toLocaleDateString(dateLocale ?? 'en-US', { month: 'short' }),
       fasted: own.filter((entry) => entry.type !== 'missed').length,
       missed: own.filter((entry) => entry.type === 'missed').length,
     });
