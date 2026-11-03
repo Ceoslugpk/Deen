@@ -706,7 +706,10 @@ async function rebuildSchedule(
      "the adhan is set" and "the adhan can never sound on this phone". */
   const alarms = await scheduleAdhanAlarms(alarmEntries);
 
-  const adhanAudio: AdhanAudio = {
+  /* The same answer the settings screen gives. On iOS the alarm figures are
+     meaningless - nothing was ever scheduled and nothing needs downloading -
+     so the clip is the only thing that was ever going to decide it. */
+  const adhanAudio: AdhanAudio = adhanAudioForIos(settings) ?? {
     willPlay: alarm.usable && alarms.scheduled > 0,
     reason: diagnoseAdhanAudio({ adhans, alarm, alarms, recordingMissing }),
     scheduled: alarms.scheduled,
@@ -726,27 +729,46 @@ async function rebuildSchedule(
  * sound?" on being opened, not only after a scheduling pass has happened to
  * run. This is that answer, reached the same way the scheduler reaches it.
  */
-export async function inspectAdhanAudio(
+/**
+ * How the adhan stands on iOS, or null anywhere else.
+ *
+ * Kept in one place because it is asked from two: when the settings screen
+ * opens, and again after a scheduling pass. Those two used to disagree — the
+ * screen knew about the bundled clips and the schedule did not, so on a phone
+ * it read one way on arrival and flipped to "the installed Android app is not
+ * running here" the moment somebody pressed Save.
+ *
+ * There is no alarm on iOS, so the whole question is a smaller one: it is only
+ * whether the chosen recording is one of the ones shipped inside the app. A
+ * bundled clip needs nothing downloaded and cannot be missing.
+ */
+function adhanAudioForIos(
   settings: { adhanEnabled?: Record<string, boolean>; adhanReciter?: string; adhanFajrReciter?: string },
-): Promise<AdhanAudio> {
+): AdhanAudio | null {
+  if (Platform.OS !== 'ios') return null;
   const enabled = Object.keys(settings.adhanEnabled || {}).filter((name) => settings.adhanEnabled?.[name]);
   if (!enabled.length) return { willPlay: false, reason: 'no-adhan-enabled', scheduled: 0, skipped: 0 };
 
-  /* iOS has no alarm to play from, so the whole question is different there:
-     it is only whether the chosen recording is one of the ones shipped inside
-     the app. A bundled clip needs nothing downloaded and cannot be missing. */
-  if (Platform.OS === 'ios') {
-    const withoutClip = enabled.filter((name) => !adhanSoundName(adhanTrackFor(name, settings)));
-    if (withoutClip.length === enabled.length) {
-      return { willPlay: false, reason: 'ios-no-clip', scheduled: 0, skipped: enabled.length };
-    }
-    return {
-      willPlay: true,
-      reason: null,
-      scheduled: enabled.length - withoutClip.length,
-      skipped: withoutClip.length,
-    };
+  const withoutClip = enabled.filter((name) => !adhanSoundName(adhanTrackFor(name, settings)));
+  if (withoutClip.length === enabled.length) {
+    return { willPlay: false, reason: 'ios-no-clip', scheduled: 0, skipped: enabled.length };
   }
+  return {
+    willPlay: true,
+    reason: null,
+    scheduled: enabled.length - withoutClip.length,
+    skipped: withoutClip.length,
+  };
+}
+
+export async function inspectAdhanAudio(
+  settings: { adhanEnabled?: Record<string, boolean>; adhanReciter?: string; adhanFajrReciter?: string },
+): Promise<AdhanAudio> {
+  const ios = adhanAudioForIos(settings);
+  if (ios) return ios;
+
+  const enabled = Object.keys(settings.adhanEnabled || {}).filter((name) => settings.adhanEnabled?.[name]);
+  if (!enabled.length) return { willPlay: false, reason: 'no-adhan-enabled', scheduled: 0, skipped: 0 };
 
   const alarm = await alarmIsTrustworthy();
   const missing = enabled.filter((name) => !isAdhanCached(adhanTrackFor(name, settings)));

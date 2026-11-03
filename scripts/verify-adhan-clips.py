@@ -187,6 +187,27 @@ if "trackRowLabel" not in app_src:
 elif "Platform.OS === 'ios'" not in app_src.split("function trackRowLabel", 1)[1][:600]:
     fail("trackRowLabel is not platform-aware - it would promise the clip on Android too")
 
+# ----------------------------------- the schedule must ask the same question
+
+# The settings screen and the scheduling pass answer this separately, and they
+# used to disagree: the screen knew about the bundled clips, the schedule did
+# not, so on a phone the status read correctly on arrival and then flipped to a
+# message about the "installed Android app" the moment somebody pressed Save.
+notifications = open(
+    os.path.join(ROOT, "src", "services", "notifications.ts"), encoding="utf-8"
+).read()
+if "adhanAudioForIos" not in notifications:
+    fail("the iOS check is gone - the settings screen and the schedule will disagree again")
+else:
+    # Both call sites must use it, not only one of them.
+    if "adhanAudioForIos(settings)" not in notifications:
+        fail("nothing calls adhanAudioForIos")
+    if "adhanAudioForIos(settings) ??" not in notifications:
+        fail(
+            "the scheduling pass does not fall back through the iOS answer - "
+            "pressing Save will report the alarm instead of the clip"
+        )
+
 # ---------------------------------------------------- new copy is translated
 
 # tx() falls back to English when a string has no Arabic entry, so an
