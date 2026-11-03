@@ -116,6 +116,10 @@ const COPY = {
     channelDaily: 'Daily reminder',
     testTitle: 'Prayer reminders are ready',
     testBody: 'Islamic can now notify you at the times you choose.',
+    testQuietTitle: 'This is a daily reminder',
+    testQuietBody: 'Quiet, and it stays in your notification list. The verse and hadith reminders look like this.',
+    testAdhanTitle: 'This is the adhan',
+    testAdhanBody: 'It sounds, and it carries the buttons to silence it or to mark the prayer as prayed.',
     quranTitle: 'Your Quran time',
     quranBody: 'Continue your reading with a few mindful verses.',
     webUnsupported: 'System notifications require the installed iOS or Android app.',
@@ -139,6 +143,10 @@ const COPY = {
     channelDaily: 'تذكير يومي',
     testTitle: 'تذكيرات الصلاة جاهزة',
     testBody: 'يمكن لرفيق الدين تنبيهك الآن في الأوقات التي تختارها.',
+    testQuietTitle: 'هذا تذكير يومي',
+    testQuietBody: 'هادئ، ويبقى في قائمة التنبيهات. هكذا تبدو تذكيرات الآية والحديث.',
+    testAdhanTitle: 'هذا هو الأذان',
+    testAdhanBody: 'يُسمع، ويحمل زرّ الإسكات وزرّ تسجيل الصلاة.',
     quranTitle: 'وقت القرآن',
     quranBody: 'واصل قراءتك بآياتٍ متدبَّرة.',
     webUnsupported: 'التنبيهات النظامية تحتاج التطبيق المثبَّت على iOS أو أندرويد.',
@@ -276,11 +284,40 @@ export async function openNotificationSettings() {
   await Linking.openSettings().catch(() => undefined);
 }
 
+/**
+ * Send both kinds of reminder, at once.
+ *
+ * One test notification could only ever show one of the two: a quiet daily
+ * reminder and the adhan do not look, sound or behave alike, and somebody
+ * checking whether reminders work wants to see the difference rather than
+ * take our word for it. So both are sent, and each says which it is.
+ */
 export async function sendTestNotification(rtl = false) {
   if (Platform.OS === 'web') throw new Error(copy(rtl).webUnsupported);
   await ensureNotificationChannels(rtl);
+  const c = copy(rtl);
   await scheduleAndLog({
-    content: { title: copy(rtl).testTitle, body: copy(rtl).testBody, sound: 'default', data: { route: 'Prayer' } },
+    content: {
+      title: c.testQuietTitle,
+      body: c.testQuietBody,
+      sound: undefined,
+      /* Android routes an immediate notification to a channel through the
+         content, which this SDK's type does not declare; the scheduled
+         triggers above pass it the same way. */
+      channelId: 'daily',
+      data: { route: 'Prayer', kind: 'daily' },
+    } as any,
+    trigger: null,
+  });
+  await scheduleAndLog({
+    content: {
+      title: c.testAdhanTitle,
+      body: c.testAdhanBody,
+      sound: 'default',
+      channelId: 'adhan',
+      categoryIdentifier: 'adhan-actions',
+      data: { route: 'Prayer', kind: 'adhan' },
+    } as any,
     trigger: null,
   });
 }

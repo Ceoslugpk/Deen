@@ -24,7 +24,15 @@ import { Platform } from 'react-native';
 import * as IntentLauncher from 'expo-intent-launcher';
 import Constants from 'expo-constants';
 
-export type BatteryState = 'notNeeded' | 'unknown' | 'exempt' | 'restricted';
+export type BatteryState =
+  /** Not an Android device; there is nothing to ask. */
+  | 'notNeeded'
+  /** The state could not be read. */
+  | 'unknown'
+  /** The reader has been sent to the system dialog at least once. */
+  | 'asked'
+  | 'exempt'
+  | 'restricted';
 
 let Activity: any = null;
 try {
@@ -42,6 +50,7 @@ try {
  */
 export async function getBatteryOptimizationState(): Promise<BatteryState> {
   if (Platform.OS !== 'android') return 'notNeeded';
+  if (await wasBatteryExemptionAsked()) return 'asked';
   try {
     const PowerManager = (globalThis as any).PowerManager;
     // `isIgnoringBatteryOptimizations` needs the PowerManager, which React
@@ -76,30 +85,63 @@ async function readViaIntent(): Promise<BatteryState> {
 }
 
 /**
+ * Whether the reader has already been sent to the exemption dialog.
+ *
+ * Android offers no JavaScript way to read the outcome: `isIgnoringBattery-
+ * Optimizations` lives on the PowerManager, which React Native does not
+ * expose, and the intent round-trip below cannot report what was chosen. So
+ * the fact that is recorded is the only one actually known - that the dialog
+ * was opened - and the interface is built to make that useful without
+ * claiming the exemption was granted.
+ */
+const ASKED_KEY = 'battery-exemption-asked-v1';
+
+export async function wasBatteryExemptionAsked(): Promise<boolean> {
+  if (Platform.OS !== 'android') return false;
+  try {
+    const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
+    return (await AsyncStorage.getItem(ASKED_KEY)) === '1';
+  } catch {
+    return false;
+  }
+}
+
+async function rememberBatteryExemptionAsked(): Promise<void> {
+  try {
+    const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
+    await AsyncStorage.setItem(ASKED_KEY, '1');
+  } catch {
+    /* A forgotten preference only means the prompt is offered again. */
+  }
+}
+
+/**
  * Open the system dialog that grants the exemption.
  *
- * Returns true when the dialog was shown, false when the device has no such
- * dialog (some manufacturers remove it), and null on platforms where it does
- * not apply.
+ * Returns the state afterwards, which is `asked` once the dialog has been
+ * shown: the button that opened it has done its job and should not appear
+ * again, and there is no honest way to know more than that.
  */
-export async function requestBatteryExemption(): Promise<boolean | null> {
+export async function requestBatteryExemption(): Promise<BatteryState | null> {
   if (Platform.OS !== 'android') return null;
   const pkg = Constants?.expoConfig?.android?.package || (Constants as any)?.manifest?.android?.package;
-  if (!pkg) return false;
+  if (!pkg) return null;
   try {
     await IntentLauncher.startActivityAsync(
       'android.settings.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS',
       { data: `package:${pkg}` },
     );
-    return true;
+    await rememberBatteryExemptionAsked();
+    return 'asked';
   } catch {
     // The manufacturer removed the dialog. Fall back to the general battery
     // settings page so the person can still find it by hand.
     try {
       await IntentLauncher.startActivityAsync(IntentLauncher.ActivityAction.IGNORE_BATTERY_OPTIMIZATION_SETTINGS);
-      return true;
+      await rememberBatteryExemptionAsked();
+      return 'asked';
     } catch {
-      return false;
+      return null;
     }
   }
 }

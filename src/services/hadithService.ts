@@ -820,6 +820,43 @@ export async function removeHadithBookmark(id: string) {
   await persist({ ...state, saved: state.saved.filter((item) => item.id !== id) });
 }
 
+/**
+ * How many narrations each collection holds, for the collection list.
+ *
+ * The count is not stored with the collection because the editions disagree:
+ * the Russian Bukhari carries one narration more than the English. So the
+ * number is read from the outline, which is the same table of contents the
+ * collection screen opens - one request per collection, and then remembered
+ * for the session and kept in the offline cache.
+ *
+ * Read rather than guessed: a number like "7,563" is the sort of figure a
+ * reader will repeat, so it has to come from the source and not from us.
+ */
+/** Answers whatever is already known, so a re-render does not wait on the network. */
+const collectionTotals = new Map<string, number>();
+
+export async function loadHadithTotal(
+  slug: string,
+  language: string = DEFAULT_HADITH_LANGUAGE,
+): Promise<number | null> {
+  const cached = collectionTotals.get(slug);
+  if (typeof cached === 'number') return cached;
+  try {
+    const outline = await loadHadithOutline(slug, language);
+    if (!Number.isFinite(outline.total) || outline.total <= 0) return null;
+    collectionTotals.set(slug, outline.total);
+    return outline.total;
+  } catch {
+    /* Offline, or the collection has not been opened yet. The list simply
+       leaves the count out rather than showing a wrong one. */
+    return null;
+  }
+}
+
+export function knownHadithTotal(slug: string): number | undefined {
+  return collectionTotals.get(slug);
+}
+
 export function hadithProgress(slug: string) {
   const total = state.totals[slug] || 0;
   const read = (state.read[slug] || []).length;
