@@ -4680,6 +4680,11 @@ function TransliterationScreen({navigation}:any){
   const{rtl}=useLanguage(); const T=(text:string)=>tx(rtl,text);
   const[pickingSurah,setPickingSurah]=useState(false);
   const{preferences,update}=useQuranPreferences();
+  /* Every surah sits in one strip so reaching any of them is a single tap.
+     Chip positions are remembered as they lay out, which is the only way to
+     scroll the live one into view without guessing at a width. */
+  const stripRef=useRef<any>(null);
+  const chipX=useRef<Record<number,number>>({});
   const[chapters,setChapters]=useState<Chapter[]>([]);
   const[chapterId,setChapterId]=useState(1);
   const[editions,setEditions]=useState<IslamicEdition[]>([]);
@@ -4725,6 +4730,13 @@ function TransliterationScreen({navigation}:any){
     return ()=>{alive=false};
   },[chapterId,editionId,preferences.scriptEdition,preferences.translationEdition]);
 
+  useEffect(()=>{
+    const x=chipX.current[chapterId];
+    if(x===undefined)return;
+    const t=setTimeout(()=>{ try{ stripRef.current?.scrollTo({x:Math.max(0,x-24),animated:true}); }catch{} },60);
+    return ()=>clearTimeout(t);
+  },[chapterId,chapters.length]);
+
   const step=(delta:number)=>{
     const next=Math.min(114,Math.max(1,chapterId+delta));
     if(next!==chapterId)setChapterId(next);
@@ -4736,17 +4748,33 @@ function TransliterationScreen({navigation}:any){
       <Text style={s.dataTitle}>{T('How the Arabic sounds')}</Text>
       <Text style={s.intro}>{T('A guide to reciting, not a translation. The Arabic is kept above each line so you can see what is being sounded out.')}</Text>
 
+      <Section title={T('Surah')} action={T('Search all 114')} onPress={()=>setPickingSurah(true)}/>
+      <View style={s.trSurahBar}>
+        <Pressable accessibilityRole="button" accessibilityLabel={T('Search a surah')}
+          onPress={()=>setPickingSurah(true)} style={s.trSurahSearch}>{ico('search',17,C.green)}</Pressable>
+        <ScrollView ref={stripRef} horizontal showsHorizontalScrollIndicator={false}
+          contentContainerStyle={s.trStrip}>
+          {chapters.map((c)=>{
+            const active=c.id===chapterId;
+            return <Pressable key={c.id}
+              accessibilityRole="button" accessibilityState={{selected:active}}
+              accessibilityLabel={`${c.name_simple}, ${T('Surah')} ${c.id}`}
+              onLayout={(e)=>{chipX.current[c.id]=e.nativeEvent.layout.x;}}
+              onPress={()=>setChapterId(c.id)}
+              style={[s.trChip,active&&s.trChipOn]}>
+              <Text style={[s.trChipNum,active&&s.trChipNumOn]}>{c.id}</Text>
+              <Text style={[s.trChipName,active&&s.trChipNameOn]} numberOfLines={1}>{c.name_simple}</Text>
+            </Pressable>;
+          })}
+        </ScrollView>
+      </View>
+
       <View style={s.trStepRow}>
         <Pressable accessibilityLabel={T('Previous Surah')} onPress={()=>step(-1)} disabled={chapterId<=1} style={s.trStep}>{ico(rtl?'chevron-forward':'chevron-back',19,chapterId<=1?C.muted:C.ink)}</Pressable>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={T('Choose a surah')}
-          onPress={()=>setPickingSurah(true)}
-          style={{flex:1,alignItems:'center'}}>
+        <View style={{flex:1,alignItems:'center'}}>
           <Text style={s.trSurahName} numberOfLines={1}>{chapter?chapter.name_simple:T('Surah')}</Text>
           <Text style={s.meta} numberOfLines={1}>{chapter?`${T('Surah')} ${chapter.id} · ${chapter.verses_count} ${T('verses')}`:''}</Text>
-          <Text style={s.surahPickHint}>{T('Tap to choose')}</Text>
-        </Pressable>
+        </View>
         <Pressable accessibilityLabel={T('Next Surah')} onPress={()=>step(1)} disabled={chapterId>=114} style={s.trStep}>{ico(rtl?'chevron-back':'chevron-forward',19,chapterId>=114?C.muted:C.ink)}</Pressable>
       </View>
 
@@ -7242,9 +7270,13 @@ function RamadanScreen({ navigation }: any) {
     {/* The guides live here rather than in the worship directory, so the
         six of them are not listed twice under two different names. */}
     <Section title={T('Guides')} action={String(RAMADAN_GUIDES.length)}/>
-    <View style={s.settings}>{RAMADAN_GUIDES.map((guide) => {
+    <View style={s.ramGuideGrid}>{RAMADAN_GUIDES.map((guide) => {
       const g = localizeGuide(guide, rtl);
-      return <Tactile key={guide.id} onPress={() => navigation.navigate('Guide Detail', { guide })} style={s.sourceCard}><ToolGraphic tool={guide.id} size={26}/><View style={{ flex: 1 }}><Text style={s.sourceTitle}>{g.title}</Text><Text style={s.sourceBody}>{g.subtitle}</Text></View>{ico(rtl ? 'arrow-back' : 'arrow-forward', 18, C.green)}</Tactile>;
+      return <MotionPress key={guide.id} onPress={() => navigation.navigate('Guide Detail', { guide })} style={s.ramGuideCard}>
+        <View style={s.ramGuideIcon}><ToolGraphic tool={guide.id} size={44}/></View>
+        <Text style={s.ramGuideTitle} numberOfLines={2}>{g.title}</Text>
+        <Text style={s.ramGuideBody} numberOfLines={3}>{g.subtitle}</Text>
+      </MotionPress>;
     })}</View>
   </>}</ScrollView></Page>}
 /* ==================== Phase 4 · women's area ==================== */
@@ -12124,6 +12156,20 @@ surahCard:{width:'100%',minHeight:64,backgroundColor:C.card,borderRadius:16,bord
   surahPickNum:{color:C.muted,fontSize:12,fontFamily:'DMSans_700Bold',width:26,textAlign:'center'},
   surahPickAr:{color:C.green,fontSize:14,fontFamily:'KFGQPCUthmanicHafs',marginTop:1,writingDirection:'rtl',textAlign:'right'},
   surahPickHint:{color:C.green,fontSize:10,fontFamily:'DMSans_600SemiBold',marginTop:2},
+  trSurahBar:{flexDirection:'row',alignItems:'center',gap:8,marginBottom:4},
+  trSurahSearch:{width:44,height:44,borderRadius:14,backgroundColor:C.mint,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,flexShrink:0},
+  trStrip:{gap:8,paddingRight:16,alignItems:'center'},
+  trChip:{flexDirection:'row',alignItems:'center',gap:7,paddingHorizontal:13,paddingVertical:10,borderRadius:14,backgroundColor:C.card,borderWidth:1,borderColor:C.line},
+  trChipOn:{backgroundColor:C.green,borderColor:C.green},
+  trChipNum:{color:C.muted,fontSize:11,fontFamily:'DMSans_700Bold'},
+  trChipNumOn:{color:C.onAccent},
+  trChipName:{color:C.ink,fontSize:13,fontFamily:'DMSans_600SemiBold',maxWidth:120},
+  trChipNameOn:{color:C.onAccent},
+  ramGuideGrid:{flexDirection:'row',flexWrap:'wrap',gap:12},
+  ramGuideCard:{flexGrow:1,flexBasis:'44%',minWidth:140,backgroundColor:C.card,borderRadius:20,padding:14,borderWidth:1,borderColor:C.line,...surface},
+  ramGuideIcon:{width:56,height:56,borderRadius:16,backgroundColor:C.mint,alignItems:'center',justifyContent:'center',marginBottom:10},
+  ramGuideTitle:{color:C.ink,fontSize:14,fontFamily:'DMSans_700Bold',lineHeight:18},
+  ramGuideBody:{color:C.muted,fontSize:11,lineHeight:15,marginTop:5,fontFamily:'DMSans_400Regular'},
   langIndex:{color:C.muted,fontSize:10,fontFamily:'DMSans_400Regular',width:16,textAlign:'center'},
   tsLangButton:{flexDirection:'row',alignItems:'center',gap:12,backgroundColor:C.mint,borderRadius:18,padding:14,borderWidth:1,borderColor:C.line,marginBottom:14},
   sheetCancel:{alignItems:'center',paddingVertical:12,marginTop:4},

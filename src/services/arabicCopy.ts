@@ -2455,6 +2455,7 @@ const AR: Record<string, string> = {
   'Quran Vocabulary': 'مفردات القرآن',
   'WOMEN’S WORSHIP': 'عبادة النساء',
   'Use {name}': 'استخدم {name}',
+  'Search all 114': 'ابحث في السور الـ114',
 };
 
 const PRAYERS: Record<string, string> = {
