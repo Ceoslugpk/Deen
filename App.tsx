@@ -1352,6 +1352,13 @@ function TopBar({ overline, title, right }: { overline?: string; title: string; 
  * a single sun-and-moon toggle drawn in the variant for the theme it appears
  * against, rather than swapping between a moon and a sun.
  */
+/**
+ * The three header buttons, in all four versions.
+ *
+ * Named for what the theme needs rather than for the files they happen to
+ * come from, so the Palestine set can be swapped without touching the
+ * Islamic one — which is the whole point of keeping them apart.
+ */
 const HEADER_LIGHT = {
   notifications: require('./assets/tool-icons/notifications.png'),
   theme: require('./assets/tool-icons/theme-switch.png'),
@@ -1362,6 +1369,21 @@ const HEADER_DARK = {
   theme: require('./assets/tool-icons/theme-switch-dark.png'),
   settings: require('./assets/tool-icons/settings-dark.png')
 };
+const HEADER_PALESTINE = {
+  notifications: require('./assets/tool-icons/header-notifications-palestine.png'),
+  theme: require('./assets/tool-icons/header-theme-palestine.png'),
+  settings: require('./assets/tool-icons/header-settings-palestine.png')
+};
+const HEADER_PALESTINE_DARK = {
+  notifications: require('./assets/tool-icons/header-notifications-palestine-dark.png'),
+  theme: require('./assets/tool-icons/header-theme-palestine-dark.png'),
+  settings: require('./assets/tool-icons/header-settings-palestine-dark.png')
+};
+
+const headerIcons = (resolved: ResolvedTheme) =>
+  isPal(resolved)
+    ? (resolved === 'palestineDark' ? HEADER_PALESTINE_DARK : HEADER_PALESTINE)
+    : (resolved === 'islamicDark' ? HEADER_DARK : HEADER_LIGHT);
 
 /**
  * Whether there is somewhere to go back to from here.
@@ -1415,9 +1437,10 @@ function openNotifications() {
 }
 function AppHeader() {
   const { rtl } = useLanguage();
-  const { dark, setMode } = useTheme();
+  const { dark, setMode, resolved } = useTheme();
   const navigation = useNavigation<any>();
   const T = (text: string) => tx(rtl, text);
+  const header = headerIcons(resolved);
   /* Six screens wear this header, and some of them are reached by pushing
      onto a stack. Without this the only way out of those was the tab bar. */
   const canGoBack = useCanGoBack();
@@ -1432,17 +1455,17 @@ function AppHeader() {
       <Pressable accessibilityRole="button" accessibilityLabel={T('Notifications')}
         onPress={() => openNotifications()}
         style={({ pressed }) => [s.iconBtn, s.headerBtn, dark && s.iconBtnDark, pressed && s.press]}>
-        <Image source={dark ? HEADER_DARK.notifications : HEADER_LIGHT.notifications} resizeMode="contain" style={{ width: 24, height: 24 }} />
+        <Image source={header.notifications} resizeMode="contain" style={{ width: 24, height: 24 }} />
       </Pressable>
       <Pressable accessibilityRole="button" accessibilityLabel={dark ? T('Show the light theme') : T('Show the dark theme')}
         onPress={() => setMode(dark ? 'light' : 'dark')}
         style={({ pressed }) => [s.iconBtn, s.headerBtn, dark && s.iconBtnDark, pressed && s.press]}>
-        <Image source={dark ? HEADER_DARK.theme : HEADER_LIGHT.theme} resizeMode="contain" style={{ width: 24, height: 24 }} />
+        <Image source={header.theme} resizeMode="contain" style={{ width: 24, height: 24 }} />
       </Pressable>
       <Pressable accessibilityRole="button" accessibilityLabel={T('Settings')}
         onPress={() => navigation.navigate('Settings')}
         style={({ pressed }) => [s.iconBtn, s.headerBtn, dark && s.iconBtnDark, pressed && s.press]}>
-        <Image source={dark ? HEADER_DARK.settings : HEADER_LIGHT.settings} resizeMode="contain" style={{ width: 24, height: 24 }} />
+        <Image source={header.settings} resizeMode="contain" style={{ width: 24, height: 24 }} />
       </Pressable>
     </View>
   </View>;
@@ -10804,12 +10827,45 @@ function PlayerAura() {
    are filled artwork rather than the stroked glyphs used elsewhere, so they
    carry their own colour in both themes instead of being tinted at runtime.
    Each is supplied as a 160px light and a 160px dark cut. */
+/**
+ * Which version of an icon to show.
+ *
+ * The theme is asked first and the brightness second, the same order the
+ * scene art uses. A theme can therefore carry its own artwork without either
+ * theme having to borrow the other's, and the Islamic set is left exactly as
+ * it was for anybody still using it.
+ */
+type IconSet = { light: any; dark: any; palestine: any; palestineDark: any };
+
+function themedIcon(resolved: ResolvedTheme, set: IconSet) {
+  if (isPal(resolved)) return resolved === 'palestineDark' ? set.palestineDark : set.palestine;
+  return resolved === 'islamicDark' ? set.dark : set.light;
+}
+
+/**
+ * One tab, with the four versions of its icon the app can need.
+ *
+ * The Palestine icons are drawn for that theme rather than recoloured from the
+ * Islamic ones: the two palettes are not the same colours under different
+ * light, and artwork made for one reads wrong against the other. Either set
+ * can be changed without touching the other.
+ */
 const TAB_ITEMS = [
-  { name: 'Home', label: 'Home', ar: 'الرئيسية', icon: require('./assets/tool-icons/tab-home.png'), iconDark: require('./assets/tool-icons/tab-home-dark.png') },
-  { name: 'Prayer', label: 'Prayer', ar: 'الصلاة', icon: require('./assets/tool-icons/tab-prayer.png'), iconDark: require('./assets/tool-icons/tab-prayer-dark.png') },
-  { name: 'Quran', label: 'Quran', ar: 'القرآن', icon: require('./assets/tool-icons/tab-quran.png'), iconDark: require('./assets/tool-icons/tab-quran-dark.png') },
-  { name: 'Library', label: 'Library', ar: 'المكتبة', icon: require('./assets/tool-icons/tab-library.png'), iconDark: require('./assets/tool-icons/tab-library-dark.png') },
-  { name: 'Tools', label: 'Tools', ar: 'الأدوات', icon: require('./assets/tool-icons/tab-tools.png'), iconDark: require('./assets/tool-icons/tab-tools-dark.png') },
+  { name: 'Home', label: 'Home', ar: 'الرئيسية',
+    icon: require('./assets/tool-icons/tab-home.png'), iconDark: require('./assets/tool-icons/tab-home-dark.png'),
+    iconPalestine: require('./assets/tool-icons/tab-home-palestine.png'), iconPalestineDark: require('./assets/tool-icons/tab-home-palestine-dark.png') },
+  { name: 'Prayer', label: 'Prayer', ar: 'الصلاة',
+    icon: require('./assets/tool-icons/tab-prayer.png'), iconDark: require('./assets/tool-icons/tab-prayer-dark.png'),
+    iconPalestine: require('./assets/tool-icons/tab-prayer-palestine.png'), iconPalestineDark: require('./assets/tool-icons/tab-prayer-palestine-dark.png') },
+  { name: 'Quran', label: 'Quran', ar: 'القرآن',
+    icon: require('./assets/tool-icons/tab-quran.png'), iconDark: require('./assets/tool-icons/tab-quran-dark.png'),
+    iconPalestine: require('./assets/tool-icons/tab-quran-palestine.png'), iconPalestineDark: require('./assets/tool-icons/tab-quran-palestine-dark.png') },
+  { name: 'Library', label: 'Library', ar: 'المكتبة',
+    icon: require('./assets/tool-icons/tab-library.png'), iconDark: require('./assets/tool-icons/tab-library-dark.png'),
+    iconPalestine: require('./assets/tool-icons/tab-library-palestine.png'), iconPalestineDark: require('./assets/tool-icons/tab-library-palestine-dark.png') },
+  { name: 'Tools', label: 'Tools', ar: 'الأدوات',
+    icon: require('./assets/tool-icons/tab-tools.png'), iconDark: require('./assets/tool-icons/tab-tools-dark.png'),
+    iconPalestine: require('./assets/tool-icons/tab-tools-palestine.png'), iconPalestineDark: require('./assets/tool-icons/tab-tools-palestine-dark.png') },
 ];
 
 /** The menu floats above the content as a single capsule, always in reach. */
@@ -10817,7 +10873,7 @@ const TAB_ITEMS = [
  * One tab. A component of its own so each holds its own press value instead of
  * asking a hook to run inside a map.
  */
-function TabButton({ route, focused, navigation, dark, rtl, state, index }: any) {
+function TabButton({ route, focused, navigation, resolved, rtl, state, index }: any) {
   const press = usePressDepth();
   const item = TAB_ITEMS.find((entry: any) => entry.name === route.name);
   const label = item ? (rtl ? item.ar : item.label) : route.name;
@@ -10843,7 +10899,10 @@ function TabButton({ route, focused, navigation, dark, rtl, state, index }: any)
         navigation.navigate(route.name);
       }}>
       <Animated.View style={[s.floatPill, focused && s.floatPillActive]}>
-        {item?.icon ? <Image source={dark ? item.iconDark || item.icon : item.icon} resizeMode="contain" style={{ width: 26, height: 26, opacity: focused ? 1 : 0.5 }} /> : ico('ellipse-outline', 20, focused ? C.green : C.chevron)}
+        {item?.icon ? <Image source={themedIcon(resolved, {
+          light: item.icon, dark: item.iconDark || item.icon,
+          palestine: item.iconPalestine || item.icon, palestineDark: item.iconPalestineDark || item.iconDark || item.icon,
+        })} resizeMode="contain" style={{ width: 26, height: 26, opacity: focused ? 1 : 0.5 }} /> : ico('ellipse-outline', 20, focused ? C.green : C.chevron)}
         <Text numberOfLines={1} style={[s.floatLabel, focused && s.floatLabelActive]}>{label}</Text>
       </Animated.View>
     </Pressable>
@@ -10853,7 +10912,7 @@ function TabButton({ route, focused, navigation, dark, rtl, state, index }: any)
 function FloatingTabBar({ state, navigation }: any) {
   const { width } = useWindowDimensions();
   const { rtl } = useLanguage();
-  const { dark, resolved } = useTheme();
+  const { resolved } = useTheme();
   const hidden = useChromeHidden();
   const barWidth = Math.min(Math.max(width - 32, 300), 460);
   const drop = useRef(new Animated.Value(1)).current;
@@ -10867,7 +10926,7 @@ function FloatingTabBar({ state, navigation }: any) {
     <View style={[s.floatBar, { width: barWidth, flexDirection: 'row' }]}>
       {state.routes.map((route: any, index: number) => (
         <TabButton key={route.key} route={route} focused={state.index === index}
-          navigation={navigation} dark={dark} rtl={rtl} state={state} index={index} />
+          navigation={navigation} resolved={resolved} rtl={rtl} state={state} index={index} />
       ))}
     </View>
   </Animated.View>;
