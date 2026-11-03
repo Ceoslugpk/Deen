@@ -2567,7 +2567,7 @@ function QuranHome({navigation}:any){const{dark,resolved}=useTheme();
  const shown=chapters.filter(c=>`${c.id} ${c.name_simple} ${c.name_arabic} ${c.translated_name?.name}`.toLowerCase().includes(debounced.toLowerCase()));const visible=expanded||debounced.length>0?shown:shown.slice(0,30);const openSurah=useCallback((chapter:Chapter)=>navigation.navigate('Reader',{chapter,mode:'both'}),[navigation]);const open=(chapter:Chapter,mode='both',focusVerse?:string)=>navigation.navigate('Reader',{chapter,mode,focusVerse});const featured={id:55,name_simple:'Ar-Rahman',name_arabic:'الرحمن',translated_name:{name:'The Most Merciful'},verses_count:78};const submit=()=>{const ref=query.match(/^(\d{1,3}):(\d{1,3})$/);if(ref){const chapter=chapters.find(c=>c.id===Number(ref[1]));if(chapter)return open(chapter,'both',query)}navigation.navigate('Quran Search',{initialQuery:query})};
  const[audioReciter,setAudioReciter]=useState(T('Choose a reciter'));const memorized=Object.values(hifz).filter(value=>value==='memorized').length;const contentWidth=Math.min(Math.max(width-36,280),980);
 const gridGap=8;const gridCols=gridW>=640?10:4;const tileW=gridW?Math.floor((gridW-gridGap*(gridCols-1))/gridCols):0;
-const exploreTools:{label:string;title:string;screen:string;tab?:string;params?:Record<string,any>;tool?:string}[]=[{label:'Transliteration',title:T('Sounds'),screen:'Transliteration'},{label:'30 Juz',title:T('Juz'),screen:'Juz Directory'},{label:'60 Hizb',title:T('Hizb'),screen:'Hizb Directory'},{label:'Quran Topics',title:T('Topics'),screen:'Quran Topics'},{label:'Translation Compare',title:T('Tafsir'),screen:'Tafsir Compare',tool:'Tafsir'},{label:'Tajweed',title:T('Tajweed'),screen:'Tajweed Study'},{label:'Quran Vocabulary',title:T('Vocab'),screen:'Quran Vocabulary'},{label:'Khatam',title:T('Khatam'),screen:'Khatam'},{label:'Recitations',title:T('Audio'),screen:'Quran Audio',tool:'Audio'}];
+const exploreTools:{label:string;title:string;screen:string;tab?:string;params?:Record<string,any>;tool?:string}[]=[{label:'Transliteration',title:T('Transliteration'),screen:'Transliteration'},{label:'30 Juz',title:T('Juz'),screen:'Juz Directory'},{label:'60 Hizb',title:T('Hizb'),screen:'Hizb Directory'},{label:'Quran Topics',title:T('Topics'),screen:'Quran Topics'},{label:'Translation Compare',title:T('Tafsir'),screen:'Tafsir Compare',tool:'Tafsir'},{label:'Tajweed',title:T('Tajweed'),screen:'Tajweed Study'},{label:'Quran Vocabulary',title:T('Vocab'),screen:'Quran Vocabulary'},{label:'Khatam',title:T('Khatam'),screen:'Khatam'},{label:'Recitations',title:T('Audio'),screen:'Quran Audio',tool:'Audio'}];
 const compactStats=[{label:'Bookmarks',title:T('Bookmarks'),value:String(bookmarkCount),screen:'Bookmarks',icon:'bookmark-outline',tool:'Bookmarks'},{label:'Notes',title:T('Notes'),value:String(noteCount),screen:'Notes',icon:'create-outline',tool:'Notes'},{label:'Reading Plans',title:T('Plans'),value:plan?`${plan.days}d`:'—',screen:'Reading Plans',icon:'calendar-outline',tool:'Reading Plans'},{label:'Hifz',title:T('Hifz'),value:String(memorized),screen:'Hifz',icon:'school-outline',tool:'Hifz'},{label:'Offline Quran',title:T('Offline'),value:`${preload.cached}/114`,screen:'Quran Preload',icon:'download-outline',tool:'Offline Quran'}];
  return <Page><ScrollView keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}><AppHeader/>
  <View style={s.search}>{ico('search-outline',19,C.muted)}<TextInput accessibilityLabel={T('Search the Quran')} value={query} onChangeText={setQuery} onSubmitEditing={submit} returnKeyType="search" style={s.searchInput} placeholder={T('Search Surah, meaning, or 2:255')} placeholderTextColor={C.muted}/>{query.length>0&&<Pressable accessibilityLabel={T('Clear Quran search')} onPress={()=>setQuery('')}>{ico('close-circle',18,C.muted)}</Pressable>}</View>
@@ -3878,10 +3878,8 @@ function ReaderSettingsScreen({navigation}:any){
   const{rtl}=useLanguage(); const T=(text:string)=>tx(rtl,text);
   const{preferences,update}=useQuranPreferences();
   const rise=useRef(new Animated.Value(0)).current;
-  const[picking,setPicking]=useState<null|'translation'|'transliteration'>(null);
+  const[picking,setPicking]=useState<null|'translation'>(null);
   const[editions,setEditions]=useState<IslamicEdition[]>([]);
-  const[transliterations,setTransliterations]=useState<IslamicEdition[]>([]);
-  const[translitLanguage,setTranslitLanguage]=useState('en');
   const[catalogError,setCatalogError]=useState('');
   const[catalogAttempt,setCatalogAttempt]=useState(0);
 
@@ -3893,10 +3891,10 @@ function ReaderSettingsScreen({navigation}:any){
   useEffect(()=>{
     let live=true;
     setCatalogError('');
-    Promise.all([getEditions('quran'), getEditions('transliteration')])
-      .then(([nextEditions, nextTransliterations])=>{
+    getEditions('quran')
+      .then((nextEditions)=>{
         if(!live)return;
-        setEditions(nextEditions); setTransliterations(nextTransliterations);
+        setEditions(nextEditions);
       })
       .catch((e:any)=>{ if(live) setCatalogError(e?.message || 'Please check your connection.'); });
     return ()=>{ live=false; };
@@ -3913,11 +3911,6 @@ function ReaderSettingsScreen({navigation}:any){
   const current=useMemo(()=>languages.find(l=>l.code===currentCode),[languages,currentCode]);
   const[language,setLanguage]=useState(currentCode);
   useEffect(()=>{setLanguage(currentCode)},[currentCode]);
-
-  /* Only the transliterations with a surah route are offered; the rest exist
-     in the catalogue but answer nothing. */
-  const translitPool=useMemo(()=>servableEditions(transliterations,'transliteration'),[transliterations]);
-  const translitLanguages=useMemo(()=>languagesOf(translitPool),[translitPool]);
 
   const close=()=>navigation.goBack();
   const Switch=({on,label,detail,glyph,onPress}:{on:boolean;label:string;detail:string;glyph:string;onPress:()=>void})=>(
@@ -4009,21 +4002,6 @@ function ReaderSettingsScreen({navigation}:any){
           </View>
 
           <View style={s.rsGroup}>
-            <Text style={s.rsGroupTitle}>{T('TRANSLITERATION')}</Text>
-            <View style={s.settings}>
-              <Switch on={!!preferences.showTransliteration} glyph="mic-outline"
-                label={'Show the transliteration'} detail={'The Arabic sounded out in Latin letters. It is a guide to reciting, not a translation, and sits under the meaning.'}
-                onPress={()=>update({showTransliteration:!preferences.showTransliteration})}/>
-            </View>
-            {!!preferences.showTransliteration && (translitPool.length
-              ? <EditionPicker C={C} editions={translitPool} category="transliteration"
-                  selectedId={preferences.transliterationEdition} initialLanguage={translitLanguage}
-                  searchPlaceholder={T('Search a transliteration')}
-                  onPick={(e)=>update({transliterationEdition:e.id,transliterationName:editionDisplayName(e)})}/>
-              : <Spinner/>)}
-          </View>
-
-          <View style={s.rsGroup}>
             <Text style={s.rsGroupTitle}>{T('READING MODE')}</Text>
             <View style={s.settings}><Tactile accessibilityRole="switch" accessibilityState={{checked:preferences.focusMode}} onPress={()=>update({focusMode:!preferences.focusMode})} style={s.setting}><MotionGlyph name={preferences.focusMode?'eye':'eye-outline'} size={19}/><View style={{flex:1}}><Text style={s.settingName}>{T('Focus mode')}</Text><Text style={s.meta}>{T('Hide the top bar and the tab menu as you scroll. Tap a verse to bring them back.')}</Text></View>{ico(preferences.focusMode?'toggle':'toggle-outline',22,preferences.focusMode?C.green:C.muted)}</Tactile></View>
             <View style={s.choiceGrid}><ChoicePill label={T('Ayah cards')} selected={preferences.readingMode==='cards'} onPress={()=>update({readingMode:'cards'})}/><ChoicePill label={T('Continuous')} selected={preferences.readingMode==='continuous'} onPress={()=>update({readingMode:'continuous'})}/></View>
@@ -4045,8 +4023,6 @@ function ReaderSettingsScreen({navigation}:any){
 
       {picking==='translation'&&<LanguagePickerSheet rtl={rtl} T={T} entries={languages} selected={language}
         onPick={(code)=>setLanguage(code)} onClose={()=>setPicking(null)}/>}
-      {picking==='transliteration'&&<LanguagePickerSheet rtl={rtl} T={T} entries={translitLanguages} selected={translitLanguage}
-        onPick={setTranslitLanguage} onClose={()=>setPicking(null)}/>}
     </View>
   ), close);
   return null;
@@ -4627,8 +4603,82 @@ function MemorizeTestScreen({ navigation, route }: any) {
  * them out, because offering a choice that produces an empty page is worse
  * than offering three.
  */
+/**
+ * Every surah in one list, so finding one is a single tap rather than a
+ * hundred clicks of "next". Search matches the number, the Latin name, the
+ * Arabic name or the English meaning.
+ */
+function SurahPickerSheet({ rtl, T, chapters, selected, onPick, onClose }: {
+  rtl: boolean; T: (t: string) => string; chapters: Chapter[];
+  selected: number; onPick: (id: number) => void; onClose: () => void;
+}) {
+  const rise = useRef(new Animated.Value(0)).current;
+  const [query, setQuery] = useState('');
+  useEffect(() => {
+    Animated.spring(rise, { toValue: 1, friction: 9, tension: 130, useNativeDriver: true }).start();
+  }, [rise]);
+
+  const shown = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    if (!needle) return chapters;
+    return chapters.filter((c) => (
+      String(c.id) === needle ||
+      c.name_simple.toLowerCase().includes(needle) ||
+      (c.name_arabic || '').includes(needle) ||
+      (c.translated_name?.name || '').toLowerCase().includes(needle)
+    ));
+  }, [chapters, query]);
+
+  return <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+    <Pressable accessibilityRole="button" accessibilityLabel={T('Close')} onPress={onClose} style={s.sheetScrim} />
+    <Animated.View style={[s.verseSheet, {
+      transform: [{ translateY: rise.interpolate({ inputRange: [0, 1], outputRange: [420, 0] }) }],
+      opacity: rise,
+    }]}>
+      <View style={s.sheetGrip} />
+      <Text style={s.sheetTitle}>{T('Choose a surah')}</Text>
+      <Text style={s.sheetSub}>{chapters.length} {T('surahs')}</Text>
+
+      <View style={s.onbSearch}>
+        <TextInput
+          value={query}
+          onChangeText={setQuery}
+          placeholder={T('Search a surah')}
+          placeholderTextColor={C.muted}
+          style={s.onbSearchInput}
+          accessibilityLabel={T('Search a surah')}
+        />
+        {!!query && <Pressable accessibilityLabel={T('Clear search')} onPress={() => setQuery('')}>{ico('close', 16, C.muted)}</Pressable>}
+      </View>
+
+      <ScrollView overScrollMode={SCROLL.overScrollMode} style={{ marginTop: 10 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        {!shown.length && <Text style={s.onbCardNote}>{T('No surah matches that.')}</Text>}
+        {shown.map((c) => {
+          const active = c.id === selected;
+          return <Pressable key={c.id}
+            accessibilityRole="button"
+            accessibilityState={{ selected: active }}
+            accessibilityLabel={`${c.name_simple}, ${T('Surah')} ${c.id}`}
+            onPress={() => { onPick(c.id); onClose(); }}
+            style={[s.langRow, active && s.langRowOn]}>
+            <Text style={s.surahPickNum}>{c.id}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={[s.langName, active && s.langNameOn]} numberOfLines={1}>{c.name_simple}</Text>
+              {!!c.name_arabic && <Text style={s.surahPickAr} numberOfLines={1}>{c.name_arabic}</Text>}
+            </View>
+            <Text style={s.langCount}>{c.verses_count}</Text>
+            {active && ico('checkmark', 16, C.green)}
+          </Pressable>;
+        })}
+        <View style={{ height: 8 }} />
+      </ScrollView>
+    </Animated.View>
+  </View>;
+}
+
 function TransliterationScreen({navigation}:any){
   const{rtl}=useLanguage(); const T=(text:string)=>tx(rtl,text);
+  const[pickingSurah,setPickingSurah]=useState(false);
   const{preferences,update}=useQuranPreferences();
   const[chapters,setChapters]=useState<Chapter[]>([]);
   const[chapterId,setChapterId]=useState(1);
@@ -4688,10 +4738,15 @@ function TransliterationScreen({navigation}:any){
 
       <View style={s.trStepRow}>
         <Pressable accessibilityLabel={T('Previous Surah')} onPress={()=>step(-1)} disabled={chapterId<=1} style={s.trStep}>{ico(rtl?'chevron-forward':'chevron-back',19,chapterId<=1?C.muted:C.ink)}</Pressable>
-        <View style={{flex:1,alignItems:'center'}}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={T('Choose a surah')}
+          onPress={()=>setPickingSurah(true)}
+          style={{flex:1,alignItems:'center'}}>
           <Text style={s.trSurahName} numberOfLines={1}>{chapter?chapter.name_simple:T('Surah')}</Text>
           <Text style={s.meta} numberOfLines={1}>{chapter?`${T('Surah')} ${chapter.id} · ${chapter.verses_count} ${T('verses')}`:''}</Text>
-        </View>
+          <Text style={s.surahPickHint}>{T('Tap to choose')}</Text>
+        </Pressable>
         <Pressable accessibilityLabel={T('Next Surah')} onPress={()=>step(1)} disabled={chapterId>=114} style={s.trStep}>{ico(rtl?'chevron-back':'chevron-forward',19,chapterId>=114?C.muted:C.ink)}</Pressable>
       </View>
 
@@ -4723,7 +4778,10 @@ function TransliterationScreen({navigation}:any){
           </DepthCard>
         )):<Text style={s.intro}>{T('Nothing to show yet.')}</Text>
       )}
-    </ScrollView></Page>;
+    </ScrollView>
+    {pickingSurah&&<SurahPickerSheet rtl={rtl} T={T} chapters={chapters} selected={chapterId}
+      onPick={setChapterId} onClose={()=>setPickingSurah(false)}/>}
+    </Page>;
 }
 
 function QuranStack(){const subtle=useSubtleTransitions();return <Stack.Navigator screenOptions={{...subtle,headerShown:false}}><Stack.Screen name="QuranHome" component={QuranHome}/><Stack.Screen name="Downloads" component={DownloadsScreen}/><Stack.Screen name="Reader" component={ReaderScreen}/><Stack.Screen name="Translations" component={TranslationScreen}/><Stack.Screen name="Quran Vocabulary" component={VocabularyScreen}/><Stack.Screen name="Tajweed Study" component={TajweedStudyScreen}/><Stack.Screen name="Quran Search" component={QuranSearchScreen}/><Stack.Screen name="Bookmarks" component={BookmarkScreen}/><Stack.Screen name="Notes" component={NotesScreen}/><Stack.Screen name="Note Editor" component={needsPayload(NoteEditorScreen, 'Note')}/><Stack.Screen name="Reader Settings" component={ReaderSettingsScreen}
@@ -9833,7 +9891,7 @@ function SettingsScreen({navigation}:any){
 import { DEFAULT_RECITER, editionsForLanguage, LANGUAGES, Language, LanguageCode, languageByCode, isRtl, pickEdition, HADITH_LANGUAGES, hadithLanguage } from './src/services/languages';
 
 const navigationRef = createNavigationContainerRef<any>();
-if (typeof window !== 'undefined')/**
+/**
  * Navigate, even when the tap that launched the app arrived before the
  * navigator existed.
  *
@@ -12063,6 +12121,9 @@ surahCard:{width:'100%',minHeight:64,backgroundColor:C.card,borderRadius:16,bord
   langName:{flex:1,color:C.ink,fontSize:14,fontFamily:'DMSans_600SemiBold'},
   langNameOn:{color:C.green,fontFamily:'DMSans_700Bold'},
   langCount:{color:C.muted,fontSize:11,fontFamily:'DMSans_400Regular'},
+  surahPickNum:{color:C.muted,fontSize:12,fontFamily:'DMSans_700Bold',width:26,textAlign:'center'},
+  surahPickAr:{color:C.green,fontSize:14,fontFamily:'KFGQPCUthmanicHafs',marginTop:1,writingDirection:'rtl',textAlign:'right'},
+  surahPickHint:{color:C.green,fontSize:10,fontFamily:'DMSans_600SemiBold',marginTop:2},
   langIndex:{color:C.muted,fontSize:10,fontFamily:'DMSans_400Regular',width:16,textAlign:'center'},
   tsLangButton:{flexDirection:'row',alignItems:'center',gap:12,backgroundColor:C.mint,borderRadius:18,padding:14,borderWidth:1,borderColor:C.line,marginBottom:14},
   sheetCancel:{alignItems:'center',paddingVertical:12,marginTop:4},
