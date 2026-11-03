@@ -110,7 +110,14 @@ export type AdhanAudioReason =
    * tells somebody to fetch the file and would send them in circles.
    */
   | 'ios-no-clip'
-  | 'alarm-rejected';
+  | 'alarm-rejected'
+  /**
+   * There is no app to sound it from: scheduling, alarms and notification
+   * sounds are all native, so on the web none of the above applies. Named
+   * rather than reusing `no-adhan-enabled`, which would be read elsewhere as
+   * the setting being switched off.
+   */
+  | 'web-unsupported';
 
 export type AdhanAudio = {
   /** True when the actual recording will sound at the prayer time. */
@@ -470,7 +477,7 @@ export type ScheduleResult = {
   adhanAudio: AdhanAudio;
 };
 
-const NO_AUDIO: AdhanAudio = { willPlay: false, reason: 'no-adhan-enabled', scheduled: 0, skipped: 0 };
+const NO_AUDIO: AdhanAudio = { willPlay: false, reason: 'web-unsupported', scheduled: 0, skipped: 0 };
 
 /**
  * Schedule everything, from scratch.
@@ -786,6 +793,11 @@ function adhanAudioForIos(
 export async function inspectAdhanAudio(
   settings: { adhanEnabled?: Record<string, boolean>; adhanReciter?: string; adhanFajrReciter?: string },
 ): Promise<AdhanAudio> {
+  /* The same early exit the scheduling pass has. Without it the checks below
+     run as though this were a phone, and the web is told the adhan is played
+     by an installed Android app it cannot have - on a screen that has just
+     said scheduling needs the installed app. */
+  if (Platform.OS === 'web') return NO_AUDIO;
   const ios = adhanAudioForIos(settings);
   if (ios) return ios;
 

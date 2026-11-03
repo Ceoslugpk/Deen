@@ -6824,7 +6824,7 @@ function NotificationScreen({navigation}:any){const{rtl}=useLanguage();const T=(
   const toggleAdhan=(name:string)=>update({adhanEnabled:{...settings.adhanEnabled,[name]:!settings.adhanEnabled[name]}});
   /* Narrowed once, so the panel below reads as a single condition rather
      than re-checking the same three things at every mention. */
-  const audioBlocked: string | null = audio && !audio.willPlay && audio.reason && audio.reason!=='no-adhan-enabled'
+  const audioBlocked: string | null = audio && !audio.willPlay && audio.reason && audio.reason!=='no-adhan-enabled'&&audio.reason!=='web-unsupported'
     ? audio.reason : null;
   const togglePre=(name:string)=>update({prayerReminders:{...settings.prayerReminders,[name]:!settings.prayerReminders[name]}});
   const prayers=['Fajr','Dhuhr','Asr','Maghrib','Isha'];

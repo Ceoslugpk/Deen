@@ -213,6 +213,56 @@ else:
             "pressing Save will report the alarm instead of the clip"
         )
 
+# ------------------------- every reason is either explained or deliberately hidden
+
+# A reason with no copy does not render blank: it falls through to
+# 'alarm-rejected' and tells somebody their phone refused an alarm that was
+# never asked for. So each one must either have copy of its own or be named in
+# the condition that keeps the card hidden.
+app_tsx = open(os.path.join(ROOT, "App.tsx"), encoding="utf-8").read()
+
+union = re.search(
+    r"export type AdhanAudioReason =(.*?);\s*\n", notifications, re.S
+)
+if not union:
+    fail("could not read the AdhanAudioReason union")
+else:
+    reasons = re.findall(r"'([a-z-]+)'", union.group(1))
+    copy_block = re.search(
+        r"ADHAN_AUDIO_REASON[^=]*=\s*\{(.*?)\n  \};", app_tsx, re.S
+    )
+    if not copy_block:
+        fail("could not read ADHAN_AUDIO_REASON")
+    else:
+        has_copy = set(re.findall(r"'([a-z-]+)':", copy_block.group(1)))
+        hidden = set(re.findall(
+            r"audio\.reason!=='([a-z-]+)'", app_tsx
+        ))
+        for r in reasons:
+            if r not in has_copy and r not in hidden:
+                fail(
+                    f"the adhan reason '{r}' has no copy and is not filtered out - "
+                    "it will render as 'alarm-rejected'"
+                )
+
+# ------------------------------ the web must not be given a phone's diagnosis
+
+# Scheduling, alarms and notification sounds are all native. On the web the
+# scheduler has always bailed out early; the screen did not, so it ran the
+# Android checks and reported an installed Android app that cannot exist there.
+inspect = re.search(
+    r"export async function inspectAdhanAudio\([\s\S]*?Promise<AdhanAudio> \{\n"
+    r"([\s\S]{0,600}?)\n {2}const ios",
+    notifications,
+)
+if not inspect:
+    fail("could not read inspectAdhanAudio")
+elif "Platform.OS === 'web'" not in inspect.group(1) or "NO_AUDIO" not in inspect.group(1):
+    fail(
+        "inspectAdhanAudio has no web guard - the web will be told the adhan "
+        "is played by an installed Android app"
+    )
+
 # ---------------------------------------------------- new copy is translated
 
 # tx() falls back to English when a string has no Arabic entry, so an
