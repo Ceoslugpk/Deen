@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 #
-# Rebuild the thirty-second adhan clips that ship inside the app.
+# Rebuild the adhan clips that ship inside the app.
 #
 # They exist because iOS will only sound a notification with an audio file
-# that is inside the app bundle and no longer than thirty seconds. Anything
+# that is inside the app bundle and under thirty seconds. Anything
 # longer, or anything downloaded to the documents directory, is ignored and
 # the system plays its own tone instead. So these eight recordings are the
 # ones that can sound at prayer time on a phone.
@@ -21,8 +21,14 @@ set -euo pipefail
 BASE="https://audio.islamicdata.uz/v1"
 OUT="assets/sounds"
 WORK="$(mktemp -d)"
-LENGTH=30
-FADE_START=28
+# 29.5, not 30. Apple's rule is that a custom notification sound must be
+# *under* thirty seconds, and what happens when it is not is the sound being
+# silently replaced by the system tone - which is the exact failure these
+# clips exist to prevent. Sitting on the limit is a bet on how the system
+# rounds; half a second of silence at the end is not worth that bet. The fade
+# ends with the clip rather than being cut off by it.
+LENGTH=29.5
+FADE_START=27.5
 FADE_LEN=2
 
 # kind, edition, output name
