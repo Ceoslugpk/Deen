@@ -1,4 +1,4 @@
-function ExploreStack(){const subtle=useSubtleTransitions();return <Stack.Navigator screenOptions={{...subtle,headerShown:false}}><Stack.Screen name="ExploreHome" component={ExploreHome}/><Stack.Screen name="Adhkar" component={AdhkarScreen}/><Stack.Screen name="99 Names" component={NamesScreen}/><Stack.Screen name="Prophet Names" component={ProphetNamesScreen}/><Stack.Screen name="Muslim Names" component={MuslimNamesScreen}/><Stack.Screen name="Duas" component={DuasScreen}/><Stack.Screen name="Dua Category" component={DuaCategoryScreen}/><Stack.Screen name="Hadith" component={HadithScreen}/><Stack.Screen name="Hadith Collection" component={HadithCollectionScreen}/><Stack.Screen name="Hadith Detail" component={HadithDetailScreen}/><Stack.Screen name="Hadith Saved" component={HadithSavedScreen}/><Stack.Screen name="Worship Guides" component={GuideDirectory}/><Stack.Screen name="Guide Detail" component={needsPayload(GuideDetailInner, 'Guide')}/><Stack.Screen name="Ramadan" component={RamadanScreen}/><Stack.Screen name="Pilgrimage" component={PilgrimageScreen}/><Stack.Screen name="Journey" component={needsPayload(JourneyScreenInner, 'Journey')}/><Stack.Screen name="Purity" component={PurityScreen}/><Stack.Screen name="Ghusl" component={GhuslScreen}/></Stack.Navigator>}
+function ExploreStack(){const subtle=useSubtleTransitions();return <Stack.Navigator screenOptions={{...subtle,headerShown:false}}><Stack.Screen name="ExploreHome" component={ExploreHome}/><Stack.Screen name="Adhkar" component={AdhkarScreen}/><Stack.Screen name="99 Names" component={NamesScreen}/><Stack.Screen name="Prophet Names" component={ProphetNamesScreen}/><Stack.Screen name="Muslim Names" component={MuslimNamesScreen}/><Stack.Screen name="Duas" component={DuasScreen}/><Stack.Screen name="Dua Category" component={DuaCategoryScreen}/><Stack.Screen name="Hadith" component={HadithScreen}/><Stack.Screen name="Hadith Collection" component={HadithCollectionScreen}/><Stack.Screen name="Hadith Detail" component={HadithDetailScreen}/><Stack.Screen name="Hadith Saved" component={HadithSavedScreen}/><Stack.Screen name="Worship Guides" component={GuideDirectory}/><Stack.Screen name="Guide Detail" component={needsPayload(GuideDetailInner, 'Guide')}/><Stack.Screen name="Ramadan" component={RamadanScreen}/><Stack.Screen name="Journey" component={needsPayload(JourneyScreenInner, 'Journey')}/><Stack.Screen name="Purity" component={PurityScreen}/><Stack.Screen name="Ghusl" component={GhuslScreen}/></Stack.Navigator>}
 
 /**
  * The prayer tab: keeping the day. The times, the direction, the call, the
@@ -224,7 +224,7 @@ import { clearFastDay, FastType, labelForEntry, loadFastingState, missedReasons,
 import { buildWeeklySummary, loadActivity, logAdhkarRead, logHifzReview, logMushafPage, logSurahOpen, logVerseRead, useActivity, setActivityDateLocale } from './src/services/activityService';
 import { addDays, addQada, ADVISORY, assessBleeding, BISMILLAH_ARABIC, BLEEDING_GUIDANCE, cycleStats, dayKey, daysBetween, deleteCycle, deleteNifas, deleteQada, endCycle, endNifas, EXPLANATIONS, FLOW_LEVELS, formatDay, formatLongDay, GHUSL_FARD, GHUSL_SUNNAH, LIMITS, loadWomensState, logPurity, nifasStats, NIYYAH_ARABIC, NIYYAH_MEANING, NIYYAH_TRANSLITERATION, PurityStatus, QadaReason, QADA_REASONS, qadaStats, RAMADAN_ADVISORY, RAMADAN_NOTES, RAMADAN_STATE_LABEL, ramadanPlan, RamadanPlanDay, recentPurity, REFERENCES, SCHOOL_NOTE, setFlow, setOptedIn, startCycle, startNifas, THESE_DAYS_ACTS, THESE_DAYS_ADVISORY, THESE_DAYS_ANCHOR, THESE_DAYS_DISPUTED, TheseDaysAct, toggleQada, TUHR_SIGNS, useWomens, WORSHIP_GUIDANCE } from './src/services/womensService';
 import { BiometricInfo, biometricInfo, checkPin, removePin, RELOCK_OPTIONS, setPin, startLockWatch, unlockSession, unlockWithBiometric, updateLockSettings, useIsLocked, useLockConfig, loadLockConfig } from './src/services/privacyService';
-import { CURRENCIES, clearHistory, computeZakat, currencySymbol, deleteCalculation, formatMoney, livePrices, loadZakatState, marketIsFresh, NISAB_GOLD_GRAMS, NISAB_SILVER_GRAMS, refreshMarket, saveCalculation, setAssetAmount, setBasis, setCurrency, setLiabilityAmount, setMetalPrice, setMoneyLocale, useLiveMetalPrices, useMarket, useZakat } from './src/services/zakatService';
+import { CURRENCIES, clearHistory, computeZakat, currencySymbol, deleteCalculation, formatMoney, livePrices, loadZakatState, marketIsFresh, pricesAvailable, NISAB_GOLD_GRAMS, NISAB_SILVER_GRAMS, refreshMarket, saveCalculation, setAssetAmount, setBasis, setCurrency, setLiabilityAmount, setMetalPrice, setMoneyLocale, useLiveMetalPrices, useMarket, useZakat } from './src/services/zakatService';
 import { arNoun, clockTime, prayerName, tx, tf } from './src/services/arabicCopy';
 import { downloadSurahAudio, loadDownloads, downloadSurahText, estimateFreeBytes, formatBytes, pauseDownload, removeDownload, resolveAudioSource, resumeDownload, retryDownload, totalDownloadBytes, useDownloads } from './src/services/downloadService';
 import { NAME_LANGUAGES } from './src/services/api';
@@ -5720,59 +5720,7 @@ const formatJourneyDay = (iso: string) => {
   return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });
 };
 
-function PilgrimageScreen({ navigation }: any) {
-  const { rtl } = useLanguage();
-  const T = (text: string) => tx(rtl, text);
-  const journeys = useJourneys();
-  const meta = { umrah: journeyMeta('umrah', rtl), hajj: journeyMeta('hajj', rtl) } as typeof JOURNEY_META;
-  const kinds: JourneyKind[] = ['umrah', 'hajj'];
-  const openJourney = (kind: JourneyKind) => {
-    if (!journeys.active[kind]) startJourney(kind, meta[kind].title);
-    navigation.navigate('Journey', { kind });
-  };
-  return <Page><ToolBar title={T('Umrah and Hajj')} navigation={navigation} />
-    <ScrollView keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
-      <ToolGraphic tool="Pilgrimage" size={87} />
-      <Text style={s.dataTitle}>{T('Umrah and Hajj')}</Text>
-      <Text style={s.intro}>{T('A private checklist for every rite, the counts you need to keep, and the verses that speak about them. Nothing leaves this device.')}</Text>
-      {kinds.map((kind) => {
-        const journey = journeys.active[kind];
-        const progress = journeyProgress(journey);
-        return <Pressable key={kind} accessibilityRole="button" accessibilityLabel={meta[kind].title} onPress={() => openJourney(kind)} style={[s.journeyCard, ]}>
-          <ToolGraphic tool="Pilgrimage" size={58} />
-          <View style={{ flex: 1 }}>
-            <View style={[s.journeyTitleRow, ]}>
-              <Text style={s.settingName}>{rtl ? meta[kind].arabic : meta[kind].title}</Text>
-              <Text style={s.journeyArabic}>{meta[kind].arabic}</Text>
-            </View>
-            <Text style={s.meta}>{meta[kind].intro}</Text>
-            <View style={s.journeyBar}><View style={[s.journeyBarFill, { width: `${progress.percent}%` }]} /></View>
-            <Text style={s.dataMeta}>{journey ? (rtl ? `${progress.done} من ${progress.total} من المناسك مؤداة · بدأت ${formatJourneyDay(journey.startedAt)}` : `${progress.done} OF ${progress.total} RITES DONE · STARTED ${formatJourneyDay(journey.startedAt).toUpperCase()}`) : T('NOT STARTED')}</Text>
-          </View>
-          {ico(rtl ? 'arrow-back' : 'arrow-forward', 17, C.chevron)}
-        </Pressable>;
-      })}
-      <Section title={T('Holy site channels')} />
-      <Pressable accessibilityRole="button" accessibilityLabel={T('Holy site channels')} onPress={() => navigation.navigate('Tools',{screen:'Holy site channels',initial:false})} style={[s.settings, s.dataSourceRow]}>
-        <ToolGraphic tool="Holy site channels" size={45} />
-        <View style={{ flex: 1, marginHorizontal: 12 }}>
-          <Text style={s.settingName}>{rtl ? 'بثّ الحرمين' : 'Watch the Haramain live'}</Text>
-          <Text style={s.meta}>{rtl ? 'القنوات الرسمية من مكة والمدينة' : 'The official channels from Makkah and Madinah'}</Text>
-        </View>
-        {ico(rtl ? 'arrow-back' : 'arrow-forward', 17, C.chevron)}
-      </Pressable>
-      <Section title={T('Completed journeys')} action={rtl?`${journeys.history.length} محفوظة`:`${journeys.history.length} kept`} />
-      {!journeys.history.length ? <View style={s.empty}><Text style={s.errorText}>{rtl ? 'لا رحلات مسجلة بعد' : 'No completed journeys yet. Finish one and it is kept here.'}</Text></View>
-        : journeys.history.map((journey) => <View key={journey.id} style={s.settings}>
-          <ToolGraphic tool="Pilgrimage" size={45} />
-          <View style={{ flex: 1, marginHorizontal: 12 }}>
-            <Text style={s.settingName}>{meta[journey.kind].title} · {journey.label}</Text>
-            <Text style={s.meta}>{rtl?`${journeyProgress(journey).done} من ${journeyProgress(journey).total} من المناسك · أُتمَّت ${formatJourneyDay(journey.completedAt || journey.startedAt)}`:`${journeyProgress(journey).done} of ${journeyProgress(journey).total} rites · completed ${formatJourneyDay(journey.completedAt || journey.startedAt)}`}</Text>
-          </View>
-        </View>)}
-    </ScrollView>
-  </Page>;
-}
+
 
 function JourneyScreenInner({ route, navigation }: any) {
   const [tappedStep, setTappedStep] = useState<string | null>(null);
@@ -9008,6 +8956,9 @@ function ZakatScreen({ navigation }: any) {
   const result = computeZakat(zakat);
   const live = livePrices(zakat.currency);
   const fresh = marketIsFresh();
+  /* Asked once, so every figure below can refuse to answer rather than answer
+     from a price that never arrived. */
+  const havePrices = pricesAvailable(zakat);
   const symbol = currencySymbol(zakat.currency);
 
   const refresh = async () => {
@@ -9039,7 +8990,7 @@ function ZakatScreen({ navigation }: any) {
         {zakat.assets.map((asset) => <View key={asset.id} style={[s.assetRow, ]}>
           <View style={{ flex: 1, marginHorizontal: 4 }}>
             <Text style={s.settingName}>{T(asset.label)}</Text>
-            {asset.kind === 'gold' || asset.kind === 'silver' ? <Text style={s.meta}>{formatMoney(Number(asset.amount) || 0, zakat.currency, 0)} {rtl ? 'بسعر' : 'at'} {formatMoney(metalPrice(asset.kind), zakat.currency)} {rtl ? 'للغرام' : 'per gram'}</Text> : <Text style={s.meta}>{asset.kind === 'cash' || asset.kind === 'bank' ? T('Balances on the day of your Zakat') : T('Market value today')}</Text>}
+            {asset.kind === 'gold' || asset.kind === 'silver' ? <Text style={s.meta}>{`${Number(asset.amount) || 0} ${rtl ? 'غرام' : 'g'}`} {rtl ? 'بسعر' : 'at'} {havePrices ? formatMoney(metalPrice(asset.kind), zakat.currency) : '—'} {rtl ? 'للغرام' : 'per gram'}</Text> : <Text style={s.meta}>{asset.kind === 'cash' || asset.kind === 'bank' ? T('Balances on the day of your Zakat') : T('Market value today')}</Text>}
           </View>
           <TextInput accessibilityLabel={`${T('Amount of')} ${asset.label}`} keyboardType="numeric" value={asset.amount ? String(asset.amount) : ''} onChangeText={(value) => void setAssetAmount(asset.id, Number(value.replace(/[^0-9.]/g, '')) || 0)} placeholder="0" placeholderTextColor={C.muted} style={s.assetInput} />
         </View>)}
@@ -9070,7 +9021,7 @@ function ZakatScreen({ navigation }: any) {
           <Tactile accessibilityLabel={T('Use live prices')} onPress={() => void useLiveMetalPrices()} style={s.secondary}><Text style={s.secondaryText}>{T('Use live prices')}</Text></Tactile>
           <Tactile accessibilityLabel={T('Refresh prices and rates')} onPress={refresh} style={s.secondary}><Text style={s.secondaryText}>{refreshing ? T('Refreshing…') : T('Refresh')}</Text></Tactile>
         </View>
-        <Text style={s.meta}>{zakat.prices.custom ? T('You are using your own prices.') : fresh ? T('Prices and exchange rates were fetched within the last twelve hours.') : T('Prices and rates were last saved on this device.')}{market.fetchedAt ? ` ${rtl ? 'آخر تحديث' : 'Updated'} ${new Date(market.fetchedAt).toLocaleString(language === 'ar' ? 'ar-u-nu-latn' : language)}.` : ''}</Text>
+        <Text style={s.meta}>{zakat.prices.custom ? T('You are using your own prices.') : fresh ? T('Prices and exchange rates were fetched within the last twelve hours.') : market.fetchedAt ? T('Prices and rates were last saved on this device.') : T('No prices have been fetched yet.')}{market.fetchedAt ? ` ${rtl ? 'آخر تحديث' : 'Updated'} ${new Date(market.fetchedAt).toLocaleString(language === 'ar' ? 'ar-u-nu-latn' : language)}.` : ''}</Text>
       </View>
 
      
@@ -9082,12 +9033,23 @@ function ZakatScreen({ navigation }: any) {
           <StatBox label={T('SILVER NISAB')} value={formatMoney(NISAB_SILVER_GRAMS * result.silverPerGram, zakat.currency, 0)} hint={`${NISAB_SILVER_GRAMS} ${rtl ? 'غرامًا' : 'grams'}`} />
         </View>
         <Text style={s.meta}>{T('Scholars differ on which of the two to measure against. The lower threshold brings more wealth into Zakat; take the choice to someone you trust.')}</Text>
+      {/* Said here rather than only at the result: the threshold is the number
+          a ruling is measured against, and a threshold of zero would be
+          believed before anybody scrolled far enough to be told otherwise. */}
+      {!havePrices && <View style={[s.healthCard, { marginTop: 8, borderColor: C.coral, borderWidth: 1 }]}>
+        <View style={[s.healthDot, { backgroundColor: C.coral }]} />
+        <View style={{ flex: 1 }}>
+          <Text style={s.sourceTitle}>{T('Prices are not available')}</Text>
+          <Text style={s.sourceBody}>{T('The nisab is measured in money, and the gold and silver prices could not be fetched. Rather than work it out from nothing, the result is left empty until they arrive.')}</Text>
+        </View>
+        <Tactile onPress={() => void refresh()} style={s.ghostSmall}><Text style={s.ghostText}>{refreshing ? T('Fetching…') : T('Try again')}</Text></Tactile>
+      </View>}
       </View>
 
      
       </ZakatSection> <ZakatSection title={T('The result')} open={zOpen.result === true} onToggle={() => setZOpen((prev) => ({ ...prev, result: prev.result !== true }))}>
       <LinearGradient colors={[C.heroA, C.green]} style={s.summaryScore}>
-        <View><Text style={s.nextCardLabel}>{T('ZAKAT DUE · 2.5%')}</Text><Text style={s.zakatNo}>{formatMoney(result.zakat, zakat.currency)}</Text><Text style={s.weekScoreBody}>{result.above ? T('Your net wealth is above the nisab') : T('Below the nisab — nothing is due')}</Text></View>
+        <View><Text style={s.nextCardLabel}>{T('ZAKAT DUE · 2.5%')}</Text><Text style={s.zakatNo}>{havePrices ? formatMoney(result.zakat, zakat.currency) : '—'}</Text><Text style={s.weekScoreBody}>{!havePrices ? T('Gold and silver prices could not be fetched, so nothing can be worked out yet.') : result.above ? T('Your net wealth is above the nisab') : T('Below the nisab — nothing is due')}</Text></View>
       </LinearGradient>
       <View style={s.statGrid}>
         <StatBox label={T('GROSS ASSETS')} value={formatMoney(result.gross, zakat.currency, 0)} hint={T('Everything listed above')} />

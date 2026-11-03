@@ -260,6 +260,29 @@ export function marketIsFresh() {
   return Date.now() - market.fetchedAt < 12 * 60 * 60 * 1000;
 }
 
+/**
+ * Whether the nisab on screen rests on real prices.
+ *
+ * A missing price is not a cautious price, it is a zero — and a nisab worked
+ * out from zero is lower than any real nisab, so everything looks exempt. The
+ * two metals are both needed: the threshold used here is the lower of the two,
+ * so one missing price does not make the figure conservative, it empties it.
+ *
+ * This is asked so the screen can decline to state a ruling rather than state
+ * a wrong one. A failed fetch is not the same as a small holding, and the two
+ * must not look alike.
+ */
+export function pricesAvailable(current = state): boolean {
+  const live = livePrices(current.currency);
+  const gold = current.prices.custom && current.prices.goldPerGram
+    ? current.prices.goldPerGram
+    : live.goldPerGram;
+  const silver = current.prices.custom && current.prices.silverPerGram
+    ? current.prices.silverPerGram
+    : live.silverPerGram;
+  return gold > 0 && silver > 0;
+}
+
 /* ------------------------------------------------------------- editing --- */
 
 export async function setCurrency(currency: string) {
