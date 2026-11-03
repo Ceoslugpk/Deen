@@ -36,7 +36,21 @@
     "plugins": [
       "expo-font",
       "expo-audio",
-      "expo-notifications",
+      [
+        "expo-notifications",
+        {
+          "sounds": [
+            "./assets/sounds/adhan_mishary_rashid_alafasy.m4a",
+            "./assets/sounds/adhan_mansour_al_zahrani.m4a",
+            "./assets/sounds/adhan_hafiz_mustafa_ozcan.m4a",
+            "./assets/sounds/adhan_ahmad_al_nafees.m4a",
+            "./assets/sounds/adhan_abdul_basit.m4a",
+            "./assets/sounds/adhan_minshawi.m4a",
+            "./assets/sounds/fajr_mansour_al_zahrani.m4a",
+            "./assets/sounds/fajr_traditional.m4a"
+          ]
+        }
+      ],
       "./plugins/withBatteryExemption.js",
       "./plugins/withAdhanAlarm.js",
       "./plugins/withHaramainCleartext.js",

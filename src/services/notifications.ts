@@ -4,7 +4,7 @@ import * as Notifications from 'expo-notifications';
 import { arNoun, clockTime, prayerName } from './arabicCopy';
 import type { PrayerSnapshot } from './api';
 import type { WorshipSettings } from './localState';
-import { ADHAN_TRACKS, FAJR_TRACKS, adhanTrack, type AdhanTrack } from './adhanCatalog';
+import { ADHAN_TRACKS, FAJR_TRACKS, adhanTrack, clipSoundName, hasClip, type AdhanTrack } from './adhanCatalog';
 import { isAdhanCached } from './adhanCache';
 import { isAdhanAlarmAvailable, canScheduleExactAlarms, scheduleAdhanAlarms, cancelAdhanAlarms } from './adhanAlarm';
 import { recordScheduled, type PendingEntry } from './notificationLog';
@@ -31,30 +31,30 @@ import { createSerialQueue } from './scheduleQueue';
  */
 
 /**
- * The adhan voices that can sound from a notification.
+ * The adhan voices offered in settings.
  *
- * Only what is actually compiled into the app can play from a notification, so
- * this is the bundled catalogue: every file named `adhan-*.mp3` or
- * `fajr-*.mp3` in `assets/audio` is copied by the `withAdhanSounds` plugin
- * under the filename with punctuation turned into underscores, and that
- * resource name is what the system is asked to play.
+ * On iOS the list is shorter, and deliberately so. A notification there will
+ * only sound a file compiled into the app, so the twelve recordings with no
+ * bundled clip would be chosen and then silently replaced by a generic chime.
+ * A voice that does not sound is worse than a voice that is not offered, so
+ * iOS is given the eight that work and nothing that does not.
  *
- * Adding another recording is a matter of dropping the file in and naming it
- * in the catalogue. If a named sound is somehow missing the system tone plays
- * instead, because an adhan that fails to make a noise at all is worse than
- * one that uses a generic chime — which is also why the bundled list carries
- * its own fallback rather than trusting a value read off disk.
+ * Android keeps all twenty: it plays them through the native alarm, which can
+ * reach a downloaded file and can play the whole three-and-a-half-minute
+ * recitation rather than thirty seconds of it.
  */
+const CLIP_ONLY = Platform.OS === 'ios';
+
 export const ADHAN_OPTIONS: { id: string; label: string; labelAr: string; sound: string }[] = [
-  ...ADHAN_TRACKS.map((track) => ({
+  ...ADHAN_TRACKS.filter((track) => !CLIP_ONLY || hasClip(track)).map((track) => ({
     id: track.id, label: track.name, labelAr: track.nameAr, sound: track.sound,
   })),
   { id: 'default', label: 'System tone', labelAr: 'نغمة الجهاز', sound: 'default' },
 ];
 
-/** Fajr's own recordings, offered in the same shape. */
+/** Fajr's own recordings, offered in the same shape. Both are bundled. */
 export const FAJR_OPTIONS: { id: string; label: string; labelAr: string; sound: string }[] = [
-  ...FAJR_TRACKS.map((track) => ({
+  ...FAJR_TRACKS.filter((track) => !CLIP_ONLY || hasClip(track)).map((track) => ({
     id: track.id, label: track.name, labelAr: track.nameAr, sound: track.sound,
   })),
   { id: 'default', label: 'System tone', labelAr: 'نغمة الجهاز', sound: 'default' },
@@ -136,10 +136,16 @@ function diagnoseAdhanAudio(facts: {
   alarm: { usable: boolean; reason: AdhanAudioReason | null };
   alarms: { scheduled: number; skipped: number };
   recordingMissing: boolean;
+  /** True when a bundled clip will stand in for the recording. */
+  clipCovered: boolean;
 }): AdhanAudioReason | null {
-  const { adhans, alarm, alarms, recordingMissing } = facts;
+  const { adhans, alarm, alarms, recordingMissing, clipCovered } = facts;
   if (adhans === 0) return 'no-adhan-enabled';
   if (alarms.scheduled > 0) return null;
+  /* The recording does sound, just from a clip rather than an alarm, so there
+     is no fault to explain. Without this iOS would be told the adhan can never
+     play, which stopped being true. */
+  if (clipCovered) return null;
   if (alarm.reason) return alarm.reason;
   if (recordingMissing) return 'not-downloaded';
   return 'alarm-rejected';
@@ -532,6 +538,10 @@ async function rebuildSchedule(
      five times would give the same answer five times. */
   const alarm = await alarmIsTrustworthy();
   let recordingMissing = false;
+  /** Set when a bundled clip will stand in for a recording that is not on the
+   *  device. It is the real adhan, so nothing is missing as far as the person
+   *  listening is concerned. */
+  let clipCovered = false;
   /* Collected as the loop runs, then handed to the alarm in one call at the
      end. An alarm per prayer is the only way the recording can sound, because
      a notification cannot play a file the app is merely carrying. */
@@ -552,8 +562,15 @@ async function rebuildSchedule(
          the two do not talk over each other. When that cannot be relied on
          the notification keeps the system tone, so prayer time is still
          heard rather than passing in silence. */
+      /* iOS has no alarm to fall back on, and a notification there will play
+         a sound compiled into the bundle or nothing at all — a downloaded
+         recording is silently replaced by the system tone. So on iOS the
+         bundled clip is what sounds, and it is under thirty seconds because
+         that is the most iOS will play. */
+      const clipName = Platform.OS === 'ios' ? clipSoundName(track) : null;
       const willPlay = alarm.usable && recordingReady;
-      if (!recordingReady) recordingMissing = true;
+      if (!recordingReady && !clipName) recordingMissing = true;
+      if (clipName) clipCovered = true;
       const channel = willPlay ? CHANNEL_ADHAN_SILENT : CHANNEL_ADHAN;
       if (at > now) {
         await scheduleAndLog({
@@ -562,6 +579,10 @@ async function rebuildSchedule(
             body: c.adhanBodyName(name),
             categoryIdentifier: 'adhan-actions',
             data: { route: 'Prayer', kind: 'adhan', prayer: prayer.name },
+            /* Only ever set on iOS. On Android the channel governs what a
+               notification sounds like, and naming a sound here would either be
+               ignored or fight with the channel. */
+            ...(clipName ? { sound: clipName } : {}),
             // Stay on screen rather than vanishing: an adhan you have to hunt
             // for in the shade is an adhan you missed.
             sticky: true,
@@ -690,8 +711,8 @@ async function rebuildSchedule(
   const alarms = await scheduleAdhanAlarms(alarmEntries);
 
   const adhanAudio: AdhanAudio = {
-    willPlay: alarm.usable && alarms.scheduled > 0,
-    reason: diagnoseAdhanAudio({ adhans, alarm, alarms, recordingMissing }),
+    willPlay: (alarm.usable && alarms.scheduled > 0) || clipCovered,
+    reason: diagnoseAdhanAudio({ adhans, alarm, alarms, recordingMissing, clipCovered }),
     scheduled: alarms.scheduled,
     skipped: alarms.skipped,
   };

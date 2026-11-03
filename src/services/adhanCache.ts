@@ -14,7 +14,7 @@
  * instead of being swallowed.
  */
 import { Directory, File, Paths } from 'expo-file-system';
-import { ADHAN_TRACKS, FAJR_TRACKS, ALL_ADHAN_TRACKS, type AdhanTrack } from './adhanCatalog';
+import { ADHAN_TRACKS, FAJR_TRACKS, ALL_ADHAN_TRACKS, ADHAN_CLIPS, type AdhanTrack } from './adhanCatalog';
 
 const DIR_NAME = 'adhan';
 
@@ -61,15 +61,22 @@ export function cachedAdhanUri(track: AdhanTrack): string | null {
 }
 
 /**
- * What to hand to a player: the local file once it is on the device, and the
- * network address while it is still arriving.
+ * What to hand to a player: the clip compiled into the app if there is one,
+ * otherwise the local file once it is on the device, and otherwise the network
+ * address while it is still arriving.
  *
- * On the web there is no documents directory to write into, so this is always
- * the remote address - the browser caches what it likes and the preview still
- * works.
+ * The clip comes first because it is already there. Choosing a voice is a
+ * matter of hearing it, and waiting for a download to find out what a muezzin
+ * sounds like is a poor way to choose - thirty seconds is plenty to know.
+ *
+ * On the web there is no documents directory to write into, so it is the remote
+ * address as it always was: the browser caches what it likes and the preview
+ * still works.
  */
-export function adhanPlaybackSource(track: AdhanTrack): string {
+export function adhanPlaybackSource(track: AdhanTrack): string | number {
   if (PlatformIsWeb()) return track.url;
+  const clip = track.clip ? ADHAN_CLIPS[track.clip] : undefined;
+  if (clip !== undefined) return clip;
   return cachedAdhanUri(track) ?? track.url;
 }
 
