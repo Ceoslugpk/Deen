@@ -77,6 +77,19 @@ global.adhanSoundName = (track) => (track && track.clip ? track.clip : null);
 // eslint-disable-next-line no-eval
 const adhanAudioForIos = eval(`(() => { ${fn}; return adhanAudioForIos; })()`);
 
+/* ---- the evening case, pulled out the same way ---- */
+const dStart = src.indexOf('function diagnoseAdhanAudio(');
+const dEnd = src.indexOf('\n}\n', dStart) + 3;
+if (dStart < 0) {
+  console.error('FAIL: diagnoseAdhanAudio is gone from notifications.ts');
+  process.exit(1);
+}
+const dFn = src.slice(dStart, dEnd)
+  .replace(/facts: \{[\s\S]*?\n\}/, 'facts')
+  .replace(/\): AdhanAudioReason \| null \{/, ') {');
+// eslint-disable-next-line no-eval
+const diagnoseAdhanAudio = eval(`(() => { ${dFn}; return diagnoseAdhanAudio; })()`);
+
 /* ------------------------------------------------------------- scenarios */
 
 const clipped = 'adhan:mishary-rashid-alafasy';
@@ -108,8 +121,47 @@ const cases = [
     null],
 ];
 
+/* The evening. Today's prayers have gone by, so nothing was laid down — but
+   the adhan is switched on and nothing is wrong with it. This used to come
+   back as 'no-adhan-enabled', telling somebody they had turned the adhan off
+   when they had not, and wiping the "recording not downloaded" warning off
+   the screen the moment they pressed Save. */
+const diagnoseCases = [
+  ['adhan off entirely', { adhansEnabled: 0, adhansScheduled: 0, alarm: { usable: true, reason: null }, alarms: { scheduled: 0, skipped: 0 }, recordingMissing: false },
+    'no-adhan-enabled'],
+
+  ['all five scheduled', { adhansEnabled: 5, adhansScheduled: 5, alarm: { usable: true, reason: null }, alarms: { scheduled: 5, skipped: 0 }, recordingMissing: false },
+    null],
+
+  ['evening: nothing left today, all is well', { adhansEnabled: 5, adhansScheduled: 0, alarm: { usable: true, reason: null }, alarms: { scheduled: 0, skipped: 0 }, recordingMissing: false },
+    null],
+
+  ['evening: nothing left today, and nothing downloaded', { adhansEnabled: 5, adhansScheduled: 0, alarm: { usable: true, reason: null }, alarms: { scheduled: 0, skipped: 0 }, recordingMissing: true },
+    'not-downloaded'],
+
+  ['evening: nothing left, and the alarm is refused', { adhansEnabled: 5, adhansScheduled: 0, alarm: { usable: false, reason: 'exact-alarms-denied' }, alarms: { scheduled: 0, skipped: 0 }, recordingMissing: false },
+    'exact-alarms-denied'],
+
+  ['daytime: on, nothing scheduled, nothing at fault', { adhansEnabled: 5, adhansScheduled: 5, alarm: { usable: true, reason: null }, alarms: { scheduled: 0, skipped: 5 }, recordingMissing: false },
+    'alarm-rejected'],
+];
+
 let passed = 0;
 const failures = [];
+
+for (const [name, facts, want] of diagnoseCases) {
+  const got = diagnoseAdhanAudio(facts);
+  if (got === want) {
+    passed += 1;
+    console.log(`  pass  ${name}`);
+  } else {
+    failures.push(name);
+    console.log(`  FAIL  ${name}`);
+    console.log(`          wanted ${JSON.stringify(want)}  got ${JSON.stringify(got)}`);
+  }
+}
+console.log('');
+
 for (const [name, os, settings, want] of cases) {
   OS = os;
   const got = adhanAudioForIos(settings);

@@ -199,10 +199,15 @@ notifications = open(
 if "adhanAudioForIos" not in notifications:
     fail("the iOS check is gone - the settings screen and the schedule will disagree again")
 else:
-    # Both call sites must use it, not only one of them.
+    # Both call sites must use it, not only one of them. Checked structurally
+    # rather than against a literal: the schedule holds the iOS answer in a
+    # variable first, so it can reuse the reason, and matching on the exact
+    # text would break on any tidying that kept the behaviour.
     if "adhanAudioForIos(settings)" not in notifications:
         fail("nothing calls adhanAudioForIos")
-    if "adhanAudioForIos(settings) ??" not in notifications:
+    assigned = re.search(r"const\s+(\w+)\s*=\s*adhanAudioForIos\(settings\)", notifications)
+    adhan_audio = re.search(r"const\s+adhanAudio:\s*AdhanAudio\s*=\s*(\w+)\s*\?\?", notifications)
+    if not (assigned and adhan_audio and assigned.group(1) == adhan_audio.group(1)):
         fail(
             "the scheduling pass does not fall back through the iOS answer - "
             "pressing Save will report the alarm instead of the clip"

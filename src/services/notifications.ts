@@ -139,16 +139,25 @@ export type AdhanAudio = {
  * explanation, ordered so the most fixable cause is the one reported.
  */
 function diagnoseAdhanAudio(facts: {
-  adhans: number;
+  /* Two counts, and the difference between them is the whole point. How many
+     prayers the adhan is switched on for, and how many were actually laid down
+     for the rest of today. After the last prayer of the day the second is zero
+     while the first is not, and that is the evening, not a fault. */
+  adhansEnabled: number;
+  adhansScheduled: number;
   alarm: { usable: boolean; reason: AdhanAudioReason | null };
   alarms: { scheduled: number; skipped: number };
   recordingMissing: boolean;
 }): AdhanAudioReason | null {
-  const { adhans, alarm, alarms, recordingMissing } = facts;
-  if (adhans === 0) return 'no-adhan-enabled';
+  const { adhansEnabled, adhansScheduled, alarm, alarms, recordingMissing } = facts;
+  if (adhansEnabled === 0) return 'no-adhan-enabled';
   if (alarms.scheduled > 0) return null;
   if (alarm.reason) return alarm.reason;
   if (recordingMissing) return 'not-downloaded';
+  /* Nothing scheduled and nothing at fault: every prayer left is tomorrow's.
+     Reporting a fault here would mean the adhan looked broken for about five
+     hours every single night. */
+  if (adhansScheduled === 0) return null;
   return 'alarm-rejected';
 }
 
@@ -535,6 +544,9 @@ async function rebuildSchedule(
   const now = new Date();
   let scheduled = 0;
   let adhans = 0;
+  /* How many prayers the adhan is switched on for, counted without regard to
+     the clock — see diagnoseAdhanAudio. */
+  let adhansEnabled = 0;
   /* Decided once, not per prayer: it is a property of the device, so asking
      five times would give the same answer five times. */
   const alarm = await alarmIsTrustworthy();
@@ -553,6 +565,10 @@ async function rebuildSchedule(
 
     // ---- 1. the adhan itself ------------------------------------------
     if (settings.adhanEnabled?.[prayer.name]) {
+      /* Counted here rather than where the notification is laid down, so the
+         count does not fall to zero once today's prayers have gone by. Only
+         the times have passed; the setting has not changed. */
+      adhansEnabled++;
       const track = adhanTrackFor(prayer.name, settings);
       /* On iOS the sound has to travel with the notification, because there
          is no alarm to play it from. A custom notification sound there has to
@@ -709,9 +725,15 @@ async function rebuildSchedule(
   /* The same answer the settings screen gives. On iOS the alarm figures are
      meaningless - nothing was ever scheduled and nothing needs downloading -
      so the clip is the only thing that was ever going to decide it. */
-  const adhanAudio: AdhanAudio = adhanAudioForIos(settings) ?? {
-    willPlay: alarm.usable && alarms.scheduled > 0,
-    reason: diagnoseAdhanAudio({ adhans, alarm, alarms, recordingMissing }),
+  const iosAudio = adhanAudioForIos(settings);
+  /* "In working order", rather than "something happened to be laid down just
+     now": after the last prayer of the day nothing is scheduled, and that must
+     not read as the adhan being broken. */
+  const reason = iosAudio ? iosAudio.reason
+    : diagnoseAdhanAudio({ adhansEnabled, adhansScheduled: adhans, alarm, alarms, recordingMissing });
+  const adhanAudio: AdhanAudio = iosAudio ?? {
+    willPlay: reason === null,
+    reason,
     scheduled: alarms.scheduled,
     skipped: alarms.skipped,
   };
