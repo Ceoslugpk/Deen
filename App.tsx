@@ -167,7 +167,7 @@ import { buildWeeklySummary, loadActivity, logAdhkarRead, logHifzReview, logMush
 import { addDays, addQada, ADVISORY, assessBleeding, BISMILLAH_ARABIC, BLEEDING_GUIDANCE, cycleStats, dayKey, daysBetween, deleteCycle, deleteNifas, deleteQada, endCycle, endNifas, EXPLANATIONS, FLOW_LEVELS, formatDay, formatLongDay, GHUSL_FARD, GHUSL_SUNNAH, LIMITS, loadWomensState, logPurity, nifasStats, NIYYAH_ARABIC, NIYYAH_MEANING, NIYYAH_TRANSLITERATION, PurityStatus, QadaReason, QADA_REASONS, qadaStats, RAMADAN_ADVISORY, RAMADAN_NOTES, RAMADAN_STATE_LABEL, ramadanPlan, RamadanPlanDay, recentPurity, REFERENCES, SCHOOL_NOTE, setFlow, setOptedIn, startCycle, startNifas, THESE_DAYS_ACTS, THESE_DAYS_ADVISORY, THESE_DAYS_ANCHOR, THESE_DAYS_DISPUTED, TheseDaysAct, toggleQada, TUHR_SIGNS, useWomens, WORSHIP_GUIDANCE } from './src/services/womensService';
 import { BiometricInfo, biometricInfo, checkPin, removePin, RELOCK_OPTIONS, setPin, startLockWatch, unlockSession, unlockWithBiometric, updateLockSettings, useIsLocked, useLockConfig, loadLockConfig } from './src/services/privacyService';
 import { CURRENCIES, clearHistory, computeZakat, currencySymbol, deleteCalculation, formatMoney, livePrices, loadZakatState, marketIsFresh, NISAB_GOLD_GRAMS, NISAB_SILVER_GRAMS, refreshMarket, saveCalculation, setAssetAmount, setBasis, setCurrency, setLiabilityAmount, setMetalPrice, setMoneyLocale, useLiveMetalPrices, useMarket, useZakat } from './src/services/zakatService';
-import { arNoun, clockTime, prayerName, tx } from './src/services/arabicCopy';
+import { arNoun, clockTime, prayerName, tx, tf } from './src/services/arabicCopy';
 import { downloadSurahAudio, loadDownloads, downloadSurahText, estimateFreeBytes, formatBytes, pauseDownload, removeDownload, resolveAudioSource, resumeDownload, retryDownload, totalDownloadBytes, useDownloads } from './src/services/downloadService';
 import { NAME_LANGUAGES } from './src/services/api';
 import { PROPHETS } from './src/content/prophets';
@@ -4560,7 +4560,7 @@ function MemorizeTestScreen({ navigation, route }: any) {
     <ScrollView {...SCROLL} contentContainerStyle={s.dataPage}>
       <Text style={s.memTarget}>{current.surahName} · {current.verseKey}</Text>
       <Text style={s.meta}>{current.attempts
-        ? T(`Asked ${current.attempts} times · ${percent}% remembered`)
+        ? tf(rtl, 'Asked {n} times · {p}% remembered', { n: current.attempts, p: percent })
         : T('Not tested yet')}</Text>
 
       <View style={s.memVerseBox}>
@@ -4591,7 +4591,7 @@ function MemorizeTestScreen({ navigation, route }: any) {
 
       {answer && <View style={s.memAnswerCard}>
         <Text style={s.memAnswerTitle}>{answer.result === 'correct' ? T('Marked as known') : T('Marked for review')}</Text>
-        <Text style={s.memAnswerBody}>{T(`Counted with ${Math.round(answer.revealedRatio * 100)}% of the verse on screen. Now ${percent}% remembered.`)}</Text>
+        <Text style={s.memAnswerBody}>{tf(rtl, 'Counted with {a}% of the verse on screen. Now {p}% remembered.', { a: Math.round(answer.revealedRatio * 100), p: percent })}</Text>
         <View style={s.memActions}>
           <Tactile onPress={() => { void demoteCurrent(); }} style={s.secondary}>
             {ico('arrow-down-circle-outline', 16, C.gold)}<Text style={s.secondaryText}>{T('Move to weak bank')}</Text></Tactile>
@@ -5010,11 +5010,11 @@ function DuaCard({ dua, read, onRead }: { dua: Dua; read?: boolean; onRead?: () 
     <Text style={s.duaKicker}>{T('MEANING')}</Text>
     <Text style={s.dataBody}>{dua.translation}</Text>
     {!!dua.reference && <Tactile accessibilityLabel={T('Show the source of this dua')} onPress={() => setOpenSource(!openSource)} style={s.sectionLink}>
-      <Text style={s.duaRefToggle}>{openSource ? 'Hide source' : 'Source'}</Text>
+      <Text style={s.duaRefToggle}>{openSource ? T('Hide source') : T('Source')}</Text>
       {openSource && <Text style={s.duaReference}>{dua.reference}</Text>}
     </Tactile>}
     <View style={s.actionRow}>
-      <Tactile accessibilityLabel={T('Copy this dua')} onPress={copy} style={s.secondary}>{ico('copy-outline', 16, C.green)}<Text style={s.secondaryText}>{copied ? 'Copied' : 'Copy'}</Text></Tactile>
+      <Tactile accessibilityLabel={T('Copy this dua')} onPress={copy} style={s.secondary}>{ico('copy-outline', 16, C.green)}<Text style={s.secondaryText}>{copied ? T('Copied') : T('Copy')}</Text></Tactile>
       <Tactile accessibilityLabel={T('Share this dua')} onPress={share} style={s.secondary}>{ico('share-outline', 16, C.green)}<Text style={s.secondaryText}>{T('Share')}</Text></Tactile>
       <Tactile accessibilityLabel={T('Report a correction')} onPress={() => setReporting(true)} style={s.secondary}>{ico('flag-outline', 16, C.green)}<Text style={s.secondaryText}>{T('Report')}</Text></Tactile>
       {!!onRead && <Tactile accessibilityRole="checkbox" accessibilityState={{ checked: !!read }}
@@ -5818,11 +5818,11 @@ function HolyChannelsScreen({ route, navigation }: any) {
             <Text style={s.channelArabic}>{channel.arabic}</Text>
           </View>
         </View>
-        <Text style={s.dataBody}>{channel.detail}</Text>
+        <Text style={s.dataBody}>{T(channel.detail)}</Text>
         <Text style={s.meta}>{channel.broadcaster}</Text>
         {!!channel.embedUrl && Platform.OS !== 'web' && <LivePlayer channel={channel} rtl={rtl} T={T} />}
         <Tactile accessibilityRole="button" accessibilityLabel={`${T('Watch live')} ${channel.channel}`} onPress={() => open(channel)} style={s.primary}>
-          <Text style={s.primaryText}>{opened === channel.id ? 'Opening…' : 'Open live stream'}</Text>
+          <Text style={s.primaryText}>{opened === channel.id ? T('Opening…') : T('Open live stream')}</Text>
         </Tactile>
       </View>)}
       <View style={s.apiPanel}>
@@ -7361,7 +7361,7 @@ function IstihadaScreen({ navigation }: any) {
       <Section title={T('How it was worked out')} />
       <View style={s.dataCard}>
         {assessment.reasons.map((reason: string, index: number) => <Text key={index} style={[s.dataBody, index > 0 && { marginTop: 8 }]}>{T(reason)}</Text>)}
-        {assessment.adah !== null && <Text style={[s.meta, { marginTop: 10 }]}>{T(`Your recorded pattern: about ${assessment.adah} days.`)}</Text>}
+        {assessment.adah !== null && <Text style={[s.meta, { marginTop: 10 }]}>{tf(rtl, 'Your recorded pattern: about {n} days.', { n: assessment.adah })}</Text>}
       </View>
 
       <Section title={T('What to do')} />
@@ -7448,8 +7448,8 @@ function RamadanPlannerScreen({ navigation }: any) {
   const whenText = plan.finished
     ? T('This Ramadan has ended')
     : plan.started
-      ? T(`Ramadan is under way — day ${Math.min(30, Math.abs(daysBetween(plan.start, today)) + 1)}`)
-      : T(`Starts in ${plan.daysLeft} days`);
+      ? tf(rtl, 'Ramadan is under way — day {n}', { n: Math.min(30, Math.abs(daysBetween(plan.start, today)) + 1) })
+      : tf(rtl, 'Starts in {n} days', { n: plan.daysLeft });
 
   const confidenceText =
     plan.confidence === 'good'
@@ -7473,7 +7473,7 @@ function RamadanPlannerScreen({ navigation }: any) {
       <View
         key={day.date}
         style={[RAMADAN_CELL.cell, tone, isToday && RAMADAN_CELL.cellToday]}
-        accessibilityLabel={T(`Day ${day.ramadanDay}, ${RAMADAN_STATE_LABEL[day.state]}`)}
+        accessibilityLabel={tf(rtl, 'Day {n}, {state}', { n: day.ramadanDay, state: T(RAMADAN_STATE_LABEL[day.state]) })}
       >
         <Text style={[RAMADAN_CELL.cellNum, { color: numColour }]}>{day.ramadanDay}</Text>
       </View>
@@ -7487,7 +7487,7 @@ function RamadanPlannerScreen({ navigation }: any) {
       <Text style={s.intro}>{T('Thirty days, and the handful your cycle is likely to claim from them. The app counts forward from your own recorded pattern and marks the days it lands on, so the number you owe is known before the month begins rather than counted up at the end of it.')}</Text>
 
       <View style={s.dataCard}>
-        <Text style={s.dataMeta}>{T(`Ramadan ${plan.hijriYear}`)}</Text>
+        <Text style={s.dataMeta}>{tf(rtl, 'Ramadan {year}', { year: plan.hijriYear })}</Text>
         <Text style={s.dataName}>{formatLongDay(plan.start)}{T(' — ')}{formatLongDay(plan.end)}</Text>
         <Text style={s.meta}>{whenText}</Text>
 
@@ -7500,7 +7500,7 @@ function RamadanPlannerScreen({ navigation }: any) {
 
         {plan.hasPattern && (
           <Text style={[s.meta, { marginTop: 8 }]}>
-            {T(`To make up before ${formatDay(plan.deadline)} — ${plan.daysUntilDeadline} days away.`)}
+            {tf(rtl, 'To make up before {date} — {n} days away.', { date: formatDay(plan.deadline), n: plan.daysUntilDeadline })}
           </Text>
         )}
       </View>
@@ -7553,7 +7553,7 @@ function RamadanPlannerScreen({ navigation }: any) {
             </View>
           </View>
           <Text style={[s.meta, { marginTop: 12 }]}>{confidenceText}</Text>
-          <Text style={[s.meta, { marginTop: 6 }]}>{T(`Counted from your last ${plan.cycleCount} recorded cycles.`) }</Text>
+          <Text style={[s.meta, { marginTop: 6 }]}>{tf(rtl, 'Counted from your last {n} recorded cycles.', { n: plan.cycleCount }) }</Text>
         </View>
       )}
 
@@ -7624,9 +7624,9 @@ function TheseDaysScreen({ navigation }: any) {
 
   const onFlow = stats.status === 'flow' || stats.status === 'spotting' || nifas.active;
   const dayLine = nifas.active
-    ? T(`Day ${nifas.day} of post-natal bleeding`)
+    ? tf(rtl, 'Day {n} of post-natal bleeding', { n: nifas.day })
     : stats.active
-      ? T(`Day ${stats.dayOfCycle} of this cycle`)
+      ? tf(rtl, 'Day {n} of this cycle', { n: stats.dayOfCycle })
       : null;
 
   return <PrivateArea navigation={navigation}><Page><ToolBar title={T('These Days')} navigation={navigation} />
@@ -9292,8 +9292,8 @@ function BackupScreen({ navigation }: any) {
       shared = false;
     }
     setNotice(shared
-      ? T(`Encrypted ${made.keys} records. Keep the file somewhere you will find it again.`)
-      : T(`Encrypted ${made.keys} records, but this device would not open a share sheet. The file is in the app's cache.`));
+      ? tf(rtl, 'Encrypted {n} records. Keep the file somewhere you will find it again.', { n: made.keys })
+      : tf(rtl, "Encrypted {n} records, but this device would not open a share sheet. The file is in the app's cache.", { n: made.keys }));
   });
 
   const accept = (text: string) => {
@@ -9353,12 +9353,12 @@ function BackupScreen({ navigation }: any) {
       </View>
 
       {backup.lastBackupAt ? <Text style={[s.meta, { marginTop: 10 }]}>
-        {T(`Last backup ${new Date(backup.lastBackupAt).toLocaleDateString()}`)}</Text> : null}
+        {tf(rtl, 'Last backup {date}', { date: new Date(backup.lastBackupAt).toLocaleDateString() })}</Text> : null}
 
       {!!notice && <View style={[s.backupNotice, s.backupNoticeGood]}><Text style={s.backupNoticeGoodText}>{notice}</Text></View>}
       {!!done && <View style={[s.backupNotice, s.backupNoticeGood]}>
         <Text style={s.backupNoticeGoodText}>
-          {T(`Restored ${done.keys} records, from ${new Date(done.exportedAt).toLocaleDateString()}.`)}
+          {tf(rtl, 'Restored {n} records, from {date}.', { n: done.keys, date: new Date(done.exportedAt).toLocaleDateString() })}
         </Text>
       </View>}
       {!!error && <View style={s.backupNotice}><Text style={s.backupNoticeText}>{error}</Text></View>}
@@ -9409,7 +9409,7 @@ function BackupScreen({ navigation }: any) {
 
         {pending && <View style={s.formCard}>
           <Text style={s.inputLabel}>{T('OPENING THIS BACKUP')}</Text>
-          <Text style={s.meta}>{T(`Made ${new Date(pending.summary.exportedAt).toLocaleDateString()}`)}</Text>
+          <Text style={s.meta}>{tf(rtl, 'Made {date}', { date: new Date(pending.summary.exportedAt).toLocaleDateString() })}</Text>
           {secretField(restorePassword, setRestorePassword, 'The password for this backup')}
           <View style={s.backupActions}>
             <Tactile onPress={() => { void onRestore(); }} style={s.primary}><Text style={s.primaryText}>{T('Restore and replace')}</Text></Tactile>

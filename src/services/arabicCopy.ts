@@ -1832,31 +1832,6 @@ const AR: Record<string, string> = {
   'And what could make thee conceive what it is, that Night of Destiny?': 'وَمَا أَدْرَاكَ مَا لَيْلَةُ الْقَدْرِ',
   'The Night of Destiny is better than a thousand months:': 'لَيْلَةُ الْقَدْرِ خَيْرٌ مِنْ أَلْفِ شَهْرٍ',
   'does it make secure, until the rise of dawn.': 'سَلَامٌ هِيَ حَتَّىٰ مَطْلَعِ الْفَجْرِ',
-  'The first man and the first prophet, taught the names of all things.': 'أول البشر وأول الأنبياء، علّمه الله الأسماء كلها.',
-  'Remembered as truthful and patient, raised to a high station.': 'كان صدّيقاً صبوراً، ورفعه الله مكاناً علياً.',
-  'Called his people for nine hundred and fifty years before the flood.': 'دعا قومه تسعمئة وخمسين سنة قبل الطوفان.',
-  'Sent to the people of ‘Ad, who were destroyed by a furious wind.': 'أُرسل إلى عاد، الذين أُهلكوا بريح صرصر عاتية.',
-  'Sent to Thamud with the she-camel as a clear sign.': 'أُرسل إلى ثمود، وجعل الله لهم الناقة آية بيّنة.',
-  'The friend of the Merciful, tested with words and fulfilled them.': 'خليل الرحمن، ابتلاه ربه بكلمات فأتمهن.',
-  'Sent to a town given over to shameful deeds.': 'أُرسل إلى قرية كانت تأتي الفاحشة.',
-  'True to his promise, and the son offered in sacrifice.': 'كان صادق الوعد، وهو الذبيح.',
-  'Given glad tidings of in old age, a prophet among the righteous.': 'بُشّر به على كبر، ونبياً من الصالحين.',
-  'Father of the twelve tribes, who entrusted his sons to Allah.': 'أبو الأسباط الاثني عشر، من أوصى بنيه بعبادة الله.',
-  'Given knowledge of the interpretation of dreams and raised in station.': 'أُوتي علم تأويل الأحاديث، ورفعه الله مكاناً علياً.',
-  'Steadfast through long affliction, and healed by mercy.': 'صبر على البلاء الطويل، ثم شفاه الله برحمته.',
-  'Sent to Midyan to call for fair measure and honest weight.': 'أُرسل إلى مدين يأمرهم بوفاء الكيل والميزان.',
-  'Spoken to directly, given the Torah and nine clear signs.': 'كلّمه الله تكليماً، وأُوتي التوراة وتسع آيات بيّنات.',
-  'The eloquent helper given to his brother as a support.': 'الوزير الفصيح، جعله الله ردءاً لأخيه.',
-  'Numbered among the patient and the righteous.': 'من الصابرين والصالحين.',
-  'Given the Psalms, and judgement between people in truth.': 'أُوتي الزبور، والحكم بين الناس بالحق.',
-  'Given authority over wind, jinn and the speech of birds.': 'سخّر الله له الريح والجن، وعلّمه منطق الطير.',
-  'Called his people to leave the worship of Ba‘l.': 'دعا قومه إلى ترك عبادة بعل.',
-  'Counted among the excellent, remembered with favour.': 'من الأخيار، مذكور بالفضل.',
-  'Swallowed by the great fish, and answered when he called in the darkness.': 'التقمه الحوت، فنادى في الظلمات فاستجاب الله له.',
-  'Given a son in old age after a prayer made in secret.': 'رُزق الولد على كبر، بعد دعاء ناجى به ربه.',
-  'Confirmed the word of Allah, and was granted wisdom as a child.': 'مصدقاً بكلمة من الله، وأُوتي الحكم صبياً.',
-  'The Messiah, born of Mary, given the Gospel and clear proofs.': 'المسيح ابن مريم، أُوتي الإنجيل والبيّنات.',
-  'The final messenger, sent as a mercy to all worlds.': 'خاتم المرسلين، أُرسل رحمة للعالمين.',
   'Verses affirming the absolute oneness, independence and incomparability of Allah.': 'آيات تقرر توحيد الله المطلق وغناه وتنزيهه عن كل شبيه.',
   'Trust and reliance': 'التوكل والاعتماد',
   'Reliance on Allah alongside mindful action and steadfastness.': 'الاعتماد على الله مع الأخذ بالأسباب والثبات.',
@@ -2429,6 +2404,34 @@ const AR: Record<string, string> = {
   'Play recitation': 'تشغيل التلاوة',
   'This screen could not open': 'لم يمكن فتح هذه الشاشة',
   'Something went wrong while drawing it. The rest of the app is fine, and you can try again.': 'حدث خطأ أثناء رسمها. وبقية التطبيق بخير، ويمكنك المحاولة مرة أخرى.',
+  'Asked {n} times · {p}% remembered': 'سُئل {n} مرة · والحفظ {p}٪',
+  'Counted with {a}% of the verse on screen. Now {p}% remembered.': 'حُسبت و{a}٪ من الآية ظاهرة على الشاشة. والحفظ الآن {p}٪.',
+  'Your recorded pattern: about {n} days.': 'عادتك المسجلة: نحو {n} يوم.',
+  'Ramadan is under way — day {n}': 'رمضان جارٍ — اليوم {n}',
+  'Starts in {n} days': 'يبدأ بعد {n} يوم',
+  'Day {n}, {state}': 'اليوم {n}، {state}',
+  'Ramadan {year}': 'رمضان {year}',
+  'To make up before {date} — {n} days away.': 'عليك قضاؤها قبل {date} — باقٍ {n} يوم.',
+  'Counted from your last {n} recorded cycles.': 'محسوبة من آخر {n} دورة مسجلة.',
+  'Day {n} of post-natal bleeding': 'اليوم {n} من النفاس',
+  'Day {n} of this cycle': 'اليوم {n} من هذه الدورة',
+  'Encrypted {n} records. Keep the file somewhere you will find it again.': 'شُفّر {n} سجلاً. احفظ الملف في مكان تجده فيه لاحقاً.',
+  "Encrypted {n} records, but this device would not open a share sheet. The file is in the app's cache.": 'شُفّر {n} سجلاً، لكن هذا الجهاز لم يفتح نافذة المشاركة. الملف في ذاكرة التطبيق المؤقتة.',
+  'Last backup {date}': 'آخر نسخة احتياطية {date}',
+  'Restored {n} records, from {date}.': 'اُستعيد {n} سجلاً، من {date}.',
+  'Made {date}': 'أُنشئت {date}',
+  'READ': 'اقرأ',
+  'TRACK': 'تابع',
+  'Boys': 'بنين',
+  'Girls': 'بنات',
+  'Unisex': 'للجنسين',
+  'Witr': 'الوتر',
+  'Duha': 'الضحى',
+  'Tahajjud': 'التهجد',
+  'After Isha': 'بعد العشاء',
+  'Qada Prayers': 'الصلوات المقضية',
+  'Journey': 'الرحلة',
+  'A great worshiper of Allah': 'عابد عظيم لله',
 
 };
 
@@ -2442,6 +2445,27 @@ export function prayerName(rtl: boolean, name: string): string {
 
 export function tx(rtl: boolean, text: string): string {
   return rtl ? AR[text] ?? text : text;
+}
+
+/**
+ * Translate a sentence that has numbers in it.
+ *
+ * T(`Starts in ${plan.daysLeft} days`) can never find an entry, because the
+ * text it looks up is built at run time and reads "Starts in 97 days". The
+ * empty string is the only key that would catch every number, and it is not
+ * a key worth having.
+ *
+ * tf(rtl, 'Starts in {n} days', { n: plan.daysLeft }) keeps the key fixed,
+ * so it can be looked up — and because it is looked up as a whole sentence,
+ * the Arabic can put the number where Arabic puts it.
+ */
+export function tf(
+  rtl: boolean,
+  text: string,
+  values: Record<string, string | number>,
+): string {
+  const out = rtl ? AR[text] ?? text : text;
+  return out.replace(/\{(\w+)\}/g, (_m, k) => String(values[k] ?? ''));
 }
 
 /** Prayer times arrive from the API as 12-hour clock strings such as "5:42 PM".
