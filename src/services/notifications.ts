@@ -115,7 +115,9 @@ const COPY = {
     channelAdhan: 'Adhan',
     channelDaily: 'Daily reminder',
     testTitle: 'Prayer reminders are ready',
-    testBody: 'Islamic can now notify you at the times you choose.',
+    testBodyQuiet: 'This is the quiet daily reminder — it arrives in your tray and waits.',
+    testAdhanTitle: 'Adhan',
+    testAdhanBody: 'This is the adhan: it sounds, it stays on screen, and it carries the two buttons. Tap Silence or Mark as prayed to try them.',
     quranTitle: 'Your Quran time',
     quranBody: 'Continue your reading with a few mindful verses.',
     webUnsupported: 'System notifications require the installed iOS or Android app.',
@@ -138,7 +140,9 @@ const COPY = {
     channelAdhan: 'الأذان',
     channelDaily: 'تذكير يومي',
     testTitle: 'تذكيرات الصلاة جاهزة',
-    testBody: 'يمكن لرفيق الدين تنبيهك الآن في الأوقات التي تختارها.',
+    testBodyQuiet: 'هذا هو التذكير اليومي الهادئ — يصل إلى شريط التنبيهات وينتظر.',
+    testAdhanTitle: 'الأذان',
+    testAdhanBody: 'هذا هو الأذان: يصدر صوتًا، ويبقى على الشاشة، ويحمل الزرّين. جرّب «إسكات» أو «صليت».',
     quranTitle: 'وقت القرآن',
     quranBody: 'واصل قراءتك بآياتٍ متدبَّرة.',
     webUnsupported: 'التنبيهات النظامية تحتاج التطبيق المثبَّت على iOS أو أندرويد.',
@@ -276,12 +280,44 @@ export async function openNotificationSettings() {
   await Linking.openSettings().catch(() => undefined);
 }
 
+/**
+ * Two notifications, so both kinds can be seen at once.
+ *
+ * They are the two shapes the app actually sends: the quiet daily one that
+ * simply arrives, and the adhan, which sounds, stays on screen and carries the
+ * Silence and Mark-as-prayed buttons. Somebody pressing "Test notification"
+ * wants to know what the app will do at prayer time, and one grey line saying
+ * "ready" never told them that.
+ *
+ * Both are scheduled a second or two out rather than fired in place. Firing in
+ * place means no trigger, and on Android a notification with no channel is not
+ * shown at all — which is the whole reason a test would appear to do nothing.
+ */
 export async function sendTestNotification(rtl = false) {
   if (Platform.OS === 'web') throw new Error(copy(rtl).webUnsupported);
   await ensureNotificationChannels(rtl);
+  const c = copy(rtl);
+
   await scheduleAndLog({
-    content: { title: copy(rtl).testTitle, body: copy(rtl).testBody, sound: 'default', data: { route: 'Prayer' } },
-    trigger: null,
+    content: {
+      title: c.testTitle,
+      body: c.testBodyQuiet,
+      sound: 'default',
+      data: { route: 'Prayer', kind: 'daily' },
+    },
+    trigger: intervalTrigger(1, 'daily'),
+  });
+
+  await scheduleAndLog({
+    content: {
+      title: c.testAdhanTitle,
+      body: c.testAdhanBody,
+      sound: 'default',
+      categoryIdentifier: 'adhan-actions',
+      sticky: true,
+      data: { route: 'Prayer', kind: 'adhan', prayer: 'Dhuhr' },
+    },
+    trigger: intervalTrigger(2, 'adhan'),
   });
 }
 
@@ -296,6 +332,9 @@ function atTime(raw: string): Date | null {
 
 const dateTrigger = (date: Date, channelId: string) =>
   ({ type: Notifications.SchedulableTriggerInputTypes.DATE, date, channelId }) as any;
+
+const intervalTrigger = (seconds: number, channelId: string) =>
+  ({ type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds, channelId }) as any;
 
 const dailyTrigger = (hour: number, minute: number, channelId: string) =>
   ({ type: Notifications.SchedulableTriggerInputTypes.DAILY, hour, minute, channelId }) as any;

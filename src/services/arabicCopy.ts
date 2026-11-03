@@ -2456,6 +2456,15 @@ const AR: Record<string, string> = {
   'WOMEN’S WORSHIP': 'عبادة النساء',
   'Use {name}': 'استخدم {name}',
   'Search all 114': 'ابحث في السور الـ114',
+  /* ---- reminders: the clock, the confirmations and the battery exemption ---- */
+  'Change the time': 'تغيير الوقت',
+  'Check in battery settings': 'راجع إعدادات البطارية',
+  'Open the Android battery settings': 'فتح إعدادات بطارية أندرويد',
+  'Saved. Reminders are scheduled in the installed app.': 'تم الحفظ. تُجدول التنبيهات في التطبيق المثبَّت.',
+  'Two notifications sent — one quiet, one adhan.': 'أُرسل تنبيهان — واحد هادئ وآخر أذان.',
+  'One verse each morning, at the hour you choose.': 'آية كل صباح، في الساعة التي تختارها.',
+  'One hadith each morning, at the hour you choose.': 'حديث كل صباح، في الساعة التي تختارها.',
+  'Continue to be asked. Nothing is scheduled unless you allow it, and every reminder can be switched off later in Settings.': 'سيُطلب منك عند المتابعة. لن تُجدول أي تنبيهات إلا إذا سمحت، ويمكن إيقاف كل تنبيه لاحقًا من الإعدادات.',
 };
 
 const PRAYERS: Record<string, string> = {

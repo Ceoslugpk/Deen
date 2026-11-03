@@ -61,7 +61,7 @@ import {
   loadAppliedDirection, saveAppliedDirection
 } from './src/services/localState';
 import {
-  actionFromResponse, adhanOption, ADHAN_OPTIONS, cancelAllNotifications, FAJR_OPTIONS, fajrOption, getNotificationHealth, getScheduledCount,
+  actionFromResponse, cancelAllNotifications, getNotificationHealth, getScheduledCount,
   NotificationHealth, prayerFromNotification, requestNotificationPermission, schedulePrayerNotifications, sendTestNotification,
   SLEEP_SURAH, openNotificationSettings } from './src/services/notifications';
 import {
@@ -69,7 +69,7 @@ import {
   type NotificationRecord,
 } from './src/services/notificationLog';
 import { addNotificationReceivedListener, addNotificationResponseReceivedListener, type NotificationResponse } from 'expo-notifications';
-import { getBatteryOptimizationState, requestBatteryExemption, type BatteryState } from './src/services/batteryOptimization';
+import { getBatteryOptimizationState, openBatterySettings, requestBatteryExemption, type BatteryState } from './src/services/batteryOptimization';
 import { copyFeedback, issueLabel, loadReports, markReportSent } from './src/services/reportService';
 import { computeMushafLayout } from './src/services/mushafLayout';
 import { markerBetween, MARKER_KINDS, MARKER_LABELS, MARKER_NOTE, type MushafMarker, type MarkerKind, type PageConnection } from './src/services/mushafMarkers';
@@ -4935,14 +4935,14 @@ function ToolBar({title,navigation}:any){const{rtl}=useLanguage();return <View s
 const COMPASS_POINTS = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
 const compassPoint = (bearing: number) => COMPASS_POINTS[Math.round(((bearing % 360) + 360) % 360 / 22.5) % 16];
 
-function QiblaScreen({navigation}:any){const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);const{location}=useAppLocation();const[direction,setDirection]=useState<number|null>(null);const[error,setError]=useState('');const load=async()=>{if(!location)return;setDirection(null);setError('');try{setDirection(await getQibla(location.latitude,location.longitude))}catch(e:any){setError(T(e.message))}};useEffect(()=>{load()},[location?.latitude,location?.longitude]);return <Page><ToolBar title={T('Qibla direction')} navigation={navigation}/>{!location?<View style={s.dataPage}><LocationPrompt compact/></View>:<View style={s.toolPage}><Text style={s.toolEyebrow}>{T(location.label)}</Text>{error?<ErrorState message={error} retry={load}/>:direction===null?<Spinner/>:<><View style={s.compass}><Text style={s.north}>N</Text><View style={[s.compassArrow,{transform:[{rotate:`${direction}deg`}]}]}>{ico('navigate',74,C.green)}</View><View style={s.kaaba}><View style={s.kaabaGold}/></View></View><Text style={s.direction}>{direction.toFixed(1)}°</Text>
+function QiblaScreen({navigation}:any){const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);const{location}=useAppLocation();const[direction,setDirection]=useState<number|null>(null);const[error,setError]=useState('');const load=async()=>{if(!location)return;setDirection(null);setError('');try{setDirection(await getQibla(location.latitude,location.longitude))}catch(e:any){setError(T(e.message))}};useEffect(()=>{load()},[location?.latitude,location?.longitude]);return <Page><ToolBar title={T('Qibla direction')} navigation={navigation}/>{!location?<View style={s.dataPage}><LocationPrompt compact/></View>:<ScrollView keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} contentContainerStyle={s.toolPageScroll} showsVerticalScrollIndicator={false}><View style={s.toolPage}><Text style={s.toolEyebrow}>{T(location.label)}</Text>{error?<ErrorState message={error} retry={load}/>:direction===null?<Spinner/>:<><View style={s.compass}><Text style={s.north}>N</Text><View style={[s.compassArrow,{transform:[{rotate:`${direction}deg`}]}]}>{ico('navigate',74,C.green)}</View><View style={s.kaaba}><View style={s.kaabaGold}/></View></View><Text style={s.direction}>{direction.toFixed(1)}°</Text>
         <Text style={s.directionText}>{compassPoint(direction)} · {T('clockwise from true north')}</Text>
         {!!location && <View style={s.trackStats}>
           <View style={s.trackStat}><Text style={s.trackStatValue}>{Math.round(qiblaDistance(location.latitude, location.longitude)).toLocaleString('en-US')}</Text><Text style={s.trackStatLabel}>{T('km to Makkah')}</Text></View>
           <View style={s.trackStat}><Text style={s.trackStatValue}>{compassPoint(direction)}</Text><Text style={s.trackStatLabel}>{T('Compass point')}</Text></View>
         </View>}
         <Text style={s.intro}>{T('The bearing is measured on a great circle — the shortest way round the earth — which is why it can differ from the direction a flat map appears to show.')}</Text>
-        <Tactile onPress={load} style={s.primary}><Text style={s.primaryText}>{T('Refresh direction')}</Text></Tactile></>}</View>}</Page>}
+        <Tactile onPress={load} style={s.primary}><Text style={s.primaryText}>{T('Refresh direction')}</Text></Tactile></>}</View></ScrollView>}</Page>}
 /* A tasbih is a ring of beads, so the counter is one: the beads fill as the
    round goes round, and the one under your thumb is the one that moves. The
    number in the middle is there because you still want to know where you are,
@@ -5030,11 +5030,6 @@ function TasbihScreen({ navigation }: any) {const{rtl}=useLanguage();const T=(te
    * a card is a thing you keep, and a number that changes would be wrong on it
    * by tomorrow.
    */
-  /**
-   * The lifetime figure goes on the bottom line rather than a running count —
-   * a card is a thing you keep, and a number that changes would be wrong on it
-   * by tomorrow.
-   */
   const { share: shareCardImage, offscreenCard } = useCardShare();
   const sharePhrase = () => {
     const lifetime = tasbihLifetime(state);
@@ -5068,7 +5063,7 @@ function TasbihScreen({ navigation }: any) {const{rtl}=useLanguage();const T=(te
         </View>
       </LinearGradient>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.choiceRow}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[s.choiceRow, s.tasbihRow]}>
         {DHIKR_PHRASES.map((item) => <ChoicePill key={item.id} label={rtl ? item.arabic : item.transliteration} selected={item.id === state.phraseId} onPress={() => { void setTasbihPhrase(item.id); }} />)}
       </ScrollView>
 
@@ -5084,8 +5079,8 @@ function TasbihScreen({ navigation }: any) {const{rtl}=useLanguage();const T=(te
             </Animated.View>
           </TasbihRing>
         </View>
-        <View style={s.hadithTrack}><View style={[s.hadithFill, { width: `${progress}%` }]} /></View>
-        <View style={s.actionRow}>
+        <View style={[s.hadithTrack, { marginTop: 18 }]}><View style={[s.hadithFill, { width: `${progress}%` }]} /></View>
+        <View style={[s.actionRow, { marginTop: 16 }]}>
           <Tactile accessibilityLabel={T('Reset the current count')} onPress={() => void resetTasbihCount()} style={s.secondary}>{ico('refresh-outline', 16, C.green)}<Text style={s.secondaryText}>{T('Reset')}</Text></Tactile>
           <Tactile accessibilityLabel={T('Save this round to history')} onPress={() => void saveTasbihSession()} style={s.secondary}>{ico('checkmark-outline', 16, C.green)}<Text style={s.secondaryText}>{T('Save round')}</Text></Tactile>
           <Tactile accessibilityLabel={T('Share this dhikr as a card')} onPress={sharePhrase} style={s.secondary}>{ico('share-outline', 16, C.green)}<Text style={s.secondaryText}>{T('Share')}</Text></Tactile>
@@ -5093,7 +5088,7 @@ function TasbihScreen({ navigation }: any) {const{rtl}=useLanguage();const T=(te
       </View>
 
       <Section title={T('Goal')} />
-      <View style={s.choiceRow}>
+      <View style={[s.choiceRow, s.tasbihGoalRow]}>
         {TASBIH_GOALS.map((goal) => <ChoicePill key={goal} label={`${goal}`} selected={goal === state.goal} onPress={() => { void setTasbihGoal(goal); }} />)}
       </View>
 
@@ -6477,7 +6472,7 @@ function SunnahScreen({ navigation }: any) {
         </LinearGradient>
 
         <Section title={T('Today')} />
-        <View style={s.dataCard}>
+        <View style={s.sunnahList}>
           {SUNNAH_PRAYERS.map((prayer) => {
             const done = todays.includes(prayer);
             const stat = summary.per[prayer];
@@ -6486,12 +6481,12 @@ function SunnahScreen({ navigation }: any) {
                 key={prayer}
                 onPress={() => void toggleSunnah(prayer, todayKey)}
                 accessibilityLabel={`${prayer}${done ? ' ' + T('done') : ''}`}
-                style={[s.memChip, done && s.choicePillActive]}
+                style={[s.sunnahRow, done && s.sunnahRowOn]}
               >
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                   <View style={[s.trackCell, { backgroundColor: done ? C.green : C.line }]} />
                   <View style={{ flex: 1 }}>
-                    <Text style={s.preferenceLabel}>{T(prayer)}</Text>
+                    <Text style={s.sunnahRowName}>{T(prayer)}</Text>
                     <Text style={s.meta}>{T(SUNNAH_ORDER[prayer])}</Text>
                   </View>
                   <View style={{ alignItems: 'flex-end' }}>
@@ -6586,12 +6581,170 @@ function NotificationInboxScreen({navigation}:any){
     </ScrollView></Page>;
 }
 
+/**
+ * A twelve-hour clock on three wheels, for the morning reminders.
+ *
+ * React Native ships no time picker and adding one would pull in a native
+ * module this app otherwise avoids, so the wheels are built here. They are
+ * also the better control: the four preset times they replaced left somebody
+ * whose Fajr is at 5:12 choosing between 06:00 and nothing at all.
+ *
+ * Everything about a clock reads the same whichever way the app is laid out —
+ * the numbers run upwards, the order of the wheels does not change — so the
+ * picker holds itself left-to-right inside a right-to-left screen.
+ */
+const CLOCK_ROW = 44;
+
+function TimeWheel({ items, index, onPick, width }: { items: string[]; index: number; onPick: (i: number) => void; width: number }) {
+  const ref = useRef<any>(null);
+
+  /* Set once, when the sheet opens: the wheel has to start on the chosen
+     value rather than at the top of the list. Retried on the next frame
+     because the content is not yet measured in the first commit. */
+  useEffect(() => {
+    let frame = requestAnimationFrame(() => {
+      ref.current?.scrollTo({ y: index * CLOCK_ROW, animated: false });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, []);
+
+  return (
+    <View style={{ width, height: CLOCK_ROW * 5 }}>
+      <View style={s.clockBand} pointerEvents="none" />
+      <ScrollView
+        ref={ref}
+        nestedScrollEnabled
+        showsVerticalScrollIndicator={false}
+        snapToInterval={CLOCK_ROW}
+        decelerationRate="fast"
+        onMomentumScrollEnd={(e: any) => {
+          const next = Math.round(e.nativeEvent.contentOffset.y / CLOCK_ROW);
+          onPick(Math.max(0, Math.min(items.length - 1, next)));
+        }}
+        contentContainerStyle={{ paddingVertical: CLOCK_ROW * 2 }}
+      >
+        {items.map((item) => (
+          <View key={item} style={s.clockItem}>
+            <Text style={s.clockItemText}>{item}</Text>
+          </View>
+        ))}
+      </ScrollView>
+    </View>
+  );
+}
+
+/** "14:30" -> 2, 30, 'PM'. Anything unparseable falls back to 08:00. */
+function splitTime(value: string) {
+  const match = /^(\d{1,2}):(\d{2})$/.exec(String(value || '').trim());
+  if (!match) return { hour: 8, minute: 0, half: 'AM' as const };
+  const hour24 = Math.max(0, Math.min(23, Number(match[1])));
+  return {
+    hour: hour24 % 12 || 12,
+    minute: Math.max(0, Math.min(59, Number(match[2]))),
+    half: hour24 < 12 ? ('AM' as const) : ('PM' as const),
+  };
+}
+
+function joinTime(hour: number, minute: number, half: 'AM' | 'PM') {
+  const hour24 = (hour % 12) + (half === 'PM' ? 12 : 0);
+  return `${String(hour24).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+}
+
+/** The clock as it appears on screen: a button showing the chosen hour. */
+function TimeField({ label, value, onChange, T }: { label: string; value: string; onChange: (next: string) => void; T: (t: string) => string }) {
+  const [open, setOpen] = useState(false);
+  const start = splitTime(value);
+  const [hour, setHour] = useState(start.hour);
+  const [minute, setMinute] = useState(start.minute);
+  const [half, setHalf] = useState<'AM' | 'PM'>(start.half);
+
+  /* Re-seeded each time it is opened, so abandoning a change and coming back
+     shows the saved time rather than the half-finished one left behind. */
+  const openSheet = () => {
+    const next = splitTime(value);
+    setHour(next.hour); setMinute(next.minute); setHalf(next.half);
+    setOpen(true);
+  };
+
+  const hours = Array.from({ length: 12 }, (_, i) => String(i + 1));
+  const minutes = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'));
+  const halves = ['AM', 'PM'];
+
+  /* Shown twelve-hour, because that is how the wheels are set; the setting
+     itself stays twenty-four-hour, which is what the scheduler reads. */
+  const shown = `${hour}:${String(minute).padStart(2, '0')} ${half}`;
+
+  return (
+    <View style={s.timeField}>
+      <Text style={s.timeFieldLabel}>{label}</Text>
+      <Pressable accessibilityLabel={`${label}, ${shown}. ${T('Change the time')}`} onPress={openSheet} style={s.timeFieldButton}>
+        <Text style={s.timeFieldValue}>{shown}</Text>
+        {ico('time-outline', 17, C.green)}
+      </Pressable>
+      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
+        <View style={s.clockScrim}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setOpen(false)} accessibilityLabel={T('Close')} />
+          <View style={s.clockSheet}>
+            <Text style={s.clockTitle}>{label}</Text>
+            <Text style={s.clockPreview}>{shown}</Text>
+            <View style={s.clockWheels}>
+              <TimeWheel items={hours} index={hour - 1} onPick={(i) => setHour(i + 1)} width={72} />
+              <TimeWheel items={minutes} index={minute} onPick={setMinute} width={72} />
+              <TimeWheel items={halves} index={half === 'AM' ? 0 : 1} onPick={(i) => setHalf(i === 0 ? 'AM' : 'PM')} width={78} />
+            </View>
+            <View style={s.clockActions}>
+              <Pressable accessibilityLabel={T('Cancel')} onPress={() => setOpen(false)} style={[s.secondary, { flex: 1 }]}>
+                <Text style={s.secondaryText}>{T('Cancel')}</Text>
+              </Pressable>
+              <Pressable accessibilityLabel={T('Save')} onPress={() => { onChange(joinTime(hour, minute, half)); setOpen(false); }} style={[s.primary, { flex: 1 }]}>
+                <Text style={s.primaryText}>{T('Save')}</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </View>
+  );
+}
+
+/**
+ * A short confirmation that fades on its own.
+ *
+ * Saving used to throw up a system dialog: a grey box that stopped everything
+ * until it was dismissed, to report something that only needed acknowledging.
+ * A line that appears and then goes away says the same thing without asking
+ * to be closed.
+ */
+function Toast({ message, onDone }: { message: string; onDone: () => void }) {
+  const opacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    let done = false;
+    opacity.setValue(0);
+    Animated.sequence([
+      Animated.timing(opacity, { toValue: 1, duration: 170, useNativeDriver: true }),
+      Animated.delay(2600),
+      Animated.timing(opacity, { toValue: 0, duration: 300, useNativeDriver: true }),
+    ]).start(() => { if (!done) onDone(); });
+    return () => { done = true; };
+  }, [message, opacity, onDone]);
+
+  return (
+    <Animated.View pointerEvents="none" style={[s.toast, { opacity }]}>
+      {ico('checkmark-circle', 17, C.green)}
+      <Text style={s.toastText}>{message}</Text>
+    </Animated.View>
+  );
+}
+
 function NotificationScreen({navigation}:any){const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);
   const{location}=useAppLocation();const{settings,update}=useWorshipSettings();
   const[health,setHealth]=useState<NotificationHealth>('undetermined');
   const[working,setWorking]=useState(false);
   const[queued,setQueued]=useState(0);
   const[battery,setBattery]=useState<BatteryState>('unknown');
+  const[toast,setToast]=useState('');
+  const toastDone=useCallback(()=>setToast(''),[]);
 
   useEffect(()=>{getNotificationHealth().then(setHealth);void getScheduledCount().then(setQueued);void getBatteryOptimizationState().then(setBattery)},[]);
 
@@ -6605,10 +6758,10 @@ function NotificationScreen({navigation}:any){const{rtl}=useLanguage();const T=(
       const result=await schedulePrayerNotifications(value.snapshot,settings,rtl,
         position?`${position.surahName} ${position.verseKey}`:undefined);
       setQueued(await getScheduledCount());
-      Alert.alert(T(result.unsupported?'Saved for installed app':'Reminders updated'),
-        T(result.unsupported?'Web browsers are not scheduled here. Your choices are saved and will apply in the installed iOS or Android app.'
-          :rtl?`تمت جدولة ${result.scheduled} تنبيهًا.`:`${result.scheduled} notifications scheduled.`));
-    }catch(e:any){Alert.alert(T('Could not schedule'),T(e.message))}finally{setWorking(false)}};
+      setToast(result.unsupported
+        ? T('Saved. Reminders are scheduled in the installed app.')
+        : rtl ? `تمت جدولة ${result.scheduled} تنبيهًا.` : `${result.scheduled} reminders scheduled.`);
+    }catch(e:any){setToast(T(e.message||'Could not schedule'))}finally{setWorking(false)}};
 
   const toggleAdhan=(name:string)=>update({adhanEnabled:{...settings.adhanEnabled,[name]:!settings.adhanEnabled[name]}});
   const togglePre=(name:string)=>update({prayerReminders:{...settings.prayerReminders,[name]:!settings.prayerReminders[name]}});
@@ -6625,7 +6778,7 @@ function NotificationScreen({navigation}:any){const{rtl}=useLanguage();const T=(
       <Text style={s.dataTitle}>{T('Gentle, local reminders')}</Text>
       <Text style={s.intro}>{T('Permission and scheduling happen on your device. No notification profile is sent to us.')}</Text>
 
-      <View style={[s.healthCard,{marginBottom:0}]}>
+      <View style={[s.healthCard,{marginBottom:4}]}>
         <View style={[s.healthDot,{backgroundColor:health==='granted'?C.success:health==='denied'?C.coral:C.gold}]}/>
         <View style={{flex:1}}>
           <Text style={s.sourceTitle}>{T('Permission')}: {T(health)}</Text>
@@ -6635,7 +6788,12 @@ function NotificationScreen({navigation}:any){const{rtl}=useLanguage();const T=(
               ? T('Declined earlier. Turn it on in the system settings for this app.')
               : queued?T(rtl?`${queued} تنبيهًا مجدولًا.`:`${queued} scheduled right now.`):T('You remain in control through system settings.')}</Text>
         </View>
-        {health!=='granted'&&health!=='unsupported'&&<Tactile onPress={permission} style={s.ghostSmall}><Text style={s.ghostText}>{T('Allow')}</Text></Tactile>}
+        {health!=='granted'&&health!=='unsupported'&&(health==='denied'
+          /* Declined once means the system prompt will not be shown again, so
+             asking again is a button that does nothing. The way back is the
+             app's own page in the system settings. */
+          ? <Tactile onPress={()=>{void openNotificationSettings()}} style={s.ghostSmall}><Text style={s.ghostText}>{T('Open settings')}</Text></Tactile>
+          : <Tactile onPress={permission} style={s.ghostSmall}><Text style={s.ghostText}>{T('Allow')}</Text></Tactile>)}
       </View>
 
       {/* ---- the adhan itself ---- */}
@@ -6646,27 +6804,21 @@ function NotificationScreen({navigation}:any){const{rtl}=useLanguage();const T=(
           value={settings.adhanEnabled?.Fajr||settings.adhanEnabled?.Isha?true:false}
           onChange={(v:boolean)=>update({adhanEnabled:Object.fromEntries(prayers.map(p=>[p,v]))})}/>
       </View>
-      <Tactile accessibilityLabel={T('Choose the adhan recordings')} onPress={()=>navigation.navigate('Adhan')} style={s.setting}>
-        <MotionGlyph name="musical-notes-outline" size={19}/>
-        <View style={{flex:1}}>
-          <Text style={s.settingName}>{T('Choose the recordings')}</Text>
-          <Text style={s.meta}>{T('Fajr has its own call, chosen separately. All recordings are stored in the app.')}</Text>
-        </View>
-        {ico('chevron-forward',18,C.muted)}
-      </Tactile>
-      <Text style={s.preferenceLabel}>{T('WHICH ADHAN')}</Text>
-      <Text style={[s.meta,s.reminderSub]}>{T('Fajr only')}</Text>
-      <View style={[s.choiceRow,s.reminderPills]}>
-        {FAJR_OPTIONS.map(option=><ChoicePill key={option.id}
-          label={rtl?option.labelAr:option.label} selected={fajrOption(settings.adhanFajrReciter).id===option.id}
-          onPress={()=>update({adhanFajrReciter:option.id})}/>)}
+      <View style={s.settings}>
+        <Tactile accessibilityLabel={T('Choose the adhan recordings')} onPress={()=>navigation.navigate('Adhan')} style={s.setting}>
+          <MotionGlyph name="musical-notes-outline" size={19}/>
+          <View style={{flex:1}}>
+            <Text style={s.settingName}>{T('Choose the recordings')}</Text>
+            <Text style={s.meta}>{T('Fajr has its own call, chosen separately. All recordings are stored in the app.')}</Text>
+          </View>
+          {ico('chevron-forward',18,C.muted)}
+        </Tactile>
       </View>
-      <Text style={[s.meta,s.reminderSub]}>{T('Every other prayer')}</Text>
-      <View style={[s.choiceRow,s.reminderPills]}>
-        {ADHAN_OPTIONS.map(option=><ChoicePill key={option.id}
-          label={rtl?option.labelAr:option.label} selected={adhanOption(settings.adhanReciter).id===option.id}
-          onPress={()=>update({adhanReciter:option.id})}/>)}
-      </View>
+      {/* Choosing a recording was offered here twice over — once for Fajr and
+          once for everything else — and the second picker never changed what
+          actually played. Rather than leave a control that lies, the choice
+          lives in one place: the Adhan screen above, where every recording can
+          be heard before it is picked. */}
       <View style={s.settings}>
         {prayers.map(name=><View key={name} style={s.setting}>
           <ToolGraphic tool="Notifications" size={47}/>
@@ -6712,22 +6864,18 @@ function NotificationScreen({navigation}:any){const{rtl}=useLanguage();const T=(
       <Section title={T('Each morning')}/>
       <View style={s.settings}>
         <Row icon="sunny-outline" title={T('Verse of the day')}
-          subtitle={settings.dailyVerseTime||'08:00'}
+          subtitle={T('One verse each morning, at the hour you choose.')}
           value={!!settings.dailyVerseReminder} onChange={(v:boolean)=>update({dailyVerseReminder:v})}/>
       </View>
-      <View style={s.choiceRow}>
-        {['06:00','08:00','10:00','12:00'].map(time=><ChoicePill key={time} label={time}
-          selected={settings.dailyVerseTime===time} onPress={()=>update({dailyVerseTime:time,dailyVerseReminder:true})}/>)}
-      </View>
+      <TimeField label={T('Verse of the day')} value={settings.dailyVerseTime||'08:00'} T={T}
+        onChange={(time:string)=>update({dailyVerseTime:time,dailyVerseReminder:true})}/>
       <View style={[s.settings,{marginTop:10}]}>
         <Row icon="library-outline" title={T('Hadith of the day')}
-          subtitle={settings.dailyHadithTime||'09:00'}
+          subtitle={T('One hadith each morning, at the hour you choose.')}
           value={!!settings.dailyHadithReminder} onChange={(v:boolean)=>update({dailyHadithReminder:v})}/>
       </View>
-      <View style={s.choiceRow}>
-        {['07:00','09:00','11:00','13:00'].map(time=><ChoicePill key={time} label={time}
-          selected={settings.dailyHadithTime===time} onPress={()=>update({dailyHadithTime:time,dailyHadithReminder:true})}/>)}
-      </View>
+      <TimeField label={T('Hadith of the day')} value={settings.dailyHadithTime||'09:00'} T={T}
+        onChange={(time:string)=>update({dailyHadithTime:time,dailyHadithReminder:true})}/>
 
       {/* ---- before you sleep ---- */}
       <Section title={T('Before you sleep')}/>
@@ -6777,18 +6925,29 @@ function NotificationScreen({navigation}:any){const{rtl}=useLanguage();const T=(
               style={[s.primarySmall,{marginTop:10}]}>
               <Text style={s.primaryText}>{T('Fix now')}</Text>
             </Pressable>}
+            {/* Android will not tell us whether the exemption was granted, so
+                once asked we stop asking. The way back stays available: the
+                system page lists every app that is exempt, and the setting can
+                be checked or reversed there by hand. */}
+            {battery==='exempt'&&<Pressable accessibilityLabel={T('Open the Android battery settings')}
+              onPress={()=>{void openBatterySettings()}}
+              style={[s.secondary,{alignSelf:'flex-start',marginTop:10}]}>
+              <Text style={s.secondaryText}>{T('Check in battery settings')}</Text>
+            </Pressable>}
           </View>
         </View>
       </>}
 
       <View style={s.actionRow}>
         <Tactile onPress={sync} style={s.primary}><Text style={s.primaryText}>{working?T('Scheduling…'):T('Save & reschedule')}</Text></Tactile>
-        <Tactile onPress={()=>sendTestNotification(rtl).catch(e=>Alert.alert(T('Test unavailable'),T(e.message)))} style={s.secondary}>
+        <Tactile onPress={()=>sendTestNotification(rtl).then(()=>setToast(T('Two notifications sent — one quiet, one adhan.'))).catch(e=>setToast(T(e.message||'Test unavailable')))} style={s.secondary}>
           <Text style={s.secondaryText}>{T('Test notification')}</Text>
         </Tactile>
       </View>
       <Text style={s.cityFootnote}>{T('Everything is rescheduled for you each day and whenever the location or these settings change.')}</Text>
-    </ScrollView></Page>}
+    </ScrollView>
+    {!!toast&&<Toast message={toast} onDone={toastDone}/>}
+  </Page>}
 
 
 /**
@@ -8842,6 +9001,29 @@ function HadithScreen({navigation}:any){const{rtl}=useLanguage();const T=(text:s
   useEffect(()=>subscribeHadithDownloads(()=>setDownloadTick(t=>t+1)) as any,[]);
   useEffect(()=>{void deviceHadithCount().then(setBooksOnDevice)},[downloadTick]);
 
+  /* How many narrations each collection holds.
+     The catalogue carries no counts, and it is right not to: editions and
+     languages disagree on the total, so the outline fetched for the language
+     actually in hand is the only honest source. They are read quietly in the
+     background, one at a time, and each card fills in as its number arrives —
+     after the first visit they are served from the device cache and cost no
+     network at all. A collection whose count never arrives simply omits it
+     rather than showing a number nobody can stand behind. */
+  const [counts,setCounts]=useState<Record<string,number>>({});
+  useEffect(()=>{
+    let alive=true;
+    void (async()=>{
+      for(const collection of HADITH_COLLECTIONS){
+        try{
+          const outline=await loadHadithOutline(collection.slug,language);
+          if(!alive)return;
+          if(outline?.total)setCounts(prev=>({...prev,[collection.slug]:outline.total}));
+        }catch{/* nothing to show for this one */}
+      }
+    })();
+    return()=>{alive=false};
+  },[language]);
+
   /* Search runs over what is on the device. There is no server-side search -
      the endpoint accepts `q` and ignores it - so anything not read or
      downloaded is simply not searchable, and the screen says so. */
@@ -8896,7 +9078,7 @@ function HadithScreen({navigation}:any){const{rtl}=useLanguage();const T=(text:s
       <HadithProgressBars/>
       <Section title={T('Collections')}/>
       {HADITH_COLLECTIONS.map(collection=>{
-        const total=state.totals[collection.slug]||0;
+        const total=counts[collection.slug]||state.totals[collection.slug]||0;
         const read=(state.read[collection.slug]||[]).length;
         const percent=total?Math.min(100,Math.round(read/total*100)):0;
         const isDownloaded=!!downloaded[collection.slug];
@@ -8907,8 +9089,12 @@ function HadithScreen({navigation}:any){const{rtl}=useLanguage();const T=(text:s
             <View style={s.hadithCollectionTop}>
               <View style={{flex:1}}>
                 <Text style={s.dataName}>{collection.name}</Text>
-                <Text style={s.dataArabic}>{collection.arabicName}</Text>
-                <Text style={s.meta}>{T(collection.author)} · {T(collection.kind)}{collection.graded ? (rtl ? ' · مصنّف' : ' · graded') : ''}{total ? ` · ${total.toLocaleString()} ${T('hadith')}` : ''}{isDownloaded ? (rtl ? ' · محمّل' : ' · downloaded') : ''}</Text>
+                <Text style={s.hadithCollectionAr}>{collection.arabicName}</Text>
+                <Text style={s.meta}>{T(collection.author)} · {T(collection.kind)}{collection.graded ? (rtl ? ' · مصنّف' : ' · graded') : ''}{isDownloaded ? (rtl ? ' · محمّل' : ' · downloaded') : ''}</Text>
+              </View>
+              <View style={s.hadithCountCol}>
+                {!!total && <Text style={s.hadithCountNum}>{total.toLocaleString('en-US')}</Text>}
+                {!!total && <Text style={s.hadithCountLabel}>{T('hadith')}</Text>}
               </View>
               {ico('chevron-forward',18,C.muted)}
             </View>
@@ -8976,10 +9162,14 @@ function HadithCollectionScreen({route,navigation}:any){const{rtl}=useLanguage()
     {!!outline&&<>
       {book===null?<ScrollView keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
         <Text style={s.dataTitle}>{collection?.name||outline.name}</Text>
-        <Text style={s.dataArabic}>{collection?.arabicName}</Text>
+        <Text style={s.hadithCollectionAr}>{collection?.arabicName}</Text>
         <Text style={s.intro}>{T(collection?.author||'')} · {T(collection?.kind||'')} · {totalInCollection.toLocaleString()} {T('hadith')} · {outline.books.length} {T('books')}</Text>
 
-        <HadithLanguagePicker available={outline.available}/>
+        {/* The language is chosen on the Hadith screen and applies everywhere.
+            Repeating the picker here meant two places to look, and a choice
+            made on one book silently changing another. The notice stays: if
+            the language you asked for was not available for this collection,
+            that is worth saying. */}
         {outline.fellBack&&<HadithLanguageNotice wanted={language} onReset={()=>{void setHadithLanguage(DEFAULT_HADITH_LANGUAGE)}}/>}
 
         <View style={s.apiPanel}>
@@ -9015,7 +9205,7 @@ function HadithCollectionScreen({route,navigation}:any){const{rtl}=useLanguage()
               <View style={s.hadithNumber}><Text style={s.hadithNumberText}>{entry.number}</Text></View>
               <View style={{flex:1}}>
                 <Text style={s.dataName}>{entry.name}</Text>
-                <Text style={s.dataMeta}>{entry.count.toLocaleString()} {T('hadith')}</Text>
+                <Text style={s.hadithRowMeta}>{entry.count.toLocaleString()} {T('hadith')}</Text>
               </View>
               {ico('chevron-forward',16,C.muted)}
             </View>
@@ -9034,8 +9224,8 @@ function HadithCollectionScreen({route,navigation}:any){const{rtl}=useLanguage()
             <View style={s.hadithRowTop}>
               <View style={s.hadithNumber}><Text style={s.hadithNumberText}>{hadith.number}</Text></View>
               <View style={{flex:1}}>
-                {hadith.grades.length>0&&<Text style={s.dataMeta}>{hadith.grades.map(g=>g.grade).join(' · ')}</Text>}
-                {!!hadith.arabic&&<Text style={s.dataArabic} numberOfLines={2}>{hadith.arabic}</Text>}
+                {hadith.grades.length>0&&<Text style={s.hadithRowMeta}>{hadith.grades.map(g=>g.grade).join(' · ')}</Text>}
+                {!!hadith.arabic&&<Text style={s.hadithRowAr} numberOfLines={2}>{hadith.arabic}</Text>}
                 <Text style={s.dataBody} numberOfLines={3}>{hadith.english}</Text>
                 {read.has(hadith.number)&&<Text style={[s.meta,{marginTop:6}]}>{T('Read')}</Text>}
               </View>
@@ -11110,24 +11300,8 @@ function OnboardingNotifications() {
   const { rtl } = useLanguage(); const T = (text: string) => tx(rtl, text);
   const { theme, setTheme } = useTheme();
   const [health, setHealth] = useState<NotificationHealth>('undetermined');
-  const [asking, setAsking] = useState(false);
-  const [stuck, setStuck] = useState(false);
 
   useEffect(() => { void getNotificationHealth().then(setHealth); }, []);
-
-  const ask = async () => {
-    setAsking(true);
-    const next = await requestNotificationPermission(rtl);
-    setHealth(next);
-    /* Nothing happened. The system can decline to show the prompt without
-       refusing the permission — a device that has already answered for this
-       install, or a build where the permission was not declared in the
-       manifest. Either way the screen used to sit there as though the tap had
-       simply missed, so the outcome is said out loud and the settings page is
-       offered, where the permission can always be granted. */
-    setStuck(next !== 'granted' && next !== 'denied');
-    setAsking(false);
-  };
 
   const granted = health === 'granted';
 
@@ -11160,20 +11334,13 @@ function OnboardingNotifications() {
         ? <View style={s.onbNote}>
             <Text style={s.onbNoteText}>{T('Permission was declined earlier, so reminders stay off. You can turn them on in the system settings for this app at any time.')}</Text>
           </View>
-        : <View>
-            {stuck && <View style={s.onbNote}>
-              <Text style={s.onbNoteText}>{T('Nothing came up. That happens when the phone has already answered for this app, or when the permission is off for the whole device. You can allow it in the system settings at any time.')}</Text>
-            </View>}
-            <View style={s.onbBtnRow}>
-              <Pressable accessibilityLabel={T('Allow notifications')} onPress={() => { void ask(); }} style={[s.onbWideBtn, { flex: 1 }, asking && { opacity: 0.6 }]}>
-                {ico('notifications-outline', 19, C.green)}
-                <Text style={s.onbWideBtnText}>{T('Allow notifications')}</Text>
-              </Pressable>
-              {stuck && <Pressable accessibilityRole="button" accessibilityLabel={T('Open system settings')}
-                onPress={() => { void openNotificationSettings(); }} style={s.onbSettingsBtn}>
-                <Text style={s.onbSettingsBtnText}>{T('Open settings')}</Text>
-              </Pressable>}
-            </View>
+        : <View style={s.onbNote}>
+            {/* There is no button here on purpose.
+                Asking for a permission from a button is asking twice: once to
+                press, once to answer. The system prompt is the ask, so it is
+                raised by Continue below — the tap you were going to make
+                anyway — and this screen is left to say what is being offered. */}
+            <Text style={s.onbNoteText}>{T('Continue to be asked. Nothing is scheduled unless you allow it, and every reminder can be switched off later in Settings.')}</Text>
           </View>}
 
     {/* Which colours the app wears. It lives here rather than on a screen of
@@ -11449,6 +11616,9 @@ function Onboarding({ onFinish }: { onFinish: () => void }) {
     { title: T('May this app remind you?'), caption: T('Adhan, a quiet reminder before each prayer, and a verse each morning. Every one of these can be switched off later, and nothing is scheduled until you allow it.') },
     { title: T('When do you sleep?'), caption: T('Surah Al-Mulk takes about five minutes. Say the hour you turn in and we will remind you before it — or skip this entirely. The hour stays on your device and is never used for tracking.') },
   ];
+  /* Named, because the Continue button has to know which step raises the
+     permission prompt, and a bare 4 says nothing to whoever reads it next. */
+  const NOTIFICATION_STEP = 4;
   const active = steps[step];
   /* The offline controls belong to a question the person may never ask, so
      they stay folded away. They open themselves if there is a download to
@@ -11661,7 +11831,18 @@ function Onboarding({ onFinish }: { onFinish: () => void }) {
       <View style={s.onbActions}>
         {step > 0 && <MotionPress style={s.onbGhost} onPress={() => setStep(step - 1)}><Text style={s.onbGhostText}>{T('Back')}</Text></MotionPress>}
         {step === steps.length - 1 && <MotionPress style={s.onbGhost} onPress={() => void finish(true)}><Text style={s.onbGhostText}>{T('Skip')}</Text></MotionPress>}
-        <MotionPress style={[s.onbCta, busy && s.onbCtaOff]} onPress={() => { if (step < steps.length - 1) setStep(step + 1); else void finish(); }}>
+        <MotionPress style={[s.onbCta, busy && s.onbCtaOff]} onPress={() => {
+          if (step < steps.length - 1) {
+            /* Leaving the notifications step raises the system prompt. Asked
+               from Continue rather than from its own button, so the reader
+               answers once instead of pressing "allow" and then answering. */
+            if (step === NOTIFICATION_STEP) void getNotificationHealth().then((current) => {
+              if (current === 'granted' || current === 'denied' || current === 'unsupported') return;
+              void requestNotificationPermission(rtl);
+            });
+            setStep(step + 1);
+          } else void finish();
+        }}>
           <Text style={s.onbCtaText}>{step < steps.length - 1 ? T('Continue') : T('Begin')}</Text>
         </MotionPress>
       </View>
@@ -12082,7 +12263,7 @@ function makeStyles() {
  onbGhostText:{color:C.ink,fontSize:15,fontFamily:'DMSans_600SemiBold'},
   journeyCard:{flexDirection:'row',alignItems:'center',gap:CARD.gap,backgroundColor:C.card,borderRadius:RADIUS.xl,borderWidth:1,borderColor:C.line,padding:CARD.padding,marginBottom:CARD_GAP,...surface},
   journeyTitleRow:{flexDirection:'row',alignItems:'center',gap:SPACE.sm},
-  journeyArabic:{color:C.green,fontSize:18,fontFamily:'KFGQPCUthmanicHafs',marginTop:SPACE.xs,marginBottom:SPACE.xs},
+  journeyArabic:{color:C.green,fontSize:18,fontFamily:'KFGQPCUthmanicHafs',marginTop:SPACE.xs,marginBottom:SPACE.xs,writingDirection:'rtl'},
   journeyBar:{height:6,borderRadius:3,backgroundColor:C.mint,overflow:'hidden',marginTop:SPACE.sm,marginBottom:SPACE.xs},
   journeyBarFill:{height:6,borderRadius:3,backgroundColor:C.green},
   stepCard:{backgroundColor:C.card,borderRadius:RADIUS.xl,borderWidth:1,borderColor:C.line,padding:CARD.padding,marginBottom:CARD_GAP,gap:CARD.gap,...surface},
@@ -12095,11 +12276,11 @@ function makeStyles() {
   stepCount:{color:C.ink,fontSize:24,fontFamily:'Newsreader_600SemiBold'},
   stepCountLabel:{color:C.muted,fontSize:11,marginTop:SPACE.xs},
   verseBox:{backgroundColor:C.mint,borderRadius:RADIUS.lg,padding:CARD.padding,gap:SPACE.sm,borderWidth:1,borderColor:C.line},
-  verseArabic:{color:C.ink,textAlign:'right',fontFamily:'KFGQPCUthmanicHafs',fontSize:24,lineHeight:48,includeFontPadding:false},
+  verseArabic:{color:C.ink,textAlign:'right',fontFamily:'KFGQPCUthmanicHafs',fontSize:24,lineHeight:48,includeFontPadding:false,writingDirection:'rtl'},
   stepNote:{color:C.ink,fontSize:13,fontStyle:'italic',backgroundColor:C.mint,borderRadius:RADIUS.md,padding:SPACE.md},
   channelCard:{backgroundColor:C.card,borderRadius:RADIUS.xl,borderWidth:1,borderColor:C.line,padding:CARD.padding,marginBottom:CARD_GAP,gap:SPACE.md,...surface},
   channelHead:{flexDirection:'row',alignItems:'center',gap:CARD.gap},
-  channelArabic:{color:C.green,fontSize:18,fontFamily:'KFGQPCUthmanicHafs',marginTop:SPACE.xs},
+  channelArabic:{color:C.green,fontSize:18,fontFamily:'KFGQPCUthmanicHafs',marginTop:SPACE.xs,writingDirection:'rtl'},
   dataSourceRow:{marginTop:8},
   floatBarWrap:{position:'absolute',left:0,right:0,bottom:0,alignItems:'center',paddingBottom:Platform.OS==='ios'?24:16,pointerEvents:'box-none'},
   floatBar:{height:66,borderRadius:33,backgroundColor:C.white,borderWidth:1,borderColor:C.line,alignItems:'center',justifyContent:'space-between',paddingHorizontal:8,...shadow},
@@ -12152,7 +12333,7 @@ depthGradient:{position:'absolute',top:0,left:0,right:0,bottom:0},
   depthCard:{backgroundColor:C.card,borderWidth:1,borderColor:C.line,borderTopColor:depth.edge,...depth.ambient},
 depthBody:{overflow:'hidden'},
 depthVeil:{position:'absolute',top:0,left:0,right:0,bottom:0,backgroundColor:depth.veil},railCheck:{position:'absolute',top:-2,right:-2,width:16,height:16,borderRadius:8,backgroundColor:C.accent,alignItems:'center',justifyContent:'center',borderWidth:1.5,borderColor:C.white},railName:{color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:10},railTime:{color:C.ink,textAlign:'center',fontFamily:'DMSans_600SemiBold',fontSize:10,lineHeight:11,marginTop:2},essentialSlide:{height:174,backgroundColor:C.card,borderRadius:24,padding:16,borderWidth:1,borderColor:C.line,...surface},essentialTop:{flexDirection:'row',alignItems:'flex-start',justifyContent:'space-between'},essentialArrow:{width:34,height:34,borderRadius:17,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},essentialTitle:{color:C.ink,fontFamily:'Newsreader_600SemiBold',fontSize:21,marginTop:4},essentialBody:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:12,lineHeight:18,marginTop:4},tool:{width:'33.33%',paddingVertical:12},
- homeProgress:{marginHorizontal:8,backgroundColor:C.card,borderBottomLeftRadius:20,borderBottomRightRadius:20,padding:12,flexDirection:'row',alignItems:'center',justifyContent:'space-between',borderWidth:1,borderTopWidth:0,borderColor:C.line},homeProgressRing:{width:43,height:43,borderRadius:24,backgroundColor:C.mint,alignItems:'center',justifyContent:'center',borderWidth:3,borderColor:C.line},dailyKicker:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10,letterSpacing:1.1,marginTop:4},dailyArabic:{color:C.ink,fontFamily:'KFGQPCUthmanicHafs',fontSize:22,lineHeight:36,textAlign:'right',marginTop:8},weekWrap:{marginTop:12},
+ homeProgress:{marginHorizontal:8,backgroundColor:C.card,borderBottomLeftRadius:20,borderBottomRightRadius:20,padding:12,flexDirection:'row',alignItems:'center',justifyContent:'space-between',borderWidth:1,borderTopWidth:0,borderColor:C.line},homeProgressRing:{width:43,height:43,borderRadius:24,backgroundColor:C.mint,alignItems:'center',justifyContent:'center',borderWidth:3,borderColor:C.line},dailyKicker:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10,letterSpacing:1.1,marginTop:4},dailyArabic:{color:C.ink,fontFamily:'KFGQPCUthmanicHafs',fontSize:22,lineHeight:36,textAlign:'right',marginTop:8,writingDirection:'rtl'},weekWrap:{marginTop:12},
 weekSurface:{backgroundColor:'transparent',borderColor:'transparent',borderTopColor:'rgba(255,255,255,.16)'},
 weekBody:{padding:16,gap:14},weekSummaryTitle:{color:C.onAccent,fontFamily:'Newsreader_600SemiBold',fontSize:19},weekSummaryBody:{color:C.onAccent,fontSize:10,marginTop:4},
 weekTop:{flexDirection:'row',alignItems:'flex-start',justifyContent:'space-between',gap:10},
@@ -12180,15 +12361,15 @@ surahCard:{width:'100%',minHeight:64,backgroundColor:C.card,borderRadius:16,bord
      reuses surahNum for its cycle count, which is not a surah, so this is a
      separate token rather than a change to that one. */
   surahMedal:{width:36,height:36,borderRadius:12,backgroundColor:C.surahBadge,borderWidth:1,borderColor:C.surahBadge,alignItems:'center',justifyContent:'center'},
-  surahMedalText:{color:C.surahBadgeInk,fontSize:13,fontFamily:'Newsreader_700Bold'},surahNumText:{color:C.green,fontSize:13,fontFamily:'Newsreader_700Bold'},surahName:{color:C.ink,fontSize:14.5,fontFamily:'DMSans_700Bold',flexShrink:1},surahNameRow:{flexDirection:'row',alignItems:'center',gap:9},surahArInline:{color:C.green,fontSize:16.5,fontFamily:'KFGQPCUthmanicHafs'},surahAr:{color:C.green,fontSize:20,fontFamily:'KFGQPCUthmanicHafs'},
+  surahMedalText:{color:C.surahBadgeInk,fontSize:13,fontFamily:'Newsreader_700Bold'},surahNumText:{color:C.green,fontSize:13,fontFamily:'Newsreader_700Bold'},surahName:{color:C.ink,fontSize:14.5,fontFamily:'DMSans_700Bold',flexShrink:1},surahNameRow:{flexDirection:'row',alignItems:'center',gap:9},surahArInline:{color:C.green,fontSize:16.5,fontFamily:'KFGQPCUthmanicHafs',writingDirection:'rtl'},surahAr:{color:C.green,fontSize:20,fontFamily:'KFGQPCUthmanicHafs',writingDirection:'rtl'},
  readerModes:{flexDirection:'row',gap:12,marginTop:12},readerMode:{flex:1,minHeight:56,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:8,backgroundColor:C.white,borderRadius:20,borderWidth:1,borderColor:C.line},readerModeActive:{backgroundColor:C.mint,borderColor:C.line},readerModeText:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:11},readerBar:{height:56,flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingHorizontal:8,borderBottomWidth:1,borderColor:C.line},surahStep:{width:32,height:32,alignItems:'center',justifyContent:'center',marginHorizontal:2},/* Hidden off the top of the screen, but not transparent.
 
      The capture reads the view back off the GPU, and a view at opacity 0 is
      read back as nothing at all - the picture comes out empty. Being off the
      top of the screen is what hides it, so the opacity has to stay at 1 and
      the position is what keeps it unseen. */
-  offscreenCard:{position:'absolute',top:-100000,left:0,opacity:1},readerName:{color:C.ink,fontSize:16,fontFamily:'DMSans_700Bold'},readerProgress:{height:4,backgroundColor:C.mint,overflow:'hidden'},readerScroll:{width:'100%',maxWidth:860,alignSelf:'center',padding:16,paddingBottom:BOTTOM_RESERVE},surahHead:{borderRadius:28,padding:24,alignItems:'center',...shadow},surahHeadAr:{color:C.onAccent,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:38,marginTop:16},surahHeadEn:{color:C.onAccent,fontSize:10,marginTop:4},bismillah:{color:C.onAccent,fontFamily:'KFGQPCUthmanicHafs',fontSize:22,marginTop:24},ayahContinuous:{marginTop:4,borderRadius:4,borderBottomWidth:1,shadowOpacity:0,elevation:0},ayahSelected:{borderColor:C.gold,borderWidth:2,backgroundColor:C.card},ayahActions:{flexDirection:'row',alignItems:'center',gap:6,marginLeft:-4},ayahFooter:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginTop:12},ayah:{backgroundColor:C.white,borderRadius:24,padding:20,marginTop:12,borderWidth:1,borderColor:C.line,...soft},ayahTop:{flexDirection:'row',alignItems:'center',justifyContent:'space-between'},ayahNo:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold',backgroundColor:C.mint,paddingHorizontal:8,paddingVertical:8,borderRadius:12},ayahAr:{color:C.ink,textAlign:'right',fontFamily:'KFGQPCUthmanicHafs',fontSize:30,lineHeight:58,marginTop:16},ayahTranslation:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:14,lineHeight:20,marginTop:16,paddingTop:16,borderTopWidth:1,borderColor:C.line},ayahMeta:{color:C.muted,fontSize:10,marginTop:12},
- translationRow:{minHeight:67,flexDirection:'row',alignItems:'center',gap:12,paddingHorizontal:12,borderBottomWidth:1,borderColor:C.line},languageBadge:{width:52,height:34,borderRadius:12,backgroundColor:C.mint,alignItems:'center',justifyContent:'center',flexDirection:'row',gap:4},languageFlag:{fontSize:12},languageBadgeText:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10},historyHead:{flexDirection:'row',alignItems:'center',justifyContent:'space-between'},historyWrap:{flexDirection:'row',flexWrap:'wrap',gap:8,marginBottom:12},historyChip:{backgroundColor:C.mint,borderRadius:16,paddingHorizontal:12,paddingVertical:8},searchResult:{backgroundColor:C.white,borderRadius:20,padding:16,marginBottom:8,borderWidth:1,borderColor:C.line},noteText:{color:C.ink,fontFamily:'Newsreader_600SemiBold',fontSize:17,lineHeight:24,marginVertical:8},noteInput:{minHeight:180,backgroundColor:C.white,borderRadius:20,padding:16,textAlignVertical:'top',fontFamily:'DMSans_400Regular',fontSize:14,color:C.ink,borderWidth:1,borderColor:C.line,outlineStyle:'none'} as any,stepper:{backgroundColor:C.white,borderRadius:20,padding:12,flexDirection:'row',alignItems:'center',justifyContent:'space-between',borderWidth:1,borderColor:C.line},stepButton:{width:44,height:44,borderRadius:16,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},fontPreview:{backgroundColor:C.mint,borderRadius:20,padding:16,marginTop:12,borderWidth:1,borderColor:C.line},fontPreviewText:{color:C.ink,textAlign:'right',lineHeight:52,includeFontPadding:false},previewArabic:{color:C.ink,fontFamily:'KFGQPCUthmanicHafs'},referenceNavigator:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:12,marginBottom:12},referenceInput:{width:100,textAlign:'center',backgroundColor:C.white,borderWidth:1,borderColor:C.line,borderRadius:16,padding:12,color:C.ink,fontFamily:'DMSans_700Bold',outlineStyle:'none'} as any,comparisonHelp:{color:C.muted,fontSize:10,lineHeight:15,marginTop:8},editionPicker:{gap:8,marginTop:12},editionChip:{minHeight:58,backgroundColor:C.white,borderRadius:16,paddingHorizontal:12,flexDirection:'row',alignItems:'center',gap:12,borderWidth:1,borderColor:C.line},editionChipActive:{borderColor:C.green,backgroundColor:C.mint},editionFlag:{fontSize:20},arabicReference:{backgroundColor:C.yellow,borderRadius:24,padding:20,marginTop:16,borderWidth:1,borderColor:C.gold},comparisonColumns:{gap:12,paddingVertical:12,paddingRight:20},comparisonText:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:13,lineHeight:20,marginTop:12},mushafPage:{width:'100%',maxWidth:900,alignSelf:'center',paddingHorizontal:18,paddingTop:22,paddingBottom:BOTTOM_RESERVE},mushafNav:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:12},mushafNavFoot:{marginTop:18},pageJump:{flex:1,minWidth:0,alignItems:'center'},pageInput:{minWidth:74,textAlign:'center',color:C.ink,fontFamily:'Newsreader_600SemiBold',fontSize:28,borderBottomWidth:1,borderColor:C.line,paddingVertical:4,outlineStyle:'none'} as any,pageProgress:{height:5,borderRadius:4,backgroundColor:C.mint,overflow:'hidden',marginVertical:16},mushafSheet:{backgroundColor:C.card,borderRadius:24,padding:20,borderWidth:1,borderColor:C.gold,...soft},
+  offscreenCard:{position:'absolute',top:-100000,left:0,opacity:1},readerName:{color:C.ink,fontSize:16,fontFamily:'DMSans_700Bold'},readerProgress:{height:4,backgroundColor:C.mint,overflow:'hidden'},readerScroll:{width:'100%',maxWidth:860,alignSelf:'center',padding:16,paddingBottom:BOTTOM_RESERVE},surahHead:{borderRadius:28,padding:24,alignItems:'center',...shadow},surahHeadAr:{color:C.onAccent,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:38,marginTop:16,writingDirection:'rtl'},surahHeadEn:{color:C.onAccent,fontSize:10,marginTop:4},bismillah:{color:C.onAccent,fontFamily:'KFGQPCUthmanicHafs',fontSize:22,marginTop:24,writingDirection:'rtl'},ayahContinuous:{marginTop:4,borderRadius:4,borderBottomWidth:1,shadowOpacity:0,elevation:0},ayahSelected:{borderColor:C.gold,borderWidth:2,backgroundColor:C.card},ayahActions:{flexDirection:'row',alignItems:'center',gap:6,marginLeft:-4},ayahFooter:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginTop:12},ayah:{backgroundColor:C.white,borderRadius:24,padding:20,marginTop:12,borderWidth:1,borderColor:C.line,...soft},ayahTop:{flexDirection:'row',alignItems:'center',justifyContent:'space-between'},ayahNo:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold',backgroundColor:C.mint,paddingHorizontal:8,paddingVertical:8,borderRadius:12},ayahAr:{color:C.ink,textAlign:'right',fontFamily:'KFGQPCUthmanicHafs',fontSize:30,lineHeight:58,marginTop:16,writingDirection:'rtl'},ayahTranslation:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:14,lineHeight:20,marginTop:16,paddingTop:16,borderTopWidth:1,borderColor:C.line},ayahMeta:{color:C.muted,fontSize:10,marginTop:12},
+ translationRow:{minHeight:67,flexDirection:'row',alignItems:'center',gap:12,paddingHorizontal:12,borderBottomWidth:1,borderColor:C.line},languageBadge:{width:52,height:34,borderRadius:12,backgroundColor:C.mint,alignItems:'center',justifyContent:'center',flexDirection:'row',gap:4},languageFlag:{fontSize:12},languageBadgeText:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10},historyHead:{flexDirection:'row',alignItems:'center',justifyContent:'space-between'},historyWrap:{flexDirection:'row',flexWrap:'wrap',gap:8,marginBottom:12},historyChip:{backgroundColor:C.mint,borderRadius:16,paddingHorizontal:12,paddingVertical:8},searchResult:{backgroundColor:C.white,borderRadius:20,padding:16,marginBottom:8,borderWidth:1,borderColor:C.line},noteText:{color:C.ink,fontFamily:'Newsreader_600SemiBold',fontSize:17,lineHeight:24,marginVertical:8},noteInput:{minHeight:180,backgroundColor:C.white,borderRadius:20,padding:16,textAlignVertical:'top',fontFamily:'DMSans_400Regular',fontSize:14,color:C.ink,borderWidth:1,borderColor:C.line,outlineStyle:'none'} as any,stepper:{backgroundColor:C.white,borderRadius:20,padding:12,flexDirection:'row',alignItems:'center',justifyContent:'space-between',borderWidth:1,borderColor:C.line},stepButton:{width:44,height:44,borderRadius:16,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},fontPreview:{backgroundColor:C.mint,borderRadius:20,padding:16,marginTop:12,borderWidth:1,borderColor:C.line},fontPreviewText:{color:C.ink,textAlign:'right',lineHeight:52,includeFontPadding:false},previewArabic:{color:C.ink,fontFamily:'KFGQPCUthmanicHafs',writingDirection:'rtl'},referenceNavigator:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:12,marginBottom:12},referenceInput:{width:100,textAlign:'center',backgroundColor:C.white,borderWidth:1,borderColor:C.line,borderRadius:16,padding:12,color:C.ink,fontFamily:'DMSans_700Bold',outlineStyle:'none'} as any,comparisonHelp:{color:C.muted,fontSize:10,lineHeight:15,marginTop:8},editionPicker:{gap:8,marginTop:12},editionChip:{minHeight:58,backgroundColor:C.white,borderRadius:16,paddingHorizontal:12,flexDirection:'row',alignItems:'center',gap:12,borderWidth:1,borderColor:C.line},editionChipActive:{borderColor:C.green,backgroundColor:C.mint},editionFlag:{fontSize:20},arabicReference:{backgroundColor:C.yellow,borderRadius:24,padding:20,marginTop:16,borderWidth:1,borderColor:C.gold},comparisonColumns:{gap:12,paddingVertical:12,paddingRight:20},comparisonText:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:13,lineHeight:20,marginTop:12},mushafPage:{width:'100%',maxWidth:900,alignSelf:'center',paddingHorizontal:18,paddingTop:22,paddingBottom:BOTTOM_RESERVE},mushafNav:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:12},mushafNavFoot:{marginTop:18},pageJump:{flex:1,minWidth:0,alignItems:'center'},pageInput:{minWidth:74,textAlign:'center',color:C.ink,fontFamily:'Newsreader_600SemiBold',fontSize:28,borderBottomWidth:1,borderColor:C.line,paddingVertical:4,outlineStyle:'none'} as any,pageProgress:{height:5,borderRadius:4,backgroundColor:C.mint,overflow:'hidden',marginVertical:16},mushafSheet:{backgroundColor:C.card,borderRadius:24,padding:20,borderWidth:1,borderColor:C.gold,...soft},
   /* long-press verse menu: sits entirely above the verse it belongs to, so it
      never covers the line you are reading */
   mushafMenu:{position:'absolute',left:0,right:0,bottom:'100%',zIndex:20,alignItems:'center',paddingBottom:6},
@@ -12247,13 +12428,13 @@ surahCard:{width:'100%',minHeight:64,backgroundColor:C.card,borderRadius:16,bord
   sheetBtnBusy:{opacity:.55},
   sheetCancelText:{color:C.muted,fontFamily:'DMSans_600SemiBold',fontSize:13},
   sheetKicker:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10,letterSpacing:1.4,textAlign:'center',marginBottom:14},
-  reflectArabic:{color:C.ink,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:25,lineHeight:44,textAlign:'right',direction:'rtl'} as any,
+  reflectArabic:{color:C.ink,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:25,lineHeight:44,textAlign:'right',direction:'rtl',writingDirection:'rtl'} as any,
   reflectProse:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:14,lineHeight:22,marginTop:14},
   reflectSource:{backgroundColor:C.bg,borderRadius:18,padding:14,marginTop:18,borderWidth:1,borderColor:C.line},
   reflectSourceHead:{color:C.muted,fontFamily:'DMSans_700Bold',fontSize:10,letterSpacing:1.2,marginBottom:10},
   reflectScroll:{maxHeight:260},
   reportQuote:{backgroundColor:C.bg,borderRadius:14,padding:12,marginTop:12,borderWidth:1,borderColor:C.line},
-  reportQuoteAr:{color:C.ink,fontFamily:'IBMPlexSansArabic_400Regular',fontSize:16,lineHeight:28,textAlign:'right',direction:'rtl'} as any,
+  reportQuoteAr:{color:C.ink,fontFamily:'IBMPlexSansArabic_400Regular',fontSize:16,lineHeight:28,textAlign:'right',direction:'rtl',writingDirection:'rtl'} as any,
   reportQuoteEn:{color:C.muted,fontSize:12,lineHeight:18,marginTop:6},
   reportOptions:{gap:8,marginBottom:4},
   reportOption:{flexDirection:'row',alignItems:'center',gap:10,paddingVertical:10,paddingHorizontal:12,borderRadius:12,borderWidth:1,borderColor:C.line,backgroundColor:C.card},
@@ -12266,7 +12447,7 @@ surahCard:{width:'100%',minHeight:64,backgroundColor:C.card,borderRadius:16,bord
   reflectLabel:{color:C.muted,fontSize:11,fontFamily:'DMSans_600SemiBold',width:104,flexShrink:0},
   reflectValue:{color:C.ink,fontSize:12,lineHeight:18,flex:1},
   noteSheetHead:{flexDirection:'row',alignItems:'center',gap:12,marginBottom:14},
-  noteSheetArabic:{color:C.ink,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:17,lineHeight:30,textAlign:'right',marginBottom:12,direction:'rtl'} as any,
+  noteSheetArabic:{color:C.ink,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:17,lineHeight:30,textAlign:'right',marginBottom:12,direction:'rtl',writingDirection:'rtl'} as any,
   noteSheetInput:{minHeight:104,maxHeight:200,backgroundColor:C.bg,borderRadius:18,padding:14,textAlignVertical:'top',fontFamily:'DMSans_400Regular',fontSize:14,color:C.ink,borderWidth:1,borderColor:C.line,outlineStyle:'none'} as any,
   noteSheetActions:{flexDirection:'row',alignItems:'center',gap:9,marginTop:14},
 mushafFrame:{backgroundColor:themeDark?mix(BRAND.midnightInk,BRAND.lavender,.12):brandHex('#FCFAF6'),borderRadius:8,borderWidth:MUSHAF_FRAME_BORDER,borderColor:C.gold,padding:MUSHAF_FRAME_PAD,marginTop:4,...soft,overflow:'hidden'},
@@ -12282,7 +12463,7 @@ mushafOrnamentRow:{flexDirection:'row',alignItems:'center',justifyContent:'cente
 mushafOrnamentRule:{height:1,flex:1,maxWidth:96},
 mushafPageNoRow:{alignItems:'center',marginTop:6},
 mushafPageNo:{width:30,height:30,borderRadius:15,borderWidth:1.2,borderColor:C.gold,alignItems:'center',justifyContent:'center',backgroundColor:C.mint},
-mushafPageNoText:{color:C.green,fontFamily:'Newsreader_700Bold',fontSize:16},mushafAyah:{paddingVertical:12,borderBottomWidth:1,borderColor:C.line},mushafSurah:{textAlign:'center',color:C.green,fontFamily:'Newsreader_600SemiBold',fontSize:20,backgroundColor:C.mint,borderRadius:16,paddingVertical:8,marginBottom:12},verseMarker:{color:C.gold,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:17},mushafTranslation:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:12,lineHeight:18,marginTop:8},sectionMarker:{flexDirection:'row',alignItems:'center',gap:10,marginTop:18,marginBottom:6},sectionRule:{flex:1,height:1,backgroundColor:C.line},sectionMarkerText:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10,textTransform:'uppercase',letterSpacing:1},mushafPageLine:{color:C.ink,textAlign:'center',writingDirection:'rtl'},topicGrid:{flexDirection:'row',flexWrap:'wrap',gap:12},topicWrap:{width:'48%'},topicCard:{minHeight:190,backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},vocabStats:{backgroundColor:C.mint,borderRadius:20,padding:16,marginBottom:12,flexDirection:'row',justifyContent:'space-between',alignItems:'center'},flashcard:{minHeight:330,backgroundColor:C.white,borderRadius:28,padding:24,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,...shadow},flashIndex:{position:'absolute',top:18,right:18,color:C.muted,fontFamily:'DMSans_600SemiBold',fontSize:10},flashArabic:{color:C.ink,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:58,lineHeight:86,textAlign:'center'},flashTransliteration:{color:C.green,fontFamily:'Newsreader_600SemiBold',fontSize:28,marginTop:12},flashMeaning:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:18,marginVertical:8,textAlign:'center'},flashHint:{color:C.muted,fontFamily:'DMSans_600SemiBold',fontSize:11,marginTop:16},tajweedPractice:{backgroundColor:C.card,borderRadius:24,padding:20,marginTop:16,borderWidth:1,borderColor:C.line,...surface},tajweedRule:{minHeight:72,flexDirection:'row',alignItems:'center',gap:12,padding:12,borderBottomWidth:1,borderColor:C.line},tajweedSwatch:{width:18,height:44,borderRadius:9},compareCard:{backgroundColor:C.card,borderRadius:20,padding:16,marginBottom:12,borderWidth:1,borderColor:C.line,...surface},
+mushafPageNoText:{color:C.green,fontFamily:'Newsreader_700Bold',fontSize:16},mushafAyah:{paddingVertical:12,borderBottomWidth:1,borderColor:C.line},mushafSurah:{textAlign:'center',color:C.green,fontFamily:'Newsreader_600SemiBold',fontSize:20,backgroundColor:C.mint,borderRadius:16,paddingVertical:8,marginBottom:12},verseMarker:{color:C.gold,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:17,writingDirection:'rtl'},mushafTranslation:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:12,lineHeight:18,marginTop:8},sectionMarker:{flexDirection:'row',alignItems:'center',gap:10,marginTop:18,marginBottom:6},sectionRule:{flex:1,height:1,backgroundColor:C.line},sectionMarkerText:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10,textTransform:'uppercase',letterSpacing:1},mushafPageLine:{color:C.ink,textAlign:'center',writingDirection:'rtl'},topicGrid:{flexDirection:'row',flexWrap:'wrap',gap:12},topicWrap:{width:'48%'},topicCard:{minHeight:190,backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},vocabStats:{backgroundColor:C.mint,borderRadius:20,padding:16,marginBottom:12,flexDirection:'row',justifyContent:'space-between',alignItems:'center'},flashcard:{minHeight:330,backgroundColor:C.white,borderRadius:28,padding:24,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,...shadow},flashIndex:{position:'absolute',top:18,right:18,color:C.muted,fontFamily:'DMSans_600SemiBold',fontSize:10},flashArabic:{color:C.ink,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:58,lineHeight:86,textAlign:'center',writingDirection:'rtl'},flashTransliteration:{color:C.green,fontFamily:'Newsreader_600SemiBold',fontSize:28,marginTop:12},flashMeaning:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:18,marginVertical:8,textAlign:'center'},flashHint:{color:C.muted,fontFamily:'DMSans_600SemiBold',fontSize:11,marginTop:16},tajweedPractice:{backgroundColor:C.card,borderRadius:24,padding:20,marginTop:16,borderWidth:1,borderColor:C.line,...surface},tajweedRule:{minHeight:72,flexDirection:'row',alignItems:'center',gap:12,padding:12,borderBottomWidth:1,borderColor:C.line},tajweedSwatch:{width:18,height:44,borderRadius:9},compareCard:{backgroundColor:C.card,borderRadius:20,padding:16,marginBottom:12,borderWidth:1,borderColor:C.line,...surface},
   tcRefBar:{flexDirection:'row',alignItems:'center',gap:10,marginBottom:14},
   tcVerse:{backgroundColor:C.mint,borderRadius:20,padding:16,marginTop:14,borderWidth:1,borderColor:C.line},
   tcSectionLabel:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.2,marginTop:20,marginBottom:8},
@@ -12293,8 +12474,8 @@ mushafPageNoText:{color:C.green,fontFamily:'Newsreader_700Bold',fontSize:16},mus
   tcCard:{backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},
   tcCardHead:{flexDirection:'row',alignItems:'center',gap:8,paddingBottom:10,marginBottom:10,borderBottomWidth:1,borderColor:C.line},
   tcCardName:{flex:1,color:C.ink,fontSize:13,fontFamily:'DMSans_700Bold'},
-  tcCardLang:{color:C.muted,fontSize:10,fontFamily:'DMSans_700Bold'},juzGrid:{flexDirection:'row',flexWrap:'wrap',gap:8},juzCard:{width:'22.8%',aspectRatio:1,backgroundColor:C.card,borderRadius:16,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,...surface},juzNo:{color:C.green,fontFamily:'Newsreader_600SemiBold',fontSize:23},preloadScore:{backgroundColor:C.white,borderRadius:24,padding:20,borderWidth:1,borderColor:C.line},cacheUsage:{color:C.green,fontFamily:'DMSans_600SemiBold',fontSize:10,marginTop:8},preloadTrack:{height:9,borderRadius:4,backgroundColor:C.mint,overflow:'hidden',marginVertical:12},preloadFill:{height:'100%',backgroundColor:C.green,borderRadius:4},planGrid:{flexDirection:'row',flexWrap:'wrap',gap:12},planCard:{width:'48%',minHeight:130,backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},planDays:{color:C.green,fontFamily:'Newsreader_600SemiBold',fontSize:36},planToday:{backgroundColor:C.white,borderRadius:20,padding:16,marginTop:16,flexDirection:'row',alignItems:'center',justifyContent:'space-between',borderWidth:1,borderColor:C.line},practiceLaunch:{backgroundColor:C.mint,borderRadius:20,padding:16,marginBottom:16,flexDirection:'row',alignItems:'center',justifyContent:'space-between',borderWidth:1,borderColor:C.line},recallCard:{minHeight:340,backgroundColor:C.white,borderRadius:28,padding:20,borderWidth:1,borderColor:C.line,...shadow},recallPrompt:{color:C.ink,fontFamily:'Newsreader_600SemiBold',fontSize:21,lineHeight:29,marginTop:28,textAlign:'center'},recallArabic:{color:C.green,fontFamily:'KFGQPCUthmanicHafs',fontSize:32,lineHeight:58,textAlign:'right',marginTop:24,paddingTop:20,borderTopWidth:1,borderColor:C.line},revealArea:{flex:1,minHeight:110,alignItems:'center',justifyContent:'center',gap:8,marginTop:20,borderTopWidth:1,borderColor:C.line},hifzStatus:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10,textTransform:'uppercase'},intro:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:14,lineHeight:19,marginTop:0,marginBottom:20},exploreGrid:{flexDirection:'row',flexWrap:'wrap',gap:12},exploreCard:{flexGrow:1,flexBasis:'31%',minWidth:150},exploreCardInner:{minHeight:164,backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},exploreTitle:{color:C.ink,fontSize:16,fontFamily:'DMSans_700Bold',marginTop:12},exploreBody:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:11,lineHeight:15,marginTop:4,flex:1},exploreArrow:{width:29,height:29,borderRadius:16,backgroundColor:C.mint,alignItems:'center',justifyContent:'center',alignSelf:'flex-end'},apiPanel:{backgroundColor:C.deep,borderRadius:24,padding:20,marginTop:12},apiTitle:{color:C.onAccent,fontSize:14,fontFamily:'DMSans_700Bold',marginTop:16},apiText:{color:C.onAccent,fontSize:10,marginTop:4},
- toolPage:{flex:1,width:'100%',maxWidth:780,alignSelf:'center',alignItems:'center',padding:24,paddingTop:32},toolEyebrow:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.2,marginTop:20},compass:{width:260,height:260,borderRadius:130,backgroundColor:C.white,borderWidth:12,borderColor:C.line,alignItems:'center',justifyContent:'center',marginTop:32,...shadow},north:{position:'absolute',top:12,color:C.coral,fontSize:10,fontFamily:'DMSans_700Bold'},compassArrow:{alignItems:'center',justifyContent:'center'},kaaba:{position:'absolute',right:43,bottom:47,width:31,height:31,backgroundColor:C.deep,borderRadius:4},kaabaGold:{height:5,backgroundColor:C.gold,marginTop:8},direction:{color:C.ink,fontSize:31,fontFamily:'DMSans_700Bold',marginTop:24},directionText:{color:C.muted,fontSize:11,marginTop:4},primary:{backgroundColor:C.accent,paddingHorizontal:20,paddingVertical:12,minHeight:48,alignItems:'center',justifyContent:'center',borderRadius:16,marginTop:20},primaryText:{color:C.onAccentInk,fontSize:11,fontFamily:'DMSans_700Bold'},tasbihAr:{color:C.ink,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:32,marginTop:16},counter:{width:205,height:205,borderRadius:103,backgroundColor:C.accent,alignItems:'center',justifyContent:'center',borderWidth:12,borderColor:C.line,marginVertical:32,...shadow},counterNo:{color:C.onAccent,fontSize:58,fontFamily:'DMSans_700Bold'},counterGoal:{color:C.onAccent,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.3},secondary:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:8,minHeight:44,backgroundColor:C.white,paddingHorizontal:16,paddingVertical:12,borderRadius:16,borderWidth:1,borderColor:C.line,marginHorizontal:4},secondaryText:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold'},
+  tcCardLang:{color:C.muted,fontSize:10,fontFamily:'DMSans_700Bold'},juzGrid:{flexDirection:'row',flexWrap:'wrap',gap:8},juzCard:{width:'22.8%',aspectRatio:1,backgroundColor:C.card,borderRadius:16,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,...surface},juzNo:{color:C.green,fontFamily:'Newsreader_600SemiBold',fontSize:23},preloadScore:{backgroundColor:C.white,borderRadius:24,padding:20,borderWidth:1,borderColor:C.line},cacheUsage:{color:C.green,fontFamily:'DMSans_600SemiBold',fontSize:10,marginTop:8},preloadTrack:{height:9,borderRadius:4,backgroundColor:C.mint,overflow:'hidden',marginVertical:12},preloadFill:{height:'100%',backgroundColor:C.green,borderRadius:4},planGrid:{flexDirection:'row',flexWrap:'wrap',gap:12},planCard:{width:'48%',minHeight:130,backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},planDays:{color:C.green,fontFamily:'Newsreader_600SemiBold',fontSize:36},planToday:{backgroundColor:C.white,borderRadius:20,padding:16,marginTop:16,flexDirection:'row',alignItems:'center',justifyContent:'space-between',borderWidth:1,borderColor:C.line},practiceLaunch:{backgroundColor:C.mint,borderRadius:20,padding:16,marginBottom:16,flexDirection:'row',alignItems:'center',justifyContent:'space-between',borderWidth:1,borderColor:C.line},recallCard:{minHeight:340,backgroundColor:C.white,borderRadius:28,padding:20,borderWidth:1,borderColor:C.line,...shadow},recallPrompt:{color:C.ink,fontFamily:'Newsreader_600SemiBold',fontSize:21,lineHeight:29,marginTop:28,textAlign:'center'},recallArabic:{color:C.green,fontFamily:'KFGQPCUthmanicHafs',fontSize:32,lineHeight:58,textAlign:'right',marginTop:24,paddingTop:20,borderTopWidth:1,borderColor:C.line,writingDirection:'rtl'},revealArea:{flex:1,minHeight:110,alignItems:'center',justifyContent:'center',gap:8,marginTop:20,borderTopWidth:1,borderColor:C.line},hifzStatus:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10,textTransform:'uppercase'},intro:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:14,lineHeight:19,marginTop:0,marginBottom:20},exploreGrid:{flexDirection:'row',flexWrap:'wrap',gap:12},exploreCard:{flexGrow:1,flexBasis:'31%',minWidth:150},exploreCardInner:{minHeight:164,backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},exploreTitle:{color:C.ink,fontSize:16,fontFamily:'DMSans_700Bold',marginTop:12},exploreBody:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:11,lineHeight:15,marginTop:4,flex:1},exploreArrow:{width:29,height:29,borderRadius:16,backgroundColor:C.mint,alignItems:'center',justifyContent:'center',alignSelf:'flex-end'},apiPanel:{backgroundColor:C.deep,borderRadius:24,padding:20,marginTop:12},apiTitle:{color:C.onAccent,fontSize:14,fontFamily:'DMSans_700Bold',marginTop:16},apiText:{color:C.onAccent,fontSize:10,marginTop:4},
+ toolPage:{width:'100%',maxWidth:780,alignSelf:'center',alignItems:'center',padding:24,paddingTop:24,paddingBottom:BOTTOM_RESERVE},toolPageScroll:{flexGrow:1},toolEyebrow:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.2,marginTop:20},compass:{width:260,height:260,borderRadius:130,backgroundColor:C.white,borderWidth:12,borderColor:C.line,alignItems:'center',justifyContent:'center',marginTop:32,...shadow},north:{position:'absolute',top:12,color:C.coral,fontSize:10,fontFamily:'DMSans_700Bold'},compassArrow:{alignItems:'center',justifyContent:'center'},kaaba:{position:'absolute',right:43,bottom:47,width:31,height:31,backgroundColor:C.deep,borderRadius:4},kaabaGold:{height:5,backgroundColor:C.gold,marginTop:8},direction:{color:C.ink,fontSize:31,fontFamily:'DMSans_700Bold',marginTop:24},directionText:{color:C.muted,fontSize:11,marginTop:4},primary:{backgroundColor:C.accent,paddingHorizontal:20,paddingVertical:12,minHeight:48,alignItems:'center',justifyContent:'center',borderRadius:16,marginTop:20},primaryText:{color:C.onAccentInk,fontSize:11,fontFamily:'DMSans_700Bold'},tasbihAr:{color:C.ink,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:32,marginTop:16,writingDirection:'rtl'},counter:{width:205,height:205,borderRadius:103,backgroundColor:C.accent,alignItems:'center',justifyContent:'center',borderWidth:12,borderColor:C.line,marginVertical:32,...shadow},counterNo:{color:C.onAccent,fontSize:58,fontFamily:'DMSans_700Bold'},counterGoal:{color:C.onAccent,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.3},secondary:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:8,minHeight:44,backgroundColor:C.white,paddingHorizontal:16,paddingVertical:12,borderRadius:16,borderWidth:1,borderColor:C.line,marginHorizontal:4},secondaryText:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold'},
  summaryScore:{backgroundColor:C.deep,borderRadius:24,padding:20,flexDirection:'row',justifyContent:'space-between',...shadow,borderTopColor:depth.edge},summaryDay:{minHeight:66,flexDirection:'row',alignItems:'center',gap:12,paddingHorizontal:16,borderBottomWidth:1,borderColor:C.line},summaryDots:{flexDirection:'row',gap:4},summaryDot:{width:8,height:8,borderRadius:4,backgroundColor:C.mint},summaryDotDone:{backgroundColor:C.green},cityGrid:{flexDirection:'row',flexWrap:'wrap',gap:8},cityCard:{width:'48.5%',minHeight:76,backgroundColor:C.card,borderRadius:16,padding:12,borderWidth:1,borderColor:C.line,...surface},cityCardActive:{backgroundColor:C.mint,borderColor:C.line},cityName:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:12},formCard:{backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},
   rsEyebrow:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.2,marginBottom:10},
   rsPreview:{backgroundColor:C.card,borderRadius:24,padding:20,borderWidth:1,borderColor:C.line,...surface},
@@ -12305,10 +12486,10 @@ mushafPageNoText:{color:C.green,fontFamily:'Newsreader_700Bold',fontSize:16},mus
   rsPreviewMeta:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold'},
   rsGroup:{backgroundColor:C.card,borderRadius:24,padding:16,marginTop:16,borderWidth:1,borderColor:C.line,...surface},
   rsGroupTitle:{color:C.ink,fontSize:12,fontFamily:'DMSans_700Bold',letterSpacing:1.1,marginBottom:12},
-  rsDivider:{height:1,backgroundColor:C.line,marginVertical:16},fieldRow:{flexDirection:'row',gap:12},textField:{backgroundColor:C.bg,borderWidth:1,borderColor:C.line,borderRadius:16,padding:12,fontSize:13,color:C.ink,marginTop:8,outlineStyle:'none'} as any,dangerButton:{padding:16,alignItems:'center',marginTop:12},dangerText:{color:C.coral,fontFamily:'DMSans_700Bold',fontSize:11},healthCard:{flexDirection:'row',alignItems:'center',gap:12,backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,marginBottom:16,...surface},healthDot:{width:10,height:10,borderRadius:5},actionRow:{flexDirection:'row',alignItems:'center',flexWrap:'wrap',gap:8,marginTop:4},audioPreview:{backgroundColor:C.deep,borderRadius:24,padding:16,flexDirection:'row',alignItems:'center',gap:12},audioPlay:{width:48,height:48,borderRadius:24,backgroundColor:C.accent,alignItems:'center',justifyContent:'center'},guideGrid:{flexDirection:'row',flexWrap:'wrap',gap:12},guideCard:{flexGrow:1,flexBasis:'30%',minWidth:150},guideCardInner:{minHeight:180,backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},guideHero:{borderRadius:24,padding:22,marginTop:16,alignItems:'center'},guideHeroKicker:{color:C.onHero,fontFamily:'DMSans_700Bold',fontSize:10,letterSpacing:1.4,textTransform:'uppercase',marginBottom:14},guideHeroArabic:{color:C.onAccent,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:26,lineHeight:46,textAlign:'center'},guideStep:{flexDirection:'row',gap:14,paddingVertical:16,paddingHorizontal:16,borderBottomWidth:1,borderColor:C.line,alignItems:'flex-start'},guideStepLast:{borderBottomWidth:0},stepNo:{width:28,height:28,borderRadius:14,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},stepNoText:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10},guideStepText:{flex:1,color:C.ink,fontFamily:'DMSans_400Regular',fontSize:13.5,lineHeight:21},guideNote:{backgroundColor:C.yellow,borderRadius:20,padding:16,marginTop:20},referenceRow:{minHeight:54,backgroundColor:C.white,borderRadius:16,paddingHorizontal:16,marginBottom:8,flexDirection:'row',alignItems:'center',justifyContent:'space-between',borderWidth:1,borderColor:C.line},evidenceCard:{backgroundColor:C.card,borderRadius:18,padding:15,marginBottom:11,borderWidth:1,borderColor:C.line},evidenceLabel:{color:C.green,fontSize:11,fontFamily:'DMSans_700Bold',letterSpacing:.4,marginBottom:9},evidenceArabic:{color:C.ink,fontSize:17,fontFamily:'NotoNaskhArabic_400Regular',lineHeight:31,marginBottom:8,writingDirection:'rtl',textAlign:'right'},evidenceBody:{color:C.body,fontSize:13,fontFamily:'DMSans_400Regular',lineHeight:20},evidenceVerse:{marginBottom:11},evidenceFoot:{flexDirection:'row',alignItems:'center',marginTop:10,paddingTop:10,borderTopWidth:1,borderTopColor:C.line},evidenceLink:{flex:1,color:C.green,fontSize:12,fontFamily:'DMSans_600SemiBold'},emptyWrap:{alignItems:'center',justifyContent:'center',paddingVertical:60,gap:10,paddingHorizontal:24},emptyTitle:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:16,textAlign:'center'},emptyBody:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:13,lineHeight:20,textAlign:'center'},
+  rsDivider:{height:1,backgroundColor:C.line,marginVertical:16},fieldRow:{flexDirection:'row',gap:12},textField:{backgroundColor:C.bg,borderWidth:1,borderColor:C.line,borderRadius:16,padding:12,fontSize:13,color:C.ink,marginTop:8,outlineStyle:'none'} as any,dangerButton:{padding:16,alignItems:'center',marginTop:12},dangerText:{color:C.coral,fontFamily:'DMSans_700Bold',fontSize:11},healthCard:{flexDirection:'row',alignItems:'center',gap:12,backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,marginBottom:16,...surface},healthDot:{width:10,height:10,borderRadius:5},actionRow:{flexDirection:'row',alignItems:'center',flexWrap:'wrap',gap:8,marginTop:4},audioPreview:{backgroundColor:C.deep,borderRadius:24,padding:16,flexDirection:'row',alignItems:'center',gap:12},audioPlay:{width:48,height:48,borderRadius:24,backgroundColor:C.accent,alignItems:'center',justifyContent:'center'},guideGrid:{flexDirection:'row',flexWrap:'wrap',gap:12},guideCard:{flexGrow:1,flexBasis:'30%',minWidth:150},guideCardInner:{minHeight:180,backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},guideHero:{borderRadius:24,padding:22,marginTop:16,alignItems:'center'},guideHeroKicker:{color:C.onHero,fontFamily:'DMSans_700Bold',fontSize:10,letterSpacing:1.4,textTransform:'uppercase',marginBottom:14},guideHeroArabic:{color:C.onAccent,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:26,lineHeight:46,textAlign:'center',writingDirection:'rtl'},guideStep:{flexDirection:'row',gap:14,paddingVertical:16,paddingHorizontal:16,borderBottomWidth:1,borderColor:C.line,alignItems:'flex-start'},guideStepLast:{borderBottomWidth:0},stepNo:{width:28,height:28,borderRadius:14,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},stepNoText:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10},guideStepText:{flex:1,color:C.ink,fontFamily:'DMSans_400Regular',fontSize:13.5,lineHeight:21},guideNote:{backgroundColor:C.yellow,borderRadius:20,padding:16,marginTop:20},referenceRow:{minHeight:54,backgroundColor:C.white,borderRadius:16,paddingHorizontal:16,marginBottom:8,flexDirection:'row',alignItems:'center',justifyContent:'space-between',borderWidth:1,borderColor:C.line},evidenceCard:{backgroundColor:C.card,borderRadius:18,padding:15,marginBottom:11,borderWidth:1,borderColor:C.line},evidenceLabel:{color:C.green,fontSize:11,fontFamily:'DMSans_700Bold',letterSpacing:.4,marginBottom:9},evidenceArabic:{color:C.ink,fontSize:17,fontFamily:'NotoNaskhArabic_400Regular',lineHeight:31,marginBottom:8,writingDirection:'rtl',textAlign:'right'},evidenceBody:{color:C.body,fontSize:13,fontFamily:'DMSans_400Regular',lineHeight:20},evidenceVerse:{marginBottom:11},evidenceFoot:{flexDirection:'row',alignItems:'center',marginTop:10,paddingTop:10,borderTopWidth:1,borderTopColor:C.line},evidenceLink:{flex:1,color:C.green,fontSize:12,fontFamily:'DMSans_600SemiBold'},emptyWrap:{alignItems:'center',justifyContent:'center',paddingVertical:60,gap:10,paddingHorizontal:24},emptyTitle:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:16,textAlign:'center'},emptyBody:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:13,lineHeight:20,textAlign:'center'},
   inboxEmpty:{alignItems:'center',paddingVertical:40,gap:8},inboxHead:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginBottom:10},
   inboxRow:{flexDirection:'row',gap:12,padding:14,borderBottomWidth:1,borderColor:C.line,alignItems:'flex-start'},inboxDot:{width:8,height:8,borderRadius:4,marginTop:6},
-  inboxKind:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:9,letterSpacing:.8},inboxTime:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:11,marginTop:2},dataPage:{width:'100%',maxWidth:860,alignSelf:'center',padding:20,paddingBottom:BOTTOM_RESERVE},empty:{backgroundColor:C.white,borderRadius:24,padding:24,alignItems:'center',borderWidth:1,borderColor:C.line},dataTitle:{color:C.ink,fontSize:29,fontFamily:'Newsreader_600SemiBold',letterSpacing:-.5,marginTop:16,marginBottom:8},dataCard:{backgroundColor:C.card,borderRadius:20,padding:16,marginBottom:12,borderWidth:1,borderColor:C.line,...surface},bookmarkMain:{flex:1},bookmarkRemove:{paddingStart:10,paddingVertical:4,justifyContent:'center'},dataArabic:{color:C.green,fontFamily:'KFGQPCUthmanicHafs',fontSize:27,lineHeight:48,textAlign:'right'},dataName:{color:C.ink,fontSize:14,fontFamily:'DMSans_700Bold',marginTop:4},dataBody:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:13,lineHeight:18,marginTop:4},dataMeta:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold',marginTop:12,textTransform:'uppercase'},inputLabel:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.2,marginTop:12},moneyInput:{backgroundColor:C.white,borderWidth:1,borderColor:C.line,borderRadius:20,padding:16,fontSize:24,fontFamily:'DMSans_700Bold',color:C.ink,marginTop:8,outlineStyle:'none'} as any,zakatResult:{borderRadius:24,padding:20,marginTop:12},zakatNo:{color:C.onAccent,fontSize:34,fontFamily:'DMSans_700Bold',marginTop:8},
+  inboxKind:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:9,letterSpacing:.8},inboxTime:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:11,marginTop:2},dataPage:{width:'100%',maxWidth:860,alignSelf:'center',padding:20,paddingBottom:BOTTOM_RESERVE},empty:{backgroundColor:C.white,borderRadius:24,padding:24,alignItems:'center',borderWidth:1,borderColor:C.line},dataTitle:{color:C.ink,fontSize:29,fontFamily:'Newsreader_600SemiBold',letterSpacing:-.5,marginTop:16,marginBottom:8},dataCard:{backgroundColor:C.card,borderRadius:20,padding:16,marginBottom:12,borderWidth:1,borderColor:C.line,...surface},bookmarkMain:{flex:1},bookmarkRemove:{paddingStart:10,paddingVertical:4,justifyContent:'center'},dataArabic:{color:C.green,fontFamily:'KFGQPCUthmanicHafs',fontSize:27,lineHeight:48,textAlign:'right',writingDirection:'rtl'},dataName:{color:C.ink,fontSize:14,fontFamily:'DMSans_700Bold',marginTop:4},dataBody:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:13,lineHeight:18,marginTop:4},dataMeta:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold',marginTop:12,textTransform:'uppercase'},inputLabel:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.2,marginTop:12},moneyInput:{backgroundColor:C.white,borderWidth:1,borderColor:C.line,borderRadius:20,padding:16,fontSize:24,fontFamily:'DMSans_700Bold',color:C.ink,marginTop:8,outlineStyle:'none'} as any,zakatResult:{borderRadius:24,padding:20,marginTop:12},zakatNo:{color:C.onAccent,fontSize:34,fontFamily:'DMSans_700Bold',marginTop:8},
  profileName:{color:C.onAccent,fontSize:18,fontFamily:'DMSans_700Bold'},profileSub:{color:C.onHero,fontSize:10,marginTop:4},privacyHero:{borderRadius:24,padding:20,flexDirection:'row',alignItems:'center',gap:12,...shadow},privacyPoints:{flexDirection:'row',gap:8,marginTop:12},privacyPoint:{flex:1,backgroundColor:C.card,borderRadius:16,paddingVertical:12,alignItems:'center',gap:4,borderWidth:1,borderColor:C.line},privacyPointText:{color:C.ink,fontSize:10,fontFamily:'DMSans_700Bold',textAlign:'center'},preferencePanel:{backgroundColor:C.card,borderRadius:24,padding:16,borderWidth:1,borderColor:C.line,...surface},preferenceHead:{flexDirection:'row',alignItems:'center',gap:12,marginBottom:16},prefIconTile:{width:54,height:54,borderRadius:18,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},choiceGrid:{flexDirection:'row',flexWrap:'wrap',gap:8},choiceRow:{flexDirection:'row',gap:8},
   hadithPick:{marginTop:4,marginBottom:20},hadithSearch:{marginBottom:0},hadithResults:{marginBottom:10},
   nameShare:{width:40,height:40,borderRadius:20,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,flexShrink:0},
@@ -12317,7 +12498,7 @@ mushafPageNoText:{color:C.green,fontFamily:'Newsreader_700Bold',fontSize:16},mus
   trackStatValue:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:22},trackStatLabel:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:11,marginTop:2},
   trackLegend:{flexDirection:'row',alignItems:'center',gap:6,marginTop:14},trackLegendText:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:11},
   madeWith:{alignItems:'center',paddingTop:28,paddingBottom:8},madeWithText:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:12},
-  reminderSub:{marginTop:12,marginBottom:7},reminderPills:{marginBottom:6},
+  
   packingGroupHead:{flexDirection:'row',alignItems:'center',gap:8},packingGroupCount:{color:C.muted,fontFamily:'DMSans_600SemiBold',fontSize:11},
   packingGroupCaution:{borderColor:C.gold,borderWidth:1},
   fastMonths:{flexDirection:'row',alignItems:'flex-end',justifyContent:'space-between',gap:8,marginTop:4},
@@ -12348,7 +12529,7 @@ mushafPageNoText:{color:C.green,fontFamily:'Newsreader_700Bold',fontSize:16},mus
   livePlay:{width:38,height:38,borderRadius:19,backgroundColor:C.onAccent,alignItems:'center',justifyContent:'center'},
   vocabRow:{flexDirection:'row',alignItems:'center',gap:12,padding:14,borderBottomWidth:1,borderColor:C.line},
   vocabSave:{padding:4},
-  vocabWord:{color:C.ink,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:22,lineHeight:34,textAlign:'right'},
+  vocabWord:{color:C.ink,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:22,lineHeight:34,textAlign:'right',writingDirection:'rtl'},
   vocabKnown:{backgroundColor:C.mint,borderRadius:10,paddingHorizontal:8,paddingVertical:3},
   vocabKnownText:{color:C.green,fontFamily:'DMSans_600SemiBold',fontSize:10},
   letterGrid:{flexDirection:'row',flexWrap:'wrap',gap:10},letterCell:{width:42,height:42,borderRadius:12,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,backgroundColor:C.white},letterCellWide:{width:58},letterCellActive:{backgroundColor:C.accent,borderColor:C.green},letterCellEmpty:{opacity:.4},letterText:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:13},letterTextActive:{color:C.onAccent},letterTextDim:{color:C.muted},  settingsRow:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingHorizontal:16,paddingVertical:14,borderBottomWidth:1,borderColor:C.line},choicePill:{minHeight:44,justifyContent:'center',minWidth:44,alignItems:'center',paddingHorizontal:12,paddingVertical:8,borderRadius:12,backgroundColor:C.bg,borderWidth:1,borderColor:C.line},choicePillActive:{backgroundColor:C.accent,borderColor:C.green},choiceText:{color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:10},choiceTextActive:{color:C.onAccent},preferenceLabel:{color:C.muted,fontFamily:'DMSans_700Bold',fontSize:10,letterSpacing:1.1,marginTop:16,marginBottom:8},settings:{backgroundColor:C.card,borderRadius:24,overflow:'hidden',borderWidth:1,borderColor:C.line,...surface},setting:{minHeight:69,flexDirection:'row',alignItems:'center',gap:12,paddingHorizontal:12,borderBottomWidth:1,borderColor:C.line},settingName:{color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:13},
@@ -12416,7 +12597,7 @@ playerTranslationOptionOn:{backgroundColor:C.mint},
  playerPerformer:{color:C.onAccent,fontSize:11,marginTop:5},
  trackBadge:{marginTop:16,backgroundColor:'rgba(255,255,255,.14)',borderRadius:12,paddingHorizontal:12,paddingVertical:8},
  trackBadgeText:{color:C.onHero,fontFamily:'DMSans_700Bold',fontSize:10,letterSpacing:1.1},
- playerArabic:{color:C.ink,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:26,lineHeight:46,textAlign:'right',marginTop:24,direction:'rtl'} as any,
+ playerArabic:{color:C.ink,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:26,lineHeight:46,textAlign:'right',marginTop:24,direction:'rtl',writingDirection:'rtl'} as any,
  audioTimes:{flexDirection:'row',justifyContent:'space-between',marginTop:28},
  audioControls:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:16,marginTop:24},
  audioControlBtn:{width:52,height:52,borderRadius:26,backgroundColor:C.white,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,...soft},
@@ -12437,10 +12618,10 @@ playerTranslationOptionOn:{backgroundColor:C.mint},
   hadithTrack:{height:6,borderRadius:3,backgroundColor:C.line,marginTop:8,overflow:'hidden'},
   hadithFill:{height:'100%',borderRadius:4,backgroundColor:C.green},
   hadithCollectionCard:{backgroundColor:C.card,borderRadius:20,padding:16,marginBottom:12,borderWidth:1,borderColor:C.line,...surface},
-  hadithCollectionTop:{flexDirection:'row',alignItems:'center',gap:12},
+  hadithCollectionTop:{flexDirection:'row',alignItems:'center',gap:12},hadithCollectionAr:{color:C.green,fontFamily:'KFGQPCUthmanicHafs',fontSize:19,lineHeight:30,textAlign:'right',writingDirection:'rtl',marginTop:2},hadithCountCol:{alignItems:'flex-end',marginLeft:4},hadithCountNum:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:15,includeFontPadding:false},hadithCountLabel:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:9,marginTop:1},hadithRowMeta:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold',textTransform:'uppercase',marginTop:3},hadithRowAr:{color:C.green,fontFamily:'KFGQPCUthmanicHafs',fontSize:21,lineHeight:36,textAlign:'right',writingDirection:'rtl',marginTop:7,includeFontPadding:false},
   hadithRowTop:{flexDirection:'row',alignItems:'flex-start',gap:12},
-  hadithNumber:{width:34,height:34,borderRadius:12,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},
-  hadithNumberText:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:12},
+  hadithNumber:{minWidth:34,height:34,borderRadius:12,backgroundColor:C.mint,alignItems:'center',justifyContent:'center',paddingHorizontal:8},
+  hadithNumberText:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:12,includeFontPadding:false,textAlign:'center'},
   hadithNumberLarge:{width:46,height:46,borderRadius:16,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},
   hadithDetailHead:{flexDirection:'row',alignItems:'center',gap:12},
   hadithGrades:{flexDirection:'row',flexWrap:'wrap',gap:8,marginTop:16},
@@ -12455,7 +12636,7 @@ hadithCrumbMain:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:11,letterSpa
 hadithCrumbSub:{color:C.muted,fontSize:11,marginTop:4,textAlign:'center'},
 hadithPage:{backgroundColor:themeDark?mix(BRAND.midnightInk,BRAND.lavender,.12):brandHex('#FCFAF6'),borderRadius:10,borderWidth:1.6,borderColor:C.gold,padding:12,...soft},
 hadithPageInner:{borderRadius:5,borderWidth:.8,borderColor:C.gold,paddingHorizontal:16,paddingVertical:20},
-hadithPageAr:{color:C.ink,fontFamily:'NotoNaskhArabic_400Regular',fontSize:24,lineHeight:46,textAlign:'right',direction:'rtl'} as any,
+hadithPageAr:{color:C.ink,fontFamily:'NotoNaskhArabic_400Regular',fontSize:24,lineHeight:46,textAlign:'right',direction:'rtl',writingDirection:'rtl'} as any,
 hadithPageNo:{alignSelf:'center',marginTop:-1,marginBottom:-22,width:36,height:36,borderRadius:18,borderWidth:1.3,borderColor:C.gold,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},
 hadithPageNoText:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:12},
 hadithReaderEn:{color:C.ink,fontSize:15.5,lineHeight:27,marginTop:26},
@@ -12480,8 +12661,8 @@ reportBtn:{flex:1,paddingVertical:9,paddingHorizontal:12,borderRadius:11,backgro
 reportBtnText:{color:'#fff',fontSize:12.5,fontFamily:'DMSans_600SemiBold'},
 reportBtnGhost:{paddingVertical:8,paddingHorizontal:12,borderRadius:11},
 reportBtnGhostText:{color:C.coral,fontSize:12,fontFamily:'DMSans_600SemiBold'},
-onbWideBtn:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:9,backgroundColor:C.mint,borderRadius:14,borderWidth:1,borderColor:C.green,paddingVertical:13,marginBottom:12},
-onbWideBtnText:{color:C.green,fontFamily:'DMSans_600SemiBold',fontSize:13},
+
+
 onbChosen:{flexDirection:'row',alignItems:'center',gap:9,backgroundColor:C.mint,borderRadius:14,padding:12,marginBottom:12,borderWidth:1,borderColor:C.line},
 onbChosenText:{color:C.ink,fontSize:13,flex:1},
 onbNote:{backgroundColor:C.bg,borderRadius:12,padding:12,marginTop:8,borderWidth:1,borderColor:C.line},
@@ -12493,7 +12674,7 @@ locationBanner:{flexDirection:'row',alignItems:'center',gap:11,backgroundColor:C
 locationBannerIcon:{width:34,height:34,borderRadius:17,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},
 locationBannerTitle:{color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:12.5},
 sleepHadith:{backgroundColor:C.mint,borderRadius:16,padding:16,borderWidth:1,borderColor:C.line,marginBottom:12},
-sleepHadithAr:{color:C.ink,fontSize:15,lineHeight:28,textAlign:'center',marginBottom:10,fontFamily:'Amiri_400Regular'},
+sleepHadithAr:{color:C.ink,fontSize:15,lineHeight:28,textAlign:'center',marginBottom:10,fontFamily:'Amiri_400Regular',writingDirection:'rtl'},
 sleepHadithEn:{color:C.ink,fontSize:12.5,lineHeight:20,fontStyle:'italic',marginBottom:8},
 sleepHadithRef:{color:C.green,fontSize:10.5,letterSpacing:.6,marginTop:2},
 sleepPrivacy:{flexDirection:'row',gap:10,backgroundColor:C.bg,borderRadius:12,padding:12,marginTop:12,borderWidth:1,borderColor:C.line},
@@ -12514,8 +12695,8 @@ mushafPageStack:{alignItems:'center',paddingVertical:6},
 mushafPageOuter:{overflow:'hidden'},
 mushafMarkerBand:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:6,marginVertical:5},
 mushafMarkerRule:{height:1,backgroundColor:C.gold,opacity:.55},
-mushafMarkerName:{color:C.gold,fontSize:11,fontFamily:'NotoNaskhArabic_600SemiBold'},
-mushafMarkerNum:{color:C.gold,fontSize:11,fontFamily:'NotoNaskhArabic_400Regular'},
+mushafMarkerName:{color:C.gold,fontSize:11,fontFamily:'NotoNaskhArabic_600SemiBold',writingDirection:'rtl'},
+mushafMarkerNum:{color:C.gold,fontSize:11,fontFamily:'NotoNaskhArabic_400Regular',writingDirection:'rtl'},
 mushafConnection:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:5,paddingVertical:5,paddingHorizontal:10,alignSelf:'center',backgroundColor:C.card,borderRadius:11,borderWidth:1,borderColor:C.line,marginVertical:3},
 mushafConnectionText:{color:C.muted,fontSize:10.5,fontFamily:'DMSans_600SemiBold'},
 mushafConnectionTextCut:{color:C.gold},
@@ -12538,11 +12719,11 @@ locationBannerBody:{color:C.muted,fontSize:11,lineHeight:15,marginTop:2},
   duaCategoryName:{color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:12,marginTop:4},
   offlineNote:{backgroundColor:C.mint,borderRadius:16,padding:12,marginBottom:12,borderWidth:1,borderColor:C.line},
   offlineNoteText:{color:C.green,fontSize:11,fontFamily:'DMSans_600SemiBold'},
-  tasbihCard:{backgroundColor:C.card,borderRadius:20,padding:16,alignItems:'center',marginTop:16,borderWidth:1,borderColor:C.line,...surface},
+  tasbihCard:{backgroundColor:C.card,borderRadius:20,padding:16,alignItems:'center',marginTop:16,borderWidth:1,borderColor:C.line,...surface},sunnahList:{backgroundColor:C.card,borderRadius:20,padding:12,borderWidth:1,borderColor:C.line,gap:8,...surface},sunnahRow:{borderRadius:14,paddingVertical:13,paddingHorizontal:12,backgroundColor:C.mint,borderWidth:1,borderColor:C.line},sunnahRowOn:{backgroundColor:C.accent,borderColor:C.green},sunnahRowName:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:13},tasbihRow:{paddingVertical:4,marginTop:16},tasbihGoalRow:{marginTop:2},timeField:{marginTop:12},timeFieldLabel:{color:C.muted,fontFamily:'DMSans_700Bold',fontSize:10,letterSpacing:1.1,marginBottom:7},timeFieldButton:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',minHeight:48,backgroundColor:C.white,paddingHorizontal:16,borderRadius:16,borderWidth:1,borderColor:C.line},timeFieldValue:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:16,direction:'ltr'},clockScrim:{flex:1,backgroundColor:'rgba(11,8,20,0.55)',alignItems:'center',justifyContent:'center',padding:24},clockSheet:{width:'100%',maxWidth:360,backgroundColor:C.bg,borderRadius:24,padding:20,borderWidth:1,borderColor:C.line,...shadow},clockTitle:{color:C.ink,fontSize:18,fontFamily:'Newsreader_600SemiBold',textAlign:'center'},clockPreview:{color:C.green,fontSize:28,fontFamily:'DMSans_700Bold',textAlign:'center',marginTop:6,direction:'ltr'},clockWheels:{flexDirection:'row',justifyContent:'center',alignItems:'center',gap:4,marginTop:14,direction:'ltr'},clockBand:{position:'absolute',top:CLOCK_ROW*2,left:0,right:0,height:CLOCK_ROW,borderRadius:12,backgroundColor:C.mint,borderWidth:1,borderColor:C.line},clockItem:{height:CLOCK_ROW,alignItems:'center',justifyContent:'center'},clockItemText:{color:C.ink,fontSize:19,fontFamily:'DMSans_600SemiBold'},clockActions:{flexDirection:'row',gap:8,marginTop:18},toast:{position:'absolute',left:24,right:24,bottom:BOTTOM_RESERVE+8,flexDirection:'row',alignItems:'center',gap:10,backgroundColor:C.white,borderRadius:16,paddingHorizontal:16,paddingVertical:13,borderWidth:1,borderColor:C.line,...shadow},toastText:{flex:1,color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:12,lineHeight:17},
   nameOfDayCard:{backgroundColor:C.deep,borderRadius:24,padding:20,alignItems:'center',marginTop:16,...shadow,borderTopColor:depth.edge},
-  namesArabicLarge:{color:C.onAccent,fontFamily:'Amiri_400Regular',fontSize:38,marginTop:8,textAlign:'center'},
+  namesArabicLarge:{color:C.onAccent,fontFamily:'Amiri_400Regular',fontSize:38,marginTop:8,textAlign:'center',writingDirection:'rtl'},
   namesTransliteration:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:12,marginTop:8},
-  namesArabic:{color:C.ink,fontFamily:'Amiri_400Regular',fontSize:24,textAlign:'right'},
+  namesArabic:{color:C.ink,fontFamily:'Amiri_400Regular',fontSize:24,textAlign:'right',writingDirection:'rtl'},
   nameRow:{flexDirection:'row',alignItems:'flex-start',gap:12,paddingVertical:12,borderBottomWidth:1,borderColor:C.line},
   nameNumber:{width:56,alignItems:'flex-end'},
 backRow:{marginBottom:4,flexDirection:'row'},
@@ -12632,8 +12813,8 @@ homeReflectTabOn:{backgroundColor:C.card,borderWidth:1,borderColor:C.line},
 homeReflectTabText:{color:C.muted,fontFamily:'DMSans_600SemiBold',fontSize:12},
 homeReflectTabTextOn:{color:C.green,fontFamily:'DMSans_700Bold'},
 homeReflectHero:{backgroundColor:C.card,borderRadius:24,padding:20,borderWidth:1,borderColor:C.line,...surface},
-homeReflectArabic:{color:C.ink,fontFamily:'KFGQPCUthmanicHafs',fontSize:28,lineHeight:46,textAlign:'right',marginTop:12},
-homeReflectName:{color:C.green,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:40,textAlign:'right',marginTop:14},
+homeReflectArabic:{color:C.ink,fontFamily:'KFGQPCUthmanicHafs',fontSize:28,lineHeight:46,textAlign:'right',marginTop:12,writingDirection:'rtl'},
+homeReflectName:{color:C.green,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:40,textAlign:'right',marginTop:14,writingDirection:'rtl'},
 homeReflectBody:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:13.5,lineHeight:21,marginTop:10},
 homeReflectFoot:{flexDirection:'row',alignItems:'center',gap:6,marginTop:16,paddingTop:14,borderTopWidth:1,borderTopColor:C.line},
 homeReflectFootText:{color:C.green,fontFamily:'DMSans_600SemiBold',fontSize:12,flex:1},
@@ -12670,9 +12851,9 @@ dayToolIcon:{width:52,height:52,borderRadius:26,backgroundColor:C.mint,alignItem
   onbCancel:{paddingHorizontal:10,paddingVertical:5,borderRadius:10,borderWidth:1,borderColor:C.line,backgroundColor:C.card},
   onbCancelText:{color:C.ink,fontSize:11,fontFamily:'DMSans_600SemiBold'},
   /* Onboarding permission: the ask, and somewhere to go if it is not shown. */
-  onbBtnRow:{flexDirection:'row',alignItems:'center',gap:8},
-  onbSettingsBtn:{paddingHorizontal:14,paddingVertical:13,borderRadius:14,borderWidth:1,borderColor:C.line,backgroundColor:C.card,justifyContent:'center'},
-  onbSettingsBtnText:{color:C.ink,fontSize:12.5,fontFamily:'DMSans_600SemiBold'},
+  
+  
+  
     /* The backdrop that holds the screen while it dips out and back during a
        theme change. Opaque and full-height, so what shows through the dip is
        the new ground colour rather than whatever sits behind the app. */
@@ -12681,7 +12862,7 @@ dayToolIcon:{width:52,height:52,borderRadius:26,backgroundColor:C.mint,alignItem
      * ---------------------------------------------------------------- */
     ramToday:{borderRadius:24,padding:18,...shadow},
     ramTodayTop:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:12},
-    ramArabic:{color:C.onHero,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:30},
+    ramArabic:{color:C.onHero,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:30,writingDirection:'rtl'},
     ramStatus:{color:C.onAccent,fontFamily:'DMSans_700Bold',fontSize:12},
     ramTodayTimes:{flexDirection:'row',gap:10,marginTop:16},
     ramTimeBlock:{flex:1,backgroundColor:'rgba(255,255,255,.15)',borderRadius:14,padding:11},

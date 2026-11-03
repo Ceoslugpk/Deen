@@ -21,10 +21,49 @@ import { Platform } from 'react-native';
  * None of this applies to iOS, which has no equivalent mechanism, nor to the
  * web. Those report `notNeeded` so the interface can simply not mention it.
  */
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as IntentLauncher from 'expo-intent-launcher';
 import Constants from 'expo-constants';
 
 export type BatteryState = 'notNeeded' | 'unknown' | 'exempt' | 'restricted';
+
+/**
+ * Whether we have sent the reader to the exemption dialog at least once.
+ *
+ * Android offers no way for an app to read its own optimisation state from
+ * JavaScript: `isIgnoringBatteryOptimizations` lives on the PowerManager,
+ * which React Native does not expose, and the intent round-trip below gives no
+ * answer either. So the state cannot be verified — only requested.
+ *
+ * Without this, the "Fix now" button never went away. The reader would grant
+ * the exemption, come back, and find the same button still asking, because
+ * every re-read reported `unknown`. Being asked to fix something already fixed,
+ * forever, is worse than being trusted once.
+ *
+ * So the ask is remembered and treated as done. The wording on the screen says
+ * what can honestly be said — that the app has been exempted from the app's
+ * side — and a link to the system battery settings stays put, so the setting
+ * can always be checked or reversed by hand.
+ */
+const ASKED_KEY = 'battery-exemption-asked-v1';
+let asked: boolean | null = null;
+
+export async function markBatteryExemptionAsked(): Promise<void> {
+  asked = true;
+  await AsyncStorage.setItem(ASKED_KEY, '1').catch(() => undefined);
+}
+
+export async function resetBatteryExemptionAsked(): Promise<void> {
+  asked = false;
+  await AsyncStorage.removeItem(ASKED_KEY).catch(() => undefined);
+}
+
+async function hasAsked(): Promise<boolean> {
+  if (asked !== null) return asked;
+  const raw = await AsyncStorage.getItem(ASKED_KEY).catch(() => null);
+  asked = raw === '1';
+  return asked;
+}
 
 let Activity: any = null;
 try {
@@ -42,6 +81,9 @@ try {
  */
 export async function getBatteryOptimizationState(): Promise<BatteryState> {
   if (Platform.OS !== 'android') return 'notNeeded';
+  /* Asked once and never answerable, so the ask is what we remember. See the
+     note on ASKED_KEY: the alternative is a button that never goes away. */
+  if (await hasAsked()) return 'exempt';
   try {
     const PowerManager = (globalThis as any).PowerManager;
     // `isIgnoringBatteryOptimizations` needs the PowerManager, which React
@@ -91,12 +133,14 @@ export async function requestBatteryExemption(): Promise<boolean | null> {
       'android.settings.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS',
       { data: `package:${pkg}` },
     );
+    await markBatteryExemptionAsked();
     return true;
   } catch {
     // The manufacturer removed the dialog. Fall back to the general battery
     // settings page so the person can still find it by hand.
     try {
       await IntentLauncher.startActivityAsync(IntentLauncher.ActivityAction.IGNORE_BATTERY_OPTIMIZATION_SETTINGS);
+      await markBatteryExemptionAsked();
       return true;
     } catch {
       return false;
