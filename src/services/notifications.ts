@@ -439,6 +439,12 @@ const intervalTrigger = (seconds: number, channelId: string) =>
 const dailyTrigger = (hour: number, minute: number, channelId: string) =>
   ({ type: Notifications.SchedulableTriggerInputTypes.DAILY, hour, minute, channelId }) as any;
 
+/**
+ * Where somebody left off, in the two forms it is needed in: as words for the
+ * body of the reminder, and as a place the app can open.
+ */
+export type PendingReading = { surahId: number; verseKey: string; label: string };
+
 export type ScheduleResult = {
   scheduled: number;
   unsupported: boolean;
@@ -501,16 +507,16 @@ export function schedulePrayerNotifications(
   snapshot: PrayerSnapshot,
   settings: WorshipSettings,
   rtl = false,
-  readingLabel?: string,
+  reading?: PendingReading | null,
 ): Promise<ScheduleResult> {
-  return scheduleQueue(() => rebuildSchedule(snapshot, settings, rtl, readingLabel));
+  return scheduleQueue(() => rebuildSchedule(snapshot, settings, rtl, reading));
 }
 
 async function rebuildSchedule(
   snapshot: PrayerSnapshot,
   settings: WorshipSettings,
   rtl = false,
-  readingLabel?: string,
+  reading?: PendingReading | null,
 ): Promise<ScheduleResult> {
   if (Platform.OS === 'web') return { scheduled: 0, unsupported: true, adhans: 0, adhanAudio: NO_AUDIO };
   pending = [];
@@ -578,15 +584,23 @@ async function rebuildSchedule(
       }
 
       // ---- 2. back to your reading, half an hour later -----------------
-      if (settings.continueReadingReminder !== false && readingLabel) {
+      if (settings.continueReadingReminder !== false && reading?.label) {
         const later = new Date(at.getTime() + 30 * 60 * 1000);
         if (later > now) {
           await scheduleAndLog({
             content: {
               title: c.continueTitle,
-              body: c.continueBody(readingLabel),
+              body: c.continueBody(reading.label),
               sound: 'default',
-              data: { route: 'Quran', kind: 'continue' },
+              /* Where to go is written into the notification as well as read
+                 from storage at tap time. Storage is the better answer, since
+                 a person may have read on since this was scheduled, but if it
+                 is ever empty the notification still knows which ayah it was
+                 talking about instead of opening the Quran to nowhere. */
+              data: {
+                route: 'Quran', kind: 'continue',
+                surah: reading.surahId, verseKey: reading.verseKey,
+              },
             },
             trigger: dateTrigger(later, CHANNEL_DAILY),
           });

@@ -69,6 +69,7 @@ import {
   clearNotificationLog, loadNotificationLog, markDelivered, markOpened, newestFirst,
   type NotificationRecord,
 } from './src/services/notificationLog';
+import * as Notifications from 'expo-notifications';
 import { addNotificationReceivedListener, addNotificationResponseReceivedListener, type NotificationResponse } from 'expo-notifications';
 import { getBatteryOptimizationState, openBatterySettings, requestBatteryExemption, type BatteryState } from './src/services/batteryOptimization';
 import { copyFeedback, issueLabel, loadReports, markReportSent } from './src/services/reportService';
@@ -2698,7 +2699,11 @@ function ReaderScreen({route,navigation}:any){
   const[cached,setCached]=useState(false);
   const[progress,setProgress]=useState(0);
   const scrollRef=useRef<any>(null);
-  const didRestore=useRef(false);
+  /* Which ayah has been scrolled to already, rather than a bare yes/no.
+      A flag meant the reader restored its position the first time and then
+      never again, so continuing from a notification into a surah that was
+      already open updated the verse and left the page where it was. */
+  const restoredFor=useRef<string|null>(null);
   const verseRefs=useRef<Record<string,any>>({});
   const scrollY=useRef(0);
   const{rtl}=useLanguage();
@@ -2740,10 +2745,10 @@ function ReaderScreen({route,navigation}:any){
      top of the surah. Measuring the verse and the scroll view in page
      coordinates and adding the current offset gives the real position. */
   useEffect(()=>{
-    if(!target||!verses.length||didRestore.current)return;
+    if(!target||!verses.length||restoredFor.current===target)return;
     const node=verseRefs.current[target];
     if(!node)return;
-    didRestore.current=true;
+    restoredFor.current=target;
     const timer=setTimeout(()=>{
       node.measure?.((_x:number,_y:number,_w:number,_h:number,_px:number,py:number)=>{
         scrollRef.current?.measure?.((
@@ -2766,7 +2771,7 @@ function ReaderScreen({route,navigation}:any){
   const hizbOf=(v:Verse)=>v.hizbQuarter?Math.ceil(v.hizbQuarter/4):0;
   const opts=()=>({script:scriptFor(preferences.scriptEdition),translation:preferences.translationEdition});
   const cacheKey=readerCacheKey({section,chapterId,juz,hizb,page,script:preferences.scriptEdition,translation:preferences.translationEdition});
-  const load=async()=>{setError('');setVerses([]);didRestore.current=false;setProgress(0);const o=opts();const local=await loadSurahCache(cacheKey) as Verse[]|null;if(local){setVerses(local);setCached(true)}try{const fresh=(isMushaf&&page!==null)?await getPageVerses(page,o):section==='juz'?await getJuzVerses(juz,o):section==='hizb'?await getHizbVerses(hizb,o):section==='page'?await getPageVerses(Number(route.params?.page||1),o):await getVerses(chapterId,o);setVerses(fresh);setCached(false);await saveSurahCache(cacheKey,fresh)}catch(e:any){if(!local)setError(T(e.message))}};
+  const load=async()=>{setError('');setVerses([]);restoredFor.current=null;setProgress(0);const o=opts();const local=await loadSurahCache(cacheKey) as Verse[]|null;if(local){setVerses(local);setCached(true)}try{const fresh=(isMushaf&&page!==null)?await getPageVerses(page,o):section==='juz'?await getJuzVerses(juz,o):section==='hizb'?await getHizbVerses(hizb,o):section==='page'?await getPageVerses(Number(route.params?.page||1),o):await getVerses(chapterId,o);setVerses(fresh);setCached(false);await saveSurahCache(cacheKey,fresh)}catch(e:any){if(!local)setError(T(e.message))}};
   useEffect(()=>{load();loadBookmarks().then(setBookmarks);if(section==='surah'&&!isMushaf)void logSurahOpen(chapterId);if(isMushaf&&page!==null)void logMushafPage(page)},[section,chapterId,juz,hizb,page,isMushaf,preferences.scriptEdition,preferences.translationEdition]);
   /* Entering the Mushaf script from a Surah, Juz or Hizb opens it on the page
      where that section begins. */
@@ -6807,7 +6812,7 @@ function NotificationScreen({navigation}:any){const{rtl}=useLanguage();const T=(
       const value=await managedPrayerSnapshot(location,settings);
       const position=await loadReadingPosition().catch(()=>null);
       const result=await schedulePrayerNotifications(value.snapshot,settings,rtl,
-        position?`${position.surahName} ${position.verseKey}`:undefined);
+        position?{surahId:position.surahId,verseKey:position.verseKey,label:`${position.surahName} ${position.verseKey}`}:null);
       setQueued(await getScheduledCount());
       setAudio(result.adhanAudio);
       setToast(result.unsupported
@@ -12093,7 +12098,13 @@ function AppShell() {
    * at all. The route is now read for what it is.
    */
   const openFromNotification = async (data: any) => {
-    if (!navigationRef.isReady()) return;
+    /* Deliberately no "is the navigator ready?" test here. There was one, and
+       it was why tapping a notification opened the app to the home screen
+       instead of the thing the notification was about: a tap that launches the
+       app arrives while the navigator is still being built, the answer was
+       "not ready", and the intent was dropped on the floor. `navigateWhenReady`
+       already waits for readiness, so the waiting is done there and nowhere
+       else — the destination is never thrown away for being early. */
     const go = (name: string, params?: any) => navigateWhenReady(name, params);
 
     /* The sleep reminder opens the surah itself. A reminder to read Al-Mulk
@@ -12119,18 +12130,25 @@ function AppShell() {
        tab and leaving her to find her own place again is not the same thing
        as carrying on. */
     if (data?.kind === 'continue') {
+      /* The position is read rather than trusted from the notification,
+         because it may have moved on since this reminder was scheduled —
+         carrying on should mean from where she actually stopped, not from
+         where she was half an hour ago. The place written into the
+         notification is the fallback for when nothing is stored. */
       const position = await loadReadingPosition().catch(() => null);
-      if (position?.surahId) {
+      const surahId = position?.surahId ?? data?.surah;
+      const verseKey = position?.verseKey ?? data?.verseKey;
+      if (surahId) {
         go('Quran', {
           screen: 'Reader',
           params: {
             chapter: {
-              id: position.surahId,
-              name_simple: position.surahName,
+              id: surahId,
+              name_simple: position?.surahName || '',
               name_arabic: '',
               verses_count: 0
             },
-            focusVerse: position.verseKey
+            ...(verseKey ? { focusVerse: verseKey } : {})
           },
           initial: false
         });
@@ -12160,38 +12178,72 @@ function AppShell() {
     return () => sub.remove();
   }, []);
 
+  const handleNotificationResponse = (response: NotificationResponse | null | undefined) => {
+    if (!response) return;
+    const data: any = response?.notification?.request?.content?.data;
+    const action = actionFromResponse(response);
+
+    /* Tapped, so it was both delivered and seen. */
+    if (response?.notification?.request?.content) void markOpened(response.notification.request.content);
+
+    /* Buttons first. They act, and they do not navigate. */
+    if (action === 'mute') {
+      // Silence whatever is playing, and anything queued behind it.
+      void stopPlayback();
+      return;
+    }
+    if (action === 'prayed') {
+      const prayer = prayerFromNotification(data);
+      if (prayer) {
+        const key = new Date().toISOString().slice(0, 10);
+        void loadPrayerCompletion(key).then((current) => {
+          if (current.includes(prayer)) return;
+          const next = [...current, prayer];
+          return savePrayerCompletion(key, next);
+        });
+      }
+      return;
+    }
+
+    /* A plain tap. Go where the notification said it would. */
+    void openFromNotification(data);
+  };
+
   useEffect(() => {
     if (Platform.OS === 'web') return;
-    const subscription = addNotificationResponseReceivedListener((response: NotificationResponse) => {
-      const data: any = response?.notification?.request?.content?.data;
-      const action = actionFromResponse(response);
-
-      /* Tapped, so it was both delivered and seen. */
-      if (response?.notification?.request?.content) void markOpened(response.notification.request.content);
-
-      /* Buttons first. They act, and they do not navigate. */
-      if (action === 'mute') {
-        // Silence whatever is playing, and anything queued behind it.
-        void stopPlayback();
-        return;
-      }
-      if (action === 'prayed') {
-        const prayer = prayerFromNotification(data);
-        if (prayer) {
-          const key = new Date().toISOString().slice(0, 10);
-          void loadPrayerCompletion(key).then((current) => {
-            if (current.includes(prayer)) return;
-            const next = [...current, prayer];
-            return savePrayerCompletion(key, next);
-          });
-        }
-        return;
-      }
-
-      /* A plain tap. Go where the notification said it would. */
-      void openFromNotification(data);
-    });
+    const subscription = addNotificationResponseReceivedListener(handleNotificationResponse);
     return () => subscription.remove();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /* A tap that starts the app is not delivered by the listener above: by the
+     time JavaScript can subscribe, the response has already happened. It is
+     held by the system and has to be collected, which is what this does.
+
+     Without it, every notification tapped from a closed app did nothing —
+     the app opened, and that was all. It is tried a few times over the first
+     seconds, because the navigator is still being built when the response
+     arrives and a single attempt can land too early. */
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    let cancelled = false;
+    let attempts = 0;
+    const collect = async () => {
+      attempts += 1;
+      try {
+        const response = await Notifications.getLastNotificationResponseAsync();
+        if (cancelled || !response) return;
+        /* Only a response from a moment ago counts as the thing that opened
+           the app; an old one would reopen a screen days later. */
+        handleNotificationResponse(response as NotificationResponse);
+      } catch {
+        /* not fatal: the listener still covers taps made while running */
+      }
+      if (!cancelled && attempts < 3) setTimeout(collect, 800);
+    };
+    void collect();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   /* Keeping the schedule honest.
@@ -12207,7 +12259,8 @@ function AppShell() {
       const position = await loadReadingPosition().catch(() => null);
       await schedulePrayerNotifications(
         value.snapshot, settings, rtlNow,
-        position ? `${position.surahName} ${position.verseKey}` : undefined,
+        position ? { surahId: position.surahId, verseKey: position.verseKey,
+                     label: `${position.surahName} ${position.verseKey}` } : null,
       );
     }).catch(() => undefined);
     return () => { live = false; };
