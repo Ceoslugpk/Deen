@@ -1858,10 +1858,10 @@ const[quranPosition,setQuranPosition]=useState<any>(null);const[openReflection,s
       ))}</View>
     </DepthCard>
     <Section title={T('Continue reading')} action={T('Open Quran')} onPress={()=>nav.navigate('Quran')} />
-    /* DepthCard puts `style` on an outer wrapper and sizes the visible card from
+    {/* DepthCard puts `style` on an outer wrapper and sizes the visible card from
        its content, so the height has to be set on cardStyle as well, and the
        body given flex:1 to fill it. Only when the card actually grew, so the
-       phone layout is untouched. */
+       phone layout is untouched. */}
     <DepthCard index={0} radius={28} padded={false} style={[s.readWrap,{height:readH}]} cardStyle={[s.readSurface,readH>205&&{height:readH}]} bodyStyle={[s.readPad,readH>205&&{flex:1,justifyContent:'space-between'}]}
       onPress={()=>nav.navigate('Quran')}>
       <View style={StyleSheet.absoluteFill}><Image source={pickScene(SCENE_QURAN, resolved)} resizeMode="cover" style={s.heroBg}/></View>
@@ -3325,7 +3325,7 @@ function MushafVerseMenu({
     { key: 'note', icon: 'create-outline', label: T('Note'), active: false, onPress: onNote },
   ];
   return <View style={s.mushafMenu}>
-    <View style={[s.mushafMenuBar, { flexDirection: rtl ? 'row-reverse' : 'row' }]}>
+    <View style={[s.mushafMenuBar, { flexDirection: 'row' }]}>
       {items.map((item) => (
         <Pressable key={item.key} accessibilityRole="button"
           accessibilityLabel={`${item.label} - ${T('verse actions')}`}
@@ -3394,7 +3394,7 @@ function MushafConnectionNote({ kind, rtl, T, page, cut, nextVerse }: {
                    : `Before: ${nextVerse.verse_key}${nextVerse.surah_name ? ` · ${nextVerse.surah_name}` : ''} on page ${page - 1}`)
             : (rtl ? `الصفحة ${toArabicDigits(page - 1)}` : `Page ${page - 1}`)));
 
-  return <View style={[s.mushafConnection, rtl && s.mushafConnectionRtl, cut && s.mushafConnectionCut]}>
+  return <View style={[s.mushafConnection, cut && s.mushafConnectionCut]}>
     {!onward && ico(rtl ? 'arrow-forward' : 'arrow-back', 12, cut ? C.gold : C.muted)}
     <Text style={[s.mushafConnectionText, cut && s.mushafConnectionTextCut]}>{label}</Text>
     {onward && ico(rtl ? 'arrow-back' : 'arrow-forward', 12, cut ? C.gold : C.muted)}
@@ -9924,7 +9924,7 @@ function MiniPlayer() {
   if (!audio.track) return null;
   const bottom = MINI_PLAYER_BOTTOM;
   const open = () => { if (navigationRef.isReady()) (navigationRef as any).navigate('Quran', { screen: 'Audio Player' }); };
-  return <View style={[s.miniPlayer, { bottom, flexDirection: rtl ? 'row-reverse' : 'row' }]}>
+  return <View style={[s.miniPlayer, { bottom, flexDirection: 'row' }]}>
     <Pressable accessibilityRole="button" accessibilityLabel={tx(rtl,'Open the audio player')} onPress={open} style={s.miniBody}>
       <View style={s.miniArt}>{audio.buffering ? <ActivityIndicator color={C.green} /> : <ToolGraphic tool="Recitations" size={38} />}</View>
       <View style={{ flex: 1 }}>
@@ -10457,7 +10457,7 @@ function FloatingTabBar({ state, navigation }: any) {
     opacity: drop,
     transform: [{ translateY: drop.interpolate({ inputRange: [0, 1], outputRange: [110, 0] }) }]
   }]}>
-    <View style={[s.floatBar, { width: barWidth, flexDirection: rtl ? 'row-reverse' : 'row' }]}>
+    <View style={[s.floatBar, { width: barWidth, flexDirection: 'row' }]}>
       {state.routes.map((route: any, index: number) => (
         <TabButton key={route.key} route={route} focused={state.index === index}
           navigation={navigation} dark={dark} rtl={rtl} state={state} index={index} />
@@ -10808,11 +10808,11 @@ function Splash({ ready, progress, onDone }: { ready: boolean; progress: number;
 
   return <Animated.View style={[s.splashRoot, { opacity: fade }]}>
     <StatusBar barStyle="light-content" />
-    /* The field behind the emblem. It used to put the brand's own indigo in
+    {/* The field behind the emblem. It used to put the brand's own indigo in
        the middle stops whichever theme was on, so a Palestine splash came up
        purple and an Islamic one read correct by accident. Each theme now
        fills its own colours: indigo for Islamic, a green field off the flag
-       for Palestine. The Islamic values are unchanged. */
+       for Palestine. The Islamic values are unchanged. */}
     <LinearGradient colors={
       isPal(resolved)
         ? (dark
@@ -11775,7 +11775,12 @@ function AppShell() {
   /* The layout direction starts here, at the very top, so it reaches every
      screen — including the ones that do not go through <Page>. Yoga passes
      direction down to a node's children, which is why this works on both
-     platforms and needs no restart, unlike I18nManager. */
+     platforms and needs no restart, unlike I18nManager.
+
+     Because direction is inherited, a plain flexDirection:'row' already runs
+     right to left in here. Do not add `rtl ? 'row-reverse' : 'row'` to a
+     child: the two cancel and the row comes out left to right again — which
+     is what left the floating tab bar unmirrored. */
   return <View style={[s.shellRoot,{direction:rtlNow?'rtl':'ltr'} as any]}>
     {/* Nothing mounts until the saved language is known, so the very first
         frame is already in the right language and the right direction. The
@@ -12327,7 +12332,6 @@ mushafMarkerRule:{height:1,backgroundColor:C.gold,opacity:.55},
 mushafMarkerName:{color:C.gold,fontSize:11,fontFamily:'NotoNaskhArabic_600SemiBold'},
 mushafMarkerNum:{color:C.gold,fontSize:11,fontFamily:'NotoNaskhArabic_400Regular'},
 mushafConnection:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:5,paddingVertical:5,paddingHorizontal:10,alignSelf:'center',backgroundColor:C.card,borderRadius:11,borderWidth:1,borderColor:C.line,marginVertical:3},
-mushafConnectionRtl:{flexDirection:'row-reverse'},
 mushafConnectionText:{color:C.muted,fontSize:10.5,fontFamily:'DMSans_600SemiBold'},
 mushafConnectionTextCut:{color:C.gold},
 mushafConnectionCut:{borderColor:C.gold,backgroundColor:C.mint},
