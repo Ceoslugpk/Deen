@@ -13,6 +13,7 @@
  * download is thrown away rather than played, and a failure is reported
  * instead of being swallowed.
  */
+import { Platform } from 'react-native';
 import { Directory, File, Paths } from 'expo-file-system';
 import { Asset } from 'expo-asset';
 import { ADHAN_TRACKS, FAJR_TRACKS, ALL_ADHAN_TRACKS, type AdhanTrack } from './adhanCatalog';
@@ -107,11 +108,19 @@ export function cachedAdhanUri(track: AdhanTrack): string | null {
  */
 export function adhanPlaybackSource(track: AdhanTrack): string {
   if (PlatformIsWeb()) return track.url;
-  /* The bundled clip first: it is already on the device, so the preview
-     starts at once and works with no connection. Only the recordings
-     without one fall back to the download, or to the network while the
-     download is still arriving. */
-  return bundledClipUri(track) ?? cachedAdhanUri(track) ?? track.url;
+  /* Which of the two to preview depends on which one is going to sound at the
+     prayer time, and that is different on the two platforms.
+     On iOS the clip is the only thing that can ever sound - a notification
+     there will not touch a downloaded file - so previewing the clip is
+     previewing exactly what will be heard.
+     On Android the alarm plays the whole recording from the cache, so the full
+     recording is what should be heard when it is there. The clip is kept as
+     the fallback for when nothing has been fetched yet, because hearing a
+     voice at once beats waiting for a download to find out what it is. */
+  if (Platform.OS === 'ios') {
+    return bundledClipUri(track) ?? cachedAdhanUri(track) ?? track.url;
+  }
+  return cachedAdhanUri(track) ?? bundledClipUri(track) ?? track.url;
 }
 
 function PlatformIsWeb(): boolean {

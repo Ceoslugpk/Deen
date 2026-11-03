@@ -1630,6 +1630,12 @@ const AR: Record<string, string> = {
   'Started from the cycle you have open.': 'بدأت من الدورة المفتوحة لديك.',
   'Stop keeping': 'توقّف عن الاحتفاظ',
   'Stored in the app': 'مخزّن في التطبيق',
+  /* The adhan rows. The first two were added when eight recordings began
+     shipping inside the app; without entries here they showed in English
+     to somebody reading Arabic. */
+  'Included with the app': 'مضمّن مع التطبيق',
+  'Downloaded on first use': 'يُنزَّل عند أول استخدام',
+  'On this device': 'على هذا الجهاز',
   'Stored on your device': 'مخزّن على جهازك',
   'Stored only here': 'مخزّن هنا فقط',
   'Study': 'دراسة',

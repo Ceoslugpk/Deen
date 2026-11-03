@@ -99,7 +99,7 @@ import { getCacheUsage, getCachedJson, setCachedJson } from './src/services/cont
 import { AudioSession, AudioSettings, AudioTrackKind, buildQueueForChapter, buildSurahQueue, loadSurahReciters, clearQueue, clearRecentPlays, deletePlaylist, formatClock, getAudioSettings, loadAudioEditions, loadAudioSession, loadAudioSettings, loadPlaylists, loadRecentPlays, nextTrack, playQueue, Playlist, previousTrack, RecentPlay, removeFromQueue, restoreSavedSession, saveAudioSettings, savePlaylist, seekTo, selectQueueItem, setAutoNextSurah, setRepeatCount, setRepeatMode, setRepeatRange, setResumeOnStart, setVolume, stepPlaybackRate, MAX_RATE, MIN_RATE, RATE_STEPS, REPEAT_COUNT_CHOICES, REPEAT_FOREVER, setPlaybackRate, reciterLabel, stopPlayback, syncAudioTranslationToLanguage, togglePlayback, useAudio } from './src/services/audioService';
 import {DEFAULT_HADITH_LANGUAGE, deviceHadithCount, downloadCollection, fetchHadithOne, getHadith, hadithDownloadProgress, searchDeviceHadith, useHadithLanguage, setHadithLanguage, hadithReference, hadithSourceLabel, HADITH_COLLECTIONS, Hadith, HadithOutline, isHadithSaved, loadHadithBook, loadHadithOutline, loadHadithState, markHadithRead, removeDownloadedCollection, removeHadithBookmark, subscribeHadithDownloads, toggleHadithSaved, useDownloadedCollections, useHadithState } from './src/services/hadithService';
 import { adhanTrack, ADHAN_TRACKS, AdhanTrack, DEFAULT_ADHAN_ID, DEFAULT_FAJR_ID, FAJR_TRACKS } from './src/services/adhanCatalog';
-import { adhanPlaybackSource, downloadAllAdhanTracks, getAdhanCacheState, refreshAdhanCache, subscribeAdhanCache, clearAdhanCache } from './src/services/adhanCache';
+import { adhanPlaybackSource, downloadAllAdhanTracks, getAdhanCacheState, isAdhanCached, refreshAdhanCache, subscribeAdhanCache, clearAdhanCache } from './src/services/adhanCache';
 import {
   buildReportMailto, deleteReport, openReportEmail, saveReport, subscribeReports,
   type CorrectionReport, type CorrectionIssue as ReportIssue
@@ -7043,8 +7043,39 @@ function NotificationScreen({navigation}:any){const{rtl}=useLanguage();const T=(
  * new file. Doing it the other way round plays the previous recording, which
  * is worse than a short wait.
  */
+/**
+ * What the small line under a recording's name should say.
+ *
+ * The two platforms cannot be described in the same words, because what makes
+ * a recording able to sound is a different thing on each.
+ *
+ * On iOS it is whether a clip of it ships inside the app. Nothing else there
+ * will ever play, so that is the whole of the story, and it cannot change
+ * after the install.
+ *
+ * On Android it is whether the recording has actually been fetched. The alarm
+ * plays the whole recording from the cache, and the clip is only ever a
+ * preview, so saying "included with the app" there would be a promise the
+ * alarm cannot keep: a person would choose it, hear nothing at the prayer
+ * time, and have no reason to suspect a download was missing.
+ */
+function trackRowLabel(track: AdhanTrack, onDevice: boolean): string {
+  if (Platform.OS === 'ios') return track.clip ? 'Included with the app' : 'Downloaded on first use';
+  return onDevice ? 'On this device' : 'Downloaded on first use';
+}
+
 function AdhanTrackList({tracks,selectedId,onSelect}:{tracks:AdhanTrack[];selectedId:string;onSelect:(id:string)=>void}){
   const {rtl}=useLanguage(); const T=(text:string)=>tx(rtl,text);
+  /* Which recordings are actually on the device, so the row can say so
+     instead of promising. It changes underneath the screen while the
+     onboarding download runs, so it is watched rather than read once. */
+  const [onDevice,setOnDevice]=useState<Record<string,boolean>>({});
+  useEffect(()=>{
+    const read=()=>{const next:Record<string,boolean>={};for(const t of tracks)next[t.id]=isAdhanCached(t);setOnDevice(next)};
+    read();
+    const unsub=subscribeAdhanCache(read);
+    return ()=>{unsub()};
+  },[tracks]);
   /* The local file once it has been fetched, the network address while it is
      still arriving. Either way the preview works; only the wait differs. */
   const source=useMemo(()=>{const t=tracks.find(x=>x.id===selectedId); return t?adhanPlaybackSource(t):undefined;}, [tracks,selectedId]);
@@ -7090,7 +7121,7 @@ function AdhanTrackList({tracks,selectedId,onSelect}:{tracks:AdhanTrack[];select
         <ToolGraphic tool="Adhan" size={49}/>
         <View style={{flex:1}}>
           <Text style={s.settingName}>{rtl?track.nameAr||track.name:track.name}</Text>
-          <Text style={s.meta}>{T(track.clip ? 'Included with the app' : 'Downloaded on first use')} · {(track.bytes/1024/1024)>=1
+          <Text style={s.meta}>{T(trackRowLabel(track,onDevice[track.id]))} · {(track.bytes/1024/1024)>=1
             ? `${(track.bytes/1048576).toFixed(1)} ${T('MB')}`
             : `${Math.round(track.bytes/1024)} ${T('KB')}`}</Text>
         </View>

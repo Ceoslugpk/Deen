@@ -162,6 +162,41 @@ if "adhanPlaybackSource" in alarm or "bundledClip" in alarm:
 if "cachedAdhanUri" not in alarm:
     fail("the alarm no longer resolves the cached recording")
 
+# ------------------------------------------- previews must follow the platform
+
+# What a preview plays should be what will actually sound at the prayer time,
+# and that differs: iOS can only ever play the clip, Android plays the full
+# recording from its cache. Preferring the clip everywhere would mean Android
+# previewing thirty seconds of something it is about to play in full.
+src = open(CACHE, encoding='utf-8').read()
+if "Platform.OS === 'ios'" not in src:
+    fail("adhanPlaybackSource is not platform-aware - one of the two platforms is previewing the wrong thing")
+else:
+    ios_branch, rest = src.split("Platform.OS === 'ios'", 1)
+    if "cachedAdhanUri(track) ?? bundledClipUri(track)" not in rest:
+        fail("on Android the preview should be the cached recording first and the clip only as a fallback")
+
+# ------------------------------------------- the row must not promise a clip
+
+# Saying "included with the app" on Android promises something the alarm cannot
+# deliver: it still needs the download, and without it the prayer falls back to
+# a system tone with nothing to explain why.
+app_src = open(os.path.join(ROOT, "App.tsx"), encoding="utf-8").read()
+if "trackRowLabel" not in app_src:
+    fail("the adhan row no longer uses trackRowLabel - check it is still platform-aware")
+elif "Platform.OS === 'ios'" not in app_src.split("function trackRowLabel", 1)[1][:600]:
+    fail("trackRowLabel is not platform-aware - it would promise the clip on Android too")
+
+# ---------------------------------------------------- new copy is translated
+
+# tx() falls back to English when a string has no Arabic entry, so an
+# untranslated string is invisible until somebody reads Arabic and finds
+# English on the page.
+arabic = open(os.path.join(ROOT, "src", "services", "arabicCopy.ts"), encoding="utf-8").read()
+for phrase in ("Included with the app", "Downloaded on first use", "On this device"):
+    if f"'{phrase}':" not in arabic:
+        fail(f"'{phrase}' has no Arabic entry - it shows in English to somebody reading Arabic")
+
 # ------------------------------------------------- previews may use the clip
 
 cache = open(CACHE, encoding="utf-8").read()
