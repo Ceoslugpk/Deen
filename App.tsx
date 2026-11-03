@@ -121,8 +121,9 @@ import {
 import { loadNameLanguage, loadNameOfDay, loadNames, saveNameLanguage } from './src/services/namesService';
 import { ARABIC_UI, ARABIC_UI_SEMIBOLD, ensureQuranFont, quranFontFamily as quranFont, QURAN_FONTS, useQuranFont } from './src/services/fonts';
 import { shareVerseCard } from './src/services/verseCard';
-import { shareCard } from './src/services/shareCard';
+import { shareCard, type ShareCardData } from './src/services/shareCard';
 import { VerseShareCard } from './src/components/VerseShareCard';
+import { ShareCardView } from './src/components/ShareCardView';
 import Flag from './src/components/Flag';
 import EditionPicker from './src/components/EditionPicker';
 import {
@@ -154,6 +155,60 @@ const languageOf = (identifier?: string, language?: string) => {
   if (fromId && /^[a-z]{2,3}$/.test(fromId)) return fromId;
   return LANGUAGE_NAME_TO_CODE[(language || '').toLowerCase()] || (language || '');
 };
+
+/**
+ * Share a card as a picture on native.
+ *
+ * react-native-view-shot photographs a view that is already on screen, so
+ * there is nothing to capture at the moment the button is pressed — building
+ * the card and capturing it in the same tick would photograph whatever was
+ * there before, or nothing at all the first time. That is why these shares
+ * were silently falling back to text.
+ *
+ * So the card data is staged in state, rendered off in the corner where nobody
+ * sees it, and captured on the frame after that render commits. On the web
+ * there is a canvas to draw into and none of this is needed.
+ *
+ * The card is mounted only while a share is in flight. A list of duas or
+ * names can be hundreds of rows long, and a full-bleed card behind every
+ * one of them would be ruinous.
+ */
+function useCardShare() {
+  const cardRef = useRef<any>(null);
+  const [pending, setPending] = useState<ShareCardData | null>(null);
+
+  useEffect(() => {
+    if (!pending) return;
+    let alive = true;
+    const run = async () => {
+      /* Two frames: one for React to commit the card to the tree, one for
+         the layout to be measured. Capturing sooner yields a blank PNG. */
+      await new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      );
+      if (!alive) return;
+      await shareCard(pending, cardRef);
+      if (alive) setPending(null);
+    };
+    void run();
+    return () => { alive = false; };
+  }, [pending]);
+
+  const share = useCallback((data: ShareCardData) => {
+    if (Platform.OS === 'web') { void shareCard(data); return; }
+    setPending(data);
+  }, []);
+
+  const offscreenCard = Platform.OS !== 'web' && pending
+    ? (
+      <View style={s.offscreenCard} pointerEvents="none" aria-hidden>
+        <ShareCardView viewRef={cardRef} {...pending} />
+      </View>
+    )
+    : null;
+
+  return { share, offscreenCard };
+}
 import { CARD, CARD_GAP, RADIUS, SPACE } from './src/design/tokens';
 import { BRAND, C_DARK, C_LIGHT, C_PALESTINE, C_PALESTINE_DARK, DEPTH, FLAG, brandHex, mix, snapToBrand } from './src/design/brand';
 import { useCalmMotion } from './src/design/useCalmMotion';
@@ -4975,9 +5030,15 @@ function TasbihScreen({ navigation }: any) {const{rtl}=useLanguage();const T=(te
    * a card is a thing you keep, and a number that changes would be wrong on it
    * by tomorrow.
    */
+  /**
+   * The lifetime figure goes on the bottom line rather than a running count —
+   * a card is a thing you keep, and a number that changes would be wrong on it
+   * by tomorrow.
+   */
+  const { share: shareCardImage, offscreenCard } = useCardShare();
   const sharePhrase = () => {
     const lifetime = tasbihLifetime(state);
-    void shareCard({
+    void shareCardImage({
       kicker: T('Dhikr'),
       arabic: phrase.arabic,
       body: dhikrMeaning(phrase, rtl),
@@ -5052,7 +5113,9 @@ function TasbihScreen({ navigation }: any) {const{rtl}=useLanguage();const T=(te
         <Text style={s.dataBody}>{session.count} of {session.goal}</Text>
         <Pressable accessibilityLabel={T('Remove this saved round')} onPress={() => void removeTasbihSession(session.id)} style={{ marginTop: 8, alignSelf: 'flex-start' }}><Text style={s.dangerText}>{T('Remove')}</Text></Pressable>
       </View>)}
-    </ScrollView></Page>}
+    </ScrollView>
+    {offscreenCard}
+  </Page>}
 
 const DUA_SHORTCUT_LABELS: Record<string, string> = {
   morning: 'Morning adhkar',
@@ -5082,8 +5145,9 @@ function DuaCard({ dua, read, onRead }: { dua: Dua; read?: boolean; onRead?: () 
   };
   /* Shared as the same picture a verse is, so a dua forwarded to someone
      arrives as the thing itself rather than as a wall of copied text. */
+  const { share: shareCardImage, offscreenCard } = useCardShare();
   const share = async () => {
-    await shareCard({
+    await shareCardImage({
       kicker: T('Dua and remembrance'),
       arabic: dua.arabic,
       body: dua.translation || '',
@@ -5128,6 +5192,7 @@ function DuaCard({ dua, read, onRead }: { dua: Dua; read?: boolean; onRead?: () 
         rtl={rtl} T={T} appLanguage={rtl ? 'ar' : 'en'} onClose={() => setReporting(false)}
       />
     </Modal>
+    {offscreenCard}
   </View>;
 }
 
@@ -5235,9 +5300,10 @@ function NamesScreen({ navigation }: any) {const{rtl}=useLanguage();const T=(tex
   const [error, setError] = useState('');
   /* Shared as the same artefact as a verse: dark brand card, Arabic set in
      the family the reader is using, meaning in the language they picked. */
+  const { share: shareCardImage, offscreenCard } = useCardShare();
   const shareNameCard = async (name: DivineName) => {
     const value = meaning(name);
-    await shareCard({
+    await shareCardImage({
       kicker: `${T('Name')} ${name.number} · ${T('The Beautiful Names')}`,
       arabic: name.name,
       body: value,
@@ -5304,7 +5370,9 @@ function NamesScreen({ navigation }: any) {const{rtl}=useLanguage();const T=(tex
     </View>)}
     {!!names.length && <View style={s.apiPanel}><Text style={s.apiTitle}>{T('Kept on this device')}</Text><Text style={s.apiText}>{rtl?`يُخزَّن الدليل بعد أول زيارة، فتُقرأ الأسماء بلا اتصال. وترجمة القرآن التي تقرأ بها في موضع آخر (${preferences.translationEdition}) لا أثر لها على هذه المعاني.`:`The catalogue is stored after the first visit, so the Names can be read without a connection. The Qur'an translation you use elsewhere (${preferences.translationEdition}) does not affect these meanings.`}</Text></View>}
     <Tactile accessibilityLabel={T('Open the prophets catalogue')} onPress={() => navigation.navigate('Prophet Names')} style={s.secondary}><Text style={s.secondaryText}>{T("Prophets named in the Qur'an")}</Text></Tactile>
-  </ScrollView></Page>}
+  </ScrollView>
+    {offscreenCard}
+  </Page>}
 
 /**
  * Choosing a name for a child.
@@ -5349,8 +5417,9 @@ function MuslimNamesScreen({ navigation }: any) {
   const genderLabel = (gender: MuslimName['gender']) =>
     gender === 'male' ? T('Boy') : gender === 'female' ? T('Girl') : T('Either');
 
+  const { share: shareCardImage, offscreenCard } = useCardShare();
   const shareName = async (name: MuslimName) => {
-    await shareCard({
+    await shareCardImage({
       kicker: T('Muslim Names'),
       arabic: name.arabic,
       body: name.meaning,
@@ -5420,7 +5489,9 @@ function MuslimNamesScreen({ navigation }: any) {
         <Text style={s.secondaryText}>{T('Show more')}</Text>
       </Tactile>}
       {ready && !results.length && <View style={s.empty}><Text style={s.dataBody}>{T('No name matches. Try another spelling.')}</Text></View>}
-    </ScrollView></Page>;
+    </ScrollView>
+    {offscreenCard}
+  </Page>;
 }
 
 
