@@ -6786,6 +6786,7 @@ const ADHAN_AUDIO_REASON: Record<string, string> = {
   'alarm-unavailable': 'The adhan is played by the installed Android app, which is not running here. Your device notification tone will sound instead.',
   'exact-alarms-denied': 'Android is not allowing this app to set exact alarms, so the adhan cannot be timed to the prayer. Your notification tone will sound instead. Allow alarms and it will play properly.',
   'not-downloaded': 'The recording has not been downloaded to this phone yet, so your notification tone will sound instead. Fetch it once and the adhan will play.',
+  'ios-no-clip': 'This recording is not one of the ones included with the app, so it cannot sound on iPhone. Choose one of the included recordings, or the system tone, and the adhan will play.',
   'alarm-rejected': 'The alarm could not be set on this phone. Your notification tone will sound at the prayer time instead of the adhan.',
 };
 
@@ -7089,7 +7090,7 @@ function AdhanTrackList({tracks,selectedId,onSelect}:{tracks:AdhanTrack[];select
         <ToolGraphic tool="Adhan" size={49}/>
         <View style={{flex:1}}>
           <Text style={s.settingName}>{rtl?track.nameAr||track.name:track.name}</Text>
-          <Text style={s.meta}>{T('Stored in the app')} · {(track.bytes/1024/1024)>=1
+          <Text style={s.meta}>{T(track.clip ? 'Included with the app' : 'Downloaded on first use')} · {(track.bytes/1024/1024)>=1
             ? `${(track.bytes/1048576).toFixed(1)} ${T('MB')}`
             : `${Math.round(track.bytes/1024)} ${T('KB')}`}</Text>
         </View>

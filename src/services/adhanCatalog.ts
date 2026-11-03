@@ -23,6 +23,20 @@ export type AdhanTrack = {
   url: string;
   /** Size of the download, for the cache screen and the progress row. */
   bytes: number;
+  /**
+   * The name of the thirty-second clip shipped inside the app, without an
+   * extension, for the tracks that have one.
+   *
+   * iOS cannot play a recording that lives outside the app: a custom
+   * notification sound has to be in the bundle, and has to be no longer than
+   * thirty seconds, or the system quietly plays its own tone instead. So the
+   * tracks listed here can sound on iOS, and the rest cannot however much of
+   * them has been downloaded.
+   *
+   * Android is unaffected — it plays the whole recording from the cache
+   * through the alarm — so a track without a clip still works fully there.
+   */
+  clip?: string;
 };
 
 /** Where a recording is served from. `id` is already `kind:name`. */
@@ -39,6 +53,7 @@ export const ADHAN_TRACKS: AdhanTrack[] = [
     sound: 'adhan_abdul_basit',
     url: adhanAudioUrl('adhan:abdul-basit'),
     bytes: 207723,
+    clip: 'adhan_abdulbasit',
   },
   {
     id: 'adhan:abdul-ghaffar',
@@ -63,6 +78,7 @@ export const ADHAN_TRACKS: AdhanTrack[] = [
     sound: 'adhan_ahmad_al_nafees',
     url: adhanAudioUrl('adhan:ahmad-al-nafees'),
     bytes: 3418938,
+    clip: 'adhan_nafees',
   },
   {
     id: 'adhan:al-hussaini',
@@ -103,6 +119,7 @@ export const ADHAN_TRACKS: AdhanTrack[] = [
     sound: 'adhan_hafiz_mustafa_ozcan_from_turkey',
     url: adhanAudioUrl('adhan:hafiz-mustafa-ozcan-from-turkey'),
     bytes: 3805132,
+    clip: 'adhan_ozcan',
   },
   {
     id: 'adhan:karl-jenkins',
@@ -119,6 +136,7 @@ export const ADHAN_TRACKS: AdhanTrack[] = [
     sound: 'adhan_mansour_al_zahrani',
     url: adhanAudioUrl('adhan:mansour-al-zahrani'),
     bytes: 3358625,
+    clip: 'adhan_mansour',
   },
   {
     id: 'adhan:minshawi',
@@ -127,6 +145,7 @@ export const ADHAN_TRACKS: AdhanTrack[] = [
     sound: 'adhan_minshawi',
     url: adhanAudioUrl('adhan:minshawi'),
     bytes: 237238,
+    clip: 'adhan_minshawi',
   },
   {
     id: 'adhan:mishary-rashid-alafasy',
@@ -135,6 +154,7 @@ export const ADHAN_TRACKS: AdhanTrack[] = [
     sound: 'adhan_mishary_rashid_alafasy',
     url: adhanAudioUrl('adhan:mishary-rashid-alafasy'),
     bytes: 4114842,
+    clip: 'adhan_mishary',
   },
   {
     id: 'adhan:naghshbandi',
@@ -187,6 +207,7 @@ export const FAJR_TRACKS: AdhanTrack[] = [
     sound: 'fajr_mansour_al_zahrani',
     url: adhanAudioUrl('fajr:mansour-al-zahrani'),
     bytes: 3905851,
+    clip: 'fajr_mansour',
   },
   {
     id: 'fajr:traditional',
@@ -195,6 +216,7 @@ export const FAJR_TRACKS: AdhanTrack[] = [
     sound: 'fajr_traditional',
     url: adhanAudioUrl('fajr:traditional'),
     bytes: 1503337,
+    clip: 'fajr_traditional',
   },
 ];
 
@@ -218,4 +240,20 @@ export function trackForPrayer(
   return prayerName === 'Fajr'
     ? adhanTrack(fajrId, adhanTrack(DEFAULT_FAJR_ID, FAJR_TRACKS[0]))
     : adhanTrack(adhanId, adhanTrack(DEFAULT_ADHAN_ID, ADHAN_TRACKS[0]));
+}
+
+/**
+ * The sound to ask iOS for, or null when this track has no bundled clip.
+ *
+ * Only the bundled tracks can sound on iOS. Everything else has to fall back
+ * to the system tone there, which the settings screen says out loud rather
+ * than letting it look broken.
+ */
+export function adhanSoundName(track: AdhanTrack | null | undefined): string | null {
+  return track?.clip ? track.clip : null;
+}
+
+/** Whether this recording can sound at prayer time on iOS. */
+export function adhanSoundsOnIos(track: AdhanTrack | null | undefined): boolean {
+  return Boolean(track?.clip);
 }

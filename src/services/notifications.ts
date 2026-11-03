@@ -4,7 +4,7 @@ import * as Notifications from 'expo-notifications';
 import { arNoun, clockTime, prayerName } from './arabicCopy';
 import type { PrayerSnapshot } from './api';
 import type { WorshipSettings } from './localState';
-import { ADHAN_TRACKS, FAJR_TRACKS, adhanTrack, type AdhanTrack } from './adhanCatalog';
+import { ADHAN_TRACKS, FAJR_TRACKS, adhanSoundName, adhanTrack, type AdhanTrack } from './adhanCatalog';
 import { isAdhanCached } from './adhanCache';
 import { isAdhanAlarmAvailable, canScheduleExactAlarms, scheduleAdhanAlarms, cancelAdhanAlarms } from './adhanAlarm';
 import { recordScheduled, type PendingEntry } from './notificationLog';
@@ -103,6 +103,13 @@ export type AdhanAudioReason =
   | 'alarm-unavailable'
   | 'exact-alarms-denied'
   | 'not-downloaded'
+  /**
+   * The chosen recording is not one of the ones shipped inside the app, so
+   * iOS has nothing to play. Downloading will not help — the file has to be
+   * in the bundle — so this is said separately from `not-downloaded`, which
+   * tells somebody to fetch the file and would send them in circles.
+   */
+  | 'ios-no-clip'
   | 'alarm-rejected';
 
 export type AdhanAudio = {
@@ -547,12 +554,18 @@ async function rebuildSchedule(
     // ---- 1. the adhan itself ------------------------------------------
     if (settings.adhanEnabled?.[prayer.name]) {
       const track = adhanTrackFor(prayer.name, settings);
-      const recordingReady = isAdhanCached(track);
+      /* On iOS the sound has to travel with the notification, because there
+         is no alarm to play it from. A custom notification sound there has to
+         be inside the app bundle and under thirty seconds, so only the
+         recordings shipped with the app can sound — and a bundled clip is
+         always ready, with nothing to download first. */
+      const iosSound = Platform.OS === 'ios' ? adhanSoundName(track) : null;
+      const recordingReady = Platform.OS === 'ios' ? Boolean(iosSound) : isAdhanCached(track);
       /* The recording sounds from the alarm, and the notification is quiet so
          the two do not talk over each other. When that cannot be relied on
          the notification keeps the system tone, so prayer time is still
          heard rather than passing in silence. */
-      const willPlay = alarm.usable && recordingReady;
+      const willPlay = Platform.OS === 'ios' ? Boolean(iosSound) : alarm.usable && recordingReady;
       if (!recordingReady) recordingMissing = true;
       const channel = willPlay ? CHANNEL_ADHAN_SILENT : CHANNEL_ADHAN;
       if (at > now) {
@@ -562,6 +575,10 @@ async function rebuildSchedule(
             body: c.adhanBodyName(name),
             categoryIdentifier: 'adhan-actions',
             data: { route: 'Prayer', kind: 'adhan', prayer: prayer.name },
+            /* Named only on iOS, where the sound rides with the
+               notification. On Android the channel governs the sound, and
+               naming one here would fight with it. */
+            ...(iosSound ? { sound: iosSound } : {}),
             // Stay on screen rather than vanishing: an adhan you have to hunt
             // for in the shade is an adhan you missed.
             sticky: true,
@@ -714,6 +731,22 @@ export async function inspectAdhanAudio(
 ): Promise<AdhanAudio> {
   const enabled = Object.keys(settings.adhanEnabled || {}).filter((name) => settings.adhanEnabled?.[name]);
   if (!enabled.length) return { willPlay: false, reason: 'no-adhan-enabled', scheduled: 0, skipped: 0 };
+
+  /* iOS has no alarm to play from, so the whole question is different there:
+     it is only whether the chosen recording is one of the ones shipped inside
+     the app. A bundled clip needs nothing downloaded and cannot be missing. */
+  if (Platform.OS === 'ios') {
+    const withoutClip = enabled.filter((name) => !adhanSoundName(adhanTrackFor(name, settings)));
+    if (withoutClip.length === enabled.length) {
+      return { willPlay: false, reason: 'ios-no-clip', scheduled: 0, skipped: enabled.length };
+    }
+    return {
+      willPlay: true,
+      reason: null,
+      scheduled: enabled.length - withoutClip.length,
+      skipped: withoutClip.length,
+    };
+  }
 
   const alarm = await alarmIsTrustworthy();
   const missing = enabled.filter((name) => !isAdhanCached(adhanTrackFor(name, settings)));

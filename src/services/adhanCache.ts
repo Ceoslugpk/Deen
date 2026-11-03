@@ -14,7 +14,44 @@
  * instead of being swallowed.
  */
 import { Directory, File, Paths } from 'expo-file-system';
+import { Asset } from 'expo-asset';
 import { ADHAN_TRACKS, FAJR_TRACKS, ALL_ADHAN_TRACKS, type AdhanTrack } from './adhanCatalog';
+
+/**
+ * The thirty-second clips that travel inside the app.
+ *
+ * These are not the recordings the cache holds. They are short enough to ship
+ * and they exist for one reason: iOS will only sound a notification with an
+ * audio file that is inside the app bundle and under thirty seconds, so
+ * without these the adhan cannot sound on a phone at all.
+ *
+ * Required one by one rather than looked up by name, because Metro has to be
+ * able to see every asset path when it builds.
+ *
+ * They double as instant previews: eight of the recordings can be heard
+ * without waiting for anything to download, and with no connection at all.
+ */
+const CLIP_MODULES: Record<string, number> = {
+  adhan_mishary: require('../../assets/sounds/adhan_mishary.m4a'),
+  adhan_mansour: require('../../assets/sounds/adhan_mansour.m4a'),
+  adhan_ozcan: require('../../assets/sounds/adhan_ozcan.m4a'),
+  adhan_nafees: require('../../assets/sounds/adhan_nafees.m4a'),
+  adhan_abdulbasit: require('../../assets/sounds/adhan_abdulbasit.m4a'),
+  adhan_minshawi: require('../../assets/sounds/adhan_minshawi.m4a'),
+  fajr_mansour: require('../../assets/sounds/fajr_mansour.m4a'),
+  fajr_traditional: require('../../assets/sounds/fajr_traditional.m4a'),
+};
+
+/** The clip shipped for this track, as something a player can be pointed at. */
+export function bundledClipUri(track: AdhanTrack): string | null {
+  const module = track.clip ? CLIP_MODULES[track.clip] : undefined;
+  if (!module) return null;
+  try {
+    return Asset.fromModule(module).uri ?? null;
+  } catch {
+    return null;
+  }
+}
 
 const DIR_NAME = 'adhan';
 
@@ -70,7 +107,11 @@ export function cachedAdhanUri(track: AdhanTrack): string | null {
  */
 export function adhanPlaybackSource(track: AdhanTrack): string {
   if (PlatformIsWeb()) return track.url;
-  return cachedAdhanUri(track) ?? track.url;
+  /* The bundled clip first: it is already on the device, so the preview
+     starts at once and works with no connection. Only the recordings
+     without one fall back to the download, or to the network while the
+     download is still arriving. */
+  return bundledClipUri(track) ?? cachedAdhanUri(track) ?? track.url;
 }
 
 function PlatformIsWeb(): boolean {
