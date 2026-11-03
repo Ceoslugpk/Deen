@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { AudioPlayer, createAudioPlayer, setAudioModeAsync } from 'expo-audio';
+import { engine } from './audioEngine';
 import { AudioEdition, getAudioEditions, getChapters, getSurahAudio, getSurahReciters, SurahAudioAyah, SurahReciter } from './api';
 import { getCachedJson, setCachedJson } from './contentCache';
 import { localAudioUri } from './downloadService';
@@ -434,8 +433,11 @@ export async function buildQueueForChapter(chapterId: number, chapterName: strin
 
 /* -------------------------------------------------------------------- player */
 
-let player: AudioPlayer | null = null;
-let currentSource = '';
+/** Whether the transport has been bound to this service's status handler. */
+let engineBound = false;
+/** Which surah the transport is holding, so a move within it is a skip
+ *  rather than a reload. */
+let loadedQueueKey = '';
 let state: AudioState = {
   queue: [],
   index: 0,
@@ -457,79 +459,75 @@ function emit(patch: Partial<AudioState>) {
   listeners.forEach((listener) => listener(state));
 }
 
-async function ensurePlayer(): Promise<AudioPlayer> {
-  if (player) return player;
-  if (Platform.OS !== 'web') {
-    try {
-      /* Three separate things, and all three are needed.
-         `playsInSilentMode` so a recitation is not swallowed by the ringer
-         switch. `shouldPlayInBackground` so locking the phone, or leaving for
-         another app, does not cut the recitation off — a surah is long enough
-         that nobody holds the app open for all of it. And
-         `keepAudioSessionActive` so the session is not torn down the moment
-         playback pauses, which is what otherwise makes resuming stutter.
-         `doNotMix` asks that other audio yield, so a notification does not
-         talk over the Quran. */
-      await setAudioModeAsync({
-        playsInSilentMode: true,
-        shouldRouteThroughEarpiece: false,
-        shouldPlayInBackground: true,
-        interruptionMode: 'doNotMix',
-      });
-    } catch {
-      /* audio mode is best-effort on device, and some browsers reject it */
-    }
-  }
-  /* `keepAudioSessionActive` belongs to the player, not the audio mode: it
-     keeps the session alive across a pause so that resuming does not have to
-     re-establish it, which is what makes a resume stutter or start late. */
-  player = createAudioPlayer(null, { updateInterval: 500, keepAudioSessionActive: true });
-  player.addListener('playbackStatusUpdate', async (status) => {
-    const track = state.track;
-    if (status.didJustFinish && track) {
-      const plan = nextIndexAfterFinish(state.queue, state.index, settings, timesPlayed);
-      if (plan.advanceCount) timesPlayed += 1;
+/**
+ * What the transport tells us.
+ *
+ * One handler for both transports, so the rules about what happens when an
+ * ayah ends live in exactly one place no matter which of them is running.
+ */
+function handleEngineStatus(status: {
+  playing: boolean;
+  position: number;
+  duration: number;
+  buffering: boolean;
+  endedIndex: number | null;
+}) {
+  const track = state.track;
 
-      if (plan.next !== null) {
-        await goToIndex(plan.next, true);
-        return;
-      }
+  /* An ayah finished. Which one is given, because what happens next depends
+     on it — and the rules for that are kept pure in `nextIndexAfterFinish`. */
+  if (status.endedIndex !== null) {
+    const plan = nextIndexAfterFinish(state.queue, status.endedIndex, settings, timesPlayed);
+    if (plan.advanceCount) timesPlayed += 1;
 
-      /* Nothing left in this surah. Either carry on into the next one, or
-         stop honestly rather than looping on silence. */
-      resetRepeatProgress();
-      if (settings.autoNextSurah && track.chapterId < 114) {
-        void playChapter(track.chapterId + 1, true);
-        return;
-      }
-      emit({ playing: false, position: 0 });
+    if (plan.next !== null) {
+      void goToIndex(plan.next, true);
       return;
     }
-    /* Something else took the audio away. Give it a moment to give it back,
-       then carry on — up to a few tries, so a Bluetooth headset dropping out
-       does not leave a recitation stalled for the rest of the surah. */
-    if (intendedPlaying && !status.playing && !status.didJustFinish) {
-      if (!status.isBuffering) scheduleResume();
-    } else if (status.playing) {
-      clearResume();
-    }
 
-    emit({
-      playing: status.playing,
-      position: status.currentTime,
-      duration: status.duration,
-      buffering: status.isBuffering,
-    });
-    if (track && Platform.OS !== 'web') {
-      try {
-        player?.updateLockScreenMetadata({ title: track.title, artist: track.performer });
-      } catch {
-        /* lock-screen artwork is unavailable until the track metadata is ready */
-      }
+    /* Nothing left in this surah. Either carry on into the next one, or stop
+       honestly rather than looping on silence. */
+    resetRepeatProgress();
+    const finished = state.queue[status.endedIndex];
+    if (settings.autoNextSurah && finished && finished.chapterId < 114) {
+      void playChapter(finished.chapterId + 1, true);
+      return;
     }
-    if (track) void rememberSession(status.currentTime);
+    emit({ playing: false, position: 0 });
+    return;
+  }
+
+  /* Something else took the audio away. Give it a moment to give it back,
+     then carry on — up to a few tries, so a Bluetooth headset dropping out
+     does not leave a recitation stalled for the rest of the surah. */
+  if (intendedPlaying && !status.playing && !status.buffering) {
+    scheduleResume();
+  } else if (status.playing) {
+    clearResume();
+  }
+
+  emit({
+    playing: status.playing,
+    position: status.position,
+    duration: status.duration,
+    buffering: status.buffering,
   });
-  return player;
+  if (track) void rememberSession(status.position);
+}
+
+/** Bring the transport up, once, and point it at the handler above. */
+async function ensurePlayer(): Promise<void> {
+  if (engineBound) return;
+  engineBound = true;
+  engine.bind(handleEngineStatus);
+  await engine.prepare();
+}
+
+/** Identifies the surah the transport is holding. */
+function queueKeyFor(queue: AudioTrack[]): string {
+  const first = queue[0];
+  if (!first) return '';
+  return `${first.chapterId}:${first.kind}:${first.edition}:${queue.length}`;
 }
 
 /**
@@ -598,8 +596,8 @@ let timesPlayed = 0;
 /**
  * Whether we meant to be playing.
  *
- * expo-audio tells us the player has stopped but not why, and there is no
- * interruption event to listen for. So the difference between "the person
+ * The transport reports that the player has stopped but not why, and there is
+ * no interruption event to listen for. So the difference between "the person
  * pressed pause" and "a phone call took the audio away" is tracked here: if we
  * intended to be playing and the player reports it is not, without having
  * finished, something else stopped us — and once whatever it was has passed,
@@ -619,11 +617,9 @@ function scheduleResume() {
   resumeTimer = setTimeout(() => {
     resumeTimer = null;
     if (!intendedPlaying || !state.track) return;
-    try {
-      player?.play();
-    } catch {
+    void engine.play().catch(() => {
       /* nothing to resume into */
-    }
+    });
   }, RESUME_GRACE_MS * resumeAttempts);
 }
 
@@ -640,45 +636,34 @@ function volumeFor(track: AudioTrack | null, settings: AudioSettings) {
   return (track.kind === 'translation' ? settings.translationVolume : settings.arabicVolume) ?? 1;
 }
 
-function applySource(track: AudioTrack | null, autoplay: boolean) {
-  const nextPlayer = player;
-  if (!nextPlayer || !track) return;
-  if (currentSource !== track.uri) {
-    currentSource = track.uri;
-    nextPlayer.replace(track.uri);
+/**
+ * Hand the surah to the transport and begin at one ayah in it.
+ *
+ * The whole surah is handed over rather than one ayah at a time, because the
+ * notification's next and previous have to work when the app is not running,
+ * and then there is no app state to consult — only the queue living inside
+ * the transport. The queue is only rebuilt when the surah has actually
+ * changed; moving to another ayah within it is a skip.
+ */
+async function applySource(track: AudioTrack | null, autoplay: boolean) {
+  if (!track) return;
+  const key = queueKeyFor(state.queue);
+  if (key !== loadedQueueKey) {
+    loadedQueueKey = key;
+    await engine.loadQueue(state.queue, state.index, autoplay, state.rate, volumeFor(track, settings));
+    return;
   }
-  /* Rate and volume have to be re-applied on every source change, not only
-     when the user changes them: the player resets both when a new track is
-     loaded, and a recitation that comes back at full speed and full volume
-     after every ayah has not really remembered the settings at all. */
-  try {
-    nextPlayer.setPlaybackRate(state.rate, 'high');
-  } catch {
-    /* rate control is unavailable on some browsers */
-  }
-  try {
-    nextPlayer.volume = volumeFor(track, settings);
-  } catch {
-    /* volume is unavailable in some browsers until playback starts */
-  }
-  if (autoplay) nextPlayer.play();
+  await engine.skipTo(state.index, autoplay, state.rate, volumeFor(track, settings));
 }
 
 async function goToIndex(index: number, autoplay: boolean) {
   if (!state.queue.length) return;
   const safe = Math.max(0, Math.min(index, state.queue.length - 1));
   const track = state.queue[safe];
-  const instance = await ensurePlayer();
+  await ensurePlayer();
   emit({ index: safe, track, position: 0, duration: 0, buffering: true, error: null });
   intendedPlaying = autoplay;
-  applySource(track, autoplay);
-  if (Platform.OS !== 'web') {
-    try {
-      instance.setActiveForLockScreen(true, { title: track.title, artist: track.performer });
-    } catch {
-      /* lock-screen controls are unavailable on web and unsupported platforms */
-    }
-  }
+  await applySource(track, autoplay);
   void rememberRecent(track);
   void rememberSession(0);
 }
@@ -686,6 +671,10 @@ async function goToIndex(index: number, autoplay: boolean) {
 export async function playQueue(queue: AudioTrack[], startIndex = 0) {
   if (!queue.length) return;
   await ensurePlayer();
+  /* A different surah is being loaded, so whatever the transport is holding
+     is now stale and has to be replaced — otherwise the first ayah would be
+     skipped because the key happened to match. */
+  loadedQueueKey = '';
   emit({ queue, index: Math.max(0, Math.min(startIndex, queue.length - 1)), error: null });
   await goToIndex(Math.max(0, Math.min(startIndex, queue.length - 1)), true);
 }
@@ -712,18 +701,18 @@ export async function playTrack(track: AudioTrack) {
 }
 
 export async function resume() {
-  const instance = await ensurePlayer();
+  await ensurePlayer();
   if (!state.track) return;
   intendedPlaying = true;
   clearResume();
-  instance.play();
+  await engine.play();
 }
 
 export async function pause() {
   /* Said out loud, so an unasked-for stop is not mistaken for this. */
   intendedPlaying = false;
   clearResume();
-  player?.pause();
+  await engine.pause().catch(() => undefined);
   emit({ playing: false });
 }
 
@@ -740,34 +729,36 @@ export async function nextTrack() {
 
 export async function previousTrack() {
   if (!state.queue.length) return;
-  const instance = player;
-  if (instance && (state.position > 3 || state.index === 0)) {
-    await instance.seekTo(0);
-    emit({ position: 0 });
+  /* A few seconds into an ayah, "previous" means the start of this one, not
+     the ayah before it — otherwise going back is impossible once you have
+     begun, which is when you are most likely to want it. */
+  const position = await engine.getPosition().catch(() => state.position);
+  if (position > 3 || state.index === 0) {
+    await seekTo(0);
     return;
   }
   await goToIndex(Math.max(0, state.index - 1), true);
 }
 
 export async function seekTo(seconds: number) {
-  const instance = await ensurePlayer();
+  await ensurePlayer();
   const target = Math.max(0, seconds);
-  await instance.seekTo(target);
+  await engine.seek(target);
   emit({ position: target });
 }
 
 export async function stopPlayback() {
   intendedPlaying = false;
   clearResume();
-  player?.pause();
-  if (player) await player.seekTo(0);
+  await engine.stop().catch(() => undefined);
   emit({ playing: false, position: 0 });
 }
 
 export async function clearQueue() {
   await stopPlayback();
   emit({ queue: [], index: 0, track: null, duration: 0 });
-  currentSource = '';
+  loadedQueueKey = '';
+  await engine.reset().catch(() => undefined);
   await AsyncStorage.removeItem(KEYS.session).catch(() => undefined);
 }
 
@@ -788,7 +779,7 @@ export function removeFromQueue(index: number) {
   if (index === state.index) {
     const nextIndex = Math.min(index, queue.length - 1);
     emit({ queue, index: nextIndex, track: queue[nextIndex] });
-    applySource(queue[nextIndex], state.playing);
+    void goToIndex(nextIndex, state.playing);
     return;
   }
   emit({ queue, index: index < state.index ? state.index - 1 : state.index });
@@ -801,7 +792,7 @@ export async function selectQueueItem(index: number) {
 export async function setPlaybackRate(rate: number) {
   const safe = Math.max(MIN_RATE, Math.min(MAX_RATE, rate));
   try {
-    player?.setPlaybackRate(safe, 'high');
+    await engine.setRate(safe);
   } catch {
     /* rate control is unavailable on some browsers */
   }
@@ -856,7 +847,7 @@ export async function setVolume(kind: AudioTrackKind, value: number) {
   settings = { ...settings, ...patch };
   if (state.track && state.track.kind === kind) {
     try {
-      if (player) player.volume = safe;
+      await engine.setVolume(safe);
     } catch {
       /* volume is unavailable in some browsers until playback starts */
     }
@@ -1028,14 +1019,17 @@ export async function restoreSavedSession(): Promise<boolean> {
       let attempts = 0;
       const trySeek = async (): Promise<void> => {
         if (attempts++ > 12) return;
-        const ready = state.duration > 0 || (player && player.duration > 0);
-        if (!ready) {
+        /* The duration is not known until the file has been probed, and a
+           seek issued before then is silently dropped — the recitation would
+           start from the beginning of the ayah instead of where it was left.
+           So wait for the transport to know how long the ayah is. */
+        const duration = await engine.getDuration().catch(() => 0);
+        if (!(duration > 0) && !(state.duration > 0)) {
           await new Promise((resolve) => setTimeout(resolve, 400));
           return trySeek();
         }
         try {
-          await player?.seekTo(target);
-          emit({ position: target });
+          await seekTo(target);
         } catch {
           /* a seek that fails leaves the ayah at its start, which is survivable */
         }
