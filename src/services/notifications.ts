@@ -1,12 +1,14 @@
 import { Platform, Linking } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { arNoun, clockTime, prayerName } from './arabicCopy';
 import type { PrayerSnapshot } from './api';
 import type { WorshipSettings } from './localState';
 import { ADHAN_TRACKS, FAJR_TRACKS, adhanTrack, type AdhanTrack } from './adhanCatalog';
 import { isAdhanCached } from './adhanCache';
-import { isAdhanAlarmAvailable, scheduleAdhanAlarms, cancelAdhanAlarms } from './adhanAlarm';
+import { isAdhanAlarmAvailable, canScheduleExactAlarms, scheduleAdhanAlarms, cancelAdhanAlarms } from './adhanAlarm';
 import { recordScheduled, type PendingEntry } from './notificationLog';
+import { createSerialQueue } from './scheduleQueue';
 
 /**
  * Everything the app says out loud, and when it says it.
@@ -90,23 +92,65 @@ export function adhanTrackFor(prayerName: string, settings: { adhanReciter?: str
 }
 
 /**
- * What the notification itself should sound like, which is no longer the
- * adhan.
+ * Why the real recording will not sound at prayer time.
  *
- * The recordings are on the device now rather than compiled into the app, and
- * a notification can only play a sound that was compiled in. So when an alarm
- * will play the recording, the notification stays quiet and lets it; when no
- * alarm can - iOS, the web, Expo Go, or a recording that has not finished
- * downloading - it falls back to the device tone, so the reminder is still
- * heard rather than arriving silently.
+ * `null` means it will. Anything else is a reason the settings screen can
+ * explain, because "the adhan did not play" is not something a person can
+ * act on without being told which of these it was.
  */
-export function adhanNotificationSound(
-  prayerName: string,
-  settings: { adhanReciter?: string; adhanFajrReciter?: string },
-): string | undefined {
-  const track = adhanTrackFor(prayerName, settings);
-  const alarmWillPlay = isAdhanAlarmAvailable() && isAdhanCached(track);
-  return alarmWillPlay ? undefined : 'default';
+export type AdhanAudioReason =
+  | 'no-adhan-enabled'
+  | 'alarm-unavailable'
+  | 'exact-alarms-denied'
+  | 'not-downloaded'
+  | 'alarm-rejected';
+
+export type AdhanAudio = {
+  /** True when the actual recording will sound at the prayer time. */
+  willPlay: boolean;
+  reason: AdhanAudioReason | null;
+  /** How many alarms the system accepted, and how many it was not given. */
+  scheduled: number;
+  skipped: number;
+};
+
+/**
+ * Whether the alarm can be trusted on this device, decided once per pass.
+ *
+ * Exact alarms are the whole mechanism: without them the system is free to
+ * deliver the alarm late or not at all, and the adhan arrives at the wrong
+ * moment or not at all. Android 12+ grants the permission by default but the
+ * person can withdraw it, and several manufacturers refuse it outright, so it
+ * is checked rather than assumed.
+ *
+ * This is the check that used to be missing. The alarm was trusted purely
+ * because the module was present, so on a device that would not honour an
+ * exact alarm the adhan was silenced in favour of an alarm that never came.
+ */
+/**
+ * The single place that turns everything known about the last pass into one
+ * explanation, ordered so the most fixable cause is the one reported.
+ */
+function diagnoseAdhanAudio(facts: {
+  adhans: number;
+  alarm: { usable: boolean; reason: AdhanAudioReason | null };
+  alarms: { scheduled: number; skipped: number };
+  recordingMissing: boolean;
+}): AdhanAudioReason | null {
+  const { adhans, alarm, alarms, recordingMissing } = facts;
+  if (adhans === 0) return 'no-adhan-enabled';
+  if (alarms.scheduled > 0) return null;
+  if (alarm.reason) return alarm.reason;
+  if (recordingMissing) return 'not-downloaded';
+  return 'alarm-rejected';
+}
+
+async function alarmIsTrustworthy(): Promise<{ usable: boolean; reason: AdhanAudioReason | null }> {
+  if (!isAdhanAlarmAvailable()) return { usable: false, reason: 'alarm-unavailable' };
+  let exact = false;
+  try { exact = await canScheduleExactAlarms(); } catch { exact = false; }
+  if (!exact) return { usable: false, reason: 'exact-alarms-denied' };
+  return { usable: true, reason: null };
 }
 
 const COPY = {
@@ -212,34 +256,90 @@ export async function getNotificationHealth(): Promise<NotificationHealth> {
   return current.status as NotificationHealth;
 }
 
+/** The channels the app posts to. */
+export const CHANNEL_ADHAN = 'adhan';
+/** The adhan, for the case where the recording itself will sound instead. */
+export const CHANNEL_ADHAN_SILENT = 'adhan-silent';
+export const CHANNEL_REMINDERS = 'prayer-reminders';
+export const CHANNEL_DAILY = 'daily';
+
 /**
- * The channels and the action buttons, created once.
+ * Bumped whenever a channel's shape changes in a way Android will refuse to
+ * apply to a channel that already exists - which is everything except its name
+ * and description. A device that has already been given the older, silent
+ * channels has to have them deleted and rebuilt, and this is how it is told
+ * apart from a device where that has already been done.
+ */
+const CHANNEL_SCHEMA = 2;
+const CHANNEL_SCHEMA_KEY = '@deen/notification-channels/v1';
+
+/**
+ * The channels and the action buttons.
  *
  * The adhan gets its own channel so the person can lower the volume of
- * everything else without touching it, and so the chosen adhan sound plays
- * even when the phone is set to silent for notifications.
+ * everything else without touching it.
+ *
+ * Two things here are easy to get wrong and were.
+ *
+ * First, the sound. `sound: 'default'` looks like it asks for the system
+ * notification tone; on Android it does the opposite. A channel's `sound` is
+ * the name of a raw resource compiled into the app, there is no resource
+ * called `default`, and a name that resolves to nothing leaves the channel
+ * with no sound at all. Since Android 8 the channel governs what a
+ * notification sounds like, so every notification in the app - the adhan and
+ * the before-prayer heads-up alike - arrived in silence. The way to ask for
+ * the system tone is to omit the key entirely, which is what these do.
+ *
+ * Second, the adhan channel is deliberately audible. When the recording
+ * itself is going to sound there is a separate silent channel to post to,
+ * because a notification cannot be made quiet on its own once its channel has
+ * a sound.
  */
 export async function ensureNotificationChannels(rtl = false) {
   if (Platform.OS !== 'android') return;
   const c = copy(rtl);
-  await Notifications.setNotificationChannelAsync('adhan', {
+
+  /* Rebuilt once, not on every pass: deleting a channel also discards
+     whatever the person chose for it, so it is only done when the shape
+     itself is out of date. */
+  let stored = 0;
+  try { stored = Number(await AsyncStorage.getItem(CHANNEL_SCHEMA_KEY)) || 0; } catch { stored = 0; }
+  if (stored < CHANNEL_SCHEMA) {
+    for (const id of [CHANNEL_ADHAN, CHANNEL_ADHAN_SILENT, CHANNEL_REMINDERS, CHANNEL_DAILY]) {
+      await Notifications.deleteNotificationChannelAsync(id).catch(() => undefined);
+    }
+    try { await AsyncStorage.setItem(CHANNEL_SCHEMA_KEY, String(CHANNEL_SCHEMA)); } catch { /* next time */ }
+  }
+
+  await Notifications.setNotificationChannelAsync(CHANNEL_ADHAN, {
     name: c.channelAdhan,
     importance: Notifications.AndroidImportance.MAX,
     vibrationPattern: [0, 250, 180, 250],
     lightColor: '#452D9F',
-    sound: 'default',
+    // No `sound` key: that is what selects the system notification tone.
   });
-  await Notifications.setNotificationChannelAsync('prayer-reminders', {
+
+  /* For the adhan that will be heard from the alarm instead. `null` is
+     explicit silence, which is a different thing from a name that failed to
+     resolve. */
+  await Notifications.setNotificationChannelAsync(CHANNEL_ADHAN_SILENT, {
+    name: c.channelAdhan,
+    importance: Notifications.AndroidImportance.MAX,
+    vibrationPattern: [0, 250, 180, 250],
+    lightColor: '#452D9F',
+    sound: null,
+  });
+
+  await Notifications.setNotificationChannelAsync(CHANNEL_REMINDERS, {
     name: c.channelReminder,
     importance: Notifications.AndroidImportance.HIGH,
     vibrationPattern: [0, 250, 180, 250],
     lightColor: '#452D9F',
-    sound: 'default',
   });
-  await Notifications.setNotificationChannelAsync('daily', {
+
+  await Notifications.setNotificationChannelAsync(CHANNEL_DAILY, {
     name: c.channelDaily,
     importance: Notifications.AndroidImportance.DEFAULT,
-    sound: 'default',
   });
 
   /* Two buttons on the adhan itself. Somebody mid-prayer does not want to
@@ -305,7 +405,7 @@ export async function sendTestNotification(rtl = false) {
       sound: 'default',
       data: { route: 'Prayer', kind: 'daily' },
     },
-    trigger: intervalTrigger(1, 'daily'),
+    trigger: intervalTrigger(1, CHANNEL_DAILY),
   });
 
   await scheduleAndLog({
@@ -317,7 +417,7 @@ export async function sendTestNotification(rtl = false) {
       sticky: true,
       data: { route: 'Prayer', kind: 'adhan', prayer: 'Dhuhr' },
     },
-    trigger: intervalTrigger(2, 'adhan'),
+    trigger: intervalTrigger(2, CHANNEL_ADHAN),
   });
 }
 
@@ -344,7 +444,11 @@ export type ScheduleResult = {
   unsupported: boolean;
   /** How many of the scheduled ones are the adhan itself. */
   adhans: number;
+  /** Whether the real recording will sound, and why not when it will not. */
+  adhanAudio: AdhanAudio;
 };
+
+const NO_AUDIO: AdhanAudio = { willPlay: false, reason: 'no-adhan-enabled', scheduled: 0, skipped: 0 };
 
 /**
  * Schedule everything, from scratch.
@@ -385,13 +489,30 @@ async function scheduleAndLog(request: Notifications.NotificationRequestInput) {
   return id;
 }
 
-export async function schedulePrayerNotifications(
+/**
+ * Scheduling passes are put through a queue rather than started where they
+ * are asked for. Three separate places rebuild the schedule and none of them
+ * knows about the others, so without this they overlap and everything is laid
+ * down twice.
+ */
+const scheduleQueue = createSerialQueue<ScheduleResult>();
+
+export function schedulePrayerNotifications(
   snapshot: PrayerSnapshot,
   settings: WorshipSettings,
   rtl = false,
   readingLabel?: string,
 ): Promise<ScheduleResult> {
-  if (Platform.OS === 'web') return { scheduled: 0, unsupported: true, adhans: 0 };
+  return scheduleQueue(() => rebuildSchedule(snapshot, settings, rtl, readingLabel));
+}
+
+async function rebuildSchedule(
+  snapshot: PrayerSnapshot,
+  settings: WorshipSettings,
+  rtl = false,
+  readingLabel?: string,
+): Promise<ScheduleResult> {
+  if (Platform.OS === 'web') return { scheduled: 0, unsupported: true, adhans: 0, adhanAudio: NO_AUDIO };
   pending = [];
 
   await ensureNotificationChannels(rtl);
@@ -401,10 +522,14 @@ export async function schedulePrayerNotifications(
   const now = new Date();
   let scheduled = 0;
   let adhans = 0;
+  /* Decided once, not per prayer: it is a property of the device, so asking
+     five times would give the same answer five times. */
+  const alarm = await alarmIsTrustworthy();
+  let recordingMissing = false;
   /* Collected as the loop runs, then handed to the alarm in one call at the
      end. An alarm per prayer is the only way the recording can sound, because
      a notification cannot play a file the app is merely carrying. */
-  const alarmEntries: { at: number; prayerName: string; fajrId: string; adhanId: string; title: string }[] = [];
+  const alarmEntries: { at: number; prayerName: string; trackId: string; title: string }[] = [];
 
   const prayers = snapshot.prayers.filter((prayer) => prayer.name !== 'Sunrise');
 
@@ -415,28 +540,39 @@ export async function schedulePrayerNotifications(
 
     // ---- 1. the adhan itself ------------------------------------------
     if (settings.adhanEnabled?.[prayer.name]) {
-      const sound = adhanNotificationSound(prayer.name, settings);
+      const track = adhanTrackFor(prayer.name, settings);
+      const recordingReady = isAdhanCached(track);
+      /* The recording sounds from the alarm, and the notification is quiet so
+         the two do not talk over each other. When that cannot be relied on
+         the notification keeps the system tone, so prayer time is still
+         heard rather than passing in silence. */
+      const willPlay = alarm.usable && recordingReady;
+      if (!recordingReady) recordingMissing = true;
+      const channel = willPlay ? CHANNEL_ADHAN_SILENT : CHANNEL_ADHAN;
       if (at > now) {
         await scheduleAndLog({
           content: {
             title: name,
             body: c.adhanBodyName(name),
-            sound,
             categoryIdentifier: 'adhan-actions',
             data: { route: 'Prayer', kind: 'adhan', prayer: prayer.name },
             // Stay on screen rather than vanishing: an adhan you have to hunt
             // for in the shade is an adhan you missed.
             sticky: true,
           },
-          trigger: dateTrigger(at, 'adhan'),
+          trigger: dateTrigger(at, channel),
         });
         scheduled++;
         adhans++;
+        /* The resolved track rather than the raw saved value. The alarm used
+           to look the recording up again from the setting, which a legacy
+           value stored as a label would resolve differently - so the alarm
+           could be handed one recording while the notification was checking
+           whether a different one was on the device. */
         alarmEntries.push({
           at: at.getTime(),
           prayerName: prayer.name,
-          fajrId: settings.adhanFajrReciter || '',
-          adhanId: settings.adhanReciter || '',
+          trackId: track.id,
           title: name,
         });
       }
@@ -452,7 +588,7 @@ export async function schedulePrayerNotifications(
               sound: 'default',
               data: { route: 'Quran', kind: 'continue' },
             },
-            trigger: dateTrigger(later, 'daily'),
+            trigger: dateTrigger(later, CHANNEL_DAILY),
           });
           scheduled++;
         }
@@ -470,7 +606,7 @@ export async function schedulePrayerNotifications(
             sound: 'default',
             data: { route: 'Prayer', kind: 'pre-adhan', prayer: prayer.name },
           },
-          trigger: dateTrigger(early, 'prayer-reminders'),
+          trigger: dateTrigger(early, CHANNEL_REMINDERS),
         });
         scheduled++;
       }
@@ -484,7 +620,7 @@ export async function schedulePrayerNotifications(
     if (!at) return;
     return scheduleAndLog({
       content: { title, body: '', sound: 'default', data: { route, kind } },
-      trigger: dailyTrigger(at.getHours(), at.getMinutes(), 'daily'),
+      trigger: dailyTrigger(at.getHours(), at.getMinutes(), CHANNEL_DAILY),
     });
   };
 
@@ -513,7 +649,7 @@ export async function schedulePrayerNotifications(
           // are one motion rather than two.
           data: { route: 'Quran', kind: 'sleep', surah: SLEEP_SURAH.chapterId },
         },
-        trigger: dailyTrigger(at.getHours(), at.getMinutes(), 'daily'),
+        trigger: dailyTrigger(at.getHours(), at.getMinutes(), CHANNEL_DAILY),
       });
       scheduled++;
     }
@@ -525,20 +661,72 @@ export async function schedulePrayerNotifications(
     if (at) {
       await scheduleAndLog({
         content: { title: c.quranTitle, body: c.quranBody, data: { route: 'Quran' } },
-        trigger: dailyTrigger(at.getHours(), at.getMinutes(), 'daily'),
+        trigger: dailyTrigger(at.getHours(), at.getMinutes(), CHANNEL_DAILY),
       });
       scheduled++;
     }
   }
 
   /* Rescheduled every time, because the times, the city, and the person's
-     choice of recording all move. Any alarm already set is replaced. */
-  await scheduleAdhanAlarms(alarmEntries);
+     choice of recording all move. Any alarm already set is replaced.
+
+     The result is read rather than thrown away. An alarm that was skipped
+     used to be invisible, which left no way to tell the difference between
+     "the adhan is set" and "the adhan can never sound on this phone". */
+  const alarms = await scheduleAdhanAlarms(alarmEntries);
+
+  const adhanAudio: AdhanAudio = {
+    willPlay: alarm.usable && alarms.scheduled > 0,
+    reason: diagnoseAdhanAudio({ adhans, alarm, alarms, recordingMissing }),
+    scheduled: alarms.scheduled,
+    skipped: alarms.skipped,
+  };
 
   await recordScheduled(pending);
   pending = [];
 
-  return { scheduled, unsupported: false, adhans };
+  return { scheduled, unsupported: false, adhans, adhanAudio };
+}
+
+/**
+ * What the adhan will do right now, without changing anything.
+ *
+ * The settings screen needs to be able to answer "will the adhan actually
+ * sound?" on being opened, not only after a scheduling pass has happened to
+ * run. This is that answer, reached the same way the scheduler reaches it.
+ */
+export async function inspectAdhanAudio(
+  settings: { adhanEnabled?: Record<string, boolean>; adhanReciter?: string; adhanFajrReciter?: string },
+): Promise<AdhanAudio> {
+  const enabled = Object.keys(settings.adhanEnabled || {}).filter((name) => settings.adhanEnabled?.[name]);
+  if (!enabled.length) return { willPlay: false, reason: 'no-adhan-enabled', scheduled: 0, skipped: 0 };
+
+  const alarm = await alarmIsTrustworthy();
+  const missing = enabled.filter((name) => !isAdhanCached(adhanTrackFor(name, settings)));
+  const ready = enabled.length - missing.length;
+
+  if (!alarm.usable) return { willPlay: false, reason: alarm.reason, scheduled: 0, skipped: enabled.length };
+  if (ready === 0) return { willPlay: false, reason: 'not-downloaded', scheduled: 0, skipped: enabled.length };
+
+  return { willPlay: true, reason: null, scheduled: ready, skipped: missing.length };
+}
+
+/**
+ * Opens the page where Android lets somebody allow exact alarms again.
+ *
+ * Android 12 introduced this screen and it is the only way back once the
+ * permission has been withdrawn — the system prompt is not shown twice, so
+ * asking from inside the app would be a button that does nothing. Devices
+ * without that screen fall through to the app's own settings page.
+ */
+export async function openExactAlarmSettings() {
+  if (Platform.OS !== 'android') return;
+  const exactScreen = 'android.settings.REQUEST_SCHEDULE_EXACT_ALARM';
+  try {
+    await Linking.sendIntent(exactScreen);
+  } catch {
+    await openNotificationSettings();
+  }
 }
 
 export async function cancelAllNotifications() {

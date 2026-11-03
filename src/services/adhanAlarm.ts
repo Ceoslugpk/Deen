@@ -16,7 +16,7 @@
  * arrives, just with the device's own tone.
  */
 import { Platform } from 'react-native';
-import { adhanTrack, type AdhanTrack } from './adhanCatalog';
+import { adhanTrack, ADHAN_TRACKS, type AdhanTrack } from './adhanCatalog';
 import { isAdhanCached, cachedAdhanUri } from './adhanCache';
 
 type AlarmScheduleItem = {
@@ -73,7 +73,7 @@ export function isAdhanAlarmAvailable(): boolean {
  * with the system tone, which is what the notification then falls back to.
  */
 export async function scheduleAdhanAlarms(
-  entries: { at: number; prayerName: string; fajrId: string; adhanId: string; title: string }[],
+  entries: { at: number; prayerName: string; trackId: string; title: string }[],
 ): Promise<{ scheduled: number; skipped: number }> {
   const native = bridge();
   if (!native) return { scheduled: 0, skipped: entries.length };
@@ -81,9 +81,11 @@ export async function scheduleAdhanAlarms(
   const items: AlarmScheduleItem[] = [];
   let skipped = 0;
   for (const entry of entries) {
-    const track: AdhanTrack = entry.prayerName === 'Fajr'
-      ? adhanTrack(entry.fajrId, adhanTrack('fajr:traditional', undefined as any))
-      : adhanTrack(entry.adhanId, adhanTrack('adhan:mishary-rashid-alafasy', undefined as any));
+    /* The caller has already settled which recording this prayer uses, so it
+       is looked up by that rather than worked out again here - two places
+       resolving the same setting differently is how a prayer ends up with the
+       wrong voice. */
+    const track: AdhanTrack = adhanTrack(entry.trackId, ADHAN_TRACKS[0]);
     const file = track && isAdhanCached(track) ? cachedAdhanUri(track) : null;
     if (!file || !track) { skipped += 1; continue; }
     items.push({ at: entry.at, prayer: entry.prayerName, file, title: entry.title });

@@ -63,6 +63,7 @@ import {
 import {
   actionFromResponse, cancelAllNotifications, getNotificationHealth, getScheduledCount,
   NotificationHealth, prayerFromNotification, requestNotificationPermission, schedulePrayerNotifications, sendTestNotification,
+  inspectAdhanAudio, openExactAlarmSettings, type AdhanAudio,
   SLEEP_SURAH, openNotificationSettings } from './src/services/notifications';
 import {
   clearNotificationLog, loadNotificationLog, markDelivered, markOpened, newestFirst,
@@ -6746,6 +6747,20 @@ function Toast({ message, onDone }: { message: string; onDone: () => void }) {
   );
 }
 
+/**
+ * Why the adhan recording cannot play, in words.
+ *
+ * Each of these is a state the device can actually be in, and each has a
+ * different way out — so they are named separately rather than collapsed
+ * into "the adhan is unavailable", which tells nobody anything.
+ */
+const ADHAN_AUDIO_REASON: Record<string, string> = {
+  'alarm-unavailable': 'The adhan is played by the installed Android app, which is not running here. Your device notification tone will sound instead.',
+  'exact-alarms-denied': 'Android is not allowing this app to set exact alarms, so the adhan cannot be timed to the prayer. Your notification tone will sound instead. Allow alarms and it will play properly.',
+  'not-downloaded': 'The recording has not been downloaded to this phone yet, so your notification tone will sound instead. Fetch it once and the adhan will play.',
+  'alarm-rejected': 'The alarm could not be set on this phone. Your notification tone will sound at the prayer time instead of the adhan.',
+};
+
 function NotificationScreen({navigation}:any){const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);
   const{location}=useAppLocation();const{settings,update}=useWorshipSettings();
   const[health,setHealth]=useState<NotificationHealth>('undetermined');
@@ -6754,8 +6769,12 @@ function NotificationScreen({navigation}:any){const{rtl}=useLanguage();const T=(
   const[battery,setBattery]=useState<BatteryState>('unknown');
   const[toast,setToast]=useState('');
   const toastDone=useCallback(()=>setToast(''),[]);
+  /* Whether the real recording will sound, so the screen can say so instead
+     of leaving somebody to discover it at prayer time. */
+  const[audio,setAudio]=useState<AdhanAudio|null>(null);
 
   useEffect(()=>{getNotificationHealth().then(setHealth);void getScheduledCount().then(setQueued);void getBatteryOptimizationState().then(setBattery)},[]);
+  useEffect(()=>{void inspectAdhanAudio(settings).then(setAudio)},[settings]);
 
   const permission=async()=>{const next=await requestNotificationPermission(rtl);setHealth(next)};
   const sync=async()=>{
@@ -6767,12 +6786,17 @@ function NotificationScreen({navigation}:any){const{rtl}=useLanguage();const T=(
       const result=await schedulePrayerNotifications(value.snapshot,settings,rtl,
         position?`${position.surahName} ${position.verseKey}`:undefined);
       setQueued(await getScheduledCount());
+      setAudio(result.adhanAudio);
       setToast(result.unsupported
         ? T('Saved. Reminders are scheduled in the installed app.')
         : rtl ? `تمت جدولة ${result.scheduled} تنبيهًا.` : `${result.scheduled} reminders scheduled.`);
     }catch(e:any){setToast(T(e.message||'Could not schedule'))}finally{setWorking(false)}};
 
   const toggleAdhan=(name:string)=>update({adhanEnabled:{...settings.adhanEnabled,[name]:!settings.adhanEnabled[name]}});
+  /* Narrowed once, so the panel below reads as a single condition rather
+     than re-checking the same three things at every mention. */
+  const audioBlocked: string | null = audio && !audio.willPlay && audio.reason && audio.reason!=='no-adhan-enabled'
+    ? audio.reason : null;
   const togglePre=(name:string)=>update({prayerReminders:{...settings.prayerReminders,[name]:!settings.prayerReminders[name]}});
   const prayers=['Fajr','Dhuhr','Asr','Maghrib','Isha'];
   const Row=({icon,title,subtitle,value,onChange}:any)=><View style={s.setting}>
@@ -6807,6 +6831,22 @@ function NotificationScreen({navigation}:any){const{rtl}=useLanguage();const T=(
 
       {/* ---- the adhan itself ---- */}
       <Section title={T('Adhan')}/>
+      {/* Whether the recording will really sound. Saying so here is the
+          difference between a setting that is switched on and one that
+          works: without it, a phone that will not honour exact alarms looks
+          exactly like a phone that will, right up to the prayer time. */}
+      {!!audioBlocked && <View style={[s.healthCard,{marginBottom:4,borderColor:C.coral,borderWidth:1}]}>
+        <View style={[s.healthDot,{backgroundColor:C.coral}]}/>
+        <View style={{flex:1}}>
+          <Text style={s.sourceTitle}>{T('The adhan cannot sound on this device')}</Text>
+          <Text style={s.sourceBody}>{T(ADHAN_AUDIO_REASON[audioBlocked] || ADHAN_AUDIO_REASON['alarm-rejected'])}</Text>
+        </View>
+        {audioBlocked==='exact-alarms-denied'
+          ? <Tactile onPress={()=>{void openExactAlarmSettings()}} style={s.ghostSmall}><Text style={s.ghostText}>{T('Allow alarms')}</Text></Tactile>
+          : audioBlocked==='not-downloaded'
+            ? <Tactile onPress={()=>navigation.navigate('Adhan')} style={s.ghostSmall}><Text style={s.ghostText}>{T('Get the recordings')}</Text></Tactile>
+            : null}
+      </View>}
       <View style={s.settings}>
         <Row icon="notifications-outline" title={T('Sound the adhan')}
           subtitle={T('At each prayer time, with buttons to silence it or to mark the prayer as prayed.')}
