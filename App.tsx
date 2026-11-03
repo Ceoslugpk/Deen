@@ -1279,6 +1279,10 @@ const TOOL_IMAGES_DARK:Record<string,any>={
    the generic glyph there, and always have. That is left as it is: filling
    those in is a drawing for that theme, not a substitution of this one. */
 const TOOL_IMAGES_PALESTINE: Record<string, any> = {
+  Vocab: require('./assets/tool-icons/vocab-palestine.png'),
+  Transliteration: require('./assets/tool-icons/transliteration-palestine.png'),
+  Topics: require('./assets/tool-icons/topics-palestine.png'),
+  Tajweed: require('./assets/tool-icons/tajweed-palestine.png'),
   Tafsir: require('./assets/tool-icons/tafsir-palestine.png'),
   Khatam: require('./assets/tool-icons/khatam-palestine.png'),
   Juz: require('./assets/tool-icons/juz-palestine.png'),
@@ -1286,6 +1290,10 @@ const TOOL_IMAGES_PALESTINE: Record<string, any> = {
   Audio: require('./assets/tool-icons/audio-palestine.png'),
 };
 const TOOL_IMAGES_PALESTINE_DARK: Record<string, any> = {
+  Vocab: require('./assets/tool-icons/vocab-dark-palestine.png'),
+  Transliteration: require('./assets/tool-icons/transliteration-dark-palestine.png'),
+  Topics: require('./assets/tool-icons/topics-dark-palestine.png'),
+  Tajweed: require('./assets/tool-icons/tajweed-dark-palestine.png'),
   Tafsir: require('./assets/tool-icons/tafsir-dark-palestine.png'),
   Khatam: require('./assets/tool-icons/khatam-dark-palestine.png'),
   Juz: require('./assets/tool-icons/juz-dark-palestine.png'),
@@ -2708,7 +2716,7 @@ function QuranHome({navigation}:any){const{dark,resolved}=useTheme();
  const shown=chapters.filter(c=>`${c.id} ${c.name_simple} ${c.name_arabic} ${c.translated_name?.name}`.toLowerCase().includes(debounced.toLowerCase()));const visible=expanded||debounced.length>0?shown:shown.slice(0,30);const openSurah=useCallback((chapter:Chapter)=>navigation.navigate('Reader',{chapter,mode:'both'}),[navigation]);const open=(chapter:Chapter,mode='both',focusVerse?:string)=>navigation.navigate('Reader',{chapter,mode,focusVerse});const featured={id:55,name_simple:'Ar-Rahman',name_arabic:'الرحمن',translated_name:{name:'The Most Merciful'},verses_count:78};const submit=()=>{const ref=query.match(/^(\d{1,3}):(\d{1,3})$/);if(ref){const chapter=chapters.find(c=>c.id===Number(ref[1]));if(chapter)return open(chapter,'both',query)}navigation.navigate('Quran Search',{initialQuery:query})};
  const[audioReciter,setAudioReciter]=useState(T('Choose a reciter'));const memorized=Object.values(hifz).filter(value=>value==='memorized').length;const contentWidth=Math.min(Math.max(width-36,280),980);
 const gridGap=8;const gridCols=gridW>=640?10:4;const tileW=gridW?Math.floor((gridW-gridGap*(gridCols-1))/gridCols):0;
-const exploreTools:{label:string;title:string;screen:string;tab?:string;params?:Record<string,any>;tool?:string}[]=[{label:'Transliteration',title:T('Transliteration'),screen:'Transliteration'},{label:'30 Juz',title:T('Juz'),screen:'Juz Directory',tool:'Juz'},{label:'60 Hizb',title:T('Hizb'),screen:'Hizb Directory',tool:'Hizb'},{label:'Quran Topics',title:T('Topics'),screen:'Quran Topics'},{label:'Translation Compare',title:T('Tafsir'),screen:'Tafsir Compare',tool:'Tafsir'},{label:'Tajweed',title:T('Tajweed'),screen:'Tajweed Study'},{label:'Quran Vocabulary',title:T('Vocab'),screen:'Quran Vocabulary'},{label:'Khatam',title:T('Khatam'),screen:'Khatam',tool:'Khatam'},{label:'Recitations',title:T('Audio'),screen:'Quran Audio',tool:'Audio'}];
+const exploreTools:{label:string;title:string;screen:string;tab?:string;params?:Record<string,any>;tool?:string}[]=[{label:'Transliteration',title:T('Transliteration'),screen:'Transliteration',tool:'Transliteration'},{label:'30 Juz',title:T('Juz'),screen:'Juz Directory',tool:'Juz'},{label:'60 Hizb',title:T('Hizb'),screen:'Hizb Directory',tool:'Hizb'},{label:'Quran Topics',title:T('Topics'),screen:'Quran Topics',tool:'Topics'},{label:'Translation Compare',title:T('Tafsir'),screen:'Tafsir Compare',tool:'Tafsir'},{label:'Tajweed',title:T('Tajweed'),screen:'Tajweed Study',tool:'Tajweed'},{label:'Quran Vocabulary',title:T('Vocab'),screen:'Quran Vocabulary',tool:'Vocab'},{label:'Khatam',title:T('Khatam'),screen:'Khatam',tool:'Khatam'},{label:'Recitations',title:T('Audio'),screen:'Quran Audio',tool:'Audio'}];
 const compactStats=[{label:'Bookmarks',title:T('Bookmarks'),value:String(bookmarkCount),screen:'Bookmarks',icon:'bookmark-outline',tool:'Bookmarks'},{label:'Notes',title:T('Notes'),value:String(noteCount),screen:'Notes',icon:'create-outline',tool:'Notes'},{label:'Reading Plans',title:T('Plans'),value:plan?`${plan.days}d`:'—',screen:'Reading Plans',icon:'calendar-outline',tool:'Reading Plans'},{label:'Hifz',title:T('Hifz'),value:String(memorized),screen:'Hifz',icon:'school-outline',tool:'Hifz'},{label:'Offline Quran',title:T('Offline'),value:`${preload.cached}/114`,screen:'Quran Preload',icon:'download-outline',tool:'Offline Quran'}];
  return <Page><ScrollView keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}><AppHeader/>
  <View style={s.search}>{ico('search-outline',19,C.muted)}<TextInput accessibilityLabel={T('Search the Quran')} value={query} onChangeText={setQuery} onSubmitEditing={submit} returnKeyType="search" style={s.searchInput} placeholder={T('Search Surah, meaning, or 2:255')} placeholderTextColor={C.muted}/>{query.length>0&&<Pressable accessibilityLabel={T('Clear Quran search')} onPress={()=>setQuery('')}>{ico('close-circle',18,C.muted)}</Pressable>}</View>
