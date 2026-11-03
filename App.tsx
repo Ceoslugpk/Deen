@@ -57,7 +57,8 @@ import {
 import {
   DEFAULT_DAY_TOOLS, DEFAULT_WORSHIP_SETTINGS, loadDailyContent, loadPrayerCache, loadPrayerCompletion, loadPrayerHistory, loadQuickTasbih, loadStoredLocation, loadWorshipSettings,
   saveDailyContent, savePrayerCache, savePrayerCompletion, saveQuickTasbih, saveStoredLocation, saveWorshipSettings,
-  WorshipSettings, loadOnboarding, saveOnboarding, loadLanguage, saveLanguage
+  WorshipSettings, loadOnboarding, saveOnboarding, loadLanguage, saveLanguage,
+  loadAppliedDirection, saveAppliedDirection
 } from './src/services/localState';
 import {
   actionFromResponse, adhanOption, ADHAN_OPTIONS, cancelAllNotifications, FAJR_OPTIONS, fajrOption, getNotificationHealth, getScheduledCount,
@@ -903,32 +904,63 @@ function LanguageProvider({children}:{children:React.ReactNode}){
   const[language,setLanguageState]=useState<AppLanguage>('en');
   const[ready,setReady]=useState(false);
   const rtl=isRtl(language);
+  /* Hand a direction to I18nManager and say whether the app must be restarted
+     for it to mean anything.
+
+     Native layout direction is decided once, when the app starts. forceRTL
+     only records the new value — it cannot re-lay-out what is already on
+     screen — so the reload is what actually applies it. That reload has to be
+     a one-shot: some devices keep reporting the previous direction back, and
+     restarting on every launch would be far worse than the original bug. So
+     the marker in storage decides, not isRTL. */
+  const applyDirection=async(wantsRtl:boolean)=>{
+    if(Platform.OS==='web')return false;
+    const wanted=wantsRtl?'rtl':'ltr';
+    const applied=await loadAppliedDirection();
+    /* First launch after this shipped: if native already agrees there is
+       nothing to do, so adopt it rather than restarting for no reason. */
+    if(applied===null&&I18nManager.isRTL===wantsRtl){await saveAppliedDirection(wanted);return false}
+    if(applied===wanted)return false;
+    I18nManager.allowRTL(true);
+    if(I18nManager.isRTL!==wantsRtl)I18nManager.forceRTL(wantsRtl);
+    await saveAppliedDirection(wanted);
+    return true;
+  };
   const setLanguage=(next:AppLanguage)=>{
     const wantsRtl=isRtl(next);
-    const flippingDirection=Platform.OS!=='web'&&isRtl(language)!==wantsRtl;
     setLanguageState(next);
-    I18nManager.allowRTL(true);
-    /* forceRTL records the new direction but cannot re-lay-out what is already
-       on screen, so on its own it changes the copy and leaves the layout where
-       it was. The reload is what applies it — and it has to wait for the
-       language to reach storage, or the app would come back in the old language
-       with the new direction, which is worse than the bug being fixed. */
-    const apply=async()=>{
+    /* The language has to reach storage before the reload, or the app would
+       come back in the old language under the new direction — worse than the
+       bug being fixed. */
+    void (async()=>{
       await saveLanguage(next);
-      if(Platform.OS==='web')return;
-      if(I18nManager.isRTL!==wantsRtl)I18nManager.forceRTL(wantsRtl);
-      if(flippingDirection)await restartForDirection();
-    };
-    void apply();
+      if(await applyDirection(wantsRtl))await restartForDirection();
+    })();
   };
-  useEffect(()=>{void loadLanguage().then(saved=>{if(saved&&languageByCode(saved))setLanguageState(saved as AppLanguage);setReady(true)}).catch(()=>setReady(true))},[]);
+  useEffect(()=>{
+    void (async()=>{
+      let saved:string|null=null;
+      try{saved=await loadLanguage()}catch{saved=null}
+      const code=(saved&&languageByCode(saved)?saved:'en') as AppLanguage;
+      /* ready gates the first frame, so the app never paints in the wrong
+         language and then swap underneath you. */
+      setLanguageState(code);
+      setReady(true);
+      try{if(await applyDirection(isRtl(code)))void restartForDirection()}catch{/* a device that refuses the reload still gets the right layout from the direction style */}
+    })();
+  },[]);
   useEffect(()=>{
     // Dates follow the language only where the copy is finished; an English
     // interface with French dates would be a surprise.
     const dateLocale=language==='ar'?'ar-u-nu-latn':language==='en'?'en':undefined;
     setMoneyLocale(language);setFastingDateLocale(dateLocale);setActivityDateLocale(dateLocale);setJourneyDateLocale(dateLocale);
   },[language]);
-  useEffect(()=>{if(Platform.OS==='web'&&typeof document!=='undefined'){document.documentElement.dir='ltr';document.documentElement.lang=language;document.documentElement.dataset.appDirection=rtl?'rtl':'ltr'}},[rtl,language]);
+  useEffect(()=>{if(Platform.OS==='web'&&typeof document!=='undefined'){
+    const dir=rtl?'rtl':'ltr';
+    document.documentElement.dir=dir;
+    document.documentElement.lang=language;
+    document.documentElement.dataset.appDirection=dir;
+  }},[rtl,language]);
   return <LanguageContext.Provider value={{language,rtl,ready,setLanguage}}>{children}</LanguageContext.Provider>;
 }
 function useLanguage(){return useContext(LanguageContext)}
@@ -1244,7 +1276,7 @@ function Page({ children }: { children: React.ReactNode }) {
   const audio=useAudio();
   const playerInset = audio.track ? (Platform.OS==='ios'?96:MINI_PLAYER_INSET) : 0;
   const enter = useEntrance();
-  return <SafeAreaView style={s.safe}><Animated.View style={[s.page,width > 700 && s.pageWide,{direction:rtl?'rtl':'ltr',paddingBottom:playerInset} as any,{opacity:enter.opacity,transform:[{translateY:enter.translateY}]}]}>{children}</Animated.View></SafeAreaView>;
+  return <SafeAreaView style={[s.safe,{direction:rtl?'rtl':'ltr'} as any]}><Animated.View style={[s.page,width > 700 && s.pageWide,{direction:rtl?'rtl':'ltr',paddingBottom:playerInset} as any,{opacity:enter.opacity,transform:[{translateY:enter.translateY}]}]}>{children}</Animated.View></SafeAreaView>;
 }
 function Spinner() { const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);return <View style={s.loading}><ActivityIndicator color={C.green} /><Text style={s.loadingText}>{T('Loading live data…')}</Text></View>; }
 function ErrorState({ message, retry }: { message: string; retry?: () => void }) { const{rtl}=useLanguage();const T=(text:string)=>tx(rtl,text);return <View style={s.error}><View style={s.errorIcon}>{ico('cloud-offline-outline', 24, C.coral)}</View><Text style={s.errorTitle}>{T('Couldn’t load live data')}</Text><Text style={s.errorText}>{message}</Text>{retry && <Tactile onPress={retry} style={s.retry}><Text style={s.retryText}>{T('Try again')}</Text></Tactile>}</View>; }
@@ -11740,8 +11772,15 @@ function AppShell() {
   const bootProgress = bootSteps.filter(Boolean).length / bootSteps.length;
   const bootSettled = bootSteps.every(Boolean) || stalled;
 
-  return <View style={s.shellRoot}>
-    <Root />
+  /* The layout direction starts here, at the very top, so it reaches every
+     screen — including the ones that do not go through <Page>. Yoga passes
+     direction down to a node's children, which is why this works on both
+     platforms and needs no restart, unlike I18nManager. */
+  return <View style={[s.shellRoot,{direction:rtlNow?'rtl':'ltr'} as any]}>
+    {/* Nothing mounts until the saved language is known, so the very first
+        frame is already in the right language and the right direction. The
+        splash covers the read, which is a single storage lookup. */}
+    {ready && <Root />}
     {splash && <View style={s.shellLayer}><Splash ready={bootSettled} progress={bootProgress} onDone={() => setSplash(false)} /></View>}
     {!splash && onboarding === true && <View style={s.shellLayer}><Onboarding onFinish={() => setOnboarding(false)} /></View>}
   </View>;

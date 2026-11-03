@@ -113,6 +113,7 @@ const KEYS = {
   tasbihQuick: '@deen/tasbih-quick/v1',
   onboarding: '@deen/onboarding/v1',
   language: '@deen/language/v1',
+  direction: '@deen/direction/v1',
 };
 
 async function readJson<T>(key: string): Promise<T | null> {
@@ -271,6 +272,31 @@ export async function loadLanguage(): Promise<string | null> {
 export async function saveLanguage(code: string) {
   try {
     await AsyncStorage.setItem(KEYS.language, code);
+  } catch {
+    return;
+  }
+}
+
+/**
+ * The layout direction already handed to I18nManager.
+ *
+ * forceRTL only takes effect on a fresh start, so switching language has to
+ * restart the app. That restart must happen once per change and never again:
+ * a device that reports the old direction back would otherwise restart on
+ * every launch. This marker is what makes it a one-shot.
+ */
+export async function loadAppliedDirection(): Promise<'rtl' | 'ltr' | null> {
+  try {
+    const value = await AsyncStorage.getItem(KEYS.direction);
+    return value === 'rtl' || value === 'ltr' ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function saveAppliedDirection(value: 'rtl' | 'ltr') {
+  try {
+    await AsyncStorage.setItem(KEYS.direction, value);
   } catch {
     return;
   }
