@@ -2446,6 +2446,15 @@ const AR: Record<string, string> = {
   'Search a surah': 'ابحث عن سورة',
   'No surah matches that.': 'لا سورة تطابق هذا.',
   'Tap to choose': 'اضغط للاختيار',
+  'Shahada': 'الشهادة',
+  'GUIDES': 'أدلة',
+  'Memorize': 'الحفظ',
+  'Worship Guides': 'أدلة العبادة',
+  'Quran Topics': 'مواضيع القرآن',
+  'Translation Compare': 'مقارنة التراجم',
+  'Quran Vocabulary': 'مفردات القرآن',
+  'WOMEN’S WORSHIP': 'عبادة النساء',
+  'Use {name}': 'استخدم {name}',
 };
 
 const PRAYERS: Record<string, string> = {

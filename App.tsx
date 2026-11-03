@@ -8552,7 +8552,7 @@ function PrivacyLockScreen({ navigation }: any) {
           </View>
           <View style={[s.setting, ]}>
             <ToolGraphic tool="Biometric Unlock" size={49} />
-            <View style={{ flex: 1, marginHorizontal: 12 }}><Text style={s.settingName}>{info.available ? `Use ${info.label}` : T('Biometric unlock')}</Text><Text style={s.meta}>{info.available ? (info.enrolled ? T('Set up on this device') : T('Not enrolled on this device yet')) : T('This device cannot use face or fingerprint unlock, so the PIN is used')}</Text></View>
+            <View style={{ flex: 1, marginHorizontal: 12 }}><Text style={s.settingName}>{info.available ? tf(rtl, 'Use {name}', { name: info.label }) : T('Biometric unlock')}</Text><Text style={s.meta}>{info.available ? (info.enrolled ? T('Set up on this device') : T('Not enrolled on this device yet')) : T('This device cannot use face or fingerprint unlock, so the PIN is used')}</Text></View>
             <View style={{ direction: 'ltr' } as any}><Switch accessibilityLabel={T('Use biometric unlock')} disabled={!info.available} value={config.biometric && info.available} onValueChange={(value) => void updateLockSettings({ biometric: value })} trackColor={{ true: C.green }} /></View>
           </View>
         </View>
