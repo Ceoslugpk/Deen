@@ -35,7 +35,12 @@
     },
     "plugins": [
       "expo-font",
+      [
       "expo-audio",
+      {
+        "enableBackgroundPlayback": true
+      }
+    ],
       [
         "expo-notifications",
         {

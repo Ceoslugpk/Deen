@@ -1,8 +1,14 @@
 import { Platform } from 'react-native';
-import { AudioPlayer, createAudioPlayer, setAudioModeAsync } from 'expo-audio';
-import TrackPlayer, { Capability, Event, RepeatMode as PlayerRepeatMode, State } from 'react-native-track-player';
+import {
+  type AudioLockScreenOptions,
+  type AudioMetadata,
+  AudioPlayer,
+  AudioPlaylist,
+  createAudioPlayer,
+  createAudioPlaylist,
+  setAudioModeAsync,
+} from 'expo-audio';
 import type { AudioTrack } from './audioService';
-import { playbackService } from './playbackService';
 
 /**
  * The transport: the thing that actually makes sound.
@@ -15,18 +21,22 @@ import { playbackService } from './playbackService';
  * There are two transports, and which one runs is decided by where the app is
  * running:
  *
- *   - On a phone, react-native-track-player. It is the only one of the two
- *     that can put controls in the notification and keep playing with the
- *     screen off, which is the whole point: a recitation is long enough that
- *     nobody holds the app open for all of it, and it is listened to with the
- *     phone out of sight.
+ *   - On a phone, an expo-audio playlist. A playlist rather than a single
+ *     player, because the lock screen's next and previous are wired to the
+ *     playlist: a lone player tells the system it has no next or previous to
+ *     skip to, and then those buttons do nothing.
  *
- *   - On the web, expo-audio. The track player does have a web
- *     implementation, but it plays through Shaka, and bundling Shaka for the
- *     web produced a chunk with no exports at all — playback died silently
- *     rather than reporting anything. There is no notification on the web to
- *     put controls into anyway, so nothing is lost by leaving the web on the
- *     player that already worked there.
+ *   - On the web, an expo-audio player, one ayah at a time. There is no
+ *     notification to keep in step with and the app is on screen driving
+ *     every move itself, so a queue buys nothing there.
+ *
+ * Both are expo-audio now. The phone used to run react-native-track-player,
+ * which bought the notification and the background service and cost the app
+ * its boot: the player is imported at the top of this file, the top of this
+ * file is reached from the app's own first import, and a module that fails
+ * while it is being imported leaves nothing to catch it — the screen came up
+ * grey and no JavaScript ever ran. expo-audio is an Expo module and does the
+ * same two jobs, so the third-party player is gone.
  *
  * Both are kept behind one small interface so the service above does not have
  * to care which is in use.
@@ -82,21 +92,6 @@ export type AudioEngine = {
 };
 
 /* ------------------------------------------------------------------- common */
-
-function toPlayerTrack(track: AudioTrack) {
-  return {
-    url: track.uri,
-    title: track.title,
-    artist: track.performer,
-    album: track.chapterName,
-    /* Carried through so the notification, the lock screen, and the service
-       that runs when the app does not can tell which ayah they are looking at
-       without asking the app. */
-    chapterId: track.chapterId,
-    ayahNumber: track.ayahNumber,
-    kind: track.kind,
-  };
-}
 
 /* --------------------------------------------------------------- web engine */
 
@@ -235,7 +230,7 @@ function createWebEngine(): AudioEngine {
 /* ------------------------------------------------------------ native engine */
 
 /**
- * The phone transport, on react-native-track-player.
+ * The phone transport, on an expo-audio playlist.
  *
  * Two things about how a recitation is listened to shape this. It is long
  * enough that nobody holds the app open for all of it, so it has to keep
@@ -243,14 +238,35 @@ function createWebEngine(): AudioEngine {
  * listened to with the phone out of sight, so the controls have to be where
  * the hand already is — in the notification, not only on the screen.
  *
- * expo-audio cannot do either: it exposes a title and an artist for the lock
- * screen and nothing more, no buttons and no notification.
+ * Both now come from expo-audio rather than from a third-party player:
+ *
+ *   - Background playback is declared by the expo-audio config plugin
+ *     (`enableBackgroundPlayback`), which is what lets Android run a media
+ *     foreground service. Without it Android stops the audio after roughly
+ *     three minutes whether or not the app asked to play in the background.
+ *
+ *   - The controls come from `setActiveForLockScreen`, which hands this
+ *     playlist to the system's own media session. They are handled there, in
+ *     the system, not here: pressing next on the lock screen moves along the
+ *     queue with no JavaScript running at all, which is the only thing that
+ *     can work once the task has been swiped away.
+ *
+ * The playlist is the reason next and previous do anything. expo-audio gives
+ * a lone player no next and no previous to skip to — it reports them as
+ * unsupported and the buttons sit dead — so holding the whole surah is not an
+ * optimisation here, it is what makes the buttons work.
+ *
+ * Repeating is the app's business, not the transport's, so the playlist is
+ * told never to loop and every move is decided above, in the audio service.
  */
 function createNativeEngine(): AudioEngine {
-  let ready = false;
-  let bound = false;
+  let playlist: AudioPlaylist | null = null;
   let listener: ((status: EngineStatus) => void) | null = null;
-  let queueLength = 0;
+  let bound = false;
+  let currentQueue: AudioTrack[] = [];
+  let index = 0;
+  let lastPosition = 0;
+  let lastDuration = 0;
 
   /**
    * The transport reports our own moves back to us as though an ayah had
@@ -261,7 +277,7 @@ function createNativeEngine(): AudioEngine {
   const QUIET_MS = 400;
   const wasSelfDriven = () => selfDrivenAt !== 0 && Date.now() - selfDrivenAt < QUIET_MS;
 
-  async function selfDrive(action: () => Promise<void>) {
+  async function selfDrive(action: () => void | Promise<void>) {
     selfDrivenAt = Date.now();
     try {
       await action();
@@ -280,120 +296,103 @@ function createNativeEngine(): AudioEngine {
     }
   }
 
-  /** The position and duration the transport is reporting, kept for `seek`. */
-  let lastPosition = 0;
-  let lastDuration = 0;
+  /** What the notification and the lock screen show for this ayah. */
+  function metadataFor(track: AudioTrack | undefined): AudioMetadata {
+    return {
+      title: track?.title ?? '',
+      artist: track?.performer ?? '',
+      albumTitle: track?.chapterName ?? '',
+    };
+  }
+
+  /**
+   * Play and pause are the two that matter. Next and previous are there
+   * because a recitation is followed with the phone in a pocket. Seek is
+   * there because finding your place in a long surah by replaying it from the
+   * start is a poor trade.
+   */
+  const LOCK_OPTIONS: AudioLockScreenOptions = {
+    showNextTrack: true,
+    showPreviousTrack: true,
+    showSeekForward: true,
+    showSeekBackward: true,
+    seekForwardIntervalSeconds: 10,
+    seekBackwardIntervalSeconds: 10,
+  };
+
+  function applyRate(rate: number) {
+    try {
+      if (playlist) playlist.playbackRate = rate;
+    } catch {
+      /* rate control is unavailable on some platforms */
+    }
+  }
+
+  function applyVolume(volume: number) {
+    try {
+      if (playlist) playlist.volume = volume;
+    } catch {
+      /* volume is unavailable until playback starts on some platforms */
+    }
+  }
 
   async function prepare(): Promise<void> {
-    if (ready) return;
+    if (playlist) return;
     try {
-      await TrackPlayer.setupPlayer({ waitForBuffer: true });
-    } catch {
-      /* Already set up. Not a failure, only information we did not need. */
-    }
-
-    /* On Android the service runs in its own context and is the only thing
-       alive once the task is swiped away, so it has to be registered before
-       the player is used. On iOS there is no second context and the handlers
-       below already cover it, so registering it as well would answer every
-       press twice. */
-    if (Platform.OS === 'android') {
-      try {
-        TrackPlayer.registerPlaybackService(() => playbackService);
-      } catch {
-        /* registerPlaybackService throws if called twice; harmless */
-      }
-    }
-
-    /* What the notification offers. Play and pause are the two that matter.
-       Next and previous are there because a recitation is followed with the
-       phone in a pocket. Seek is there because finding your place in a long
-       surah by replaying it from the start is a poor trade. */
-    const capabilities = [
-      Capability.Play,
-      Capability.Pause,
-      Capability.SkipToNext,
-      Capability.SkipToPrevious,
-      Capability.SeekTo,
-      Capability.Stop,
-    ];
-    try {
-      await TrackPlayer.updateOptions({
-        capabilities,
-        compactCapabilities: [
-          Capability.Play,
-          Capability.Pause,
-          Capability.SkipToNext,
-          Capability.SkipToPrevious,
-        ],
-        /* Once a second is often enough to keep the progress bar honest and
-           rarely enough to be worth the wake-ups. */
-        progressUpdateEventInterval: 1,
-        stoppingAppPausesPlayback: true,
+      /* Three separate things, and all three are needed.
+         `playsInSilentMode` so a recitation is not swallowed by the ringer
+         switch. `shouldPlayInBackground` so leaving for another app does not
+         cut the recitation off. `doNotMix` asks that other audio yield, so a
+         notification does not talk over the Quran — and it is also the mode
+         the lock screen controls require, without which the system may never
+         associate them with this playlist at all. */
+      await setAudioModeAsync({
+        playsInSilentMode: true,
+        shouldRouteThroughEarpiece: false,
+        shouldPlayInBackground: true,
+        interruptionMode: 'doNotMix',
       });
     } catch {
-      /* Nothing to update options on. Playback is unaffected. */
+      /* audio mode is best-effort on device */
     }
-
-    /* Repeating is the app's business, not the transport's. This one knows a
-       queue; the app knows about repeating one ayah, or a passage, or a
-       number of times. So the transport is told never to repeat, and every
-       move is decided above, in the audio service. */
-    try {
-      await TrackPlayer.setRepeatMode(PlayerRepeatMode.Off);
-    } catch {
-      /* Not fatal: advancement is driven from above regardless. */
-    }
-
-    ready = true;
+    playlist = createAudioPlaylist({ updateInterval: 500, loop: 'none' });
+    bindEvents();
   }
 
   function bindEvents() {
-    if (bound) return;
+    if (bound || !playlist) return;
     bound = true;
     try {
-
-    TrackPlayer.addEventListener(Event.PlaybackProgressUpdated, (event) => {
-      lastPosition = event.position;
-      lastDuration = event.duration;
-      listener?.({
-        playing: true,
-        position: event.position,
-        duration: event.duration,
-        buffering: event.buffered < event.position + 0.25,
-        endedIndex: null,
+      playlist.addListener('playlistStatusUpdate', (status) => {
+        lastPosition = status.currentTime;
+        lastDuration = status.duration;
+        listener?.({
+          playing: status.playing,
+          position: status.currentTime,
+          duration: status.duration,
+          buffering: status.isBuffering,
+          endedIndex: status.didJustFinish ? index : null,
+        });
       });
-    });
 
-    TrackPlayer.addEventListener(Event.PlaybackState, (event) => {
-      /* Playing reports itself through the progress event above, so this is
-         only for the states that carry no position with them. */
-      if (event.state === State.Playing) return;
-      listener?.({
-        playing: false,
-        position: lastPosition,
-        duration: lastDuration,
-        buffering: event.state === State.Buffering || event.state === State.Loading,
-        endedIndex: null,
+      playlist.addListener('trackChanged', (data) => {
+        /* An ayah ended and the transport moved on by itself. The one that
+           ended is the one we have left, not the one we have arrived at. */
+        index = data.currentIndex;
+        try {
+          playlist?.updateLockScreenMetadata(metadataFor(currentQueue[index]));
+        } catch {
+          /* metadata is a nicety, not a requirement */
+        }
+        if (wasSelfDriven()) return;
+        listener?.({
+          playing: false,
+          position: lastPosition,
+          duration: lastDuration,
+          buffering: false,
+          endedIndex: data.previousIndex,
+        });
       });
-    });
-
-    const ended = (index: number | null | undefined) => {
-      if (wasSelfDriven()) return;
-      if (typeof index !== 'number' || index < 0) return;
-      listener?.({
-        playing: false,
-        position: lastPosition,
-        duration: lastDuration,
-        buffering: false,
-        endedIndex: index,
-      });
-    };
-
-    /* An ayah ended and the transport has moved on by itself. */
-    TrackPlayer.addEventListener(Event.PlaybackTrackChanged, (event) => ended(event.track));
-    /* The last ayah of the surah ended. */
-      TrackPlayer.addEventListener(Event.PlaybackQueueEnded, (event) => ended(event.track));
     } catch {
       /* No transport to subscribe to. Progress simply stops being reported,
          which costs the progress bar and nothing else: play, pause and
@@ -401,94 +400,83 @@ function createNativeEngine(): AudioEngine {
     }
   }
 
-  async function applyRate(rate: number) {
-    try {
-      await TrackPlayer.setRate(rate);
-    } catch {
-      /* rate control is unavailable on some platforms */
-    }
-  }
-
-  async function applyVolume(volume: number) {
-    try {
-      await TrackPlayer.setVolume(volume);
-    } catch {
-      /* volume is unavailable in some browsers until playback starts */
-    }
-  }
-
   return {
-    async prepare() {
+    prepare,
+    async loadQueue(queue, startIndex, autoplay, rate, volume) {
       await prepare();
-      bindEvents();
-    },
-    async loadQueue(queue, index, autoplay, rate, volume) {
-      await prepare();
-      bindEvents();
-      queueLength = queue.length;
-      await selfDrive(async () => {
-        await TrackPlayer.reset();
-        if (queue.length) await TrackPlayer.add(queue.map(toPlayerTrack));
+      currentQueue = queue;
+      index = startIndex;
+      await selfDrive(() => {
+        const p = playlist;
+        if (!p) return;
+        p.clear();
+        for (const track of queue) p.add(track.uri);
         /* Rate and volume belong to the player, not the track, and are lost
-           when it is reset. Re-applied here so a recitation does not come
-           back at full speed and full volume after a new surah. */
-        await applyRate(rate);
-        await applyVolume(volume);
-        if (queue.length) {
-          await TrackPlayer.skip(index, 0);
-          if (autoplay) await TrackPlayer.play();
-        }
+           when the queue is rebuilt. Re-applied here so a recitation does not
+           come back at full speed and full volume after a new surah. */
+        applyRate(rate);
+        applyVolume(volume);
+        if (!queue.length) return;
+        p.skipTo(startIndex);
+        /* Registered only once there is something loaded: until then there is
+           nothing for the system to show, and nothing to skip between. */
+        p.setActiveForLockScreen(true, metadataFor(queue[startIndex]), LOCK_OPTIONS);
+        if (autoplay) p.play();
       });
     },
-    async skipTo(index, autoplay, rate, volume) {
+    async skipTo(nextIndex, autoplay, rate, volume) {
       await prepare();
-      bindEvents();
-      await selfDrive(async () => {
-        await applyRate(rate);
-        await applyVolume(volume);
-        await TrackPlayer.skip(index, 0);
-        if (autoplay) await TrackPlayer.play();
+      index = nextIndex;
+      await selfDrive(() => {
+        const p = playlist;
+        if (!p) return;
+        applyRate(rate);
+        applyVolume(volume);
+        p.skipTo(nextIndex);
+        p.updateLockScreenMetadata(metadataFor(currentQueue[nextIndex]));
+        if (autoplay) p.play();
       });
     },
     async play() {
-      try { await TrackPlayer.play(); } catch { /* nothing to play on */ }
+      try { playlist?.play(); } catch { /* nothing to play on */ }
     },
     async pause() {
-      try { await TrackPlayer.pause(); } catch { /* nothing to pause */ }
+      try { playlist?.pause(); } catch { /* nothing to pause */ }
     },
     async seek(seconds: number) {
       await selfDrive(async () => {
-        await TrackPlayer.seekTo(Math.max(0, seconds));
+        await playlist?.seekTo(Math.max(0, seconds));
       });
     },
     async stop() {
       await selfDrive(async () => {
-        await TrackPlayer.pause();
-        await TrackPlayer.seekTo(0);
+        playlist?.pause();
+        await playlist?.seekTo(0);
       });
     },
     async reset() {
-      await selfDrive(async () => {
-        await TrackPlayer.reset();
+      await selfDrive(() => {
+        playlist?.clear();
+        playlist?.clearLockScreenControls();
       });
-      queueLength = 0;
+      currentQueue = [];
     },
     async setRate(rate: number) {
-      await applyRate(rate);
+      applyRate(rate);
     },
     async setVolume(volume: number) {
-      await applyVolume(volume);
+      applyVolume(volume);
     },
     async getPosition() {
       try {
-        return await TrackPlayer.getPosition();
+        return playlist?.currentTime ?? lastPosition;
       } catch {
         return lastPosition;
       }
     },
     async getDuration() {
       try {
-        return await TrackPlayer.getDuration();
+        return playlist?.duration ?? lastDuration;
       } catch {
         return lastDuration;
       }
