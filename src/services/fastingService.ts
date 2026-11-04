@@ -48,10 +48,34 @@ const MISSED_REASONS_AR: Record<string, { label: string; detail: string }> = {
   other: { label: 'سبب آخر', detail: 'أي سبب آخر' },
 };
 
-export function missedReasons(rtl?: boolean) {
+/* Urdu, kept beside the Arabic for the reason that table exists at all: these
+   are short and fixed, and read better written for the language than run
+   through the general translator. */
+const MISSED_REASONS_UR: Record<string, { label: string; detail: string }> = {
+  travel: { label: 'سفر', detail: 'سفر کے دوران چھوڑا گیا دن' },
+  illness: { label: 'بیماری', detail: 'بیماری سے چھوڑا گیا دن' },
+  menstruation: { label: 'حیض', detail: 'ماہانہ ایام میں رکھا نہ گیا روزہ' },
+  nifas: { label: 'نفاس', detail: 'ولادت کے بعد رکھا نہ گیا روزہ' },
+  other: { label: 'کوئی اور وجہ', detail: 'کوئی اور وجہ' },
+};
+
+/**
+ * Keyed by language rather than by a direction.
+ *
+ * This used to take `rtl`, so it could only answer in one of two languages.
+ * Urdu is right-to-left as well, so it was being handed the Arabic - which
+ * it does not read.
+ */
+export function missedReasons(language?: string | boolean) {
+  const table =
+    language === 'ur'
+      ? MISSED_REASONS_UR
+      : language === true || language === 'ar'
+        ? MISSED_REASONS_AR
+        : undefined;
   return MISSED_REASONS.map((item) => {
-    const ar = rtl ? MISSED_REASONS_AR[item.id] : undefined;
-    return ar ? { ...item, label: ar.label, detail: ar.detail } : item;
+    const t = table?.[item.id];
+    return t ? { ...item, label: t.label, detail: t.detail } : item;
   });
 }
 
@@ -212,17 +236,26 @@ function summariseMonths(entries: FastEntry[]): FastMonth[] {
   return out;
 }
 
-/** The entry label in the language of the interface. */
-export function labelForEntry(entry: FastEntry, rtl?: boolean) {
+/**
+ * The entry label in the language of the interface.
+ *
+ * Takes the language rather than a direction. Urdu is right-to-left as well,
+ * so a two-way switch handed it the Arabic and never its own words.
+ */
+export function labelForEntry(entry: FastEntry, language?: string | boolean) {
+  const ur = language === 'ur';
+  const ar = language === true || language === 'ar';
   if (entry.type === 'missed') {
     const reason = MISSED_REASONS.find((item) => item.id === entry.reason);
-    const ar = rtl ? MISSED_REASONS_AR[entry.reason || ''] : undefined;
-    const label = (rtl && ar ? ar.label : reason?.label) || (rtl ? 'مسجل' : 'recorded');
-    return rtl ? `أُفطر · ${label}` : `Missed · ${label}`;
+    const table = ur ? MISSED_REASONS_UR : ar ? MISSED_REASONS_AR : undefined;
+    const own = table?.[entry.reason || ''];
+    const label = own?.label || reason?.label || (ur ? 'درج' : ar ? 'مسجل' : 'recorded');
+    const head = ur ? 'افطار' : ar ? 'أُفطر' : 'Missed';
+    return `${head} · ${label}`;
   }
-  if (entry.type === 'qada') return rtl ? 'صيام قضاء' : 'Make-up fast';
-  if (entry.type === 'voluntary') return rtl ? 'صيام تطوع' : 'Voluntary fast';
-  return rtl ? 'صيام رمضان' : 'Ramadan fast';
+  if (entry.type === 'qada') return ur ? 'قضا روزہ' : ar ? 'صيام قضاء' : 'Make-up fast';
+  if (entry.type === 'voluntary') return ur ? 'نفلی روزہ' : ar ? 'صيام تطوع' : 'Voluntary fast';
+  return ur ? 'رمضان کا روزہ' : ar ? 'صيام رمضان' : 'Ramadan fast';
 }
 
 export function readableDate(date: string) {

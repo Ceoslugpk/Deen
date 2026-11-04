@@ -6206,7 +6206,7 @@ function FastingScreen({navigation}:any){const {rtl,language}=useLanguage();cons
     <View style={s.summaryScore}><View><Text style={s.nextCardLabel}>{T('DAYS FASTED')}</Text><Text style={s.zakatNo}>{summary.completed}</Text><Text style={s.weekScoreBody}>{rtl?`${summary.ramadan} رمضان · ${summary.voluntary} تطوع`:`${summary.ramadan} Ramadan · ${summary.voluntary} voluntary`}</Text></View><View style={{alignItems:'flex-end'}}><Text style={s.nextCardLabel}>{T('CURRENT STREAK')}</Text><Text style={s.zakatNo}>{summary.streak} {T(summary.streak===1?'day':'days')}</Text><Text style={s.weekScoreBody}>{rtl?`${summary.thisWeek} في آخر 7 أيام`:`${summary.thisWeek} in the last 7 days`}</Text></View></View>
     <Section title={T('Today')} action={readableDate(todayKey)} />
     <View style={s.dataCard}>
-      <Text style={s.dataMeta}>{summary.today?(rtl?`مُسجَّل · ${labelForEntry(summary.today, rtl)}`:`RECORDED · ${labelForEntry(summary.today, rtl)}`):T('NOT RECORDED YET')}</Text>
+      <Text style={s.dataMeta}>{summary.today?`${T('RECORDED')} · ${labelForEntry(summary.today, language)}`:T('NOT RECORDED YET')}</Text>
       <View style={s.actionRow}>
         <Tactile accessibilityLabel={T('Record today as a Ramadan fast')} onPress={()=>mark('ramadan')} style={s.secondary}><Text style={s.secondaryText}>{T('Ramadan fast')}</Text></Tactile>
         <Tactile accessibilityLabel={T('Record today as a voluntary fast')} onPress={()=>mark('voluntary')} style={s.secondary}><Text style={s.secondaryText}>{T('Voluntary')}</Text></Tactile>
@@ -6217,8 +6217,8 @@ function FastingScreen({navigation}:any){const {rtl,language}=useLanguage();cons
     <Section title={T('If today was not fasted')} />
     <View style={s.dataCard}>
       <Text style={s.dataBody}>{T('Recording a missed day adds one day to the make-up ledger below.')}</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap: 8,marginTop: 12}}>{missedReasons(rtl).map(item=><ChoicePill key={item.id} label={item.label} selected={reason===item.id} onPress={()=>setReason(item.id)}/>)}</ScrollView>
-      <Text style={s.meta}>{missedReasons(rtl).find(item=>item.id===reason)?.detail}</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap: 8,marginTop: 12}}>{missedReasons(language).map(item=><ChoicePill key={item.id} label={item.label} selected={reason===item.id} onPress={()=>setReason(item.id)}/>)}</ScrollView>
+      <Text style={s.meta}>{missedReasons(language).find(item=>item.id===reason)?.detail}</Text>
       <Tactile accessibilityLabel={T('Record today as not fasted')} onPress={()=>mark('missed',{reason})} style={s.primary}><Text style={s.primaryText}>{T('Record as not fasted')}</Text></Tactile>
     </View>
     <Section title={T('Make-up ledger')} action={rtl?`${summary.qada} مسوّاة`:`${summary.qada} settled`} />
