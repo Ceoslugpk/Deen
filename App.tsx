@@ -2316,7 +2316,7 @@ const[quranPosition,setQuranPosition]=useState<any>(null);const[openReflection,s
       <View style={[s.hero,{height:heroH}]}><Animated.View style={[StyleSheet.absoluteFill,{transform:[{translateY:heroShift},{scale:heroZoom}]}]}><Image source={pickScene(SCENE_HOME, resolved)} resizeMode="cover" style={s.heroBg}/></Animated.View>
         <LinearGradient colors={isPal(resolved)?SCRIM.palestine:SCRIM.islamic} start={{x:0,y:.5}} end={{x:1,y:.5}} style={StyleSheet.absoluteFill} /> <HeroAura still={still} palestine={isPal(resolved)} /> <Animated.View pointerEvents="none" style={[s.heroSheen,{transform:[{translateX:Animated.multiply(sheenShift,width)},{skewX:'-16deg'}]}]}><LinearGradient colors={['rgba(255,255,255,0)','rgba(255,255,255,.16)','rgba(255,255,255,0)']} start={{x:0,y:0}} end={{x:1,y:0}} style={StyleSheet.absoluteFill}/></Animated.View> 
         <Pressable onPress={locationState.clear} style={s.locationPill}>{ico('location',13,C.onHero)}<Text numberOfLines={1} style={s.locationText}>{T(data.location?.label || '')}</Text></Pressable>
-        <Text style={s.hijri}>{(rtl ? data.snapshot?.hijriAr || data.snapshot?.hijri : data.snapshot?.hijri) || T('Loading Hijri date…')} · {new Date().toLocaleDateString(rtl ? 'ar-u-nu-latn' : undefined, { day: 'numeric', month: 'short', year: 'numeric' })}{data.cached ? (tx(language, ' · CACHED')) : ''}</Text>
+        <Text style={s.hijri}>{(language === 'ar' ? data.snapshot?.hijriAr || data.snapshot?.hijri : data.snapshot?.hijri) || T('Loading Hijri date…')} · {new Date().toLocaleDateString(language === 'ar' ? 'ar-u-nu-latn' : undefined, { day: 'numeric', month: 'short', year: 'numeric' })}{data.cached ? (tx(language, ' · CACHED')) : ''}</Text>
         <Text style={s.nextLabel}>{tx(language, 'NEXT · ')}{next ? prayerName(language, next.name) : '—'}</Text><Text style={s.heroTime}>{clockTime(language, next?.time || '—')}</Text>
         <View style={s.heroFooter}><View style={s.countPill}>{ico('time-outline',14,C.white)}<Text style={s.countText}>{tx(language, 'in ')}{next ? <HeroCountdown raw={next.raw} rtl={rtl} language={language}/> : '—'}</Text></View><Pressable onPress={()=>nav.navigate('Prayer')} style={s.heroCta}><Text style={s.heroCtaText}>{T('Prayer schedule')}</Text>{ico(rtl ? 'arrow-back' : 'arrow-forward',15,C.white)}</Pressable></View>
       </View>
@@ -6315,7 +6315,7 @@ function ProphetNamesScreen({ navigation }: any) {const {rtl,language}=useLangua
               <View style={s.nameNumber}><Text style={s.namesArabic}>{prophet.arabic}</Text></View>
               <View style={{ flex: 1 }}>
                 <Text style={s.namesTransliteration}>{rtl ? prophet.transliteration : `${prophet.transliteration} · ${prophet.english}`}</Text>
-                <Text style={s.dataBody}>{rtl ? prophet.noteAr : prophet.note}</Text>
+                <Text style={s.dataBody}>{language === 'ar' ? prophet.noteAr : prophet.note}</Text>
               </View>
               {ico(isOpen ? 'chevron-down' : 'chevron-forward', 16, C.muted)}
             </View>
@@ -7691,7 +7691,7 @@ function NotificationScreen({navigation}:any){const {rtl,language}=useLanguage()
         <Text style={s.sleepHadithEn}>
           {T('“Indeed there is a Surah in the Qur’an of thirty Ayat, which intercedes for a man until he is forgiven. It is [Surah] Tabarak Alladhi Biyadihil-Mulk.”')}
         </Text>
-        <Text style={s.sleepHadithRef}>{rtl ? SLEEP_SURAH.hadithAr : SLEEP_SURAH.hadith} · {rtl ? SLEEP_SURAH.practiceAr : SLEEP_SURAH.practice}</Text>
+        <Text style={s.sleepHadithRef}>{language === 'ar' ? SLEEP_SURAH.hadithAr : SLEEP_SURAH.hadith} · {language === 'ar' ? SLEEP_SURAH.practiceAr : SLEEP_SURAH.practice}</Text>
       </View>
       <View style={s.settings}>
         <Row icon="moon-outline" title={T('Remind me to read Surah Al-Mulk')}
@@ -8534,7 +8534,7 @@ function IstihadaScreen({ navigation }: any) {
 
       <Section title={T('How it was worked out')} />
       <View style={s.dataCard}>
-        {assessment.reasons.map((reason: string, index: number) => <Text key={index} style={[s.dataBody, index > 0 && { marginTop: 8 }]}>{rtl ? assessment.reasonsAr?.[index] || T(reason) : T(reason)}</Text>)}
+        {assessment.reasons.map((reason: string, index: number) => <Text key={index} style={[s.dataBody, index > 0 && { marginTop: 8 }]}>{language === 'ar' ? assessment.reasonsAr?.[index] || T(reason) : T(reason)}</Text>)}
         {assessment.adah !== null && <Text style={[s.meta, { marginTop: 10 }]}>{tf(language, 'Your recorded pattern: about {n} days.', { n: assessment.adah })}</Text>}
       </View>
 
@@ -11226,14 +11226,14 @@ async function playFromReader(chapter: Chapter, verse: Verse, rtl = false) {
       } catch { /* no per-ayah audio for this reciter — keep the queue we already have */ }
     }
     await playQueue(queue, index < 0 ? 0 : index);
-  } catch (e: any) { Alert.alert(tx(rtl,'Audio unavailable'),tx(rtl,e.message)); }
+  } catch (e: any) { Alert.alert(tx(getAppLanguage(),'Audio unavailable'),tx(getAppLanguage(),e.message)); }
 }
 
 async function playSurahFromReader(chapter: Chapter, rtl = false) {
   try {
     const queue = await buildQueueForChapter(chapter.id, chapter.name_simple, getAudioSettings());
     await playQueue(queue, 0);
-  } catch (e: any) { Alert.alert(tx(rtl,'Audio unavailable'),tx(rtl,e.message)); }
+  } catch (e: any) { Alert.alert(tx(getAppLanguage(),'Audio unavailable'),tx(getAppLanguage(),e.message)); }
 }
 
 function AudioCenterScreen({ navigation }: any) {
@@ -12357,7 +12357,7 @@ function OnboardingSleep() {
       <Text style={s.sleepHadithEn}>
         {T('“Indeed there is a Surah in the Qur’an of thirty Ayat, which intercedes for a man until he is forgiven. It is [Surah] Tabarak Alladhi Biyadihil-Mulk.”')}
       </Text>
-      <Text style={s.sleepHadithRef}>{rtl ? SLEEP_SURAH.hadithAr : SLEEP_SURAH.hadith}</Text>
+      <Text style={s.sleepHadithRef}>{language === 'ar' ? SLEEP_SURAH.hadithAr : SLEEP_SURAH.hadith}</Text>
     </View>
 
     <View style={s.onbPromise}>
@@ -12367,7 +12367,7 @@ function OnboardingSleep() {
         <Text style={s.onbPromiseBody}>
           {T('The Prophet (peace be upon him) would not sleep until he had recited As-Sajdah and Al-Mulk.')}
         </Text>
-        <Text style={s.sleepHadithRef}>{rtl ? SLEEP_SURAH.practiceAr : SLEEP_SURAH.practice}</Text>
+        <Text style={s.sleepHadithRef}>{language === 'ar' ? SLEEP_SURAH.practiceAr : SLEEP_SURAH.practice}</Text>
       </View>
     </View>
 
