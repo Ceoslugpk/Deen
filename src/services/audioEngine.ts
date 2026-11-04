@@ -265,6 +265,11 @@ function createNativeEngine(): AudioEngine {
     selfDrivenAt = Date.now();
     try {
       await action();
+    } catch {
+      /* The transport did not do it. Reported rather than thrown: every
+         caller of this is a listener's own move, and a rejection here would
+         surface as an unhandled promise rather than a pause button that
+         simply did nothing. */
     } finally {
       /* Not cleared immediately: the event for this move arrives
          asynchronously, and clearing the flag now would let it straight back
@@ -346,6 +351,7 @@ function createNativeEngine(): AudioEngine {
   function bindEvents() {
     if (bound) return;
     bound = true;
+    try {
 
     TrackPlayer.addEventListener(Event.PlaybackProgressUpdated, (event) => {
       lastPosition = event.position;
@@ -387,7 +393,12 @@ function createNativeEngine(): AudioEngine {
     /* An ayah ended and the transport has moved on by itself. */
     TrackPlayer.addEventListener(Event.PlaybackTrackChanged, (event) => ended(event.track));
     /* The last ayah of the surah ended. */
-    TrackPlayer.addEventListener(Event.PlaybackQueueEnded, (event) => ended(event.track));
+      TrackPlayer.addEventListener(Event.PlaybackQueueEnded, (event) => ended(event.track));
+    } catch {
+      /* No transport to subscribe to. Progress simply stops being reported,
+         which costs the progress bar and nothing else: play, pause and
+         skipping are all commanded from here, not heard from here. */
+    }
   }
 
   async function applyRate(rate: number) {
@@ -440,10 +451,10 @@ function createNativeEngine(): AudioEngine {
       });
     },
     async play() {
-      await TrackPlayer.play();
+      try { await TrackPlayer.play(); } catch { /* nothing to play on */ }
     },
     async pause() {
-      await TrackPlayer.pause();
+      try { await TrackPlayer.pause(); } catch { /* nothing to pause */ }
     },
     async seek(seconds: number) {
       await selfDrive(async () => {

@@ -12393,7 +12393,12 @@ async function reloadAllState() {
 
 export default function App(){const[fontsLoaded]=useFonts({DMSans_400Regular,DMSans_600SemiBold,DMSans_700Bold,Newsreader_600SemiBold,NotoNaskhArabic_400Regular,NotoNaskhArabic_600SemiBold,Amiri_400Regular,KFGQPCUthmanicHafs,IBMPlexSansArabic_400Regular,IBMPlexSansArabic_600SemiBold});const restoreTick=useRestoreNonce();
 useEffect(()=>{if(restoreTick>0){void reloadAllState()}},[restoreTick]);
-useEffect(()=>{if(fontsLoaded){void loadOfflineSetup();void resumeSavedOfflineSetup();resumeSavedQuranPreload();void loadAudioSettings().then(() => restoreSavedSession());void loadHadithState();void loadTasbihState();void loadDownloads();void loadActivity();void loadFastingState();void loadJourneys();void loadWomensState();void loadZakatState();void loadKhatamState();void loadQadaState();void loadSadaqahState();void loadJournalState();void loadLockConfig();void loadBackupSettings();void refreshMarket();startLockWatch();startBackupWatch()}},[fontsLoaded]);if(!fontsLoaded)return <SafeAreaView style={s.safe}><Spinner/></SafeAreaView>;/* The boundary sits *outside* every provider, not just around the shell. A
+useEffect(()=>{if(fontsLoaded){void loadOfflineSetup();void resumeSavedOfflineSetup();resumeSavedQuranPreload();/* The saved recitation is restored after the first frame rather than during
+   it. Restoring it means bringing the transport up, and a transport that
+   answers nothing must not be able to keep the app from painting: this runs
+   once the screen is already up, and swallows its own failure, so the worst
+   a broken player can do is leave the mini player silent. */
+void loadAudioSettings().then(() => new Promise<void>(resolve => setTimeout(resolve, 0)).then(() => restoreSavedSession())).catch(() => undefined);void loadHadithState();void loadTasbihState();void loadDownloads();void loadActivity();void loadFastingState();void loadJourneys();void loadWomensState();void loadZakatState();void loadKhatamState();void loadQadaState();void loadSadaqahState();void loadJournalState();void loadLockConfig();void loadBackupSettings();void refreshMarket();startLockWatch();startBackupWatch()}},[fontsLoaded]);if(!fontsLoaded)return <SafeAreaView style={s.safe}><Spinner/></SafeAreaView>;/* The boundary sits *outside* every provider, not just around the shell. A
    provider that throws on its first render takes the whole tree with it, and
    a boundary nested inside them never sees the error — the app simply comes
    up as an empty screen with nothing to explain it. From out here the crash

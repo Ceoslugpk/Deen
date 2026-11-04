@@ -519,8 +519,15 @@ function handleEngineStatus(status: {
 async function ensurePlayer(): Promise<void> {
   if (engineBound) return;
   engineBound = true;
-  engine.bind(handleEngineStatus);
-  await engine.prepare();
+  try {
+    engine.bind(handleEngineStatus);
+    await engine.prepare();
+  } catch {
+    /* Bringing the transport up is not something the app is allowed to fail
+       at. Everything downstream already tolerates a transport that answers
+       nothing, so this is caught here rather than left to surface as an
+       unhandled rejection from a call nobody awaited. */
+  }
 }
 
 /** Identifies the surah the transport is holding. */
