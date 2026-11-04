@@ -987,6 +987,32 @@ async function restartForDirection() {
   } catch { /* neither path is available */ }
 }
 
+/* The direction a wrapper should declare — or, quite often, none at all.
+ *
+ * On the web this is the whole mechanism. `direction` is a real CSS
+ * property: the browser lays out with it, hit-tests with it, and cascades
+ * it into text alignment, so a wrapper that sets it is correct and
+ * sufficient, and it needs no restart.
+ *
+ * On native it is only a fallback, and using it as more than that is what
+ * made the Android build wrong while the web build looked right. There,
+ * `direction` reaches Yoga's layout but not the text or the hit-testing:
+ * a wrapper mirrors where things are drawn without moving the touch
+ * targets underneath them, so taps land away from the control they appear
+ * to be on, and text keeps the alignment its own characters imply instead
+ * of inheriting anything. `I18nManager` is the supported mechanism, and it
+ * is already applied elsewhere with the restart it requires. When it
+ * agrees, the wrapper must say nothing and let Yoga inherit the direction
+ * I18nManager has already chosen.
+ *
+ * It is still set when the two disagree, which is the case it was written
+ * for: a device that refuses the reload would otherwise be stuck facing
+ * the wrong way with nothing to correct it. */
+function shellDirection(wantsRtl: boolean): 'rtl' | 'ltr' | undefined {
+  if (Platform.OS === 'web') return wantsRtl ? 'rtl' : 'ltr';
+  return I18nManager.isRTL === wantsRtl ? undefined : wantsRtl ? 'rtl' : 'ltr';
+}
+
 function LanguageProvider({children}:{children:React.ReactNode}){
   const[language,setLanguageState]=useState<AppLanguage>('en');
   const[ready,setReady]=useState(false);
@@ -1528,7 +1554,7 @@ function Page({ children }: { children: React.ReactNode }) {
   const audio=useAudio();
   const playerInset = audio.track ? (Platform.OS==='ios'?96:MINI_PLAYER_INSET) : 0;
   const enter = useEntrance();
-  return <SafeAreaView style={[s.safe,{direction:rtl?'rtl':'ltr'} as any]}><Animated.View style={[s.page,width > 700 && s.pageWide,{direction:rtl?'rtl':'ltr',paddingBottom:playerInset} as any,{opacity:enter.opacity,transform:[{translateY:enter.translateY}]}]}>{children}</Animated.View></SafeAreaView>;
+  return <SafeAreaView style={[s.safe,{direction:shellDirection(rtl)} as any]}><Animated.View style={[s.page,width > 700 && s.pageWide,{direction:shellDirection(rtl),paddingBottom:playerInset} as any,{opacity:enter.opacity,transform:[{translateY:enter.translateY}]}]}>{children}</Animated.View></SafeAreaView>;
 }
 function Spinner() { const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);return <View style={s.loading}><ActivityIndicator color={C.green} /><Text style={s.loadingText}>{T('Loading live data…')}</Text></View>; }
 
@@ -13067,7 +13093,7 @@ function AppShell() {
      right to left in here. Do not add `rtl ? 'row-reverse' : 'row'` to a
      child: the two cancel and the row comes out left to right again — which
      is what left the floating tab bar unmirrored. */
-  return <View style={[s.shellRoot,{direction:rtlNow?'rtl':'ltr'} as any]}>
+  return <View style={[s.shellRoot,{direction:shellDirection(rtlNow)} as any]}>
     {/* Nothing mounts until the saved language is known, so the very first
         frame is already in the right language and the right direction. The
         splash covers the read, which is a single storage lookup. */}
