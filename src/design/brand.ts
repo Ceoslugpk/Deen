@@ -427,11 +427,27 @@ export const C_PALESTINE_DARK: Palette = {
   link:     mix(FLAG.green, FLAG.white, 0.14),        // 5.4:1
   success:  FLAG.green,                               // fills/dots
   successInk: mix(FLAG.green, FLAG.white, 0.14),      // 5.4:1
-  heroA:    mix(FLAG.black, FLAG.green, 0.14),
-  heroB:    mix(FLAG.green, FLAG.black, 0.18),        // white on it 5.4:1
-};
+    heroA:    mix(FLAG.black, FLAG.green, 0.14),
+    heroB:    mix(FLAG.green, FLAG.black, 0.18),        // white on it 5.4:1
+  };
 
-/** Brand-derived depth tokens, replacing the old off-palette shadow tints. */
+  /* ------------------------------------------------------------------ *
+   * Skeleton
+   *
+   * The two colours a loading placeholder is drawn from: the block a shape
+   * sits in, and the lighter pass that travels across it.
+   *
+   * Derived rather than written into each palette, so the four of them cannot
+   * drift. A placeholder has to read as "not here yet" without competing with
+   * real content, which means it stays close to the surface it sits on and
+   * moves by a small amount: enough to notice, not enough to draw the eye.
+   * ------------------------------------------------------------------ */
+  for (const palette of [C_LIGHT, C_DARK, C_PALESTINE, C_PALESTINE_DARK]) {
+    palette.skeleton = mix(palette.line, palette.card, 0.62);
+    palette.skeletonSweep = mix(palette.skeleton, palette.ink, 0.07);
+  }
+
+  /** Brand-derived depth tokens, replacing the old off-palette shadow tints. */
 export const DEPTH = {
   light: {
     shadow: mix(BRAND.deepIndigo, BRAND.midnightInk, 0.35), // was #292750
