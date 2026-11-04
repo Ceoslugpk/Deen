@@ -227,9 +227,39 @@ const COPY = {
     sleepBody: 'ثلاثون آية تشفع لصاحبها حتى يُغفر له. تستغرق نحو خمس دقائق.',
     sleepAction: 'اقرأها الآن',
   },
+    ur: {
+      channelReminder: 'نماز کی یادہانیاں',
+      channelAdhan: 'اذان',
+      channelDaily: 'روزانہ کی یادہانی',
+      testTitle: 'نماز کی یادہانیاں تیار ہیں',
+      testBodyQuiet: 'یہ پُرسکون روزانہ یادہانی ہے — یہ اطلاعات میں آتی ہے اور منتظر رہتی ہے۔',
+      testAdhanTitle: 'اذان',
+      testAdhanBody: 'یہ اذان ہے: یہ بجتی ہے، اسکرین پر رہتی ہے، اور دو بٹن رکھتی ہے۔ آزمانے کے لیے «خاموش» یا «ادا ہو گئی» پر ٹیپ کریں۔',
+      quranTitle: 'قرآن کا وقت',
+      quranBody: 'کچھ آیاتِ با تدبر کے ساتھ اپنی تلاوت جاری رکھیں۔',
+      webUnsupported: 'سسٹم کی اطلاعات کے لیے انسٹال شدہ iOS یا اینڈرائیڈ ایپ درکار ہے۔',
+      adhanBody: 'نماز کا وقت ہو گیا ہے۔',
+      adhanBodyName: (name: string) => `${name} کا وقت ہو گیا ہے۔`,
+      mute: 'خاموش',
+      prayed: 'ادا ہو گئی',
+      continueTitle: 'جہاں چھوڑا تھا وہاں سے',
+      continueBody: (where: string) => `آپ ${where} پڑھ رہے تھے۔`,
+      verseTitle: 'روز کی آیت',
+      hadithTitle: 'روز کی حدیث',
+      preAdhan: (name: string, mins: string) => `${name} ${mins} میں`,
+      preAdhanBody: (name: string, at: string) => `${name} ${at} بجے شروع ہوتی ہے۔`,
+      sleepTitle: 'سونے سے پہلے سورۃ الملک',
+      sleepBody: 'تیس آیات جو پڑھنے والے کی سفارش کرتی ہیں۔ اس میں تقریباً پانچ منٹ لگتے ہیں۔',
+      sleepAction: 'ابھی پڑھیں',
+    },
 };
 
-const copy = (rtl: boolean) => (rtl ? COPY.ar : COPY.en);
+/* Keyed by language rather than by a boolean. A boolean can only say
+   "Arabic or not", so the moment a third language arrives every notification
+   a speaker of it receives is in English - and these are the words that reach
+   someone before the app is even open. */
+const copy = (code: string | boolean) =>
+  code === 'ur' ? COPY.ur : code === true || code === 'ar' ? COPY.ar : COPY.en;
 
 /**
  * Surah Al-Mulk, and why it is the one this reminder is about.
@@ -255,8 +285,9 @@ export const SLEEP_SURAH = {
 };
 
 /** Minutes, with the Arabic noun agreeing with the number in front of it. */
-function minutesWord(rtl: boolean, n: number) {
-  if (!rtl) return n === 1 ? '1 minute' : `${n} minutes`;
+function minutesWord(code: string | boolean, n: number) {
+  if (code === 'ur') return `${n} منٹ`;
+  if (!(code === true || code === 'ar')) return n === 1 ? '1 minute' : `${n} minutes`;
   return `${n} ${arNoun(n, 'دقيقة', 'دقيقتان', 'دقائق', 'دقيقة')}`;
 }
 
@@ -318,7 +349,7 @@ const CHANNEL_SCHEMA_KEY = '@deen/notification-channels/v1';
  * because a notification cannot be made quiet on its own once its channel has
  * a sound.
  */
-export async function ensureNotificationChannels(rtl = false) {
+export async function ensureNotificationChannels(rtl: string | boolean = false) {
   if (Platform.OS !== 'android') return;
   const c = copy(rtl);
 
@@ -386,7 +417,7 @@ export async function ensureNotificationChannels(rtl = false) {
  * The channels are built either way: granting permission later should not mean
  * re-answering this screen to get a channel that exists.
  */
-export async function requestNotificationPermission(rtl = false): Promise<NotificationHealth> {
+export async function requestNotificationPermission(rtl: string | boolean = false): Promise<NotificationHealth> {
   if (Platform.OS === 'web') return 'unsupported';
   const requested = Platform.OS === 'android'
     ? await Notifications.requestPermissionsAsync({
@@ -416,7 +447,7 @@ export async function openNotificationSettings() {
  * place means no trigger, and on Android a notification with no channel is not
  * shown at all — which is the whole reason a test would appear to do nothing.
  */
-export async function sendTestNotification(rtl = false) {
+export async function sendTestNotification(rtl: string | boolean = false) {
   if (Platform.OS === 'web') throw new Error(copy(rtl).webUnsupported);
   await ensureNotificationChannels(rtl);
   const c = copy(rtl);
@@ -529,7 +560,7 @@ const scheduleQueue = createSerialQueue<ScheduleResult>();
 export function schedulePrayerNotifications(
   snapshot: PrayerSnapshot,
   settings: WorshipSettings,
-  rtl = false,
+  rtl: string | boolean = false,
   reading?: PendingReading | null,
 ): Promise<ScheduleResult> {
   return scheduleQueue(() => rebuildSchedule(snapshot, settings, rtl, reading));
@@ -538,7 +569,7 @@ export function schedulePrayerNotifications(
 async function rebuildSchedule(
   snapshot: PrayerSnapshot,
   settings: WorshipSettings,
-  rtl = false,
+  rtl: string | boolean = false,
   reading?: PendingReading | null,
 ): Promise<ScheduleResult> {
   if (Platform.OS === 'web') return { scheduled: 0, unsupported: true, adhans: 0, adhanAudio: NO_AUDIO };

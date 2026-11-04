@@ -70,10 +70,12 @@ export const LANGUAGES: Language[] = [
     text: { identifier: 'tafsir_ar_arabic_ar-tafsir-muyassar', name: 'Tafsir al-Muyassar', kind: 'tafsir' },
   },
   {
-    /* Urdu now has copy of its own. It is not finished — the interface reads
-       in Urdu where the words exist and in English where they do not — so it
-       is marked partial rather than ready, and the picker says as much. */
-    code: 'ur', native: 'اردو', english: 'Urdu', rtl: true, uiReady: false, uiPartial: true,
+    /* Every string the interface can show is written in Urdu: the screens,
+       the tab bar, and the notifications that arrive before the app is even
+       opened. Marked ready, because it is. The Quran, hadith, adhkar, dua and
+       names content stays in the language its source published it in — that
+       is content, not interface, and translating it is not ours to do. */
+    code: 'ur', native: 'اردو', english: 'Urdu', rtl: true, uiReady: true,
     text: { identifier: 'tr_ur_abul_ala_maududi', name: 'Abul Ala Maududi', kind: 'translation' },
     voice: { identifier: 'ur.khan', name: 'Shamshad Ali Khan' },
   },

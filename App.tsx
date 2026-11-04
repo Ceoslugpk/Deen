@@ -942,6 +942,20 @@ function useAppLocation(){const value=useContext(LocationContext);if(!value)thro
 type AppLanguage=LanguageCode;
 type LanguageState={language:AppLanguage;rtl:boolean;ready:boolean;setLanguage:(language:AppLanguage)=>void};
 const LanguageContext=createContext<LanguageState>({language:'en',rtl:false,ready:false,setLanguage:()=>{}});
+
+/**
+ * The language the interface is in, for the code that cannot ask the hook.
+ *
+ * The error boundary is a class rendered outside the provider, so it has no way
+ * to call useLanguage - and a screen that has already thrown is exactly the
+ * moment the words on it matter most. The provider writes here as it goes, and
+ * anything outside the tree reads it.
+ */
+let currentLanguage: AppLanguage = 'en';
+/** The interface language, for callers with no access to the context. */
+export function getAppLanguage(): AppLanguage {
+  return currentLanguage;
+}
 /**
  * The interface language. Eleven are offered and three of them read right to
  * left. Only English and Arabic have finished interface copy, so the rest are
@@ -1001,6 +1015,7 @@ function LanguageProvider({children}:{children:React.ReactNode}){
   };
   const setLanguage=(next:AppLanguage)=>{
     const wantsRtl=isRtl(next);
+    currentLanguage=next;
     setLanguageState(next);
     /* The language has to reach storage before the reload, or the app would
        come back in the old language under the new direction — worse than the
@@ -1017,6 +1032,7 @@ function LanguageProvider({children}:{children:React.ReactNode}){
       const code=(saved&&languageByCode(saved)?saved:'en') as AppLanguage;
       /* ready gates the first frame, so the app never paints in the wrong
          language and then swap underneath you. */
+      currentLanguage=code;
       setLanguageState(code);
       setReady(true);
       try{if(await applyDirection(isRtl(code)))void restartForDirection()}catch{/* a device that refuses the reload still gets the right layout from the direction style */}
@@ -1034,6 +1050,9 @@ function LanguageProvider({children}:{children:React.ReactNode}){
     document.documentElement.lang=language;
     document.documentElement.dataset.appDirection=dir;
   }},[rtl,language]);
+    /* Held in step with the state as well as with setLanguage, so the mirror
+       is right whichever way the language came to be what it is. */
+    currentLanguage=language;
   return <LanguageContext.Provider value={{language,rtl,ready,setLanguage}}>{children}</LanguageContext.Provider>;
 }
 function useLanguage(){return useContext(LanguageContext)}
@@ -1189,7 +1208,8 @@ const TOOL_IMAGES:Record<string,any>={
   /* The biometric row on the Lock and PIN screen. It was showing the
      Privacy lock artwork because that is what both rows on that screen
      pointed at; this one now has its own. */
-  'Biometric Unlock':require('./assets/tool-icons/biometric-unlock.png')
+  'Biometric Unlock':require('./assets/tool-icons/biometric-unlock.png'),
+    Language:require('./assets/tool-icons/language.png'),
 };
 /** The same icons, re-toned for the dark palette. */
 const TOOL_IMAGES_DARK:Record<string,any>={
@@ -1301,7 +1321,8 @@ const TOOL_IMAGES_DARK:Record<string,any>={
   Storage:require('./assets/tool-icons/storage-dark.png'),
   Corrections:require('./assets/tool-icons/my-reports-dark.png'),
   'My Reports':require('./assets/tool-icons/my-reports-dark.png'),
-  'Biometric Unlock':require('./assets/tool-icons/biometric-unlock-dark.png')
+  'Biometric Unlock':require('./assets/tool-icons/biometric-unlock-dark.png'),
+    Language:require('./assets/tool-icons/language-dark.png'),
 };
 /* The five drawn for the Palestine theme, so far. Chosen by theme below
    rather than swapped into the maps above: the two sets are kept apart, and
@@ -1596,7 +1617,7 @@ function Section({ title, action, onPress, busy }: { title: string; action?: str
      one that did nothing at all, so the link says so while it works. */
   return <View style={s.section}><Text style={s.h2}>{title}</Text>{action&&<Tactile onPress={busy?undefined:onPress} disabled={busy} accessibilityState={{busy}} style={s.sectionLink}>
     {busy?<><ActivityIndicator size="small" color={C.green}/><Text style={s.sectionAction}>{T('Refreshing…')}</Text></>
-        :<Text style={s.sectionAction}>{rtl?'\u2190  ':''}{action}{rtl?'':'  \u2192'}</Text>}
+        :<Text style={s.sectionAction}>{rtl?'\u2190  ':''}{action}{tx(language, '  \u2192')}</Text>}
   </Tactile>}</View>}
 function LiveBadge({ source }: { source: string }) {
   const { rtl , language }=useLanguage();
@@ -1956,11 +1977,11 @@ const[quranPosition,setQuranPosition]=useState<any>(null);const[openReflection,s
       <View style={[s.hero,{height:heroH}]}><Animated.View style={[StyleSheet.absoluteFill,{transform:[{translateY:heroShift},{scale:heroZoom}]}]}><Image source={pickScene(SCENE_HOME, resolved)} resizeMode="cover" style={s.heroBg}/></Animated.View>
         <LinearGradient colors={isPal(resolved)?SCRIM.palestine:SCRIM.islamic} start={{x:0,y:.5}} end={{x:1,y:.5}} style={StyleSheet.absoluteFill} /> <HeroAura still={still} palestine={isPal(resolved)} /> <Animated.View pointerEvents="none" style={[s.heroSheen,{transform:[{translateX:Animated.multiply(sheenShift,width)},{skewX:'-16deg'}]}]}><LinearGradient colors={['rgba(255,255,255,0)','rgba(255,255,255,.16)','rgba(255,255,255,0)']} start={{x:0,y:0}} end={{x:1,y:0}} style={StyleSheet.absoluteFill}/></Animated.View> 
         <Pressable onPress={locationState.clear} style={s.locationPill}>{ico('location',13,C.onHero)}<Text numberOfLines={1} style={s.locationText}>{T(data.location?.label || '')}</Text></Pressable>
-        <Text style={s.hijri}>{(rtl ? data.snapshot?.hijriAr || data.snapshot?.hijri : data.snapshot?.hijri) || T('Loading Hijri date…')} · {new Date().toLocaleDateString(rtl ? 'ar-u-nu-latn' : undefined, { day: 'numeric', month: 'short', year: 'numeric' })}{data.cached ? (rtl ? ' · مخزَّن' : ' · CACHED') : ''}</Text>
-        <Text style={s.nextLabel}>{rtl ? 'التالي · ' : 'NEXT · '}{next ? prayerName(language, next.name) : '—'}</Text><Text style={s.heroTime}>{clockTime(language, next?.time || '—')}</Text>
-        <View style={s.heroFooter}><View style={s.countPill}>{ico('time-outline',14,C.white)}<Text style={s.countText}>{rtl ? 'بعد ' : 'in '}{next ? <HeroCountdown raw={next.raw} rtl={rtl}/> : '—'}</Text></View><Pressable onPress={()=>nav.navigate('Prayer')} style={s.heroCta}><Text style={s.heroCtaText}>{T('Prayer schedule')}</Text>{ico(rtl ? 'arrow-back' : 'arrow-forward',15,C.white)}</Pressable></View>
+        <Text style={s.hijri}>{(rtl ? data.snapshot?.hijriAr || data.snapshot?.hijri : data.snapshot?.hijri) || T('Loading Hijri date…')} · {new Date().toLocaleDateString(rtl ? 'ar-u-nu-latn' : undefined, { day: 'numeric', month: 'short', year: 'numeric' })}{data.cached ? (tx(language, ' · CACHED')) : ''}</Text>
+        <Text style={s.nextLabel}>{tx(language, 'NEXT · ')}{next ? prayerName(language, next.name) : '—'}</Text><Text style={s.heroTime}>{clockTime(language, next?.time || '—')}</Text>
+        <View style={s.heroFooter}><View style={s.countPill}>{ico('time-outline',14,C.white)}<Text style={s.countText}>{tx(language, 'in ')}{next ? <HeroCountdown raw={next.raw} rtl={rtl}/> : '—'}</Text></View><Pressable onPress={()=>nav.navigate('Prayer')} style={s.heroCta}><Text style={s.heroCtaText}>{T('Prayer schedule')}</Text>{ico(rtl ? 'arrow-back' : 'arrow-forward',15,C.white)}</Pressable></View>
       </View>
-      <View style={s.prayerRail}>{data.snapshot?.prayers.filter(p=>p.name!=='Sunrise').map((p,i)=>{const checked=completed.includes(p.name);return <Pressable accessibilityRole="checkbox" accessibilityState={{checked}} onPress={()=>togglePrayer(p.name)} key={p.name} style={[s.railItem,p.name===next?.name&&s.railItemActive]}><View style={[s.railIcon,checked&&s.railIconDone]}><Image source={prayerIconFor(p.name, resolved)} resizeMode="contain" style={{width:35,height:35,opacity:checked?1:.7}}/>{!!checked && <View style={s.railCheck}>{ico('checkmark',10,C.white)}</View>}</View><Text style={s.railName}>{prayerName(language, p.name)}</Text><Text style={s.railTime}>{clockTime(language, p.time).replace(' ','\n')}</Text></Pressable>})}</View><View style={s.homeProgress}><View><Text style={s.sourceTitle}>{completed.length}/5 {rtl ? 'صلاة اليوم' : 'prayers today'}</Text><Text style={s.sourceBody}>{rtl ? `${streak} ${arNoun(streak,'يوم متتابع','يومان متتابعان','أيام متتابعة','يومًا متتابعًا')} · ${weekTotal}/35 هذا الأسبوع` : `${streak} day streak · ${weekTotal}/35 this week`}</Text></View><View style={s.homeProgressRing}><Text style={s.progressCount}>{completed.length*20}%</Text></View></View>
+      <View style={s.prayerRail}>{data.snapshot?.prayers.filter(p=>p.name!=='Sunrise').map((p,i)=>{const checked=completed.includes(p.name);return <Pressable accessibilityRole="checkbox" accessibilityState={{checked}} onPress={()=>togglePrayer(p.name)} key={p.name} style={[s.railItem,p.name===next?.name&&s.railItemActive]}><View style={[s.railIcon,checked&&s.railIconDone]}><Image source={prayerIconFor(p.name, resolved)} resizeMode="contain" style={{width:35,height:35,opacity:checked?1:.7}}/>{!!checked && <View style={s.railCheck}>{ico('checkmark',10,C.white)}</View>}</View><Text style={s.railName}>{prayerName(language, p.name)}</Text><Text style={s.railTime}>{clockTime(language, p.time).replace(' ','\n')}</Text></Pressable>})}</View><View style={s.homeProgress}><View><Text style={s.sourceTitle}>{completed.length}/5 {tx(language, 'prayers today')}</Text><Text style={s.sourceBody}>{rtl ? `${streak} ${arNoun(streak,'يوم متتابع','يومان متتابعان','أيام متتابعة','يومًا متتابعًا')} · ${weekTotal}/35 هذا الأسبوع` : `${streak} day streak · ${weekTotal}/35 this week`}</Text></View><View style={s.homeProgressRing}><Text style={s.progressCount}>{completed.length*20}%</Text></View></View>
     </>}
     <Section title={T('Adhkar')} action={T('All duas')} onPress={()=>nav.navigate('Library',{screen:'Duas',initial:false})} />
     {afterPrayer === null && <View style={[s.adhkarDuaCard, s.adhkarDuaPad]}><Spinner /></View>}
@@ -2084,7 +2105,7 @@ const[quranPosition,setQuranPosition]=useState<any>(null);const[openReflection,s
       onPress={()=>nav.navigate('Quran')}>
       <View style={StyleSheet.absoluteFill}><Image source={pickScene(SCENE_QURAN, resolved)} resizeMode="cover" style={s.heroBg}/></View>
       <LinearGradient colors={isPal(resolved)?SCRIM.readPalestine:SCRIM.readIslamic} start={{x:0,y:.5}} end={{x:1,y:.5}} style={StyleSheet.absoluteFill} />
-      <Text style={s.readKicker}>{T(quranPosition ? 'CONTINUE READING' : 'FEATURED READING')}</Text><Text style={s.readArabic}>{quranPosition?'۝':'يس'}</Text><Text style={s.readTitle}>{quranPosition ? quranPosition.surahName : T('Surah Ya-Sin')}</Text><Text style={s.readMeta}>{quranPosition ? `${quranPosition.verseKey} · ${rtl ? 'صفحة' : 'Page'} ${quranPosition.page || '—'}` : (rtl ? '83 آية · مكية' : '83 verses · Makkan')}</Text><Tactile onPress={()=>nav.navigate('Quran',{screen:'Reader',params:{chapter:quranPosition?{id:quranPosition.surahId,name_simple:quranPosition.surahName,name_arabic:'',verses_count:0}:{id:36,name_simple:'Ya-Sin',name_arabic:'يس',verses_count:83},focusVerse:quranPosition?.verseKey},initial:false})} style={s.whiteButton}><Text style={s.whiteButtonText}>{T(quranPosition ? 'Continue' : 'Read now')}</Text>{ico(rtl ? 'arrow-back' : 'arrow-forward',14,C.green)}</Tactile>
+      <Text style={s.readKicker}>{T(quranPosition ? 'CONTINUE READING' : 'FEATURED READING')}</Text><Text style={s.readArabic}>{quranPosition?'۝':'يس'}</Text><Text style={s.readTitle}>{quranPosition ? quranPosition.surahName : T('Surah Ya-Sin')}</Text><Text style={s.readMeta}>{quranPosition ? `${quranPosition.verseKey} · ${tx(language, 'Page')} ${quranPosition.page || '—'}` : (tx(language, '83 verses · Makkan'))}</Text><Tactile onPress={()=>nav.navigate('Quran',{screen:'Reader',params:{chapter:quranPosition?{id:quranPosition.surahId,name_simple:quranPosition.surahName,name_arabic:'',verses_count:0}:{id:36,name_simple:'Ya-Sin',name_arabic:'يس',verses_count:83},focusVerse:quranPosition?.verseKey},initial:false})} style={s.whiteButton}><Text style={s.whiteButtonText}>{T(quranPosition ? 'Continue' : 'Read now')}</Text>{ico(rtl ? 'arrow-back' : 'arrow-forward',14,C.green)}</Tactile>
     </DepthCard>
     <Section title={T('Hadith of the day')} />
     <View style={[s.depthCard,s.hadithSurface,{borderRadius:RADIUS.xl}]}><Text style={s.quote}>“</Text><Text numberOfLines={6} style={s.hadithText}>{data.hadith ? (rtl && data.hadith.arabic ? stripTags(data.hadith.arabic) : data.hadith.text) : T('Loading today’s authenticated hadith…')}</Text><View style={s.hadithFoot}><Text style={s.meta}>{data.hadith ? `${hadithSourceLabel(rtl, data.hadith.collection)} · ${data.hadith.number}` : ''}</Text>{!!data.hadith&&<Pressable accessibilityRole="button" accessibilityLabel={T('Report a correction in this hadith')} onPress={()=>{const h=data.hadith;if(h)setReportHadith({collection:h.collection,number:h.number,arabic:h.arabic,text:h.text})}} hitSlop={10}>{ico('flag-outline',18,C.muted)}</Pressable>}</View></View>
@@ -2978,7 +2999,7 @@ function ReaderScreen({route,navigation}:any){
    */
   useEffect(()=>{if(page!==null) void markPageRead(page)},[page]);
   const title=section==='juz'?(rtl?`الجزء ${juz}`:`Juz ${juz}`):section==='hizb'?(rtl?`الحزب ${hizb}`:`Hizb ${hizb}`):section==='page'||isMushaf?(rtl?`صفحة المصحف ${page||1}`:`Mushaf page ${page||1}`):full.name_simple;
-  const subtitle=(isMushaf||section==='page')?((cached?(rtl?'متاح دون اتصال · ':'Offline · '):'')+(verses.length?(verses[0].surah_name||''):'')):section==='juz'?(rtl?`الأرباع ${(juz-1)*8+1}–${juz*8}`:`HIZBS ${(juz-1)*2+1}–${juz*2}`):section==='hizb'?(rtl?`الأرباع ${(hizb-1)*4+1}–${hizb*4}`:`QUARTERS ${(hizb-1)*4+1}–${hizb*4}`):(cached?(rtl?'متاح دون اتصال · ':'Available offline · '):'')+`${full.verses_count}${rtl?' آية':' verses'}`;
+  const subtitle=(isMushaf||section==='page')?((cached?(tx(language, 'Offline · ')):'')+(verses.length?(verses[0].surah_name||''):'')):section==='juz'?(rtl?`الأرباع ${(juz-1)*8+1}–${juz*8}`:`HIZBS ${(juz-1)*2+1}–${juz*2}`):section==='hizb'?(rtl?`الأرباع ${(hizb-1)*4+1}–${hizb*4}`:`QUARTERS ${(hizb-1)*4+1}–${hizb*4}`):(cached?(tx(language, 'Available offline · ')):'')+`${full.verses_count}${tx(language, ' verses')}`;
   /* Stepper: Surah to Surah, Juz to Juz, Hizb to Hizb. The Mushaf script pages
      instead, using the controls above the page itself. */
   const step=(delta:number)=>{if(section==='juz')navigation.replace('Reader',{section:'juz',juz:juz+delta});else if(section==='hizb')navigation.replace('Reader',{section:'hizb',hizb:hizb+delta});else{const i=chapters.findIndex(c=>c.id===chapterId);const next=chapters[i+delta];if(next)navigation.replace('Reader',{chapter:next})}};
@@ -6012,8 +6033,8 @@ function JourneyScreenInner({ route, navigation }: any) {
         <Tactile accessibilityLabel={T('Delete this journey')} onPress={() => { clearJourney(kind); navigation.goBack(); }} style={s.dangerButton}><Text style={s.dangerText}>{T('Delete journey')}</Text></Tactile>
       </View>
       <View style={s.apiPanel}>
-        <Text style={s.apiTitle}>{rtl ? 'تنبيه' : 'A note on the rites'}</Text>
-        <Text style={s.apiText}>{rtl ? 'هذا تنظيم خاص، وليس فتوى. تختلف المذاهب في تفاصيل المناسك وما يفسدها وما يجب فيها، فاستفتِ عالماً موثوقاً في حالتك.' : 'This is a personal checklist, not a ruling. The schools differ on the details of the rites, on what breaks them and on what is due for them, so confirm your own case with a scholar you trust.'}</Text>
+        <Text style={s.apiTitle}>{tx(language, 'A note on the rites')}</Text>
+        <Text style={s.apiText}>{tx(language, 'This is a personal checklist, not a ruling. The schools differ on the details of the rites, on what breaks them and on what is due for them, so confirm your own case with a scholar you trust.')}</Text>
       </View>
     </ScrollView>
   </Page>;
@@ -6139,11 +6160,11 @@ function HolyChannelsScreen({ route, navigation }: any) {
   const channels = site ? HOLY_CHANNELS.filter((channel) => channel.site === site) : HOLY_CHANNELS;
   const heading = site === 'Madinah' ? 'Madinah Live' : 'Makkah Live';
   const open = async (channel: (typeof HOLY_CHANNELS)[number]) => { setOpened(channel.id); await openChannel(channel); };
-  return <Page><ToolBar title={site ? T(heading) : (rtl ? 'بثّ الحرمين' : 'Holy site channels')} navigation={navigation} />
+  return <Page><ToolBar title={site ? T(heading) : (tx(language, 'Holy site channels'))} navigation={navigation} />
     <ScrollView keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
       <ToolGraphic tool="Holy site channels" size={85} />
-      <Text style={s.dataTitle}>{rtl ? 'بثّ الحرمين' : 'Holy site channels'}</Text>
-      <Text style={s.intro}>{rtl ? 'البثّ الرسمي من مكة والمدينة على مدار الساعة.' : 'The official broadcasts from Makkah and Madinah, around the clock.'}</Text>
+      <Text style={s.dataTitle}>{tx(language, 'Holy site channels')}</Text>
+      <Text style={s.intro}>{tx(language, 'The official broadcasts from Makkah and Madinah, around the clock.')}</Text>
       {channels.map((channel) => <View key={channel.id} style={s.channelCard}>
         <View style={[s.channelHead, ]}>
           <ToolGraphic tool="Holy site channels" size={52} />
@@ -6162,8 +6183,8 @@ function HolyChannelsScreen({ route, navigation }: any) {
         </Tactile>
       </View>)}
       <View style={s.apiPanel}>
-        <Text style={s.apiTitle}>{rtl ? 'عن هذه البثوث' : 'About these streams'}</Text>
-        <Text style={s.apiText}>{rtl ? 'يعمل بثّ قناة القرآن وقناة السنّة داخل التطبيق من البثّ الرسمي للقناة نفسها. وتُفتح القنوات الأخرى خارج التطبيق، لأن إعادة بثّها هنا تحتاج حقوقاً لا يملكها التطبيق.' : 'Quran TV and Sunnah TV play right here, from the broadcaster’s own stream. The other channels open outside this app, because carrying them here would need rights the app does not hold.'}</Text>
+        <Text style={s.apiTitle}>{tx(language, 'About these streams')}</Text>
+        <Text style={s.apiText}>{tx(language, 'Quran TV and Sunnah TV play right here, from the broadcaster’s own stream. The other channels open outside this app, because carrying them here would need rights the app does not hold.')}</Text>
       </View>
     </ScrollView>
   </Page>;
@@ -6224,7 +6245,7 @@ function FastingScreen({navigation}:any){const {rtl,language}=useLanguage();cons
           </View>;
         })}
       </View>
-      <Text style={s.meta}>{rtl ? 'الأيام التي صُمت في كل شهر' : 'Days fasted in each month, oldest first.'}</Text>
+      <Text style={s.meta}>{tx(language, 'Days fasted in each month, oldest first.')}</Text>
     </View>
     <Section title={T('Recent record')} action={rtl?`${fasting.entries.length} ${arNoun(fasting.entries.length,'يوم مسجَّل','يومان مسجَّلان','أيام مسجَّلة','يومًا مسجَّلًا')}`:`${fasting.entries.length} entries`} />
     {!fasting.entries.length && <View style={s.empty}><Text style={s.dataBody}>{T('Nothing recorded yet. Mark today above and your record starts here.')}</Text></View>}
@@ -6391,19 +6412,31 @@ function LocationSetupScreen({navigation}:any){const {rtl,language}=useLanguage(
 /* "3 min ago" is interface copy, not scripture, so it is written here the same
    way the calendar's day counts are - Arabic gets its proper dual and plural
    forms rather than a number bolted onto the singular. */
-function timeAgoText(ms: number, rtl: boolean): string {
+function timeAgoText(ms: number, language: string | boolean): string {
   const mins = Math.round(ms / 60000);
-  if (mins < 1) return rtl ? 'الآن' : 'just now';
-  if (mins < 60) return rtl ? `قبل ${arNoun(mins, 'دقيقة', 'دقيقتين', 'دقائق', 'دقيقة')}` : `${mins} min ago`;
+  const ar = language === true || language === 'ar';
+  const ur = language === 'ur';
+  /* Written out per language rather than switched on a boolean: the Arabic
+     noun changes form with the number in front of it, Urdu puts the unit
+     first, and a two-way choice had nowhere to put the third. */
+  if (mins < 1) return tx(language, 'just now');
+  if (mins < 60) {
+    if (ur) return `${mins} منٹ پہلے`;
+    if (ar) return `قبل ${arNoun(mins, 'دقيقة', 'دقيقتين', 'دقائق', 'دقيقة')}`;
+    return `${mins} min ago`;
+  }
   const hours = Math.round(mins / 60);
-  if (hours < 24) return rtl ? `قبل ${arNoun(hours, 'ساعة', 'ساعتين', 'ساعات', 'ساعة')}` : `${hours}h ago`;
+  if (hours < 24) {
+    if (ur) return `${hours} گھنٹے پہلے`;
+    if (ar) return `قبل ${arNoun(hours, 'ساعة', 'ساعتين', 'ساعات', 'ساعة')}`;
+    return `${hours}h ago`;
+  }
   const days = Math.round(hours / 24);
-  return rtl ? `قبل ${arNoun(days, 'يوم', 'يومين', 'أيام', 'يومًا')}` : `${days}d ago`;
+  if (ur) return `${days} دن پہلے`;
+  if (ar) return `قبل ${arNoun(days, 'يوم', 'يومين', 'أيام', 'يومًا')}`;
+  return `${days}d ago`;
 }
 
-/* Five shades of the brand gold: nothing marked on the day, through to all
-   five. Alpha steps of one colour rather than a rainbow, so the map reads as
-   one quantity rather than five categories. */
 const HEAT_STOPS = [
   'rgba(223,177,99,0.20)',
   'rgba(223,177,99,0.38)',
@@ -6595,14 +6628,10 @@ function SalahTrackerScreen({ navigation }: any) {
                   );
                 })}
               </View>
-              <Text style={s.meta}>{rtl
-                ? 'اضغط لتصحيح هذا اليوم.'
-                : 'Tap to correct this day.'}</Text>
+              <Text style={s.meta}>{tx(language, 'Tap to correct this day.')}</Text>
             </View>
           ) : (
-            <Text style={s.meta}>{rtl
-              ? 'اضغط أي مربع لعرض تفاصيل ذلك اليوم.'
-              : 'Tap any square to see that day.'}</Text>
+            <Text style={s.meta}>{tx(language, 'Tap any square to see that day.')}</Text>
           )}
         </>
       )}
@@ -6639,12 +6668,12 @@ function SunnahScreen({ navigation }: any) {
           <View>
             <Text style={s.nextCardLabel}>{T('PRAYED')}</Text>
             <Text style={s.zakatNo}>{summary.total}</Text>
-            <Text style={s.weekScoreBody}>{summary.daysKept} {rtl ? 'يوم' : 'days'}</Text>
+            <Text style={s.weekScoreBody}>{summary.daysKept} {tx(language, 'days')}</Text>
           </View>
           <View style={{ alignItems: 'flex-end' }}>
             <Text style={s.nextCardLabel}>{T('ALL THREE')}</Text>
             <Text style={s.zakatNo}>{summary.fullDays}</Text>
-            <Text style={s.weekScoreBody}>{rtl ? 'أيام كاملة' : 'full days'}</Text>
+            <Text style={s.weekScoreBody}>{tx(language, 'full days')}</Text>
           </View>
         </LinearGradient>
 
@@ -6668,7 +6697,7 @@ function SunnahScreen({ navigation }: any) {
                   </View>
                   <View style={{ alignItems: 'flex-end' }}>
                     <Text style={s.trackStatValue}>{stat.streak}</Text>
-                    <Text style={s.trackStatLabel}>{rtl ? 'يوم' : 'days'}</Text>
+                    <Text style={s.trackStatLabel}>{tx(language, 'days')}</Text>
                   </View>
                 </View>
               </Tactile>
@@ -6676,9 +6705,7 @@ function SunnahScreen({ navigation }: any) {
           })}
         </View>
 
-        <Text style={s.meta}>{rtl
-          ? 'اضغط للتبديل. يُحسب كل عدد متتالٍ على حدة.'
-          : 'Tap to toggle. Each run is counted on its own.'}</Text>
+        <Text style={s.meta}>{tx(language, 'Tap to toggle. Each run is counted on its own.')}</Text>
 
         <Section title={T('So far')} />
         <View style={s.trackStats}>
@@ -6749,7 +6776,7 @@ function NotificationInboxScreen({navigation}:any){
                   <Text style={s.inboxKind}>{T(past?'SENT':'SCHEDULED')}</Text>
                   <Text style={s.settingName}>{entry.title}</Text>
                   {!!entry.body&&<Text style={s.meta}>{entry.body}</Text>}
-                  <Text style={s.inboxTime}>{past?timeAgoText(Date.now()-entry.fireAt,rtl):new Date(entry.fireAt).toLocaleString(rtl?'ar-u-nu-latn':'en',{weekday:'short',hour:'numeric',minute:'2-digit'})}
+                  <Text style={s.inboxTime}>{past?timeAgoText(Date.now()-entry.fireAt,language):new Date(entry.fireAt).toLocaleString(rtl?'ar-u-nu-latn':'en',{weekday:'short',hour:'numeric',minute:'2-digit'})}
                     {entry.openedAt?' · '+T('opened'):''}</Text>
                 </View>
               </View>})}
@@ -6944,14 +6971,14 @@ function NotificationScreen({navigation}:any){const {rtl,language}=useLanguage()
   useEffect(()=>{getNotificationHealth().then(setHealth);void getScheduledCount().then(setQueued);void getBatteryOptimizationState().then(setBattery)},[]);
   useEffect(()=>{void inspectAdhanAudio(settings).then(setAudio)},[settings]);
 
-  const permission=async()=>{const next=await requestNotificationPermission(rtl);setHealth(next)};
+  const permission=async()=>{const next=await requestNotificationPermission(language);setHealth(next)};
   const sync=async()=>{
     if(!location)return Alert.alert(T('Location needed'),T('Choose a prayer location before scheduling reminders.'));
     setWorking(true);
     try{
       const value=await managedPrayerSnapshot(location,settings);
       const position=await loadReadingPosition().catch(()=>null);
-      const result=await schedulePrayerNotifications(value.snapshot,settings,rtl,
+      const result=await schedulePrayerNotifications(value.snapshot,settings,language,
         position?{surahId:position.surahId,verseKey:position.verseKey,label:`${position.surahName} ${position.verseKey}`}:null);
       setQueued(await getScheduledCount());
       setAudio(result.adhanAudio);
@@ -7157,7 +7184,7 @@ function NotificationScreen({navigation}:any){const {rtl,language}=useLanguage()
 
       <View style={s.actionRow}>
         <Tactile onPress={sync} style={s.primary}><Text style={s.primaryText}>{working?T('Scheduling…'):T('Save & reschedule')}</Text></Tactile>
-        <Tactile onPress={()=>sendTestNotification(rtl).then(()=>setToast(T('Two notifications sent — one quiet, one adhan.'))).catch(e=>setToast(T(e.message||'Test unavailable')))} style={s.secondary}>
+        <Tactile onPress={()=>sendTestNotification(language).then(()=>setToast(T('Two notifications sent — one quiet, one adhan.'))).catch(e=>setToast(T(e.message||'Test unavailable')))} style={s.secondary}>
           <Text style={s.secondaryText}>{T('Test notification')}</Text>
         </Tactile>
       </View>
@@ -7413,10 +7440,19 @@ const ISLAMIC_EVENTS: IslamicEvent[] = [
 const eventOn = (month: number, day: number) => ISLAMIC_EVENTS.filter((e) => e.month === month && e.day === day);
 
 /** "in 12 days", "tomorrow", "today" - day counts, not precise times. */
-function daysUntilText(days: number, rtl: boolean): string {
-  if (days <= 0) return rtl ? 'اليوم' : 'today';
-  if (days === 1) return rtl ? 'غدًا' : 'tomorrow';
-  return rtl ? `بعد ${days} ${arNoun(days, 'يوم', 'يومين', 'أيام', 'يومًا')}` : `in ${days} days`;
+/**
+ * "in 12 days", "tomorrow", "today" - day counts, not precise times.
+ *
+ * Takes the language rather than a direction: Arabic and Urdu are both
+ * right-to-left but do not share a word for "tomorrow", so a two-way switch
+ * has nowhere to put the third.
+ */
+function daysUntilText(days: number, language: string | boolean): string {
+  if (days <= 0) return tx(language, 'today');
+  if (days === 1) return tx(language, 'tomorrow');
+  if (language === 'ur') return `${days} دن میں`;
+  if (language === 'ar') return `بعد ${days} ${arNoun(days, 'يوم', 'يومين', 'أيام', 'يومًا')}`;
+  return `in ${days} days`;
 }
 
 function HijriCalendarScreen({navigation}:any){
@@ -7490,7 +7526,7 @@ function HijriCalendarScreen({navigation}:any){
         <View style={s.settings}>
           {upcoming.map(({event,date,days:away,day})=>(
             <Pressable key={`${event.title}-${day.hijriYear}`} accessibilityRole="button"
-              accessibilityLabel={`${T(event.title)}, ${daysUntilText(away,rtl)}`}
+              accessibilityLabel={`${T(event.title)}, ${daysUntilText(away,language)}`}
               onPress={()=>setSelected(day)} style={s.eventRow}>
               <View style={[s.eventDot,{ backgroundColor: EVENT_COLOURS[event.kind] }]}/>
               <View style={{flex:1}}>
@@ -7501,7 +7537,7 @@ function HijriCalendarScreen({navigation}:any){
                     : `${day.hijriDay} ${day.hijriMonth} ${day.hijriYear} AH · ${date.toLocaleDateString('en',{day:'numeric',month:'short'})}`}
                 </Text>
               </View>
-              <View style={s.eventCountdown}><Text style={s.eventCountdownText}>{daysUntilText(away,rtl)}</Text></View>
+              <View style={s.eventCountdown}><Text style={s.eventCountdownText}>{daysUntilText(away,language)}</Text></View>
             </Pressable>
           ))}
         </View>
@@ -7838,7 +7874,7 @@ function PrivateLockScreen({ navigation }: any) {
     <View style={s.pinPage}>
       <ToolGraphic tool="Privacy lock" size={87} />
       <Text style={s.dataTitle}>{T('Locked')}</Text>
-      <Text style={s.intro}>{rtl ? 'تبقى هذه السجلات على هذا الجهاز. افتحيها بـ ' : 'These records stay on this device. Unlock with '}{info.available ? `${info.label}${rtl ? ' أو ' : ' or '}` : ''}{rtl ? 'الرمز لعرضها.' : 'your PIN to open them.'}</Text>
+      <Text style={s.intro}>{tx(language, 'These records stay on this device. Unlock with ')}{info.available ? `${info.label}${tx(language, ' or ')}` : ''}{tx(language, 'your PIN to open them.')}</Text>
       <PinDots filled={pin.length} error={!!error} />
       <Text style={[s.pinHint, !!error && s.pinHintError]}>{error || (config.pinSet ? T('Enter your 4-digit PIN') : T('No PIN has been set yet'))}</Text>
       <PinKeypad onDigit={digit} onDelete={() => { setPin((value) => value.slice(0, -1)); setError(''); }} onBiometric={config.biometric && info.available ? withBiometrics : null} biometric={info} />
@@ -8371,7 +8407,7 @@ function CycleScreen({ navigation }: any) {
       </View>
       <Section title={T('History')} />
       {!womens.cycles.length ? <View style={s.dataCard}><Text style={s.dataBody}>{T('No cycles recorded yet.')}</Text></View> : <View style={s.settings}>{womens.cycles.slice(0, 12).map((entry) => <View key={entry.id} style={[s.setting, ]}>
-        <View style={{ flex: 1 }}><Text style={s.settingName}>{formatDay(entry.start, language)}{entry.end ? ` – ${formatDay(entry.end, language)}` : (rtl ? ' · مستمرة' : ' · ongoing')}</Text><Text style={s.meta}>{entry.end ? (rtl ? `${daysBetween(entry.start, entry.end) + 1} أيام` : `${daysBetween(entry.start, entry.end) + 1} days`) : (rtl ? `اليوم ${Math.max(1, daysBetween(entry.start, today) + 1)}` : `Day ${Math.max(1, daysBetween(entry.start, today) + 1)}`)} · {T(FLOW_LEVELS.find((level) => level.id === entry.flow)?.label || 'Flow')}</Text></View>
+        <View style={{ flex: 1 }}><Text style={s.settingName}>{formatDay(entry.start, language)}{entry.end ? ` – ${formatDay(entry.end, language)}` : (tx(language, ' · ongoing'))}</Text><Text style={s.meta}>{entry.end ? (rtl ? `${daysBetween(entry.start, entry.end) + 1} أيام` : `${daysBetween(entry.start, entry.end) + 1} days`) : (rtl ? `اليوم ${Math.max(1, daysBetween(entry.start, today) + 1)}` : `Day ${Math.max(1, daysBetween(entry.start, today) + 1)}`)} · {T(FLOW_LEVELS.find((level) => level.id === entry.flow)?.label || 'Flow')}</Text></View>
         <Tactile accessibilityLabel={T('Delete this cycle')} onPress={() => void deleteCycle(entry.id)} style={s.stepButton}>{ico('trash-outline', 18, C.coral)}</Tactile>
       </View>)}</View>}
     </ScrollView>
@@ -8449,7 +8485,7 @@ function PurityScreen({ navigation }: any) {
       </LinearGradient>
       <View style={s.dataCard}>
         {nifas.active ? <>
-          <Text style={s.dataMeta}>{rtl ? 'بدأت' : 'STARTED'} {formatDay(nifas.active.start, language)}</Text>
+          <Text style={s.dataMeta}>{tx(language, 'STARTED')} {formatDay(nifas.active.start, language)}</Text>
           <View style={s.actionRow}>
             <Tactile accessibilityLabel={T('I am pure now')} onPress={() => void endNifas(dayKey())} style={s.primary}><Text style={s.primaryText}>{T('I am pure now')}</Text></Tactile>
           </View>
@@ -8498,8 +8534,8 @@ function QadaScreen({ navigation }: any) {
       <Text style={s.dataTitle}>{T('Days owed')}</Text>
       <Text style={s.intro}>{T('Fast days missed through menstruation or the post-natal days are made up one for one, before the next Ramadan. This is the running count.')}</Text>
       <LinearGradient colors={[C.heroA, C.green]} style={s.summaryScore}>
-        <View><Text style={s.nextCardLabel}>{T('STILL OWED')}</Text><Text style={s.zakatNo}>{qada.remaining}</Text><Text style={s.weekScoreBody}>{qada.total} {rtl ? 'مسجَّلة في المجموع' : 'recorded in total'}</Text></View>
-        <View style={{ alignItems: 'flex-end' }}><Text style={s.nextCardLabel}>{T('SETTLED')}</Text><Text style={s.zakatNo}>{qada.done}</Text><Text style={s.weekScoreBody}>{qada.percent}% {rtl ? 'مكتمل' : 'complete'}</Text></View>
+        <View><Text style={s.nextCardLabel}>{T('STILL OWED')}</Text><Text style={s.zakatNo}>{qada.remaining}</Text><Text style={s.weekScoreBody}>{qada.total} {tx(language, 'recorded in total')}</Text></View>
+        <View style={{ alignItems: 'flex-end' }}><Text style={s.nextCardLabel}>{T('SETTLED')}</Text><Text style={s.zakatNo}>{qada.done}</Text><Text style={s.weekScoreBody}>{qada.percent}% {tx(language, 'complete')}</Text></View>
       </LinearGradient>
       <View style={s.progressTrack}><View style={[s.progressFill, { width: `${qada.percent}%` } as any]} /></View>
       <Section title={T('Add a missed day')} />
@@ -8591,7 +8627,7 @@ function KhatamScreen({ navigation }: any) {
             value={pageText}
             onChangeText={setPageText}
             keyboardType="number-pad"
-            placeholder={rtl ? 'رقم الصفحة' : 'Page number'}
+            placeholder={tx(language, 'Page number')}
             placeholderTextColor={C.muted}
             maxLength={3}
             returnKeyType="done"
@@ -8792,13 +8828,13 @@ function SadaqahScreen({ navigation }: any) {
   const give = () => {
     const value = Number(amount);
     if (!Number.isFinite(value) || value <= 0) {
-      setMessage(rtl ? 'أدخل مبلغاً أكبر من صفر' : 'Enter an amount greater than zero');
+      setMessage(tx(language, 'Enter an amount greater than zero'));
       return;
     }
     void logSadaqah(value, note);
     setAmount('');
     setNote('');
-    setMessage(rtl ? 'سُجِّل' : 'Recorded');
+    setMessage(tx(language, 'Recorded'));
   };
 
   return (
@@ -9150,7 +9186,7 @@ function ZakatScreen({ navigation }: any) {
         {zakat.assets.map((asset) => <View key={asset.id} style={[s.assetRow, ]}>
           <View style={{ flex: 1, marginHorizontal: 4 }}>
             <Text style={s.settingName}>{T(asset.label)}</Text>
-            {asset.kind === 'gold' || asset.kind === 'silver' ? <Text style={s.meta}>{`${Number(asset.amount) || 0} ${rtl ? 'غرام' : 'g'}`} {rtl ? 'بسعر' : 'at'} {havePrices ? formatMoney(metalPrice(asset.kind), zakat.currency) : '—'} {rtl ? 'للغرام' : 'per gram'}</Text> : <Text style={s.meta}>{asset.kind === 'cash' || asset.kind === 'bank' ? T('Balances on the day of your Zakat') : T('Market value today')}</Text>}
+            {asset.kind === 'gold' || asset.kind === 'silver' ? <Text style={s.meta}>{`${Number(asset.amount) || 0} ${tx(language, 'g')}`} {tx(language, 'at')} {havePrices ? formatMoney(metalPrice(asset.kind), zakat.currency) : '—'} {tx(language, 'per gram')}</Text> : <Text style={s.meta}>{asset.kind === 'cash' || asset.kind === 'bank' ? T('Balances on the day of your Zakat') : T('Market value today')}</Text>}
           </View>
           <TextInput accessibilityLabel={`${T('Amount of')} ${asset.label}`} keyboardType="numeric" value={asset.amount ? String(asset.amount) : ''} onChangeText={(value) => void setAssetAmount(asset.id, Number(value.replace(/[^0-9.]/g, '')) || 0)} placeholder="0" placeholderTextColor={C.muted} style={s.assetInput} />
         </View>)}
@@ -9168,7 +9204,7 @@ function ZakatScreen({ navigation }: any) {
      
       </ZakatSection> <ZakatSection title={T('Gold and silver prices')} open={zOpen.metals === true} onToggle={() => setZOpen((prev) => ({ ...prev, metals: prev.metals !== true }))}>
       <View style={s.dataCard}>
-        <Text style={s.preferenceLabel}>{rtl ? 'لكل غرام، بالعملة ' : 'PER GRAM, IN '}{zakat.currency}</Text>
+        <Text style={s.preferenceLabel}>{tx(language, 'PER GRAM, IN ')}{zakat.currency}</Text>
         <View style={[s.metalRow, ]}>
           <View style={{ flex: 1 }}><Text style={s.settingName}>{T('Gold')}</Text><Text style={s.meta}>{rtl ? `النصاب ${NISAB_GOLD_GRAMS} غرامًا` : `Nisab is ${NISAB_GOLD_GRAMS} grams`}</Text></View>
           <TextInput accessibilityLabel={T('Gold price per gram')} keyboardType="numeric" value={result.goldPerGram ? String(Number(result.goldPerGram.toFixed(2))) : ''} onChangeText={(value) => void setMetalPrice('gold', Number(value.replace(/[^0-9.]/g, '')) || 0)} placeholder="0" placeholderTextColor={C.muted} style={s.assetInput} />
@@ -9181,16 +9217,16 @@ function ZakatScreen({ navigation }: any) {
           <Tactile accessibilityLabel={T('Use live prices')} onPress={() => void useLiveMetalPrices()} style={s.secondary}><Text style={s.secondaryText}>{T('Use live prices')}</Text></Tactile>
           <Tactile accessibilityLabel={T('Refresh prices and rates')} onPress={refresh} style={s.secondary}><Text style={s.secondaryText}>{refreshing ? T('Refreshing…') : T('Refresh')}</Text></Tactile>
         </View>
-        <Text style={s.meta}>{zakat.prices.custom ? T('You are using your own prices.') : fresh ? T('Prices and exchange rates were fetched within the last twelve hours.') : market.fetchedAt ? T('Prices and rates were last saved on this device.') : T('No prices have been fetched yet.')}{market.fetchedAt ? ` ${rtl ? 'آخر تحديث' : 'Updated'} ${new Date(market.fetchedAt).toLocaleString(language === 'ar' ? 'ar-u-nu-latn' : language)}.` : ''}</Text>
+        <Text style={s.meta}>{zakat.prices.custom ? T('You are using your own prices.') : fresh ? T('Prices and exchange rates were fetched within the last twelve hours.') : market.fetchedAt ? T('Prices and rates were last saved on this device.') : T('No prices have been fetched yet.')}{market.fetchedAt ? ` ${tx(language, 'Updated')} ${new Date(market.fetchedAt).toLocaleString(language === 'ar' ? 'ar-u-nu-latn' : language)}.` : ''}</Text>
       </View>
 
      
       </ZakatSection> <ZakatSection title={T('The nisab')} open={zOpen.nisab === true} onToggle={() => setZOpen((prev) => ({ ...prev, nisab: prev.nisab !== true }))}>
       <View style={s.dataCard}>
-        <View style={s.choiceRow}><ChoicePill label={`${T('Gold')} · ${NISAB_GOLD_GRAMS}${rtl ? ' غ' : 'g'}`} selected={zakat.basis === 'gold'} onPress={() => void setBasis('gold')} /><ChoicePill label={`${T('Silver')} · ${NISAB_SILVER_GRAMS}${rtl ? ' غ' : 'g'}`} selected={zakat.basis === 'silver'} onPress={() => void setBasis('silver')} /></View>
+        <View style={s.choiceRow}><ChoicePill label={`${T('Gold')} · ${NISAB_GOLD_GRAMS}${tx(language, 'g')}`} selected={zakat.basis === 'gold'} onPress={() => void setBasis('gold')} /><ChoicePill label={`${T('Silver')} · ${NISAB_SILVER_GRAMS}${tx(language, 'g')}`} selected={zakat.basis === 'silver'} onPress={() => void setBasis('silver')} /></View>
         <View style={s.statGrid}>
-          <StatBox label={T('GOLD NISAB')} value={formatMoney(NISAB_GOLD_GRAMS * result.goldPerGram, zakat.currency, 0)} hint={`${NISAB_GOLD_GRAMS} ${rtl ? 'غرامًا' : 'grams'}`} />
-          <StatBox label={T('SILVER NISAB')} value={formatMoney(NISAB_SILVER_GRAMS * result.silverPerGram, zakat.currency, 0)} hint={`${NISAB_SILVER_GRAMS} ${rtl ? 'غرامًا' : 'grams'}`} />
+          <StatBox label={T('GOLD NISAB')} value={formatMoney(NISAB_GOLD_GRAMS * result.goldPerGram, zakat.currency, 0)} hint={`${NISAB_GOLD_GRAMS} ${tx(language, 'grams')}`} />
+          <StatBox label={T('SILVER NISAB')} value={formatMoney(NISAB_SILVER_GRAMS * result.silverPerGram, zakat.currency, 0)} hint={`${NISAB_SILVER_GRAMS} ${tx(language, 'grams')}`} />
         </View>
         <Text style={s.meta}>{T('Scholars differ on which of the two to measure against. The lower threshold brings more wealth into Zakat; take the choice to someone you trust.')}</Text>
       {/* Said here rather than only at the result: the threshold is the number
@@ -9221,9 +9257,9 @@ function ZakatScreen({ navigation }: any) {
       {!!saved && <Text style={s.dataMeta}>{saved.toUpperCase()}</Text>}
       </ZakatSection>
 
-      <Section title={T('History')} action={zakat.history.length ? `${zakat.history.length} ${rtl ? 'محفوظة' : 'saved'}` : undefined} onPress={zakat.history.length ? () => void clearHistory() : undefined} />
+      <Section title={T('History')} action={zakat.history.length ? `${zakat.history.length} ${tx(language, 'saved')}` : undefined} onPress={zakat.history.length ? () => void clearHistory() : undefined} />
       {!zakat.history.length ? <View style={s.dataCard}><Text style={s.dataBody}>{T('No saved calculations yet. Save one and it stays here on this device.')}</Text></View> : <View style={s.settings}>{zakat.history.map((entry) => <View key={entry.id} style={[s.setting, ]}>
-        <View style={{ flex: 1 }}><Text style={s.settingName}>{formatMoney(entry.zakat, entry.currency)}</Text><Text style={s.meta}>{new Date(entry.at).toLocaleDateString(language === 'ar' ? 'ar-u-nu-latn' : language)} · {rtl ? 'الصافي' : 'net'} {formatMoney(entry.net, entry.currency, 0)} · {entry.above ? (rtl ? 'فوق' : 'above') : (rtl ? 'دون' : 'below')} {rtl ? 'نصاب' : 'the'} {entry.basis === 'gold' ? T('Gold') : T('Silver')} {rtl ? '' : 'nisab'}</Text></View>
+        <View style={{ flex: 1 }}><Text style={s.settingName}>{formatMoney(entry.zakat, entry.currency)}</Text><Text style={s.meta}>{new Date(entry.at).toLocaleDateString(language === 'ar' ? 'ar-u-nu-latn' : language)} · {tx(language, 'net')} {formatMoney(entry.net, entry.currency, 0)} · {entry.above ? tx(language, 'above') : tx(language, 'below')} {tx(language, 'the')} {entry.basis === 'gold' ? T('Gold') : T('Silver')} {tx(language, 'nisab')}</Text></View>
         <Tactile accessibilityLabel={T('Delete this calculation')} onPress={() => void deleteCalculation(entry.id)} style={s.stepButton}>{ico('trash-outline', 18, C.coral)}</Tactile>
       </View>)}</View>}
       <View style={s.dataCard}><Text style={s.dataMeta}>{T('BEFORE YOU PAY')}</Text><Text style={s.dataBody}>{T('What counts as zakatable, how business stock is valued and which debts may be deducted differ between schools and situations. This figure is a careful estimate to take to a scholar, and your Zakat year matters as much as the total.')}</Text></View>
@@ -9353,7 +9389,7 @@ function HadithScreen({navigation}:any){const {rtl,language:appLanguage}=useLang
               <View style={{flex:1}}>
                 <Text style={s.dataName}>{collection.name}</Text>
                 <Text style={s.hadithCollectionAr}>{collection.arabicName}</Text>
-                <Text style={s.meta}>{T(collection.author)} · {T(collection.kind)}{collection.graded ? (rtl ? ' · مصنّف' : ' · graded') : ''}{isDownloaded ? (rtl ? ' · محمّل' : ' · downloaded') : ''}</Text>
+                <Text style={s.meta}>{T(collection.author)} · {T(collection.kind)}{collection.graded ? (tx(language, ' · graded')) : ''}{isDownloaded ? (tx(language, ' · downloaded')) : ''}</Text>
               </View>
               <View style={s.hadithCountCol}>
                 {!!total && <Text style={s.hadithCountNum}>{total.toLocaleString('en-US')}</Text>}
@@ -9735,17 +9771,17 @@ const DATA_SOURCES: { name: string; ar: string; endpoint: string; detail: string
 
 function DataSourcesScreen({ navigation }: any) {
   const { rtl , language }=useLanguage();
-  return <Page><ToolBar title={rtl ? 'مصادر البيانات' : 'Data sources'} navigation={navigation} />
+  return <Page><ToolBar title={tx(language, 'Data sources')} navigation={navigation} />
     <ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><ToolGraphic tool="Quran" size={81} />
-      <Text style={s.dataTitle}>{rtl ? 'مصادر البيانات' : 'Data sources'}</Text>
-      <Text style={s.dataBody}>{rtl ? 'كل ما يفتحه التطبيق يُجلب من هذه المصادر العامة المفتوحة، ولا يحتاج أي حساب أو مفتاح.' : 'Everything the app opens is fetched from these public, keyless sources. No account, and no key, is needed for any of them.'}</Text>
+      <Text style={s.dataTitle}>{tx(language, 'Data sources')}</Text>
+      <Text style={s.dataBody}>{tx(language, 'Everything the app opens is fetched from these public, keyless sources. No account, and no key, is needed for any of them.')}</Text>
       {DATA_SOURCES.map((source) => <View key={source.name} style={s.apiPanel}>
         <Text style={s.apiTitle}>{rtl ? source.ar : source.name}</Text>
         <Text style={s.meta}>{source.endpoint}</Text>
         <Text style={s.apiText}>{rtl ? source.arDetail : source.detail}</Text>
       </View>)}
-      <View style={s.apiPanel}><Text style={s.apiTitle}>{rtl ? 'محفوظ على جهازك' : 'Kept on this device'}</Text>
-        <Text style={s.apiText}>{rtl ? 'ما تفتحه يُخزَّن على الجهاز ليُقرأ بلا اتصال، ولا يُرفع شيء منه.' : 'What you open is stored on this device so it can be read again without a connection. Nothing you record is uploaded anywhere.'}</Text>
+      <View style={s.apiPanel}><Text style={s.apiTitle}>{tx(language, 'Kept on this device')}</Text>
+        <Text style={s.apiText}>{tx(language, 'What you open is stored on this device so it can be read again without a connection. Nothing you record is uploaded anywhere.')}</Text>
       </View>
     </ScrollView>
   </Page>;
@@ -9786,25 +9822,23 @@ function ReportsScreen({navigation}:any){
   };
 
   return <Page>
-    <ToolBar title={rtl ? 'بلاغاتي' : 'My reports'} navigation={navigation} />
+    <ToolBar title={tx(language, 'My reports')} navigation={navigation} />
     <ScrollView {...SCROLL} contentContainerStyle={s.dataPage} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} />}>
       <ToolGraphic tool="Corrections" size={85} />
-      <Text style={s.dataTitle}>{rtl ? 'بلاغاتي' : 'My reports'}</Text>
+      <Text style={s.dataTitle}>{tx(language, 'My reports')}</Text>
       <Text style={s.intro}>
-        {rtl
-          ? 'كل تصحيح أرسلته، محفوظ هنا على جهازك. يمكنك إعادة إرساله أو نسخه أو حذفه.'
-          : 'Every correction you have sent, kept here on your device. Resend it, copy it, or remove it.'}
+        {tx(language, 'Every correction you have sent, kept here on your device. Resend it, copy it, or remove it.')}
       </Text>
 
       {reports.length === 0 ? <Text style={s.sourceBody}>
-        {rtl ? 'لم تُرسل أي تصحيح بعد.' : 'You have not reported anything yet.'}
+        {tx(language, 'You have not reported anything yet.')}
       </Text> : reports.map(report => <View key={report.id} style={s.reportCard}>
         <Text style={s.reportRef}>{report.reference}</Text>
         <Text style={s.reportFlag}>{issueLabel(report.issue)}</Text>
         {!!report.note && <Text style={s.reportBodyText}>{report.note}</Text>}
         {!!report.edition && <Text style={s.reportMeta}>{report.edition}</Text>}
         <Text style={s.reportMeta}>
-          {report.sent ? (rtl ? 'أُرسل' : 'Sent') : (rtl ? 'لم يُرسل بعد' : 'Not sent yet')}
+          {report.sent ? (tx(language, 'Sent')) : (tx(language, 'Not sent yet'))}
           {' · '}{new Date(report.createdAt).toLocaleDateString()}
         </Text>
         <View style={s.reportActions}>
@@ -10316,33 +10350,33 @@ function SettingsScreen({navigation}:any){
   return <Page>
     <ScrollView {...SCROLL} contentContainerStyle={s.scroll}>
       <View style={s.backRow}><IconButton name={rtl ? 'arrow-forward' : 'arrow-back'} onPress={() => navigation.goBack()} /></View>
-      <TopBar overline={rtl ? 'خصوصية بلا حساب' : 'PRIVATE BY DESIGN'} title={rtl ? 'الإعدادات' : 'Settings'} right={<MotionGlyph name="shield-checkmark-outline" size={20} />} />
+      <TopBar overline={tx(language, 'PRIVATE BY DESIGN')} title={tx(language, 'Settings')} right={<MotionGlyph name="shield-checkmark-outline" size={20} />} />
       <LinearGradient colors={[C.heroA, C.green]} style={s.privacyHero}>
         <MotionGlyph name="shield-checkmark-outline" size={25} inverse />
         <View style={{ flex: 1 }}>
-          <Text style={s.profileName}>{rtl ? 'لا حساب. لا تتبع.' : 'No account. No tracking.'}</Text>
-          <Text style={s.profileSub}>{rtl ? 'تبقى عبادتك خاصة وتظل تفضيلاتك على هذا الجهاز.' : 'Your worship stays private and your preferences remain on this device.'}</Text>
+          <Text style={s.profileName}>{tx(language, 'No account. No tracking.')}</Text>
+          <Text style={s.profileSub}>{tx(language, 'Your worship stays private and your preferences remain on this device.')}</Text>
         </View>
       </LinearGradient>
       <View style={s.privacyPoints}>
-        <View style={s.privacyPoint}>{ico('person-remove-outline', 19, C.green)}<Text style={s.privacyPointText}>{rtl ? 'دون تسجيل' : 'No sign-up'}</Text></View>
-        <View style={s.privacyPoint}>{ico('cloud-offline-outline', 19, C.green)}<Text style={s.privacyPointText}>{rtl ? 'دون ملف سحابي' : 'No cloud profile'}</Text></View>
-        <View style={s.privacyPoint}>{ico('analytics-outline', 19, C.green)}<Text style={s.privacyPointText}>{rtl ? 'دون تتبع إعلاني' : 'No ad tracking'}</Text></View>
+        <View style={s.privacyPoint}>{ico('person-remove-outline', 19, C.green)}<Text style={s.privacyPointText}>{tx(language, 'No sign-up')}</Text></View>
+        <View style={s.privacyPoint}>{ico('cloud-offline-outline', 19, C.green)}<Text style={s.privacyPointText}>{tx(language, 'No cloud profile')}</Text></View>
+        <View style={s.privacyPoint}>{ico('analytics-outline', 19, C.green)}<Text style={s.privacyPointText}>{tx(language, 'No ad tracking')}</Text></View>
       </View>
 
-      <Section title={rtl ? 'أوقات الصلاة' : 'Prayer times'} />
+      <Section title={tx(language, 'Prayer times')} />
       <View style={s.preferencePanel}>
-        <PanelHead tool="Prayer" title={rtl ? 'طريقة الحساب' : 'Calculation method'} note={rtl ? 'تُحفظ على هذا الجهاز وتُطبق على جميع مواقيت الصلاة.' : 'Saved on this device and applied to every prayer time.'} />
+        <PanelHead tool="Prayer" title={tx(language, 'Calculation method')} note={tx(language, 'Saved on this device and applied to every prayer time.')} />
         <View style={s.choiceGrid}>{PRAYER_METHODS.map(method => <ChoicePill key={method.id} label={rtl ? method.ar : method.name} selected={settings.calculationMethod === method.id} onPress={() => update({ calculationMethod: method.id, calculationMethodName: method.name })} />)}</View>
-        <Text style={s.preferenceLabel}>{rtl ? 'المذهب لحساب العصر' : 'ASR MADHAB'}</Text>
+        <Text style={s.preferenceLabel}>{tx(language, 'ASR MADHAB')}</Text>
         <View style={s.choiceRow}>
-          <ChoicePill label={rtl ? 'الشافعي' : 'Shafi'} selected={settings.madhab === 'shafi'} onPress={() => update({ madhab: 'shafi' })} />
-          <ChoicePill label={rtl ? 'الحنفي' : 'Hanafi'} selected={settings.madhab === 'hanafi'} onPress={() => update({ madhab: 'hanafi' })} />
+          <ChoicePill label={tx(language, 'Shafi')} selected={settings.madhab === 'shafi'} onPress={() => update({ madhab: 'shafi' })} />
+          <ChoicePill label={tx(language, 'Hanafi')} selected={settings.madhab === 'hanafi'} onPress={() => update({ madhab: 'hanafi' })} />
         </View>
-        <Text style={s.preferenceLabel}>{rtl ? 'تنسيق الوقت' : 'TIME FORMAT'}</Text>
+        <Text style={s.preferenceLabel}>{tx(language, 'TIME FORMAT')}</Text>
         <View style={s.choiceRow}>
-          <ChoicePill label={rtl ? '12 ساعة' : '12 hour'} selected={settings.timeFormat === '12'} onPress={() => update({ timeFormat: '12' })} />
-          <ChoicePill label={rtl ? '24 ساعة' : '24 hour'} selected={settings.timeFormat === '24'} onPress={() => update({ timeFormat: '24' })} />
+          <ChoicePill label={tx(language, '12 hour')} selected={settings.timeFormat === '12'} onPress={() => update({ timeFormat: '12' })} />
+          <ChoicePill label={tx(language, '24 hour')} selected={settings.timeFormat === '24'} onPress={() => update({ timeFormat: '24' })} />
         </View>
       </View>
 
@@ -10391,12 +10425,16 @@ function SettingsScreen({navigation}:any){
         </View>
       </View>
 
-      <Section title={rtl ? 'التفضيلات' : 'Preferences'} />
+      <Section title={tx(language, 'Preferences')} />
       <View style={s.settings}>
         <Tactile accessibilityRole="button" accessibilityState={{expanded:pickingApp}} accessibilityLabel={`${T('Language')}: ${appLangLabel}`}
           onPress={()=>setPickingApp(true)} style={s.setting}>
-          <View style={s.prefIconTile}><Image source={dark ? require('./assets/tool-icons/language-dark.png') : require('./assets/tool-icons/language.png')} resizeMode="contain" style={s.prefIcon}/></View>
-          <View style={{ flex: 1 }}>
+          {/* The same ToolGraphic every other row here uses, rather than a
+              hand-rolled tile: that one pinned a single Islamic drawing and
+              knew nothing about the Palestine theme, so this was the only
+              row in the section that did not follow the theme. */}
+          <ToolGraphic tool="Language" size={49} />
+          <View style={{ flex: 1, marginHorizontal: 12 }}>
             <Text style={s.settingName}>{T('App language')}</Text>
             {/* Named, rather than a switch that only knew about Arabic: there
                 are three languages to choose between now, and a two-state
@@ -10409,24 +10447,24 @@ function SettingsScreen({navigation}:any){
           onPress={() => navigation.navigate('Reader Settings')} style={s.setting}>
           <ToolGraphic tool="Quran Reading" size={49} />
           <View style={{ flex: 1, marginHorizontal: 12 }}>
-            <Text style={s.settingName}>{rtl ? 'قراءة القرآن' : 'Quran reading'}</Text>
+            <Text style={s.settingName}>{tx(language, 'Quran reading')}</Text>
             <Text style={s.meta}>{scriptLabel} · {translationLabel}</Text>
           </View>
           {ico(rtl ? 'arrow-back' : 'arrow-forward', 17, C.chevron)}
         </Tactile>
-        <Tactile accessibilityRole="button" accessibilityLabel={rtl ? 'بلاغاتي' : 'My reports'}
+        <Tactile accessibilityRole="button" accessibilityLabel={tx(language, 'My reports')}
           onPress={() => navigation.navigate('My Reports')} style={s.setting}>
           <ToolGraphic tool="Corrections" size={49} />
           <View style={{ flex: 1, marginHorizontal: 12 }}>
-            <Text style={s.settingName}>{rtl ? 'بلاغاتي' : 'My reports'}</Text>
-            <Text style={s.meta}>{rtl ? 'التصحيحات التي أرسلتها، محفوظة على جهازك' : 'Corrections you have sent, kept on your device'}</Text>
+            <Text style={s.settingName}>{tx(language, 'My reports')}</Text>
+            <Text style={s.meta}>{tx(language, 'Corrections you have sent, kept on your device')}</Text>
           </View>
           {ico(rtl ? 'arrow-back' : 'arrow-forward', 17, C.chevron)}
         </Tactile>
         <View style={s.setting}>
           <ToolGraphic tool="Women’s worship" size={49} />
           <View style={{ flex: 1, marginHorizontal: 12 }}>
-            <Text style={s.settingName}>{rtl ? 'عبادة النساء' : 'Women’s worship'}</Text>
+            <Text style={s.settingName}>{tx(language, 'Women’s worship')}</Text>
             <Text style={s.meta}>{rtl ? (womens.optedIn ? 'الدورة والطهارة والقضاء · على هذا الجهاز فقط' : 'مساحة خاصة للدورة والطهارة والقضاء') : (womens.optedIn ? 'Cycle, purity and Qada records · on this device only' : 'A private area for the cycle, purity and Qada records')}</Text>
           </View>
           <View style={{ direction: 'ltr' } as any}>
@@ -10436,7 +10474,7 @@ function SettingsScreen({navigation}:any){
         {womens.optedIn && <Tactile accessibilityRole="button" accessibilityLabel={T('Lock and PIN')} onPress={() => navigation.navigate('Privacy Lock')} style={s.setting}>
           <ToolGraphic tool="Privacy lock" size={49} />
           <View style={{ flex: 1, marginHorizontal: 12 }}>
-            <Text style={s.settingName}>{rtl ? 'القفل والرمز' : 'Lock and PIN'}</Text>
+            <Text style={s.settingName}>{tx(language, 'Lock and PIN')}</Text>
             <Text style={s.meta}>{rtl ? (lock.pinSet ? (lock.required ? 'مقفل' : 'الرمز محفوظ') : 'لا رمز بعد') : (lock.pinSet ? (lock.required ? 'Locked' : 'PIN saved, lock is off') : 'No PIN yet')}</Text>
           </View>
           {ico(rtl ? 'arrow-back' : 'arrow-forward', 17, C.chevron)}
@@ -10444,8 +10482,8 @@ function SettingsScreen({navigation}:any){
         <Tactile accessibilityRole="button" accessibilityLabel={T('Backup')} onPress={() => navigation.navigate('Backup')} style={s.setting}>
           <ToolGraphic tool="Backup" size={49} />
           <View style={{ flex: 1, marginHorizontal: 12 }}>
-            <Text style={s.settingName}>{rtl ? 'النسخة الاحتياطية' : 'Backup'}</Text>
-            <Text style={s.meta}>{rtl ? 'نسخة مشفرة بكلمة سر تختارها' : 'An encrypted copy, sealed with a password you choose'}</Text>
+            <Text style={s.settingName}>{tx(language, 'Backup')}</Text>
+            <Text style={s.meta}>{tx(language, 'An encrypted copy, sealed with a password you choose')}</Text>
           </View>
           {ico(rtl ? 'arrow-back' : 'arrow-forward', 17, C.chevron)}
         </Tactile>
@@ -10460,13 +10498,13 @@ function SettingsScreen({navigation}:any){
         </Tactile>
       </View>
 
-      <Section title={rtl ? 'عن التطبيق' : 'About'} />
+      <Section title={tx(language, 'About')} />
       <Pressable onPress={() => navigation.navigate('Data sources')} style={s.settings} accessibilityRole="button" accessibilityLabel={T('Data sources')}>
         <View style={s.setting}>
           <ToolGraphic tool="Data Sources" size={49} />
           <View style={{ flex: 1, marginHorizontal: 12 }}>
-            <Text style={s.settingName}>{rtl ? 'مصادر البيانات' : 'Data sources'}</Text>
-            <Text style={s.meta}>{rtl ? 'من أين يأتي نص القرآن والمواقيت والحديث والصوت' : 'Where the Quran text, prayer times, hadith and audio come from'}</Text>
+            <Text style={s.settingName}>{tx(language, 'Data sources')}</Text>
+            <Text style={s.meta}>{tx(language, 'Where the Quran text, prayer times, hadith and audio come from')}</Text>
           </View>
           {ico(rtl ? 'arrow-back' : 'arrow-forward', 17, C.chevron)}
         </View>
@@ -12183,7 +12221,7 @@ function Onboarding({ onFinish }: { onFinish: () => void }) {
                answers once instead of pressing "allow" and then answering. */
             if (step === NOTIFICATION_STEP) void getNotificationHealth().then((current) => {
               if (current === 'granted' || current === 'denied' || current === 'unsupported') return;
-              void requestNotificationPermission(rtl);
+              void requestNotificationPermission(language);
             });
             setStep(step + 1);
           } else void finish();
@@ -12229,6 +12267,7 @@ function languageFromEditionId(editionId: string): string {
  * own switch: this decides which voice, not whether.
  */
 function useAudioLanguageSync() {
+  const { language: appLanguage } = useLanguage();
   const { preferences, hydrated } = useQuranPreferences();
   const language = languageFromEditionId(preferences.translationEdition);
   useEffect(() => {
@@ -12271,12 +12310,13 @@ class ScreenBoundary extends React.Component<
 
   render() {
     if (!this.state.error) return this.props.children;
-    const rtl = I18nManager.isRTL;
-    const heading = rtl ? 'تعذّر فتح هذه الصفحة' : 'This screen could not open';
-    const body = rtl
-      ? 'حدث خطأ أثناء عرضها. بقية التطبيق تعمل، ويمكنك المحاولة مرة أخرى.'
-      : 'Something went wrong while drawing it. The rest of the app is fine, and you can try again.';
-    const action = rtl ? 'إعادة المحاولة' : 'Try again';
+    /* Read from the mirror rather than the hook: this renders outside the
+       provider, and a screen that has already thrown is the moment when the
+       words on it matter most. */
+    const language = getAppLanguage();
+    const heading = tx(language, 'This screen could not open');
+    const body = tx(language, 'Something went wrong while drawing it. The rest of the app is fine, and you can try again.');
+    const action = tx(language, 'Try again');
     return <View style={s.crashScreen}>
       <View style={s.crashCard}>
         <Text style={s.crashTitle}>{heading}</Text>
@@ -12490,7 +12530,7 @@ function AppShell() {
       if (!live) return;
       const position = await loadReadingPosition().catch(() => null);
       await schedulePrayerNotifications(
-        value.snapshot, settings, rtlNow,
+        value.snapshot, settings, language,
         position ? { surahId: position.surahId, verseKey: position.verseKey,
                      label: `${position.surahName} ${position.verseKey}` } : null,
       );
