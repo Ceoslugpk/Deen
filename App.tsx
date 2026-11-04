@@ -1386,6 +1386,16 @@ const TOOL_IMAGES_PALESTINE: Record<string, any> = {
   'Offline Quran': require('./assets/tool-icons/offline-quran-palestine.png'),
   'Quran Preload': require('./assets/tool-icons/offline-quran-palestine.png'),
 
+  /* The five worship guides. They carry no Palestine art of their own until
+     now, so in this theme they fell through to the shared drawing — which
+     meant the guides looked like they belonged to another theme while every
+     row around them did not. */
+  'Wudu Guide': require('./assets/tool-icons/wudu-guide-palestine.png'),
+  'Ghusl': require('./assets/tool-icons/ghusl-palestine.png'),
+  'Salah Guide': require('./assets/tool-icons/salah-guide-palestine.png'),
+  'Janazah Guide': require('./assets/tool-icons/janazah-guide-palestine.png'),
+  'Istikhara Guide': require('./assets/tool-icons/istikhara-guide-palestine.png'),
+
 };
 const TOOL_IMAGES_PALESTINE_DARK: Record<string, any> = {
   Vocab: require('./assets/tool-icons/vocab-dark-palestine.png'),
@@ -1417,6 +1427,16 @@ const TOOL_IMAGES_PALESTINE_DARK: Record<string, any> = {
   'Reading Plans': require('./assets/tool-icons/reading-plans-dark-palestine.png'),
   'Offline Quran': require('./assets/tool-icons/offline-quran-dark-palestine.png'),
   'Quran Preload': require('./assets/tool-icons/offline-quran-dark-palestine.png'),
+
+  /* The five worship guides. They carry no Palestine art of their own until
+     now, so in this theme they fell through to the shared drawing — which
+     meant the guides looked like they belonged to another theme while every
+     row around them did not. */
+  'Wudu Guide': require('./assets/tool-icons/wudu-guide-dark-palestine.png'),
+  'Ghusl': require('./assets/tool-icons/ghusl-dark-palestine.png'),
+  'Salah Guide': require('./assets/tool-icons/salah-guide-dark-palestine.png'),
+  'Janazah Guide': require('./assets/tool-icons/janazah-guide-dark-palestine.png'),
+  'Istikhara Guide': require('./assets/tool-icons/istikhara-guide-dark-palestine.png'),
 
 };
 /**
@@ -2216,6 +2236,36 @@ const[quranPosition,setQuranPosition]=useState<any>(null);const[openReflection,s
         onClose={()=>{setDayToolOpen(false);setDayToolSlot(null)}}
         onSeeAll={()=>{setDayToolOpen(false);nav.navigate('Tools')}}/>
     : null, () => { setDayToolOpen(false); setDayToolSlot(null); });
+
+  /* Where the continue-reading card goes.
+
+     It used to open the Quran tab whatever it was showing, which meant the
+     one control that knew exactly where you had stopped reading took you
+     somewhere that did not. Now it opens that place.
+
+     The chapter is built from the saved position rather than looked up in a
+     chapter list, because Home does not hold one and would have to fetch
+     ninety-odd surahs to find the one whose name it already has. The reader
+     uses the id to fetch the text and the name for its heading, so a chapter
+     built this way opens correctly — the same shape the daily ayah card has
+     always used. With nothing saved yet the card is showing Ya-Sin as a
+     suggestion, so the Quran tab is still the right place to land. */
+  const openReadingPosition = () => {
+    if (!quranPosition) { nav.navigate('Quran'); return; }
+    nav.navigate('Quran', {
+      screen: 'Reader',
+      params: {
+        chapter: {
+          id: quranPosition.surahId,
+          name_simple: quranPosition.surahName,
+          name_arabic: '',
+          verses_count: 0,
+        },
+        focusVerse: quranPosition.verseKey,
+      },
+      initial: false,
+    });
+  };
   return <Page><Animated.ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false} scrollEventThrottle={16} onScroll={Animated.event([{nativeEvent:{contentOffset:{y:scrollY}}}],{useNativeDriver:false})} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.green}/>}>
     <AppHeader/>
     <View style={s.greeting}><View><Text style={s.salam}>السَّلَامُ عَلَيْكُمْ</Text><Text style={s.greetingTitle}>{greeting}</Text></View></View>
@@ -2348,7 +2398,7 @@ const[quranPosition,setQuranPosition]=useState<any>(null);const[openReflection,s
        body given flex:1 to fill it. Only when the card actually grew, so the
        phone layout is untouched. */}
     <DepthCard index={0} radius={28} padded={false} style={[s.readWrap,{height:readH}]} cardStyle={[s.readSurface,readH>205&&{height:readH}]} bodyStyle={[s.readPad,readH>205&&{flex:1,justifyContent:'space-between'}]}
-      onPress={()=>nav.navigate('Quran')}>
+      onPress={openReadingPosition}>
       <View style={StyleSheet.absoluteFill}><Image source={pickScene(SCENE_QURAN, resolved)} resizeMode="cover" style={s.heroBg}/></View>
       <LinearGradient colors={isPal(resolved)?SCRIM.readPalestine:SCRIM.readIslamic} start={{x:0,y:.5}} end={{x:1,y:.5}} style={StyleSheet.absoluteFill} />
       <Text style={s.readKicker}>{T(quranPosition ? 'CONTINUE READING' : 'FEATURED READING')}</Text><Text style={s.readArabic}>{quranPosition?'۝':'يس'}</Text><Text style={s.readTitle}>{quranPosition ? quranPosition.surahName : T('Surah Ya-Sin')}</Text><Text style={s.readMeta}>{quranPosition ? `${quranPosition.verseKey} · ${tx(language, 'Page')} ${quranPosition.page || '—'}` : (tx(language, '83 verses · Makkan'))}</Text><Tactile onPress={()=>nav.navigate('Quran',{screen:'Reader',params:{chapter:quranPosition?{id:quranPosition.surahId,name_simple:quranPosition.surahName,name_arabic:'',verses_count:0}:{id:36,name_simple:'Ya-Sin',name_arabic:'يس',verses_count:83},focusVerse:quranPosition?.verseKey},initial:false})} style={s.whiteButton}><Text style={s.whiteButtonText}>{T(quranPosition ? 'Continue' : 'Read now')}</Text>{ico(rtl ? 'arrow-back' : 'arrow-forward',14,C.green)}</Tactile>
@@ -2923,7 +2973,7 @@ function NextPrayerPill({ prayer, language, rtl, still, scrollY }: {
   const lift = scrollY.interpolate({ inputRange: [90, 150], outputRange: still ? [0, 0] : [-10, 0], extrapolate: 'clamp' });
   return <Animated.View pointerEvents="none" style={[s.nextPillWrap, { opacity, transform: [{ translateY: lift }] }]}>
     <View style={s.nextPill}>
-      {ico('time-outline', 13, C.gold)}
+      {ico('time-outline', 15, C.gold)}
       {/* prayerName rather than T: the six prayer names are not in the copy
           tables, they have their own, and looking them up through tx would
           hand an Arabic reader "Fajr" where the rest of the app says
@@ -13063,14 +13113,14 @@ function makeStyles() {
    surface and a small lift rather than sitting on the content like a row
    would. C.card and C.ink keep it inside whichever palette is wearing. */
 nextPillWrap:{position:'absolute',top:6,left:0,right:0,alignItems:'center',zIndex:30},
-nextPill:{flexDirection:'row',alignItems:'center',gap:6,backgroundColor:C.card,borderWidth:1,borderColor:C.line,borderRadius:18,paddingHorizontal:13,paddingVertical:7,elevation:2,shadowColor:'#000',shadowOpacity:.14,shadowRadius:6,shadowOffset:{width:0,height:2}},
-nextPillName:{color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:12},
-nextPillDot:{color:C.muted,fontFamily:'DMSans_600SemiBold',fontSize:12},
+nextPill:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:9,minWidth:176,backgroundColor:C.card,borderWidth:1,borderColor:C.line,borderRadius:22,paddingHorizontal:19,paddingVertical:10,elevation:4,shadowColor:'#000',shadowOpacity:.18,shadowRadius:10,shadowOffset:{width:0,height:3}},
+nextPillName:{color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:13},
+nextPillDot:{color:C.muted,fontFamily:'DMSans_600SemiBold',fontSize:13},
 /* successInk, not gold: gold measures 2.7:1 against the card in the light
    Islamic palette, and the countdown is the part of the pill you actually
    read. This is the palette's own gold-family token for text on a light
    ground, and it clears 4.5:1 in all four. */
-nextPillTime:{color:C.successInk,fontFamily:'DMSans_700Bold',fontSize:12,fontVariant:['tabular-nums']},
+nextPillTime:{color:C.successInk,fontFamily:'DMSans_700Bold',fontSize:14,fontVariant:['tabular-nums']},
 appHeaderBrand:{flexDirection:'row',alignItems:'center',gap:10,flexShrink:1},
  appLogo:{width:36,height:36},
  appName:{color:C.ink,fontSize:20,fontFamily:'Newsreader_600SemiBold',letterSpacing:-.5,flexShrink:1},
