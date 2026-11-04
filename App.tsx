@@ -1313,6 +1313,16 @@ const TOOL_IMAGES_PALESTINE: Record<string, any> = {
   /* The Quran screen's reading-preferences card. Its key carries a space, so
      it is quoted here while the single-word ones above are not. */
   'Reader Settings': require('./assets/tool-icons/reader-settings-palestine.png'),
+  /* The library cards. These are looked up by the title the card shows, not
+     by a tool name, so the keys are the titles. The Beautiful Names is
+     reached under two of them — 'Names' on its own screen and '99 Names' in
+     the library list — and both point at the one drawing. */
+  Hadith: require('./assets/tool-icons/hadith-palestine.png'),
+  Duas: require('./assets/tool-icons/duas-palestine.png'),
+  'Muslim Names': require('./assets/tool-icons/muslim-names-palestine.png'),
+  'Prophet Names': require('./assets/tool-icons/prophet-names-palestine.png'),
+  '99 Names': require('./assets/tool-icons/99-names-of-allah-palestine.png'),
+  Names: require('./assets/tool-icons/99-names-of-allah-palestine.png'),
 };
 const TOOL_IMAGES_PALESTINE_DARK: Record<string, any> = {
   Vocab: require('./assets/tool-icons/vocab-dark-palestine.png'),
@@ -1325,6 +1335,12 @@ const TOOL_IMAGES_PALESTINE_DARK: Record<string, any> = {
   Hizb: require('./assets/tool-icons/hizb-dark-palestine.png'),
   Audio: require('./assets/tool-icons/audio-dark-palestine.png'),
   'Reader Settings': require('./assets/tool-icons/reader-settings-dark-palestine.png'),
+  Hadith: require('./assets/tool-icons/hadith-dark-palestine.png'),
+  Duas: require('./assets/tool-icons/duas-dark-palestine.png'),
+  'Muslim Names': require('./assets/tool-icons/muslim-names-dark-palestine.png'),
+  'Prophet Names': require('./assets/tool-icons/prophet-names-dark-palestine.png'),
+  '99 Names': require('./assets/tool-icons/99-names-of-allah-dark-palestine.png'),
+  Names: require('./assets/tool-icons/99-names-of-allah-dark-palestine.png'),
 };
 function ToolGraphic({tool,size=64}:{tool:string;size?:number}){const{dark,resolved}=useTheme();
   /* By theme, the way the prayer icons are: a theme carries its lightness with
