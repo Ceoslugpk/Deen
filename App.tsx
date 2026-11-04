@@ -1421,6 +1421,14 @@ const TOOL_IMAGES_PALESTINE: Record<string, any> = {
   'Salah Guide': require('./assets/tool-icons/salah-guide-palestine.png'),
   'Janazah Guide': require('./assets/tool-icons/janazah-guide-palestine.png'),
   'Istikhara Guide': require('./assets/tool-icons/istikhara-guide-palestine.png'),
+  /* The five Ramadan and Eid guides. Until now these had no Palestine art
+     of their own and fell back to the Islamic drawing, so they read as
+     out of place beside neighbours that did have it. */
+  'Eid Prayer Guide': require('./assets/tool-icons/eid-guide-palestine.png'),
+  'Fasting Guide': require('./assets/tool-icons/fasting-guide-palestine.png'),
+  'Laylatul Qadr': require('./assets/tool-icons/laylatul-qadr-palestine.png'),
+  'Taraweeh Guide': require('./assets/tool-icons/taraweeh-guide-palestine.png'),
+  'Zakat al-Fitr': require('./assets/tool-icons/zakat-fitr-palestine.png'),
 
 };
 const TOOL_IMAGES_PALESTINE_DARK: Record<string, any> = {
@@ -1463,6 +1471,14 @@ const TOOL_IMAGES_PALESTINE_DARK: Record<string, any> = {
   'Salah Guide': require('./assets/tool-icons/salah-guide-dark-palestine.png'),
   'Janazah Guide': require('./assets/tool-icons/janazah-guide-dark-palestine.png'),
   'Istikhara Guide': require('./assets/tool-icons/istikhara-guide-dark-palestine.png'),
+  /* The five Ramadan and Eid guides. Until now these had no Palestine art
+     of their own and fell back to the Islamic drawing, so they read as
+     out of place beside neighbours that did have it. */
+  'Eid Prayer Guide': require('./assets/tool-icons/eid-guide-dark-palestine.png'),
+  'Fasting Guide': require('./assets/tool-icons/fasting-guide-dark-palestine.png'),
+  'Laylatul Qadr': require('./assets/tool-icons/laylatul-qadr-dark-palestine.png'),
+  'Taraweeh Guide': require('./assets/tool-icons/taraweeh-guide-dark-palestine.png'),
+  'Zakat al-Fitr': require('./assets/tool-icons/zakat-fitr-dark-palestine.png'),
 
 };
 /**
@@ -2434,7 +2450,7 @@ const[quranPosition,setQuranPosition]=useState<any>(null);const[openReflection,s
   </Animated.ScrollView>
   {/* Outside the scroller, so it stays put while the page moves under it.
       Only Home mounts it: `scrollY` here is Home's own offset. */}
-  {!!next && <NextPrayerPill prayer={next} language={language} rtl={rtl} still={still} scrollY={scrollY} />}
+  {!!next && <NextPrayerPill prayer={next} prayers={data.snapshot?.prayers || []} language={language} rtl={rtl} still={still} scrollY={scrollY} />}
 </Page>;
 }
 let CARD_GREEN: any = { backgroundColor: C.mint }; let CARD_GOLD: any = { backgroundColor: C.peach };
@@ -2974,19 +2990,47 @@ function HeroCountdown({ raw, rtl, language }: { raw: string; rtl: boolean; lang
  * from a stored value, so it cannot drift from the prayer list, and it
  * rolls past midnight the way the prayer it is counting to does.
  */
-function NextPrayerPill({ prayer, language, rtl, still, scrollY }: {
-  prayer: Prayer; language: any; rtl: boolean; still: boolean; scrollY: Animated.Value;
+function NextPrayerPill({ prayer, prayers, language, rtl, still, scrollY }: {
+  prayer: Prayer; prayers: Prayer[]; language: any; rtl: boolean; still: boolean; scrollY: Animated.Value;
 }) {
   const [, tick] = useState(0);
   useEffect(() => {
     const id = setInterval(() => tick((v) => v + 1), 1000);
     return () => clearInterval(id);
   }, []);
-  const [h, m] = prayer.raw.split(':').map(Number);
-  const target = new Date();
-  target.setHours(h, m, 0, 0);
-  if (target.getTime() <= Date.now()) target.setDate(target.getDate() + 1);
-  const left = Math.max(0, Math.floor((target.getTime() - Date.now()) / 1000));
+  const now = Date.now();
+  /* The two ends of the window being counted through: the last prayer
+     whose time has passed, and the one being counted to.
+
+     Both are found across yesterday, today and tomorrow rather than
+     derived from today's list alone, because either end can sit on the
+     other side of midnight — after Isha the window runs to tomorrow's
+     Fajr, and before Fajr it began with yesterday's Isha. */
+  const list = prayers && prayers.length ? prayers : [prayer];
+  const at = (dayOffset: number, raw: string) => {
+    const [h, m] = raw.split(':').map(Number);
+    const d = new Date();
+    d.setDate(d.getDate() + dayOffset);
+    d.setHours(h || 0, m || 0, 0, 0);
+    return d.getTime();
+  };
+  const marks: number[] = [];
+  for (const offset of [-1, 0, 1]) for (const p of list) marks.push(at(offset, p.raw));
+  marks.sort((a, b) => a - b);
+  let from = marks[0];
+  let target = marks[marks.length - 1];
+  for (const t of marks) {
+    if (t <= now) from = t;
+    if (t > now) { target = t; break; }
+  }
+  /* How far through that window the moment sits. A window crossed in a
+     few minutes — Sunrise to Dhuhr is not, but a prayer time that lands
+     a minute after another would be — still gives a bar that moves
+     smoothly rather than jumping, because it is a fraction and not a
+     count. */
+  const span = Math.max(1, target - from);
+  const run = Math.min(1, Math.max(0, (now - from) / span));
+  const left = Math.max(0, Math.floor((target - now) / 1000));
   const hh = Math.floor(left / 3600);
   const mm = Math.floor((left - hh * 3600) / 60);
   const ss = left - hh * 3600 - mm * 60;
@@ -2999,17 +3043,26 @@ function NextPrayerPill({ prayer, language, rtl, still, scrollY }: {
   const lift = scrollY.interpolate({ inputRange: [90, 150], outputRange: still ? [0, 0] : [-10, 0], extrapolate: 'clamp' });
   return <Animated.View pointerEvents="none" style={[s.nextPillWrap, { opacity, transform: [{ translateY: lift }] }]}>
     <View style={s.nextPill}>
-      {ico('time-outline', 15, C.gold)}
-      {/* prayerName rather than T: the six prayer names are not in the copy
-          tables, they have their own, and looking them up through tx would
-          hand an Arabic reader "Fajr" where the rest of the app says
-          الفجر. */}
-      <Text style={s.nextPillName}>{prayerName(language, prayer.name)}</Text>
-      <Text style={s.nextPillDot}>·</Text>
-      {/* Tabular-ish: the countdown changes every second, so the digits are
-          padded and the whole thing is one string, to stop the pill from
-          twitching as the seconds narrow and widen. */}
-      <Text style={s.nextPillTime}>{`${hh}:${pad(mm)}:${pad(ss)}`}</Text>
+      <View style={s.nextPillRow}>
+        {ico('time-outline', 15, C.gold)}
+        {/* prayerName rather than T: the six prayer names are not in the copy
+            tables, they have their own, and looking them up through tx would
+            hand an Arabic reader "Fajr" where the rest of the app says
+            الفجر. */}
+        <Text style={s.nextPillName}>{prayerName(language, prayer.name)}</Text>
+        <Text style={s.nextPillDot}>·</Text>
+        {/* Tabular-ish: the countdown changes every second, so the digits are
+            padded and the whole thing is one string, to stop the pill from
+            twitching as the seconds narrow and widen. */}
+        <Text style={s.nextPillTime}>{`${hh}:${pad(mm)}:${pad(ss)}`}</Text>
+      </View>
+      {/* How much of the window has gone. The countdown alone says how
+          long is left without saying how long there was, so a wait of
+          four minutes out of four hours looks the same as one four
+          minutes out of forty. This is the other half of that. */}
+      <View style={s.nextPillTrack}>
+        <View style={[s.nextPillFill, { width: `${(run * 100).toFixed(1)}%` } as any]} />
+      </View>
     </View>
   </Animated.View>;
 }
@@ -13270,7 +13323,7 @@ function makeStyles() {
    surface and a small lift rather than sitting on the content like a row
    would. C.card and C.ink keep it inside whichever palette is wearing. */
 nextPillWrap:{position:'absolute',top:6,left:0,right:0,alignItems:'center',zIndex:30},
-nextPill:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:9,minWidth:176,backgroundColor:C.card,borderWidth:1,borderColor:C.line,borderRadius:22,paddingHorizontal:19,paddingVertical:10,elevation:4,shadowColor:'#000',shadowOpacity:.18,shadowRadius:10,shadowOffset:{width:0,height:3}},
+nextPill:{alignItems:'center',justifyContent:'center',minWidth:176,backgroundColor:C.card,borderWidth:1,borderColor:C.line,borderRadius:22,paddingHorizontal:19,paddingTop:9,paddingBottom:8,elevation:4,shadowColor:'#000',shadowOpacity:.18,shadowRadius:10,shadowOffset:{width:0,height:3}},nextPillRow:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:9},nextPillTrack:{width:'100%',height:3,borderRadius:2,backgroundColor:C.line,marginTop:7,overflow:'hidden'},nextPillFill:{height:3,borderRadius:2,backgroundColor:C.gold},
 nextPillName:{color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:13},
 nextPillDot:{color:C.muted,fontFamily:'DMSans_600SemiBold',fontSize:13},
 /* successInk, not gold: gold measures 2.7:1 against the card in the light
