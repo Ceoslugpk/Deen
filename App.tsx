@@ -6534,7 +6534,7 @@ function FastingScreen({navigation}:any){const {rtl,language}=useLanguage();cons
       <Text style={s.meta}>{missedReasons(language).find(item=>item.id===reason)?.detail}</Text>
       <Tactile accessibilityLabel={T('Record today as not fasted')} onPress={()=>mark('missed',{reason})} style={s.primary}><Text style={s.primaryText}>{T('Record as not fasted')}</Text></Tactile>
     </View>
-    <Section title={T('Make-up ledger')} action={rtl?`${summary.qada} مسوّاة`:`${summary.qada} settled`} />
+    <Section title={T('Make-up ledger')} action={tf(language,'{n} settled',{n:summary.qada})} />
     <View style={s.dataCard}>
       <View style={s.hadithProgressHead}><Text style={s.hadithProgressName}>{T('Days owed')}</Text><Text style={s.hadithProgressName}>{summary.owed}</Text></View>
       <Text style={s.meta}>{rtl?`${summary.qada} يوم قضاء مسجل · ${summary.missed} يوم إفطار مسجل`:`${summary.qada} make-up days recorded · ${summary.missed} missed days recorded`}</Text>
@@ -7399,7 +7399,7 @@ function NotificationScreen({navigation}:any){const {rtl,language}=useLanguage()
       </View>
       <Text style={s.preferenceLabel}>{T('HOW LONG BEFORE')}</Text>
       <View style={s.choiceRow}>
-        {[5,10,15,30].map(value=><ChoicePill key={value} label={rtl?`${value} دقيقة`:`${value} min`}
+        {[5,10,15,30].map(value=><ChoicePill key={value} label={tf(language,'{n} min',{n:value})}
           selected={settings.reminderOffset===value} onPress={()=>update({reminderOffset:value})}/>)}
       </View>
       <View style={s.settings}>
@@ -8044,9 +8044,9 @@ function RamadanScreen({ navigation }: any) {
         <Text style={s.ramArabic}>رَمَضَان</Text>
         <Text style={s.ramStatus}>{
           today
-            ? (rtl ? `يوم ${index + 1} من ${days.length}` : `Day ${index + 1} of ${days.length}`)
+            ? (tf(language,'Day {i} of {t}',{i:index + 1,t:days.length}))
             : away > 0
-              ? (rtl ? `يبدأ بعد ${away} يومًا` : `Begins in ${away} ${away === 1 ? 'day' : 'days'}`)
+              ? (tf(language,'Begins in {n}',{n:`${away} ${away === 1 ? T('day') : T('days')}`}))
               : `${T('Ramadan')} ${year || ''} ${T('AH')}`
         }</Text>
       </View>
@@ -8071,7 +8071,7 @@ function RamadanScreen({ navigation }: any) {
     </LinearGradient>
 
     {error ? <ErrorState message={error} retry={load}/> : !days.length ? <SkeletonList rows={6} /> : <>
-      <Section title={T('Fasting timetable')} action={rtl ? `${days.length} يومًا` : `${days.length} days`}/>
+      <Section title={T('Fasting timetable')} action={tf(language,'{n} days',{n:days.length})}/>
       <View style={s.ramMonth}>
         <View style={s.ramWeekRow}>{initials.map((initial, i) => <View key={i} style={s.ramWeekCell}><Text style={s.ramWeekText}>{initial}</Text></View>)}</View>
         <View style={s.ramGrid}>
@@ -8644,13 +8644,13 @@ function WomenHubScreen({ navigation }: any) {
     </ScrollView>
   </Page>;
 
-  const status = nifas.active ? rtl ? `النفاس · اليوم ${nifas.day}` : `Post-natal · day ${nifas.day}` : stats.status === 'flow' ? rtl ? `الدورة · اليوم ${stats.dayOfCycle}` : `Cycle · day ${stats.dayOfCycle}` : stats.status === 'spotting' ? T('Spotting') : stats.status === 'pure' ? T('Pure') : T('Nothing recorded today');
+  const status = nifas.active ? tf(language,'Post-natal · day {n}',{n:nifas.day}) : stats.status === 'flow' ? tf(language,'Cycle · day {n}',{n:stats.dayOfCycle}) : stats.status === 'spotting' ? T('Spotting') : stats.status === 'pure' ? T('Pure') : T('Nothing recorded today');
   const detail = nifas.active
-    ? rtl ? `بقي ${LIMITS.nifasMaxDays - nifas.day} يومًا من الأربعين` : `${LIMITS.nifasMaxDays - nifas.day} days left inside the forty`
+    ? tf(language,'{n} days left inside the forty',{n:LIMITS.nifasMaxDays - nifas.day})
     : stats.active
-      ? rtl ? `بدأت ${formatDay(stats.active.start, language)} · اليوم ${stats.dayOfCycle}` : `Started ${formatDay(stats.active.start, language)} · day ${stats.dayOfCycle}`
+      ? tf(language,'Started {d} · day {n}',{d:formatDay(stats.active.start, language),n:stats.dayOfCycle})
       : stats.nextStart
-        ? rtl ? `الدورة القادمة المتوقعة بعد ${stats.daysToNext} يومًا` : `Next cycle expected in ${stats.daysToNext} days`
+        ? tf(language,'Next cycle expected in {n} days',{n:stats.daysToNext ?? ''})
         : T('Record a cycle to see your averages');
 
   return <PrivateArea navigation={navigation}><Page><ToolBar title={T('Women’s worship')} navigation={navigation} />
@@ -8659,10 +8659,10 @@ function WomenHubScreen({ navigation }: any) {
         <View style={{ flex: 1 }}><Text style={s.nextCardLabel}>{T('TODAY')} · {formatDay(today, language).toUpperCase()}</Text><Text style={s.zakatNo}>{status}</Text><Text style={s.weekScoreBody}>{detail}</Text></View>
       </LinearGradient>
       <View style={s.statGrid}>
-        <StatBox label={T('AVERAGE CYCLE')} value={stats.averageCycle ? rtl ? `${stats.averageCycle} يومًا` : `${stats.averageCycle} days` : '—'} hint={stats.averageCycle ? rtl ? `من ${stats.cycleCount} دورات مسجَّلة` : `From ${stats.cycleCount} recorded cycles` : stats.cycleCount ? T('Two cycles needed') : T('No history yet')} />
-        <StatBox label={T('NEXT EXPECTED')} value={stats.nextStart ? formatDay(stats.nextStart, language) : '—'} hint={stats.daysToNext !== null ? rtl ? `بعد ${stats.daysToNext} يومًا` : `In ${stats.daysToNext} days` : undefined} />
-        <StatBox label={T('FASTS OWED')} value={`${qada.remaining}`} hint={rtl ? `قُضي ${qada.done}` : `${qada.done} settled`} />
-        <StatBox label={T('POST-NATAL')} value={nifas.active ? rtl ? `اليوم ${nifas.day}` : `Day ${nifas.day}` : '—'} hint={nifas.active ? T('Active') : T('Not recorded')} />
+        <StatBox label={T('AVERAGE CYCLE')} value={stats.averageCycle ? tf(language,'{n} days',{n:stats.averageCycle}) : '—'} hint={stats.averageCycle ? tf(language,'From {n} recorded cycles',{n:stats.cycleCount}) : stats.cycleCount ? T('Two cycles needed') : T('No history yet')} />
+        <StatBox label={T('NEXT EXPECTED')} value={stats.nextStart ? formatDay(stats.nextStart, language) : '—'} hint={stats.daysToNext !== null ? tf(language,'In {n} days',{n:stats.daysToNext ?? ''}) : undefined} />
+        <StatBox label={T('FASTS OWED')} value={`${qada.remaining}`} hint={tf(language,'{n} settled',{n:qada.done})} />
+        <StatBox label={T('POST-NATAL')} value={nifas.active ? tf(language,'Day {n}',{n:nifas.day}) : '—'} hint={nifas.active ? T('Active') : T('Not recorded')} />
       </View>
       <Section title={T('Records')} />
       <View style={s.settings}>
@@ -8699,8 +8699,8 @@ function CycleScreen({ navigation }: any) {
       <Text style={s.dataTitle}>{T('Your cycle')}</Text>
       <Text style={s.intro}>{T('Record the days as they come. The averages and the prediction are worked out from your own history — nothing is assumed about what your cycle should look like.')}</Text>
       <View style={s.dataCard}>
-        <Text style={s.dataMeta}>{stats.active ? (rtl ? `جارية · اليوم ${stats.dayOfCycle}` : `IN PROGRESS · DAY ${stats.dayOfCycle}`) : T('NO CYCLE IN PROGRESS')}</Text>
-        <Text style={s.dataBody}>{stats.active ? (rtl ? `بدأت ${formatDay(stats.active.start, language)}. مضى ${stats.dayOfCycle} ${stats.dayOfCycle === 1 ? T('day') : T('days')}.` : `Started ${formatDay(stats.active.start, language)}. ${stats.dayOfCycle} ${stats.dayOfCycle === 1 ? T('day') : T('days')} so far.`) : T('When bleeding begins, start a cycle here and the count begins from that day.')}</Text>
+        <Text style={s.dataMeta}>{stats.active ? (tf(language,'IN PROGRESS · DAY {n}',{n:stats.dayOfCycle})) : T('NO CYCLE IN PROGRESS')}</Text>
+        <Text style={s.dataBody}>{stats.active ? (tf(language,'Started {d}. {n} so far.',{d:formatDay(stats.active.start, language),n:`${stats.dayOfCycle} ${stats.dayOfCycle === 1 ? T('day') : T('days')}`})) : T('When bleeding begins, start a cycle here and the count begins from that day.')}</Text>
         {stats.active ? <>
           <Text style={s.preferenceLabel}>{T('FLOW')}</Text>
           <View style={s.choiceRow}>{FLOW_LEVELS.map((level) => <ChoicePill key={level.id} label={T(level.label)} selected={stats.active?.flow === level.id} onPress={() => void setFlow(level.id)} />)}</View>
@@ -8712,9 +8712,9 @@ function CycleScreen({ navigation }: any) {
       </View>
       <Section title={T('Your pattern')} />
       <View style={s.statGrid}>
-        <StatBox label={T('AVERAGE CYCLE')} value={stats.averageCycle ? rtl ? `${stats.averageCycle} يومًا` : `${stats.averageCycle} days` : '—'} hint={stats.averageCycle ? T('From your last few cycles') : T('Two cycles needed')} />
-        <StatBox label={T('AVERAGE LENGTH')} value={stats.averagePeriod ? rtl ? `${stats.averagePeriod} يومًا` : `${stats.averagePeriod} days` : '—'} hint={T('Bleeding days')} />
-        <StatBox label={T('NEXT EXPECTED')} value={stats.nextStart ? formatDay(stats.nextStart, language) : '—'} hint={stats.daysToNext !== null ? rtl ? `بعد ${stats.daysToNext} يومًا` : `In ${stats.daysToNext} days` : undefined} />
+        <StatBox label={T('AVERAGE CYCLE')} value={stats.averageCycle ? tf(language,'{n} days',{n:stats.averageCycle}) : '—'} hint={stats.averageCycle ? T('From your last few cycles') : T('Two cycles needed')} />
+        <StatBox label={T('AVERAGE LENGTH')} value={stats.averagePeriod ? tf(language,'{n} days',{n:stats.averagePeriod}) : '—'} hint={T('Bleeding days')} />
+        <StatBox label={T('NEXT EXPECTED')} value={stats.nextStart ? formatDay(stats.nextStart, language) : '—'} hint={stats.daysToNext !== null ? tf(language,'In {n} days',{n:stats.daysToNext ?? ''}) : undefined} />
         <StatBox label={T('FERTILE WINDOW')} value={stats.fertileStart ? `${formatDay(stats.fertileStart, language)} – ${formatDay(stats.fertileEnd as string, language)}` : '—'} hint={T('An estimate, not a certainty')} />
       </View>
       <Section title={T('Day by day')} action={T('Tap to change')} />
@@ -8796,7 +8796,7 @@ function PurityScreen({ navigation }: any) {
       <LinearGradient colors={[C.heroA, C.green]} style={s.summaryScore}>
         <View style={{ flex: 1 }}>
           <Text style={s.nextCardLabel}>{nifas.active ? T('POST-NATAL') : T('NIFAS NOT RECORDED')}</Text>
-          <Text style={s.zakatNo}>{nifas.active ? rtl ? `اليوم ${nifas.day}` : `Day ${nifas.day}` : '—'}</Text>
+          <Text style={s.zakatNo}>{nifas.active ? tf(language,'Day {n}',{n:nifas.day}) : '—'}</Text>
           <Text style={s.weekScoreBody}>{nifas.active ? (nifas.pastLimit ? T('Past forty days — speak to a scholar and a doctor') : rtl ? `بقي ${nifas.remaining} يومًا من الأربعين` : `${nifas.remaining} days remain inside the forty`) : (rtl ? `يُعدّ دم ما بعد الولادة عادةً إلى ${LIMITS.nifasMaxDays} يومًا.` : `Bleeding after childbirth is commonly counted up to ${LIMITS.nifasMaxDays} days.`)}</Text>
         </View>
       </LinearGradient>

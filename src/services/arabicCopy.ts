@@ -2509,6 +2509,22 @@ const AR: Record<string, string> = {
   'RITE {n}': 'المنسك {n}',
   '{s} of {t} Names': '{s} من {t} اسمًا',
   '{d} of 5 prayers marked complete': '{d} من 5 صلوات مؤداة',
+  'Post-natal · day {n}': 'النفاس · اليوم {n}',
+  'Cycle · day {n}': 'الدورة · اليوم {n}',
+  '{n} days left inside the forty': 'بقي {n} يومًا من الأربعين',
+  'Started {d} · day {n}': 'بدأت {d} · اليوم {n}',
+  'Next cycle expected in {n} days': 'الدورة القادمة المتوقعة بعد {n} يومًا',
+  '{n} days': '{n} يومًا',
+  'From {n} recorded cycles': 'من {n} دورات مسجَّلة',
+  'In {n} days': 'بعد {n} يومًا',
+  '{n} settled': 'قُضي {n}',
+  'Day {n}': 'اليوم {n}',
+  'IN PROGRESS · DAY {n}': 'جارية · اليوم {n}',
+  'Started {d}. {n} so far.': 'بدأت {d}. مضى {n}.',
+  '{n} min': '{n} دقيقة',
+  'Day {i} of {t}': 'يوم {i} من {t}',
+  'Begins in {n}': 'يبدأ بعد {n}',
+  'in ': 'بعد ',
 };
 
 const PRAYERS_AR: Record<string, string> = {
