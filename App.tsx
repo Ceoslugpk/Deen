@@ -1344,6 +1344,10 @@ const TOOL_IMAGES_PALESTINE: Record<string, any> = {
   /* The Quran screen's reading-preferences card. Its key carries a space, so
      it is quoted here while the single-word ones above are not. */
   'Reader Settings': require('./assets/tool-icons/reader-settings-palestine.png'),
+  /* The Quran screen's second preference card. It is reached under the key
+     'Translations' but the row reads 'Translation', singular, because that is
+     what it changes — one edition, not several. */
+  Translations: require('./assets/tool-icons/translations-palestine.png'),
   /* The library cards. These are looked up by the title the card shows, not
      by a tool name, so the keys are the titles. The Beautiful Names is
      reached under two of them — 'Names' on its own screen and '99 Names' in
@@ -1361,6 +1365,10 @@ const TOOL_IMAGES_PALESTINE: Record<string, any> = {
   Ramadan: require('./assets/tool-icons/ramadan-palestine.png'),
   'Ramadan Guide': require('./assets/tool-icons/ramadan-palestine.png'),
   Shahada: require('./assets/tool-icons/shahada-palestine.png'),
+  /* The worship guides card. Spoken of in the singular on the card that opens
+     them and in the plural in the key that looks the drawing up, so the key
+     carries the plural to match every other title-keyed card. */
+  'Worship guides': require('./assets/tool-icons/worship-guides-palestine.png'),
   /* The Quran study row: bookmarks, memorisation, notes, reading plans and
      the offline copy. Palestine art for the five. */
   Bookmarks: require('./assets/tool-icons/bookmarks-palestine.png'),
@@ -1385,6 +1393,7 @@ const TOOL_IMAGES_PALESTINE_DARK: Record<string, any> = {
   Hizb: require('./assets/tool-icons/hizb-dark-palestine.png'),
   Audio: require('./assets/tool-icons/audio-dark-palestine.png'),
   'Reader Settings': require('./assets/tool-icons/reader-settings-dark-palestine.png'),
+  Translations: require('./assets/tool-icons/translations-dark-palestine.png'),
   Hadith: require('./assets/tool-icons/hadith-dark-palestine.png'),
   Duas: require('./assets/tool-icons/duas-dark-palestine.png'),
   'Muslim Names': require('./assets/tool-icons/muslim-names-dark-palestine.png'),
@@ -1395,6 +1404,7 @@ const TOOL_IMAGES_PALESTINE_DARK: Record<string, any> = {
   Ramadan: require('./assets/tool-icons/ramadan-dark-palestine.png'),
   'Ramadan Guide': require('./assets/tool-icons/ramadan-dark-palestine.png'),
   Shahada: require('./assets/tool-icons/shahada-dark-palestine.png'),
+  'Worship guides': require('./assets/tool-icons/worship-guides-dark-palestine.png'),
   /* The same five, in the dark Palestine set. */
   Bookmarks: require('./assets/tool-icons/bookmarks-dark-palestine.png'),
   Hifz: require('./assets/tool-icons/hifz-dark-palestine.png'),
