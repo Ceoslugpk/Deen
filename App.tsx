@@ -12382,7 +12382,13 @@ async function reloadAllState() {
 
 export default function App(){const[fontsLoaded]=useFonts({DMSans_400Regular,DMSans_600SemiBold,DMSans_700Bold,Newsreader_600SemiBold,NotoNaskhArabic_400Regular,NotoNaskhArabic_600SemiBold,Amiri_400Regular,KFGQPCUthmanicHafs,IBMPlexSansArabic_400Regular,IBMPlexSansArabic_600SemiBold});const restoreTick=useRestoreNonce();
 useEffect(()=>{if(restoreTick>0){void reloadAllState()}},[restoreTick]);
-useEffect(()=>{if(fontsLoaded){void loadOfflineSetup();void resumeSavedOfflineSetup();resumeSavedQuranPreload();void loadAudioSettings().then(() => restoreSavedSession());void loadHadithState();void loadTasbihState();void loadDownloads();void loadActivity();void loadFastingState();void loadJourneys();void loadWomensState();void loadZakatState();void loadKhatamState();void loadQadaState();void loadSadaqahState();void loadJournalState();void loadLockConfig();void loadBackupSettings();void refreshMarket();startLockWatch();startBackupWatch()}},[fontsLoaded]);if(!fontsLoaded)return <SafeAreaView style={s.safe}><Spinner/></SafeAreaView>;return <ThemeProvider key={restoreTick}><LanguageProvider><QuranPreferencesProvider><WorshipSettingsProvider><LocationProvider><ScreenBoundary><AppShell/></ScreenBoundary></LocationProvider></WorshipSettingsProvider></QuranPreferencesProvider></LanguageProvider></ThemeProvider>}
+useEffect(()=>{if(fontsLoaded){void loadOfflineSetup();void resumeSavedOfflineSetup();resumeSavedQuranPreload();void loadAudioSettings().then(() => restoreSavedSession());void loadHadithState();void loadTasbihState();void loadDownloads();void loadActivity();void loadFastingState();void loadJourneys();void loadWomensState();void loadZakatState();void loadKhatamState();void loadQadaState();void loadSadaqahState();void loadJournalState();void loadLockConfig();void loadBackupSettings();void refreshMarket();startLockWatch();startBackupWatch()}},[fontsLoaded]);if(!fontsLoaded)return <SafeAreaView style={s.safe}><Spinner/></SafeAreaView>;/* The boundary sits *outside* every provider, not just around the shell. A
+   provider that throws on its first render takes the whole tree with it, and
+   a boundary nested inside them never sees the error — the app simply comes
+   up as an empty screen with nothing to explain it. From out here the crash
+   card is drawn with the real message instead. It needs no context of its
+   own: the copy comes from I18nManager and the styles from module scope. */
+return <ScreenBoundary><ThemeProvider key={restoreTick}><LanguageProvider><QuranPreferencesProvider><WorshipSettingsProvider><LocationProvider><AppShell/></LocationProvider></WorshipSettingsProvider></QuranPreferencesProvider></LanguageProvider></ThemeProvider></ScreenBoundary>}
 
 /**
  * The Arabic face used everywhere, once someone has chosen one.
