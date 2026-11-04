@@ -14,6 +14,7 @@
 // screens by them, in both languages.
 
 import { UR } from './urduCopy';
+import { TR } from './turkishCopy';
 
 const AR: Record<string, string> = {
   'Appearance': 'المظهر',
@@ -2566,9 +2567,16 @@ const PRAYERS_AR: Record<string, string> = {
 const PRAYERS_UR: Record<string, string> = {
   Fajr: 'فجر', Sunrise: 'طلوعِ آفتاب', Dhuhr: 'ظہر', Asr: 'عصر', Maghrib: 'مغرب', Isha: 'عشاء',
 };
-const PRAYER_TABLES: Record<'ar' | 'ur', Record<string, string>> = {
+/* The six are named here rather than in the copy tables because they reach
+   the screens through prayerName(), which is asked for a name and not for a
+   sentence — the same reason the Arabic and Urdu lists live here. */
+const PRAYERS_TR: Record<string, string> = {
+  Fajr: 'Sabah', Sunrise: 'Güneş doğuşu', Dhuhr: 'Öğle', Asr: 'İkindi', Maghrib: 'Akşam', Isha: 'Yatsı',
+};
+const PRAYER_TABLES: Record<'ar' | 'ur' | 'tr', Record<string, string>> = {
   ar: PRAYERS_AR,
   ur: PRAYERS_UR,
+  tr: PRAYERS_TR,
 };
 
 export function prayerName(code: string | boolean, name: string): string {
@@ -2583,10 +2591,11 @@ export function prayerName(code: string | boolean, name: string): string {
    * `null` means English: the screens were written in it, so the source text
    * is already the right answer and there is nothing to look up.
    */
-  function tableFor(code: string | boolean): 'ar' | 'ur' | null {
+  function tableFor(code: string | boolean): 'ar' | 'ur' | 'tr' | null {
     if (typeof code === 'boolean') return code ? 'ar' : null;
     if (code === 'ar') return 'ar';
     if (code === 'ur') return 'ur';
+    if (code === 'tr') return 'tr';
     return null;
   }
 
@@ -2606,6 +2615,7 @@ export function prayerName(code: string | boolean, name: string): string {
     const table = tableFor(code);
     if (table === 'ar') return AR[text] ?? text;
     if (table === 'ur') return UR[text] ?? text;
+    if (table === 'tr') return TR[text] ?? text;
     return text;
   }
 

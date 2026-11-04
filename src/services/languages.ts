@@ -85,7 +85,7 @@ export const LANGUAGES: Language[] = [
     voice: { identifier: 'fr.leclerc', name: 'Youssouf Leclerc' },
   },
   {
-    code: 'tr', native: 'Türkçe', english: 'Turkish', rtl: false, uiReady: false,
+    code: 'tr', native: 'Türkçe', english: 'Turkish', rtl: false, uiReady: true,
     text: { identifier: 'tr_tr_diyanet_isleri_3', name: 'Diyanet İşleri', kind: 'translation' },
     voice: { identifier: 'tr.vakfi-audio', name: 'Diyanet Vakfı' },
   },

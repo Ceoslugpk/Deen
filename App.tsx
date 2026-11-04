@@ -12943,6 +12943,12 @@ const PREFERRED_TRANSLATION: Record<string, string> = {
   ur: 'tr_ur_fateh_muhammad_jalandhry',
   en: 'tr_en_saheeh_international',
   ar: 'tr_ar_buck',
+  /* Turkish has sixty translations and the first is a Latin-script
+     transliteration, so the same rule that kept Roman Urdu away from an
+     Urdu reader applies here: name the one to open on. Diyanet is the
+     translation of Turkey's Presidency of Religious Affairs, which is
+     the one a Turkish reader will recognise and expect. */
+  tr: 'tr_tr_diyanet_isleri',
 };
 
 /** True when a title is written in a script other than Latin. */
