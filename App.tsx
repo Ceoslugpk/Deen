@@ -2353,6 +2353,9 @@ const[quranPosition,setQuranPosition]=useState<any>(null);const[openReflection,s
     <Section title={T('Hadith of the day')} />
     <View style={[s.depthCard,s.hadithSurface,{borderRadius:RADIUS.xl}]}><Text style={s.quote}>“</Text><Text numberOfLines={6} style={s.hadithText}>{data.hadith ? (rtl && data.hadith.arabic ? stripTags(data.hadith.arabic) : data.hadith.text) : T('Loading today’s authenticated hadith…')}</Text><View style={s.hadithFoot}><Text style={s.meta}>{data.hadith ? `${hadithSourceLabel(rtl, data.hadith.collection)} · ${data.hadith.number}` : ''}</Text>{!!data.hadith&&<Pressable accessibilityRole="button" accessibilityLabel={T('Report a correction in this hadith')} onPress={()=>{const h=data.hadith;if(h)setReportHadith({collection:h.collection,number:h.number,arabic:h.arabic,text:h.text})}} hitSlop={10}>{ico('flag-outline',18,C.muted)}</Pressable>}</View></View>
   </Animated.ScrollView>
+  {/* Outside the scroller, so it stays put while the page moves under it.
+      Only Home mounts it: `scrollY` here is Home's own offset. */}
+  {!!next && <NextPrayerPill prayer={next} language={language} rtl={rtl} still={still} scrollY={scrollY} />}
 </Page>;
 }
 let CARD_GREEN: any = { backgroundColor: C.mint }; let CARD_GOLD: any = { backgroundColor: C.peach };
@@ -2868,6 +2871,67 @@ function HeroCountdown({ raw, rtl }: { raw: string; rtl: boolean }) {
   const ss = left - hh * 3600 - mm * 60;
   const pad = (n: number) => String(n).padStart(2, '0');
   return <>{rtl ? `${hh} س ${mm} د ${pad(ss)} ث` : `${hh}h ${mm}m ${pad(ss)}s`}</>;
+}
+
+/**
+ * The next prayer, held in a pill that appears once the reader has scrolled.
+ *
+ * The header scrolls away with the page — it carries the brand and three
+ * buttons and nothing about the day — so the one thing worth keeping in
+ * sight is the first thing to leave. This sits outside the scroller, above
+ * the content, and fades in over the first stretch of scrolling rather than
+ * snapping on, which on a fast flick would read as a flicker.
+ *
+ * Centred rather than aligned to an edge. A pill pinned to the left would
+ * have to be pinned to the right in Urdu and Arabic, and a centred one is
+ * correct in both without knowing which it is in.
+ *
+ * Display only: it floats over whatever is beneath it, so it takes no
+ * presses at all. pointerEvents are off and it has no accessibility role,
+ * so nothing can be tapped by accident while scrolling.
+ *
+ * The countdown is computed from the prayer's own time rather than read
+ * from a stored value, so it cannot drift from the prayer list, and it
+ * rolls past midnight the way the prayer it is counting to does.
+ */
+function NextPrayerPill({ prayer, language, rtl, still, scrollY }: {
+  prayer: Prayer; language: any; rtl: boolean; still: boolean; scrollY: Animated.Value;
+}) {
+  const [, tick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => tick((v) => v + 1), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const [h, m] = prayer.raw.split(':').map(Number);
+  const target = new Date();
+  target.setHours(h, m, 0, 0);
+  if (target.getTime() <= Date.now()) target.setDate(target.getDate() + 1);
+  const left = Math.max(0, Math.floor((target.getTime() - Date.now()) / 1000));
+  const hh = Math.floor(left / 3600);
+  const mm = Math.floor((left - hh * 3600) / 60);
+  const ss = left - hh * 3600 - mm * 60;
+  const pad = (n: number) => String(n).padStart(2, '0');
+  /* A reader who has asked for less motion still gets the fade — removing
+     it would make the pill appear from nowhere — but not the slide. The
+     range collapses to flat rather than swapping in a constant, so the
+     value stays an interpolation and the transform keeps its type. */
+  const opacity = scrollY.interpolate({ inputRange: [90, 150], outputRange: [0, 1], extrapolate: 'clamp' });
+  const lift = scrollY.interpolate({ inputRange: [90, 150], outputRange: still ? [0, 0] : [-10, 0], extrapolate: 'clamp' });
+  return <Animated.View pointerEvents="none" style={[s.nextPillWrap, { opacity, transform: [{ translateY: lift }] }]}>
+    <View style={s.nextPill}>
+      {ico('time-outline', 13, C.gold)}
+      {/* prayerName rather than T: the six prayer names are not in the copy
+          tables, they have their own, and looking them up through tx would
+          hand an Arabic reader "Fajr" where the rest of the app says
+          الفجر. */}
+      <Text style={s.nextPillName}>{prayerName(language, prayer.name)}</Text>
+      <Text style={s.nextPillDot}>·</Text>
+      {/* Tabular-ish: the countdown changes every second, so the digits are
+          padded and the whole thing is one string, to stop the pill from
+          twitching as the seconds narrow and widen. */}
+      <Text style={s.nextPillTime}>{`${hh}:${pad(mm)}:${pad(ss)}`}</Text>
+    </View>
+  </Animated.View>;
 }
 
 function makeConsistency() { return StyleSheet.create({
@@ -12984,7 +13048,19 @@ function makeStyles() {
  safe:{flex:1,backgroundColor:C.bg,overflow:'hidden',paddingTop:Platform.OS==='android'?StatusBar.currentHeight:0},page:{flex:1,backgroundColor:C.bg},pageWide:{width:'100%',maxWidth:1180,alignSelf:'center'},scroll:{width:'100%',maxWidth:980,alignSelf:'center',paddingHorizontal:20,paddingTop:20,paddingBottom:BOTTOM_RESERVE},row:{flexDirection:'row',alignItems:'center'},press:{opacity:.72,transform:[{scale:.98}]},loading:{padding:44,alignItems:'center',gap:12},loadingText:{color:C.muted,fontSize:12},error:{backgroundColor:C.card,padding:24,borderRadius:24,alignItems:'center',marginVertical:12},errorIcon:{width:48,height:48,borderRadius:16,backgroundColor:C.yellow,alignItems:'center',justifyContent:'center'},errorTitle:{color:C.ink,fontSize:16,fontFamily:'DMSans_600SemiBold',marginTop:12},errorText:{color:C.muted,textAlign:'center',fontSize:12,lineHeight:18,marginTop:4},retry:{backgroundColor:C.ink,paddingHorizontal:16,paddingVertical:8,borderRadius:12,marginTop:12},retryText:{color:C.onAccent,fontSize:11,fontFamily:'DMSans_600SemiBold'},
  topbar:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginBottom:20},
  appHeader:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginBottom:20},
- appHeaderBrand:{flexDirection:'row',alignItems:'center',gap:10,flexShrink:1},
+ /* The next-prayer pill. It floats over the page, so it carries its own
+   surface and a small lift rather than sitting on the content like a row
+   would. C.card and C.ink keep it inside whichever palette is wearing. */
+nextPillWrap:{position:'absolute',top:6,left:0,right:0,alignItems:'center',zIndex:30},
+nextPill:{flexDirection:'row',alignItems:'center',gap:6,backgroundColor:C.card,borderWidth:1,borderColor:C.line,borderRadius:18,paddingHorizontal:13,paddingVertical:7,elevation:2,shadowColor:'#000',shadowOpacity:.14,shadowRadius:6,shadowOffset:{width:0,height:2}},
+nextPillName:{color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:12},
+nextPillDot:{color:C.muted,fontFamily:'DMSans_600SemiBold',fontSize:12},
+/* successInk, not gold: gold measures 2.7:1 against the card in the light
+   Islamic palette, and the countdown is the part of the pill you actually
+   read. This is the palette's own gold-family token for text on a light
+   ground, and it clears 4.5:1 in all four. */
+nextPillTime:{color:C.successInk,fontFamily:'DMSans_700Bold',fontSize:12,fontVariant:['tabular-nums']},
+appHeaderBrand:{flexDirection:'row',alignItems:'center',gap:10,flexShrink:1},
  appLogo:{width:36,height:36},
  appName:{color:C.ink,fontSize:20,fontFamily:'Newsreader_600SemiBold',letterSpacing:-.5,flexShrink:1},
  appHeaderActions:{flexDirection:'row',alignItems:'center',gap:6},
