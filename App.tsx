@@ -3216,7 +3216,27 @@ function ReaderScreen({route,navigation}:any){
   const[bookmarks,setBookmarks]=useState<QuranBookmark[]>([]);
   const[error,setError]=useState('');
   const[cached,setCached]=useState(false);
-  const[progress,setProgress]=useState(0);
+  /* The progress bar used to be driven by a state value, which meant every
+     scroll event re-rendered this component — and with it all 286 ayahs of
+     a long surah — to move a bar that a native animation can move without
+     touching React at all. The bar now reads an animated value, and the
+     height it is measured against is recorded once per surah rather than
+     on every frame. */
+  const progressY = useRef(new Animated.Value(0)).current;
+  const[scrollSpan,setScrollSpan]=useState(1);
+  const viewportHeight = useRef(0);
+  const contentHeight = useRef(0);
+  /* One place that works out how far there is to scroll, since the two
+     events that feed it — the view's height and the content's — arrive in
+     either order. */
+  const measureSpan = useCallback(() => {
+    const next = contentHeight.current - viewportHeight.current;
+    if (next > 0) setScrollSpan(next);
+  }, []);
+  const progressWidth = useMemo(
+    () => progressY.interpolate({ inputRange: [0, Math.max(1, scrollSpan)], outputRange: ['0%', '100%'], extrapolate: 'clamp' }),
+    [progressY, scrollSpan],
+  );
   const scrollRef=useRef<any>(null);
   /* Which ayah has been scrolled to already, rather than a bare yes/no.
       A flag meant the reader restored its position the first time and then
@@ -3291,7 +3311,7 @@ function ReaderScreen({route,navigation}:any){
   const hizbOf=(v:Verse)=>v.hizbQuarter?Math.ceil(v.hizbQuarter/4):0;
   const opts=()=>({script:scriptFor(preferences.scriptEdition),translation:preferences.translationEdition});
   const cacheKey=readerCacheKey({section,chapterId,juz,hizb,page,script:preferences.scriptEdition,translation:preferences.translationEdition});
-  const load=async()=>{setError('');setVerses([]);restoredFor.current=null;setProgress(0);const o=opts();const local=await loadSurahCache(cacheKey) as Verse[]|null;if(local){setVerses(local);setCached(true)}try{const fresh=(isMushaf&&page!==null)?await getPageVerses(page,o):section==='juz'?await getJuzVerses(juz,o):section==='hizb'?await getHizbVerses(hizb,o):section==='page'?await getPageVerses(Number(route.params?.page||1),o):await getVerses(chapterId,o);setVerses(fresh);setCached(false);await saveSurahCache(cacheKey,fresh)}catch(e:any){if(!local)setError(T(e.message))}};
+  const load=async()=>{setError('');setVerses([]);restoredFor.current=null;progressY.setValue(0);const o=opts();const local=await loadSurahCache(cacheKey) as Verse[]|null;if(local){setVerses(local);setCached(true)}try{const fresh=(isMushaf&&page!==null)?await getPageVerses(page,o):section==='juz'?await getJuzVerses(juz,o):section==='hizb'?await getHizbVerses(hizb,o):section==='page'?await getPageVerses(Number(route.params?.page||1),o):await getVerses(chapterId,o);setVerses(fresh);setCached(false);await saveSurahCache(cacheKey,fresh)}catch(e:any){if(!local)setError(T(e.message))}};
   useEffect(()=>{load();loadBookmarks().then(setBookmarks);if(section==='surah'&&!isMushaf)void logSurahOpen(chapterId);if(isMushaf&&page!==null)void logMushafPage(page)},[section,chapterId,juz,hizb,page,isMushaf,preferences.scriptEdition,preferences.translationEdition]);
   /* Entering the Mushaf script from a Surah, Juz or Hizb opens it on the page
      where that section begins. */
@@ -3378,10 +3398,21 @@ function ReaderScreen({route,navigation}:any){
   useOverlaySheet('verse-actions', !!actionsVerse, () => actionsVerse
     ? <VerseActionsSheet verse={actionsVerse} chapter={full} rtl={rtl} T={T} navigation={navigation} onClose={()=>setActionsVerse(null)}/>
     : null, () => setActionsVerse(null));
-  return <Page><Animated.View style={[s.readerBar,{transform:[{translateY:chromeY}]}]}><IconButton name={rtl?'arrow-forward':'arrow-back'} onPress={()=>navigation.goBack()}/>{!narrow&&(canStep(-1)?<Pressable accessibilityLabel={T('Previous section')} onPress={()=>step(-1)} style={s.surahStep}>{ico(rtl?'chevron-forward':'chevron-back',19,C.ink)}</Pressable>:<View style={s.surahStep}/>)}<View style={{alignItems:'center',flex:1}}><Text style={s.readerName} numberOfLines={1}>{title}</Text><Text style={s.meta} numberOfLines={1}>{subtitle}</Text></View>{!narrow&&(canStep(1)?<Pressable accessibilityLabel={T('Next section')} onPress={()=>step(1)} style={s.surahStep}>{ico(rtl?'chevron-back':'chevron-forward',19,C.ink)}</Pressable>:<View style={s.surahStep}/>)}<View style={s.readerHeaderActions}>{section==='surah'&&<Pressable accessibilityLabel={T('Play this Surah')} onPress={()=>{void playSurahFromReader(full,rtl)}} style={s.readerIconBtn}>{ico('play-circle',20,C.ink)}</Pressable>}{section==='surah'&&<Pressable accessibilityLabel={T('Keep this Surah for offline')} onPress={()=>navigation.navigate('Downloads',{chapterId,surahName:full.name_simple})} style={s.readerIconBtn}>{ico('download-outline',20,C.ink)}</Pressable>}<Pressable accessibilityRole="switch" accessibilityState={{checked:focusOn}} accessibilityLabel={`${T('Focus mode')}: ${focusOn?T('On'):T('Off')}`} onPress={()=>update({focusMode:!focusOn})} style={s.readerIconBtn}>{ico(focusOn?'eye':'eye-outline',20,focusOn?C.gold:C.ink)}</Pressable><Pressable accessibilityLabel={T('Reader settings')} onPress={()=>navigation.navigate('Reader Settings')} style={s.readerIconBtn}>{ico('options-outline',20,C.ink)}</Pressable></View></Animated.View><View style={s.readerProgress}><View style={[s.preloadFill,{width:`${Math.round(progress*100)}%`} as any]}/></View>
-  <ScrollView keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} ref={scrollRef} contentContainerStyle={s.readerScroll} showsVerticalScrollIndicator={false} scrollEventThrottle={16} onScroll={e=>{const{layoutMeasurement,contentOffset,contentSize}=e.nativeEvent;if(focusOn){const dy=contentOffset.y-scrollY.current;if(dy>4&&chromeShown)setChromeShown(false)}scrollY.current=contentOffset.y;const span=contentSize.height-layoutMeasurement.height;const next=span>0?Math.min(1,Math.max(0,contentOffset.y/span)):0;if(Math.abs(next-progress)>0.005)setProgress(next)
+  return <Page><Animated.View style={[s.readerBar,{transform:[{translateY:chromeY}]}]}><IconButton name={rtl?'arrow-forward':'arrow-back'} onPress={()=>navigation.goBack()}/>{!narrow&&(canStep(-1)?<Pressable accessibilityLabel={T('Previous section')} onPress={()=>step(-1)} style={s.surahStep}>{ico(rtl?'chevron-forward':'chevron-back',19,C.ink)}</Pressable>:<View style={s.surahStep}/>)}<View style={{alignItems:'center',flex:1}}><Text style={s.readerName} numberOfLines={1}>{title}</Text><Text style={s.meta} numberOfLines={1}>{subtitle}</Text></View>{!narrow&&(canStep(1)?<Pressable accessibilityLabel={T('Next section')} onPress={()=>step(1)} style={s.surahStep}>{ico(rtl?'chevron-back':'chevron-forward',19,C.ink)}</Pressable>:<View style={s.surahStep}/>)}<View style={s.readerHeaderActions}>{section==='surah'&&<Pressable accessibilityLabel={T('Play this Surah')} onPress={()=>{void playSurahFromReader(full,rtl)}} style={s.readerIconBtn}>{ico('play-circle',20,C.ink)}</Pressable>}{section==='surah'&&<Pressable accessibilityLabel={T('Keep this Surah for offline')} onPress={()=>navigation.navigate('Downloads',{chapterId,surahName:full.name_simple})} style={s.readerIconBtn}>{ico('download-outline',20,C.ink)}</Pressable>}<Pressable accessibilityRole="switch" accessibilityState={{checked:focusOn}} accessibilityLabel={`${T('Focus mode')}: ${focusOn?T('On'):T('Off')}`} onPress={()=>update({focusMode:!focusOn})} style={s.readerIconBtn}>{ico(focusOn?'eye':'eye-outline',20,focusOn?C.gold:C.ink)}</Pressable><Pressable accessibilityLabel={T('Reader settings')} onPress={()=>navigation.navigate('Reader Settings')} style={s.readerIconBtn}>{ico('options-outline',20,C.ink)}</Pressable></View></Animated.View><View style={s.readerProgress}><Animated.View style={[s.preloadFill,{width:progressWidth as any}]}/></View>
+  <ScrollView keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} ref={scrollRef} contentContainerStyle={s.readerScroll} showsVerticalScrollIndicator={false} scrollEventThrottle={16} onScroll={Animated.event(
+    [{nativeEvent:{contentOffset:{y:progressY}}}],
+    {useNativeDriver:false,listener:(e:any)=>{const{contentOffset}=e.nativeEvent;if(focusOn){const dy=contentOffset.y-scrollY.current;if(dy>4&&chromeShown)setChromeShown(false)}scrollY.current=contentOffset.y;
     if(rememberTimer.current)clearTimeout(rememberTimer.current);
-    rememberTimer.current=setTimeout(rememberPosition,700);}}>
+    rememberTimer.current=setTimeout(rememberPosition,700);}})}
+  onContentSizeChange={(w:number,h:number)=>{contentHeight.current=h;measureSpan();}}
+  onLayout={e=>{viewportHeight.current=e.nativeEvent.layout.height;measureSpan();}}
+  /* On Android only. A long surah keeps several hundred ayahs mounted, and
+     this lets the platform drop the offscreen ones out of the native
+     hierarchy instead of composing all of them — the single largest win
+     available on a phone, where the long surahs were reported as slow. It
+     is left off elsewhere: on iOS it has a history of leaving blank
+     patches behind, and on the web it does nothing at all. */
+  removeClippedSubviews={Platform.OS==='android'}>
   {isMushaf?<MushafPageView page={page||1} verses={verses} error={error} cached={cached} retry={load} preferences={preferences} rtl={rtl} T={T} language={language} input={input} setInput={setInput} goPage={goPage} navigation={navigation} arStyle={arStyle} bookmarks={bookmarks} savedPosition={savedPosition} onBookmark={(v:any)=>{void bookmark(v)}} onMark={(v:any)=>{void mark(v)}} onPlay={(v:any)=>{void playFromReader(full,v,rtl)}} onNote={(v:any)=>setNoteVerse(v)}/>
   :<>
   {section==='surah'&&<LinearGradient colors={[C.heroA,C.green]} style={s.surahHead}>{!!cached&&<LiveBadge source="SAVED ON DEVICE"/>}<Text style={s.surahHeadAr}>{full.name_arabic}</Text><Text style={s.surahHeadEn}>{chapter?.translated_name?.name}</Text><Text style={s.bismillah}>بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</Text></LinearGradient>}
