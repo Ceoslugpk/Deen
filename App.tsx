@@ -1130,6 +1130,19 @@ const TOOL_IMAGES:Record<string,any>={
      alias the tile keeps the generic glyph while the screen gets the art. */
   'Journal':require('./assets/tool-icons/journal.png'),
   'Khatam':require('./assets/tool-icons/khatam.png'),
+  /* The four the Quran screen asks for by its own short name.
+     The tiles used to be looked up by their label — '30 Juz',
+     'Quran Topics' — and those keys are still above, because other
+     screens resolve them that way. Naming the tool on the tile is what
+     lets the Palestine set be chosen by theme, but it also means the
+     lookup now arrives as 'Juz', 'Hizb', 'Topics' and 'Vocab', which
+     these maps had never held. So the short names are added as aliases
+     onto drawings that already existed: nothing new is drawn, and the
+     Islamic theme stops falling through to the generic glyph. */
+  Juz:require('./assets/tool-icons/juz.png'),
+  Hizb:require('./assets/tool-icons/hizb.png'),
+  Topics:require('./assets/tool-icons/quran-topics.png'),
+  Vocab:require('./assets/tool-icons/quran-vocabulary.png'),
   'Sunnah Prayers':require('./assets/tool-icons/sunnah-prayers.png'),
   'Privacy lock':require('./assets/tool-icons/privacy-lock.png'),
   /* Given its own file. It was pointing at pilgrimage.png, which is also
@@ -1262,6 +1275,10 @@ const TOOL_IMAGES_DARK:Record<string,any>={
   'Qada Prayers':require('./assets/tool-icons/qada-prayer-dark.png'),
   'Journal':require('./assets/tool-icons/journal-dark.png'),
   'Khatam':require('./assets/tool-icons/khatam-dark.png'),
+  Juz:require('./assets/tool-icons/juz-dark.png'),
+  Hizb:require('./assets/tool-icons/hizb-dark.png'),
+  Topics:require('./assets/tool-icons/quran-topics-dark.png'),
+  Vocab:require('./assets/tool-icons/quran-vocabulary-dark.png'),
   'Sunnah Prayers':require('./assets/tool-icons/sunnah-prayers-dark.png'),
   'Privacy lock':require('./assets/tool-icons/privacy-lock-dark.png'),
   'Umrah Resources':require('./assets/tool-icons/umrah-resources-dark.png'),
