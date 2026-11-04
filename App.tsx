@@ -1361,6 +1361,18 @@ const TOOL_IMAGES_PALESTINE: Record<string, any> = {
   Ramadan: require('./assets/tool-icons/ramadan-palestine.png'),
   'Ramadan Guide': require('./assets/tool-icons/ramadan-palestine.png'),
   Shahada: require('./assets/tool-icons/shahada-palestine.png'),
+  /* The Quran study row: bookmarks, memorisation, notes, reading plans and
+     the offline copy. Palestine art for the five. */
+  Bookmarks: require('./assets/tool-icons/bookmarks-palestine.png'),
+  Hifz: require('./assets/tool-icons/hifz-palestine.png'),
+  Notes: require('./assets/tool-icons/notes-palestine.png'),
+  'Reading Plans': require('./assets/tool-icons/reading-plans-palestine.png'),
+  /* Offline Quran and Quran Preload have always shared one drawing, and they
+     keep sharing this one: the two rows are the same screen reached from
+     different places, so they should not drift apart. */
+  'Offline Quran': require('./assets/tool-icons/offline-quran-palestine.png'),
+  'Quran Preload': require('./assets/tool-icons/offline-quran-palestine.png'),
+
 };
 const TOOL_IMAGES_PALESTINE_DARK: Record<string, any> = {
   Vocab: require('./assets/tool-icons/vocab-dark-palestine.png'),
@@ -1383,15 +1395,36 @@ const TOOL_IMAGES_PALESTINE_DARK: Record<string, any> = {
   Ramadan: require('./assets/tool-icons/ramadan-dark-palestine.png'),
   'Ramadan Guide': require('./assets/tool-icons/ramadan-dark-palestine.png'),
   Shahada: require('./assets/tool-icons/shahada-dark-palestine.png'),
+  /* The same five, in the dark Palestine set. */
+  Bookmarks: require('./assets/tool-icons/bookmarks-dark-palestine.png'),
+  Hifz: require('./assets/tool-icons/hifz-dark-palestine.png'),
+  Notes: require('./assets/tool-icons/notes-dark-palestine.png'),
+  'Reading Plans': require('./assets/tool-icons/reading-plans-dark-palestine.png'),
+  'Offline Quran': require('./assets/tool-icons/offline-quran-dark-palestine.png'),
+  'Quran Preload': require('./assets/tool-icons/offline-quran-dark-palestine.png'),
+
 };
+/**
+ * The drawing for a tool, in the theme that is showing.
+ *
+ * Kept here rather than written out wherever an icon is drawn. Reaching for
+ * TOOL_IMAGES and TOOL_IMAGES_DARK directly looks right and is not: it drops
+ * every theme that keeps art of its own, which is how both the App language
+ * row and the Quran stat row came to ignore Palestine while their neighbours
+ * followed it. A name the theme's set does not hold falls back to the shared
+ * art, so the Islamic theme keeps every drawing it has.
+ */
+function toolImage(tool: string, dark: boolean, resolved: string) {
+  const themed =
+    resolved === 'palestineDark' ? TOOL_IMAGES_PALESTINE_DARK
+      : resolved === 'palestineLight' ? TOOL_IMAGES_PALESTINE
+        : null;
+  const shared = dark ? (TOOL_IMAGES_DARK[tool] || TOOL_IMAGES[tool]) : TOOL_IMAGES[tool];
+  return (themed && themed[tool]) || shared;
+}
+
 function ToolGraphic({tool,size=64}:{tool:string;size?:number}){const{dark,resolved}=useTheme();
-  /* By theme, the way the prayer icons are: a theme carries its lightness with
-     it, so one question decides both the set and the brightness. A name the
-     Palestine sets do not hold falls back to the shared art, so the Islamic
-     theme keeps every drawing it has. */
-  const themed=resolved==='palestineDark'?TOOL_IMAGES_PALESTINE_DARK:resolved==='palestineLight'?TOOL_IMAGES_PALESTINE:null;
-  const shared=dark?(TOOL_IMAGES_DARK[tool]||TOOL_IMAGES[tool]):TOOL_IMAGES[tool];
-  const image=(themed&&themed[tool])||shared;const enter=useRef(new Animated.Value(.78)).current;const fade=useRef(new Animated.Value(0)).current;useEffect(()=>{Animated.parallel([Animated.spring(enter,{toValue:1,friction:6,tension:75,useNativeDriver:true}),Animated.timing(fade,{toValue:1,duration:350,useNativeDriver:true})]).start()},[]);return <Animated.View accessibilityElementsHidden style={[s.graphicFrame,{width:size,height:size,opacity:fade,transform:[{scale:enter}]}]}>{image?<Image source={image} resizeMode="contain" style={{width:size-6,height:size-6}}/>:ico('sparkles-outline',size*.48,C.green)}</Animated.View>}
+  const image=toolImage(tool,dark,resolved);const enter=useRef(new Animated.Value(.78)).current;const fade=useRef(new Animated.Value(0)).current;useEffect(()=>{Animated.parallel([Animated.spring(enter,{toValue:1,friction:6,tension:75,useNativeDriver:true}),Animated.timing(fade,{toValue:1,duration:350,useNativeDriver:true})]).start()},[]);return <Animated.View accessibilityElementsHidden style={[s.graphicFrame,{width:size,height:size,opacity:fade,transform:[{scale:enter}]}]}>{image?<Image source={image} resizeMode="contain" style={{width:size-6,height:size-6}}/>:ico('sparkles-outline',size*.48,C.green)}</Animated.View>}
 /** Hadith bodies arrive with markup; the card shows them as plain text. */
 const stripTags=(value:string)=>value.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim();
 const plainTajweed=(value:string)=>value.replace(/\[([a-z])(?::\d+)?\[([^\]]*)\]/g,'$2');
@@ -2815,7 +2848,7 @@ const compactStats=[{label:'Bookmarks',title:T('Bookmarks'),value:String(bookmar
  <Section title={T('Explore')}/>
  <View style={s.qTileGrid} onLayout={e=>setGridW(e.nativeEvent.layout.width)}>{exploreTools.map(item=><MotionPress key={item.label} testID={`qtile-${item.label}`} onPress={()=>item.tab?navigation.navigate(item.tab,{screen:item.screen,params:item.params||{}}):navigation.navigate(item.screen,item.params||{})} style={[s.qTile,tileW?{width:tileW}:{flex:1,minWidth:60}]} contentStyle={s.qTileInner}><ToolGraphic tool={item.tool||item.label} size={40}/><Text numberOfLines={2} style={s.qTileLabel}>{item.title}</Text></MotionPress>)}</View>
  <Section title={T('Your Quran')}/>
- <View style={s.qStatRow}>{compactStats.map(item=><MotionPress key={item.label} testID={`qstat-${item.label}`} onPress={()=>navigation.navigate(item.screen)} style={s.qStat}><View style={s.qStatIcon}>{item.tool?<Image source={(dark?TOOL_IMAGES_DARK:TOOL_IMAGES)[item.tool]} resizeMode="contain" style={{width:24,height:24}}/>:ico(item.icon,17,C.green)}</View><Text style={s.qStatValue}>{item.value}</Text><Text numberOfLines={1} style={s.qStatLabel}>{item.title}</Text></MotionPress>)}</View>
+ <View style={s.qStatRow}>{compactStats.map(item=><MotionPress key={item.label} testID={`qstat-${item.label}`} onPress={()=>navigation.navigate(item.screen)} style={s.qStat}><View style={s.qStatIcon}>{item.tool?<Image source={toolImage(item.tool,dark,resolved)} resizeMode="contain" style={{width:24,height:24}}/>:ico(item.icon,17,C.green)}</View><Text style={s.qStatValue}>{item.value}</Text><Text numberOfLines={1} style={s.qStatLabel}>{item.title}</Text></MotionPress>)}</View>
  <Section title={T('Reading preferences')}/>
  <View style={s.quranPreferenceRow}><Pressable onPress={()=>navigation.navigate('Reader Settings')} style={s.quranPreferenceCard}><ToolGraphic tool="Reader Settings" size={56}/><View style={{flex:1}}><Text style={s.settingName}>{T('Script & display')}</Text><Text numberOfLines={1} style={s.meta}>{T(preferences.scriptName)} · {T(QURAN_FONTS.find(font=>font.id===preferences.arabicFont)?.short || '')} · {preferences.fontSize}px</Text></View>{ico(rtl ? 'arrow-back' : 'arrow-forward',17,C.green)}</Pressable><Pressable onPress={()=>navigation.navigate('Translations')} style={s.quranPreferenceCard}><ToolGraphic tool="Translations" size={56}/><View style={{flex:1}}><Text style={s.settingName}>{T('Translation')}</Text><View style={s.metaRow}><Flag code={languageOf(preferences.translationEdition, preferences.translationLanguage)} size={12} /><Text numberOfLines={1} style={s.meta}>{T(rtl ? preferences.translationLanguage : preferences.translationName)}</Text></View></View>{ico(rtl ? 'arrow-back' : 'arrow-forward',17,C.green)}</Pressable></View>
  
