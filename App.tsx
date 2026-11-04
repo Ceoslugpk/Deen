@@ -3003,7 +3003,7 @@ function PrayerConsistency({ history, T }: { history: Record<string, string[]>; 
 }
 
 function PrayerScreen({navigation}:any) {
-  const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);
+  const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);const ar = language === 'ar';
   const {location}=useAppLocation(); const {settings}=useWorshipSettings(); const [snap,setSnap]=useState<PrayerSnapshot|null>(null); const [cached,setCached]=useState(false); const [error,setError]=useState(''); const [completed,setCompleted]=useState<string[]>([]);
   const dateKey=new Date().toISOString().slice(0,10); useEffect(()=>{loadPrayerCompletion(dateKey).then(setCompleted)},[dateKey]);
   const [history,setHistory]=useState<Record<string,string[]>>({}); useEffect(()=>{loadPrayerHistory().then(h=>setHistory(h||{}))},[completed]);
@@ -3048,7 +3048,7 @@ function PrayerScreen({navigation}:any) {
   const listingToday=dayIndex===0;
   return <Page><ScrollView keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}><AppHeader/><View style={s.prayerHeader}><View><Text style={s.prayerOverline}>{cached?T('SAVED ON DEVICE'):T('TODAY')}</Text><Text style={s.prayerTitle}>{T('Prayer times')}</Text></View><ToolGraphic tool="Qibla" size={52}/></View>
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.dayStripScroll}><View style={s.dayStrip}>{days.map((d,i)=><Pressable key={i} accessibilityRole="button" accessibilityState={{selected:i===dayIndex}} accessibilityLabel={`${d.toLocaleDateString(rtl?'ar-u-nu-latn':'en',{weekday:'long'})} ${d.getDate()}`} onPress={()=>setDayIndex(i)} style={[s.day,i===dayIndex&&s.dayActive]}><Text style={[s.dayName,i===dayIndex&&s.dayText]}>{d.toLocaleDateString(rtl?'ar-u-nu-latn':'en',{weekday:'short'})}</Text><Text style={[s.dayNum,i===dayIndex&&s.dayText]}>{d.getDate()}</Text>{!calendar.length&&i>0&&<View style={s.dayDot}/>}</Pressable>)}</View></ScrollView>
-    {!!chosenDay && dayIndex>0 && <Text style={s.dayChosen}>{rtl?`${chosenDay.hijriDay} ${chosenDay.hijriMonthAr||chosenDay.hijriMonth} ${chosenDay.hijriYear} هـ`:`${chosenDay.weekday} ${chosenDay.gregorian} · ${chosenDay.hijriDay} ${chosenDay.hijriMonth} ${chosenDay.hijriYear} AH`}</Text>}
+    {!!chosenDay && dayIndex>0 && <Text style={s.dayChosen}>{ar?`${chosenDay.hijriDay} ${chosenDay.hijriMonthAr||chosenDay.hijriMonth} ${chosenDay.hijriYear} هـ`:tf(language,'{w} {g} · {d} {m} {y} AH',{w:chosenDay.weekday,g:chosenDay.gregorian,d:chosenDay.hijriDay,m:chosenDay.hijriMonth,y:chosenDay.hijriYear})}</Text>}
     {!location?<LocationPrompt compact/>:error?<ErrorState message={error} retry={load}/>:!snap?<SkeletonScreen rows={6} />:<><View style={[s.nextCard,{height:nextH}]}><Animated.View style={[StyleSheet.absoluteFill,{transform:[{scale:prayerZoom}]}]}><Image source={pickScene(SCENE_PRAYER, resolved)} resizeMode="cover" style={s.heroBg}/></Animated.View>{/* A scrim rather than a flat fill: the artwork shows through on the right and settles to near-solid behind the text on the left. */}<LinearGradient colors={isPal(resolved)?SCRIM.prayerPalestine:SCRIM.prayerIslamic} start={{x:0,y:.5}} end={{x:1,y:.5}} style={StyleSheet.absoluteFill}/><HeroAura still={still} palestine={isPal(resolved)} /><Animated.View pointerEvents="none" style={[s.heroSheen,{transform:[{translateX:Animated.multiply(prayerSheen,prayerW)},{skewX:'-16deg'}]}]}><LinearGradient colors={['rgba(255,255,255,0)','rgba(255,255,255,.16)','rgba(255,255,255,0)']} start={{x:0,y:0}} end={{x:1,y:0}} style={StyleSheet.absoluteFill}/></Animated.View><View style={s.nextCardBody}>{!!cached && <LiveBadge source="SAVED ON DEVICE"/>}<Text style={s.nextCardLabel}>{T('NEXT PRAYER')}</Text><Text style={s.nextCardName}>{next ? prayerName(language, next.name) : ''}</Text><Text style={s.nextCardTime}>{clockTime(language, next?.time || '')}</Text><View style={s.countPill}><Text style={s.countText}>{T('Begins in')} {next ? <PrayerCountdown raw={next.raw}/> : ''}</Text></View></View></View>
       <View style={s.prayerProgress}><View style={{flex:1}}><Text style={s.sourceTitle}>{T('Today’s Salah')}</Text><Text style={s.sourceBody}>{tf(language,'{d} of 5 prayers marked complete',{d:done})}</Text></View><View style={s.progressTrack}><View style={[s.progressFill,{width:`${done*20}%`} as any]}/></View><Text style={s.progressCount}>{done}/5</Text></View>
       <Section title={T('Your consistency')}/>
@@ -3332,7 +3332,7 @@ function ReaderScreen({route,navigation}:any){
   <ScrollView keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} ref={scrollRef} contentContainerStyle={s.readerScroll} showsVerticalScrollIndicator={false} scrollEventThrottle={16} onScroll={e=>{const{layoutMeasurement,contentOffset,contentSize}=e.nativeEvent;if(focusOn){const dy=contentOffset.y-scrollY.current;if(dy>4&&chromeShown)setChromeShown(false)}scrollY.current=contentOffset.y;const span=contentSize.height-layoutMeasurement.height;const next=span>0?Math.min(1,Math.max(0,contentOffset.y/span)):0;if(Math.abs(next-progress)>0.005)setProgress(next)
     if(rememberTimer.current)clearTimeout(rememberTimer.current);
     rememberTimer.current=setTimeout(rememberPosition,700);}}>
-  {isMushaf?<MushafPageView page={page||1} verses={verses} error={error} cached={cached} retry={load} preferences={preferences} rtl={rtl} T={T} input={input} setInput={setInput} goPage={goPage} navigation={navigation} arStyle={arStyle} bookmarks={bookmarks} savedPosition={savedPosition} onBookmark={(v:any)=>{void bookmark(v)}} onMark={(v:any)=>{void mark(v)}} onPlay={(v:any)=>{void playFromReader(full,v,rtl)}} onNote={(v:any)=>setNoteVerse(v)}/>
+  {isMushaf?<MushafPageView page={page||1} verses={verses} error={error} cached={cached} retry={load} preferences={preferences} rtl={rtl} T={T} language={language} input={input} setInput={setInput} goPage={goPage} navigation={navigation} arStyle={arStyle} bookmarks={bookmarks} savedPosition={savedPosition} onBookmark={(v:any)=>{void bookmark(v)}} onMark={(v:any)=>{void mark(v)}} onPlay={(v:any)=>{void playFromReader(full,v,rtl)}} onNote={(v:any)=>setNoteVerse(v)}/>
   :<>
   {section==='surah'&&<LinearGradient colors={[C.heroA,C.green]} style={s.surahHead}>{!!cached&&<LiveBadge source="SAVED ON DEVICE"/>}<Text style={s.surahHeadAr}>{full.name_arabic}</Text><Text style={s.surahHeadEn}>{chapter?.translated_name?.name}</Text><Text style={s.bismillah}>بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</Text></LinearGradient>}
   {error?<ErrorState message={error} retry={load}/>:!verses.length?<SkeletonList rows={7} />:verses.map((v,i)=>{const saved=bookmarks.some(x=>x.verseKey===v.verse_key);const prev=i>0?verses[i-1]:null;const newJuz=!!v.juz&&(!prev||prev.juz!==v.juz);const newHizb=!!hizbOf(v)&&(!prev||hizbOf(prev)!==hizbOf(v));return <View key={v.id||v.verse_key}>
@@ -3938,26 +3938,27 @@ function MushafMarkerBand({ marker, width }: { marker: MushafMarker; width: numb
  * feature in name only. So the rest of the time it says what is over the page,
  * which is useful on every page: where you are going, without turning there.
  */
-function MushafConnectionNote({ kind, rtl, T, page, cut, nextVerse }: {
-  kind: PageConnection; rtl: boolean; T: (t: string) => string; page: number;
+function MushafConnectionNote({ kind, rtl, T, language, page, cut, nextVerse }: {
+  kind: PageConnection; rtl: boolean; T: (t: string) => string; language: string; page: number;
   cut: boolean; nextVerse?: { verse_key: string; surah_name?: string };
 }) {
+  const ar = language === 'ar';
   const onward = kind === 'continues';
   const label = cut
     ? (onward
-        ? (rtl ? `الآية ${toArabicDigits(nextVerse?.verse_key || '')} تكتمل في الصفحة ${toArabicDigits(page + 1)}`
-               : `Verse ${nextVerse?.verse_key || ''} continues on page ${page + 1}`)
-        : (rtl ? `تتمة الآية ${toArabicDigits(nextVerse?.verse_key || '')} من الصفحة ${toArabicDigits(page - 1)}`
-               : `Verse ${nextVerse?.verse_key || ''} continued from page ${page - 1}`))
+        ? (ar ? `الآية ${toArabicDigits(nextVerse?.verse_key || '')} تكتمل في الصفحة ${toArabicDigits(page + 1)}`
+               : tf(language,'Verse {v} continues on page {p}',{v:nextVerse?.verse_key || '',p:page + 1}))
+        : (ar ? `تتمة الآية ${toArabicDigits(nextVerse?.verse_key || '')} من الصفحة ${toArabicDigits(page - 1)}`
+               : tf(language,'Verse {v} continued from page {p}',{v:nextVerse?.verse_key || '',p:page - 1})))
     : (onward
         ? (nextVerse
-            ? (rtl ? `التالي: ${nextVerse.verse_key} · الصفحة ${toArabicDigits(page + 1)}`
-                   : `Next: ${nextVerse.verse_key}${nextVerse.surah_name ? ` · ${nextVerse.surah_name}` : ''} on page ${page + 1}`)
-            : (rtl ? `الصفحة ${toArabicDigits(page + 1)}` : `Page ${page + 1}`))
+            ? (ar ? `التالي: ${nextVerse.verse_key} · الصفحة ${toArabicDigits(page + 1)}`
+                   : tf(language,'Next: {v}{s} on page {p}',{v:nextVerse.verse_key,s:nextVerse.surah_name ? ` · ${nextVerse.surah_name}` : '',p:page + 1}))
+            : (ar ? `الصفحة ${toArabicDigits(page + 1)}` : tf(language,'Page {n}',{n:page + 1})))
         : (nextVerse
-            ? (rtl ? `السابق: ${nextVerse.verse_key} · الصفحة ${toArabicDigits(page - 1)}`
-                   : `Before: ${nextVerse.verse_key}${nextVerse.surah_name ? ` · ${nextVerse.surah_name}` : ''} on page ${page - 1}`)
-            : (rtl ? `الصفحة ${toArabicDigits(page - 1)}` : `Page ${page - 1}`)));
+            ? (ar ? `السابق: ${nextVerse.verse_key} · الصفحة ${toArabicDigits(page - 1)}`
+                   : tf(language,'Before: {v}{s} on page {p}',{v:nextVerse.verse_key,s:nextVerse.surah_name ? ` · ${nextVerse.surah_name}` : '',p:page - 1}))
+            : (ar ? `الصفحة ${toArabicDigits(page - 1)}` : tf(language,'Page {n}',{n:page - 1}))));
 
   return <View style={[s.mushafConnection, cut && s.mushafConnectionCut]}>
     {!onward && ico(rtl ? 'arrow-forward' : 'arrow-back', 12, cut ? C.gold : C.muted)}
@@ -4196,7 +4197,7 @@ function useMushafNeighbours(page: number, script: string, translation: string) 
   return pages;
 }
 
-function MushafPageView({page,verses,error,cached,retry,preferences,rtl,T,input,setInput,goPage,navigation,arStyle,bookmarks,savedPosition,onBookmark,onMark,onPlay,onNote}:any){
+function MushafPageView({page,verses,error,cached,retry,preferences,rtl,T,language,input,setInput,goPage,navigation,arStyle,bookmarks,savedPosition,onBookmark,onMark,onPlay,onNote}:any){
   /* How many pages, and how big — fitted to the room it is actually given
      rather than to the screen. The reader pads its scroll area and caps its
      width, so a page sized to the screen is always wider than the box it has
@@ -4255,10 +4256,10 @@ function MushafPageView({page,verses,error,cached,retry,preferences,rtl,T,input,
   {error ? <ErrorState message={error} retry={retry} /> : !verses.length ? <SkeletonParagraph lines={12} /> :
    <View style={s.mushafPageStack}>
      {!!preferences.showVerseConnections && page > 1 &&
-       <MushafConnectionNote kind="continued" rtl={rtl} T={T} page={page} cut={startsContinued} nextVerse={neighbours.prev[neighbours.prev.length - 1]} />}
+       <MushafConnectionNote kind="continued" rtl={rtl} T={T} language={language} page={page} cut={startsContinued} nextVerse={neighbours.prev[neighbours.prev.length - 1]} />}
      <MushafPage page={page} verses={verses} width={layout.pageWidth} height={layout.pageHeight} before={neighbours.prev} {...pageProps} />
      {!!preferences.showVerseConnections && page < 604 &&
-       <MushafConnectionNote kind="continues" rtl={rtl} T={T} page={page} cut={endsContinued} nextVerse={neighbours.next[0]} />}
+       <MushafConnectionNote kind="continues" rtl={rtl} T={T} language={language} page={page} cut={endsContinued} nextVerse={neighbours.next[0]} />}
    </View>}
 
   <View style={[s.mushafNav, s.mushafNavFoot]}>
@@ -5917,7 +5918,7 @@ function NamesScreen({ navigation }: any) {const {rtl,language:appLanguage}=useL
         {ico('share-outline', 18, C.green)}
       </Pressable>
     </View>)}
-    {!!names.length && <View style={s.apiPanel}><Text style={s.apiTitle}>{T('Kept on this device')}</Text><Text style={s.apiText}>{rtl?`يُخزَّن الدليل بعد أول زيارة، فتُقرأ الأسماء بلا اتصال. وترجمة القرآن التي تقرأ بها في موضع آخر (${preferences.translationEdition}) لا أثر لها على هذه المعاني.`:`The catalogue is stored after the first visit, so the Names can be read without a connection. The Qur'an translation you use elsewhere (${preferences.translationEdition}) does not affect these meanings.`}</Text></View>}
+    {!!names.length && <View style={s.apiPanel}><Text style={s.apiTitle}>{T('Kept on this device')}</Text><Text style={s.apiText}>{tf(language,'The catalogue is stored after the first visit, so the Names can be read without a connection. The Qur’an translation you use elsewhere ({e}) does not affect these meanings.',{e:preferences.translationEdition})}</Text></View>}
     <Tactile accessibilityLabel={T('Open the prophets catalogue')} onPress={() => navigation.navigate('Prophet Names')} style={s.secondary}><Text style={s.secondaryText}>{T("Prophets named in the Qur'an")}</Text></Tactile>
   </ScrollView>
     {offscreenCard}
@@ -6257,7 +6258,7 @@ function JourneyScreenInner({ route, navigation }: any) {
 
   if (!journey) return <Page><ToolBar title={JOURNEY_META[kind].title} navigation={navigation} /><SkeletonScreen rows={6} /></Page>;
 
-  return <Page><ToolBar title={rtl ? `رحلة ${JOURNEY_META[kind].arabic}` : `${JOURNEY_META[kind].title} journey`} navigation={navigation} />
+  return <Page><ToolBar title={tf(language,'{t} journey',{t:JOURNEY_META[kind].title})} navigation={navigation} />
     <ScrollView keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
       <ToolGraphic tool="Pilgrimage" size={81} />
       <Text style={s.dataTitle}>{journeyMeta(kind, rtl).title}</Text>
@@ -7775,6 +7776,7 @@ function daysUntilText(days: number, language: string | boolean): string {
 
 function HijriCalendarScreen({navigation}:any){
   const {rtl,language}=useLanguage(); const T=(text:string)=>tx(language,text);
+  const ar = language === 'ar';
   const {location}=useAppLocation(); const {settings}=useWorshipSettings();
   const [days,setDays]=useState<CalendarDay[]>([]);
   const [span,setSpan]=useState<CalendarDay[]>([]);
@@ -7832,7 +7834,7 @@ function HijriCalendarScreen({navigation}:any){
     {!location?<LocationPrompt compact/>:<>
       <View style={s.calendarIntro}>
         <Text style={s.calendarMonth}>{now.toLocaleDateString(language==='ar'?'ar-u-nu-latn':'en',{month:'long',year:'numeric'})}</Text>
-        <Text style={s.calendarHijri}>{days.length?(rtl?`${days[0].hijriMonthAr||days[0].hijriMonth} – ${days[days.length-1].hijriMonthAr||days[days.length-1].hijriMonth} ${days[0].hijriYear} هـ`:`${days[0].hijriMonth} – ${days[days.length-1].hijriMonth} ${days[0].hijriYear} AH`):''}</Text>
+        <Text style={s.calendarHijri}>{days.length?(ar?`${days[0].hijriMonthAr||days[0].hijriMonth} – ${days[days.length-1].hijriMonthAr||days[days.length-1].hijriMonth} ${days[0].hijriYear} هـ`:tf(language,'{a} – {b} {y} AH',{a:days[0].hijriMonth,b:days[days.length-1].hijriMonth,y:days[0].hijriYear})):''}</Text>
       </View>
 
       {!!upcoming.length&&<>
@@ -8674,7 +8676,7 @@ function WomenHubScreen({ navigation }: any) {
       </View>
       <Section title={T('Privacy')} />
       <View style={s.settings}>
-        <PrivateRow rtl={rtl} graphic="Privacy lock" title={config.pinSet ? T('Lock and PIN') : T('Add a PIN')} label={config.pinSet ? 'Lock and PIN' : 'Add a PIN'} caption={config.pinSet ? (config.required ? (rtl ? `مقفل · ${config.biometric && info.available ? `${info.label} أو ` : ''}الرمز` : `Locked · ${config.biometric && info.available ? `${info.label} or ` : ''}PIN`) : T('PIN saved, lock is off')) : info.available ? T('Face and fingerprint unlock are ready on this device') : T('This device has no biometric unlock, so a PIN is used')} onPress={() => navigation.navigate('Privacy Lock')} />
+        <PrivateRow rtl={rtl} graphic="Privacy lock" title={config.pinSet ? T('Lock and PIN') : T('Add a PIN')} label={config.pinSet ? 'Lock and PIN' : 'Add a PIN'} caption={config.pinSet ? (config.required ? (tf(language,'Locked · {m}PIN',{m:config.biometric && info.available ? `${info.label} or ` : ''})) : T('PIN saved, lock is off')) : info.available ? T('Face and fingerprint unlock are ready on this device') : T('This device has no biometric unlock, so a PIN is used')} onPress={() => navigation.navigate('Privacy Lock')} />
       </View>
       <View style={s.dataCard}>
         <Text style={s.dataMeta}>{T('KEPT ON THIS DEVICE')}</Text>
@@ -10784,7 +10786,7 @@ function SettingsScreen({navigation}:any){
           <ToolGraphic tool="Women’s worship" size={49} />
           <View style={{ flex: 1, marginHorizontal: 12 }}>
             <Text style={s.settingName}>{tx(language, 'Women’s worship')}</Text>
-            <Text style={s.meta}>{rtl ? (womens.optedIn ? 'الدورة والطهارة والقضاء · على هذا الجهاز فقط' : 'مساحة خاصة للدورة والطهارة والقضاء') : (womens.optedIn ? 'Cycle, purity and Qada records · on this device only' : 'A private area for the cycle, purity and Qada records')}</Text>
+            <Text style={s.meta}>{rtl ? tf(language, womens.optedIn ? 'Cycle, purity and Qada records · on this device only' : 'A private area for the cycle, purity and Qada records', {}) : (womens.optedIn ? 'Cycle, purity and Qada records · on this device only' : 'A private area for the cycle, purity and Qada records')}</Text>
           </View>
           <View style={{ direction: 'ltr' } as any}>
             <Switch accessibilityLabel={T('Women’s worship')} value={womens.optedIn} onValueChange={(value) => void setOptedIn(value)} trackColor={{ true: C.green }} />
@@ -10794,7 +10796,7 @@ function SettingsScreen({navigation}:any){
           <ToolGraphic tool="Privacy lock" size={49} />
           <View style={{ flex: 1, marginHorizontal: 12 }}>
             <Text style={s.settingName}>{tx(language, 'Lock and PIN')}</Text>
-            <Text style={s.meta}>{rtl ? (lock.pinSet ? (lock.required ? 'مقفل' : 'الرمز محفوظ') : 'لا رمز بعد') : (lock.pinSet ? (lock.required ? 'Locked' : 'PIN saved, lock is off') : 'No PIN yet')}</Text>
+            <Text style={s.meta}>{rtl ? tf(language, lock.pinSet ? (lock.required ? 'Locked' : 'PIN saved, lock is off') : 'No PIN yet', {}) : (lock.pinSet ? (lock.required ? 'Locked' : 'PIN saved, lock is off') : 'No PIN yet')}</Text>
           </View>
           {ico(rtl ? 'arrow-back' : 'arrow-forward', 17, C.chevron)}
         </Tactile>}
@@ -11077,7 +11079,7 @@ function AudioCenterScreen({ navigation }: any) {
 
     {!!session && <Pressable onPress={() => { void resumeSession(); }} style={s.continueBar}>
       <ToolGraphic tool="Recitations" size={52} />
-      <View style={{ flex: 1 }}><Text style={s.dailyKicker}>{T('CONTINUE LISTENING')}</Text><Text style={s.settingName}>{session.chapterName}</Text><Text style={s.meta}>{busy === 'resume' ? T('Preparing…') : (rtl?`طابور الآيات · حُفظ ${new Date(session.savedAt).toLocaleDateString()}`:`Verse queue · saved ${new Date(session.savedAt).toLocaleDateString()}`)}</Text></View>
+      <View style={{ flex: 1 }}><Text style={s.dailyKicker}>{T('CONTINUE LISTENING')}</Text><Text style={s.settingName}>{session.chapterName}</Text><Text style={s.meta}>{busy === 'resume' ? T('Preparing…') : (tf(language,'Verse queue · saved {d}',{d:new Date(session.savedAt).toLocaleDateString()}))}</Text></View>
       {ico('play-circle', 22, C.green)}
     </Pressable>}
 
@@ -11187,13 +11189,14 @@ function AudioCenterScreen({ navigation }: any) {
     </>}
 
     <View style={s.sourceCard}>{ico('server', 21, C.green)}<View style={{ flex: 1 }}><Text style={s.sourceTitle}>{T('Sources')}</Text><Text style={s.sourceBody}>{T('Verse-by-verse: one track for each ayah. Full-Surah: a complete recitation of the Surah.')}</Text></View></View>
-    {settings.reciterMode === 'verse' ? (!!selectedReciter && <Text style={s.meta}>{rtl?`القارئ المختار: ${reciterLabel(selectedReciter.englishName, rtl)}`:`Selected reciter: ${selectedReciter.englishName}`}</Text>) : <Text style={s.meta}>{rtl?`قارئ السورة كاملة: ${reciterLabel(settings.surahReciterName || T('Choose from the list above'), rtl)} · ${surahReciters.length} متاح`:`Selected full-Surah reciter: ${settings.surahReciterName || T('Choose from the list above')} · ${surahReciters.length} available`}</Text>}
+    {settings.reciterMode === 'verse' ? (!!selectedReciter && <Text style={s.meta}>{tf(language,'Selected reciter: {r}',{r:reciterLabel(selectedReciter.englishName, rtl)})}</Text>) : <Text style={s.meta}>{tf(language,'Selected full-Surah reciter: {r} · {n} available',{r:reciterLabel(settings.surahReciterName || T('Choose from the list above'), rtl),n:surahReciters.length})}</Text>}
   </ScrollView></Page>;
 }
 
 function AudioPlayerScreen({ navigation }: any) {
   const audio = useAudio();
   const { rtl , language }=useLanguage();
+  const ar = language === 'ar';
   const T = (text: string) => tx(language, text);
   const { preferences, update } = useQuranPreferences();
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
@@ -11392,7 +11395,7 @@ function AudioPlayerScreen({ navigation }: any) {
         <TextInput accessibilityLabel={T('Playlist name')} value={name} onChangeText={setName} placeholder={track.chapterName} placeholderTextColor={C.muted} style={[s.textField, { flex: 1, marginTop: 0 }]} />
         <Tactile onPress={() => { void savePlaylist(name, audio.queue).then((next) => { setPlaylists(next); setName(''); }); }} style={s.primarySmall}><Text style={s.primaryText}>{T('Save')}</Text></Tactile>
       </View>
-      {!!playlists.length && <Text style={s.meta}>{rtl?`${playlists.length} ${arNoun(playlists.length, 'قائمة', 'قائمتان', 'قوائم', 'قائمة')} محفوظة على هذا الجهاز.`:`${playlists.length} playlist${playlists.length > 1 ? 's' : ''} stored on this device.`}</Text>}
+      {!!playlists.length && <Text style={s.meta}>{ar?`${playlists.length} ${arNoun(playlists.length, 'قائمة', 'قائمتان', 'قوائم', 'قائمة')} محفوظة على هذا الجهاز.`:tf(language,'{n} playlists stored on this device.',{n:playlists.length})}</Text>}
     </View>
 
     <View style={s.sourceCard}>{ico('server', 21, C.green)}<View style={{ flex: 1 }}><Text style={s.sourceTitle}>{T('Now playing')}</Text><Text style={s.sourceBody}>{track.performer}</Text></View></View>
