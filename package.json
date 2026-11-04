@@ -29,6 +29,7 @@
     "expo-linear-gradient": "~58.0.3",
     "expo-local-authentication": "^58.0.2",
     "expo-notifications": "~58.1.6",
+    "expo-sensors": "~58.0.4",
     "expo-sharing": "~58.0.21",
     "expo-status-bar": "~58.0.4",
     "expo-updates": "~58.0.20",
