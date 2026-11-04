@@ -1041,7 +1041,12 @@ function LanguageProvider({children}:{children:React.ReactNode}){
   useEffect(()=>{
     // Dates follow the language only where the copy is finished; an English
     // interface with French dates would be a surprise.
-    const dateLocale=language==='ar'?'ar-u-nu-latn':language==='en'?'en':undefined;
+    /* Urdu is written here so its weekday and month names come out in Urdu.
+       Left undefined it fell through to the browser's own locale, and the
+       weekly summary read "Thursday" and "Nov 4" in the middle of Urdu.
+       'ur' rather than 'ur-IN': the latter numbers in Arabic-Indic digits,
+       and the rest of the app uses the Latin ones. */
+    const dateLocale=language==='ar'?'ar-u-nu-latn':language==='ur'?'ur':language==='en'?'en':undefined;
     setMoneyLocale(language);setFastingDateLocale(dateLocale);setActivityDateLocale(dateLocale);setJourneyDateLocale(dateLocale);
   },[language]);
   useEffect(()=>{if(Platform.OS==='web'&&typeof document!=='undefined'){
@@ -6408,7 +6413,9 @@ function HolyChannelsScreen({ route, navigation }: any) {
           <ToolGraphic tool="Holy site channels" size={52} />
           <View style={{ flex: 1 }}>
             <Text style={s.dataMeta}>{channel.site.toUpperCase()} · {channel.channel.toUpperCase()}</Text>
-            <Text style={s.settingName}>{channel.place}</Text>
+            {/* Through T() so the two that are descriptions rather than
+                names can be translated; the mosques keep their names. */}
+            <Text style={s.settingName}>{T(channel.place)}</Text>
             <Text style={s.channelArabic}>{channel.arabic}</Text>
           </View>
         </View>
@@ -6428,7 +6435,7 @@ function HolyChannelsScreen({ route, navigation }: any) {
   </Page>;
 }
 
-function FastingScreen({navigation}:any){const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);
+function FastingScreen({navigation}:any){const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);/* Arabic, as opposed to merely right-to-left: Urdu runs right to left as well, so keying an Arabic string off `rtl` hands it to Urdu readers. */const ar=language==='ar';
   const fasting=useFasting();
   const [message,setMessage]=useState('');
   const [reason,setReason]=useState<MissedReason>('travel');
@@ -6485,14 +6492,17 @@ function FastingScreen({navigation}:any){const {rtl,language}=useLanguage();cons
       </View>
       <Text style={s.meta}>{tx(language, 'Days fasted in each month, oldest first.')}</Text>
     </View>
-    <Section title={T('Recent record')} action={rtl?`${fasting.entries.length} ${arNoun(fasting.entries.length,'يوم مسجَّل','يومان مسجَّلان','أيام مسجَّلة','يومًا مسجَّلًا')}`:`${fasting.entries.length} entries`} />
+    <Section title={T('Recent record')} action={ar?`${fasting.entries.length} ${arNoun(fasting.entries.length,'يوم مسجَّل','يومان مسجَّلان','أيام مسجَّلة','يومًا مسجَّلًا')}`:tf(language,'{n} entries',{n:fasting.entries.length})} />
     {!fasting.entries.length && <View style={s.empty}><Text style={s.dataBody}>{T('Nothing recorded yet. Mark today above and your record starts here.')}</Text></View>}
     {!!fasting.entries.length && <View style={s.settings}>{summary.recent.map(entry=><View key={entry.date} style={s.summaryDay}><View style={{flex:1}}><Text style={s.settingName}>{readableDate(entry.date)}</Text><Text style={s.meta}>{labelForEntry(entry, rtl)}</Text></View><Pressable accessibilityLabel={`${T('Remove the fasting record for')} ${readableDate(entry.date)}`} onPress={()=>{void clearFastDay(entry.date)}}>{ico('trash-outline',17,C.coral)}</Pressable></View>)}</View>}
     {!!message && <View style={s.offlineNote}><Text style={s.offlineNoteText}>{message}</Text></View>}
     <View style={s.apiPanel}><Text style={s.apiTitle}>{T('A note on rulings')}</Text><Text style={s.apiText}>{T('This is a private record, not a ruling. What obliges a make-up fast, and what excuses a day, depends on your situation: travel, illness, pregnancy, the monthly cycle and post-natal bleeding each have their own rules. Please confirm your own case with a scholar or a trusted, sourced guide. Everything here stays on this device, and nothing is uploaded.')}</Text></View>
   </ScrollView></Page>;
 }
-function WeeklySummaryScreen({navigation}:any){const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);const[history,setHistory]=useState<Record<string,string[]>>({});const[hifz,setHifz]=useState<Record<number,HifzStatus>>({});const[names,setNames]=useState<Record<number,string>>({});const log=useActivity();const tasbih=useTasbih();
+function WeeklySummaryScreen({navigation}:any){const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);/* Arabic, as opposed to merely right-to-left: these counts are written
+     in Arabic, and Urdu is right to left too, so keying them off `rtl`
+     handed the Arabic to Urdu readers. */
+  const ar=language==='ar';const[history,setHistory]=useState<Record<string,string[]>>({});const[hifz,setHifz]=useState<Record<number,HifzStatus>>({});const[names,setNames]=useState<Record<number,string>>({});const log=useActivity();const tasbih=useTasbih();
  useEffect(()=>{loadPrayerHistory().then(setHistory);loadHifz().then(setHifz);getChapters().then(list=>{const map:Record<number,string>={};list.forEach(c=>{map[c.id]=c.name_simple});setNames(map)}).catch(()=>undefined)},[]);
  const week=buildWeeklySummary({activity:log,prayerHistory:history,tasbihDays:tasbih.days});
  const maxVerses=Math.max(1,...week.rows.map(r=>r.verses));const maxDhikr=Math.max(1,...week.rows.map(r=>r.dhikr));const maxHifz=Math.max(1,...week.rows.map(r=>r.hifz));
@@ -6502,20 +6512,20 @@ function WeeklySummaryScreen({navigation}:any){const {rtl,language}=useLanguage(
     <ToolGraphic tool="Weekly Summary" size={87}/>
     <Text style={s.dataTitle}>{T('Your week in review')}</Text>
     <Text style={s.intro}>{T('Seven days of salah, reading, dhikr and memorisation, counted only from what you did in the app. Everything stays on this device.')}</Text>
-    <View style={s.summaryScore}><View><Text style={s.nextCardLabel}>{T('LAST 7 DAYS')}</Text><Text style={s.zakatNo}>{total.prayers} / 35</Text><Text style={s.weekScoreBody}>{T('prayers marked')}</Text></View><View style={{alignItems:'flex-end'}}><Text style={s.nextCardLabel}>{T('STREAKS')}</Text><Text style={s.zakatNo}>{week.prayerStreak} {T(week.prayerStreak===1?'day':'days')}</Text><Text style={s.weekScoreBody}>{rtl?`${week.activeStreak} ${arNoun(week.activeStreak,'يوم نشط','يومان نشطان','أيام نشطة','يومًا نشطًا')}`:`${week.activeStreak} active ${week.activeStreak===1?'day':'days'}`}</Text></View></View>
+    <View style={s.summaryScore}><View><Text style={s.nextCardLabel}>{T('LAST 7 DAYS')}</Text><Text style={s.zakatNo}>{total.prayers} / 35</Text><Text style={s.weekScoreBody}>{T('prayers marked')}</Text></View><View style={{alignItems:'flex-end'}}><Text style={s.nextCardLabel}>{T('STREAKS')}</Text><Text style={s.zakatNo}>{week.prayerStreak} {T(week.prayerStreak===1?'day':'days')}</Text><Text style={s.weekScoreBody}>{ar?`${week.activeStreak} ${arNoun(week.activeStreak,'يوم نشط','يومان نشطان','أيام نشطة','يومًا نشطًا')}`:tf(language,week.activeStreak===1?'{n} active day':'{n} active days',{n:week.activeStreak})}</Text></View></View>
     <View style={s.twoCol}>
-      <View style={[s.dataCard,{flex:1,marginBottom:0}]}><Text style={s.dataMeta}>{T('VERSES MARKED')}</Text><Text style={s.weekStatValue}>{total.verses}</Text><Text style={s.meta}>{rtl?`${total.surahs} ${arNoun(total.surahs,'سورة','سورتان','سور','سورة')} · ${total.pages} ${arNoun(total.pages,'صفحة','صفحتان','صفحات','صفحة')}`:`${total.surahs} Surahs · ${total.pages} pages`}</Text></View>
-      <View style={[s.dataCard,{flex:1,marginBottom:0}]}><Text style={s.dataMeta}>{T('DHIKR COUNTED')}</Text><Text style={s.weekStatValue}>{total.dhikr}</Text><Text style={s.meta}>{rtl?`${total.adhkar} ${arNoun(total.adhkar,'ذكر مقروء','ذكران مقروءان','أذكار مقروءة','ذكرًا مقروءًا')} · ${total.hifz} مراجعة حفظ`:`${total.adhkar} ${total.adhkar===1?'remembrance':'remembrances'} · ${total.hifz} hifz reviews`}</Text></View>
+      <View style={[s.dataCard,{flex:1,marginBottom:0}]}><Text style={s.dataMeta}>{T('VERSES MARKED')}</Text><Text style={s.weekStatValue}>{total.verses}</Text><Text style={s.meta}>{ar?`${total.surahs} ${arNoun(total.surahs,'سورة','سورتان','سور','سورة')} · ${total.pages} ${arNoun(total.pages,'صفحة','صفحتان','صفحات','صفحة')}`:tf(language,'{s} Surahs · {p} pages',{s:total.surahs,p:total.pages})}</Text></View>
+      <View style={[s.dataCard,{flex:1,marginBottom:0}]}><Text style={s.dataMeta}>{T('DHIKR COUNTED')}</Text><Text style={s.weekStatValue}>{total.dhikr}</Text><Text style={s.meta}>{ar?`${total.adhkar} ${arNoun(total.adhkar,'ذكر مقروء','ذكران مقروءان','أذكار مقروءة','ذكرًا مقروءًا')} · ${total.hifz} مراجعة حفظ`:tf(language,'{d} remembrances · {h} hifz reviews',{d:total.adhkar,h:total.hifz})}</Text></View>
     </View>
     {!active && <View style={[s.empty,{marginTop:12}]}><Text style={s.dataBody}>{T('Nothing recorded in the last seven days yet. Mark a prayer, read a Surah, count dhikr or practise a verse and this page fills in.')}</Text></View>}
-    <Section title={T('Daily salah')} action={week.bestDay && week.bestDay.prayers ? (rtl?`${T('Best')}: ${week.bestDay.label}`:`Best: ${week.bestDay.label}`) : ''} />
+    <Section title={T('Daily salah')} action={week.bestDay && week.bestDay.prayers ? `${T('Best')}: ${week.bestDay.label}` : ''} />
     <View style={s.settings}>{week.rows.map(day=><View key={day.key} style={s.summaryDay}><View style={{flex:1}}><Text style={s.settingName}>{day.label}</Text><Text style={s.meta}>{day.short}</Text></View><View style={s.summaryDots}>{Array.from({length:5}).map((_,i)=><View key={i} style={[s.summaryDot,i<day.prayers&&s.summaryDotDone]}/>)}</View><Text style={s.progressCount}>{day.prayers}/5</Text></View>)}</View>
-    <Section title={T('Quran reading')} action={rtl?`${total.verses} ${arNoun(total.verses,'آية','آيتان','آيات','آية')}`:`${total.verses} verses`} />
-    <View style={s.settings}>{week.rows.map(day=><View key={`read-${day.key}`} style={s.summaryDay}><View style={{flex:1}}><Text style={s.settingName}>{day.label}</Text><Text style={s.meta}>{rtl?`${day.surahs} ${arNoun(day.surahs,'سورة','سورتان','سور','سورة')} · ${day.pages} ${arNoun(day.pages,'صفحة','صفحتان','صفحات','صفحة')}`:`${day.surahs} Surahs · ${day.pages} pages`}</Text></View><View style={s.weekBar}><View style={[s.weekBarFill,{width:`${Math.round(day.verses/maxVerses*100)}%`} as any]}/></View><Text style={s.progressCount}>{day.verses}</Text></View>)}</View>
-    {!!opened.length && <View style={s.dataCard}><Text style={s.dataMeta}>{T('SURAHS OPENED THIS WEEK')}</Text><Text style={s.dataBody}>{opened.slice(0,8).map(id=>names[id]||(rtl?`سورة ${id}`:`Surah ${id}`)).join(' · ')}</Text></View>}
-    <Section title={T('Hifz')} action={rtl?`${memorized} محفوظة · ${revising} قيد المراجعة`:`${memorized} memorized · ${revising} revising`} />
+    <Section title={T('Quran reading')} action={ar?`${total.verses} ${arNoun(total.verses,'آية','آيتان','آيات','آية')}`:tf(language,'{n} verses',{n:total.verses})} />
+    <View style={s.settings}>{week.rows.map(day=><View key={`read-${day.key}`} style={s.summaryDay}><View style={{flex:1}}><Text style={s.settingName}>{day.label}</Text><Text style={s.meta}>{ar?`${day.surahs} ${arNoun(day.surahs,'سورة','سورتان','سور','سورة')} · ${day.pages} ${arNoun(day.pages,'صفحة','صفحتان','صفحات','صفحة')}`:tf(language,'{s} Surahs · {p} pages',{s:day.surahs,p:day.pages})}</Text></View><View style={s.weekBar}><View style={[s.weekBarFill,{width:`${Math.round(day.verses/maxVerses*100)}%`} as any]}/></View><Text style={s.progressCount}>{day.verses}</Text></View>)}</View>
+    {!!opened.length && <View style={s.dataCard}><Text style={s.dataMeta}>{T('SURAHS OPENED THIS WEEK')}</Text><Text style={s.dataBody}>{opened.slice(0,8).map(id=>names[id]||(ar?`سورة ${id}`:tf(language,'Surah {n}',{n:id}))).join(' · ')}</Text></View>}
+    <Section title={T('Hifz')} action={ar?`${memorized} محفوظة · ${revising} قيد المراجعة`:tf(language,'{m} memorized · {r} revising',{m:memorized,r:revising})} />
     <View style={s.settings}>{week.rows.map(day=><View key={`hifz-${day.key}`} style={s.summaryDay}><View style={{flex:1}}><Text style={s.settingName}>{day.label}</Text><Text style={s.meta}>{day.short}</Text></View><View style={s.weekBar}><View style={[s.weekBarFill,{width:`${Math.round(day.hifz/maxHifz*100)}%`} as any]}/></View><Text style={s.progressCount}>{day.hifz}</Text></View>)}</View>
-    <Section title={T('Dhikr')} action={rtl?`${total.dhikr} معدودة`:`${total.dhikr} counted`} />
+    <Section title={T('Dhikr')} action={ar?`${total.dhikr} معدودة`:tf(language,'{n} counted',{n:total.dhikr})} />
     <View style={s.settings}>{week.rows.map(day=><View key={`dhikr-${day.key}`} style={s.summaryDay}><View style={{flex:1}}><Text style={s.settingName}>{day.label}</Text><Text style={s.meta}>{day.short}</Text></View><View style={s.weekBar}><View style={[s.weekBarFill,{width:`${Math.round(day.dhikr/maxDhikr*100)}%`} as any]}/></View><Text style={s.progressCount}>{day.dhikr}</Text></View>)}</View>
     <View style={s.apiPanel}><Text style={s.apiTitle}>{T('How these numbers are counted')}</Text><Text style={s.apiText}>{T('Salah counts the prayers you mark on the Prayer screen. Reading counts the verses you mark in the reader and the Mushaf pages you open. Dhikr comes from the Tasbih counter, and hifz from every verse you rate in recall practice. Thirty days are kept, on this device only, and nothing is uploaded.')}</Text></View>
   </ScrollView></Page>}

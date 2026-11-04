@@ -2003,6 +2003,7 @@ const AR: Record<string, string> = {
   'The Prophet’s Mosque ﷺ: the five prayers with its imams, the Friday khutbah, and the Rawdah — from Madinah, twenty-four hours a day.': 'المسجد النبوي ﷺ: الصلوات الخمس بأئمته، وخطبة الجمعة، والروضة — من المدينة على مدار الساعة.',
   'Haram feed': 'بث الحرم',
   'Relayed from Saudi Quran TV': 'نقل عن تلفزيون القرآن السعودي',
+  'The Two Holy Mosques': 'الحرمين الشريفين',
   'The holy sites': 'المشاعر المقدسة',
   'Ministry of Hajj and Umrah': 'وزارة الحج والعمرة',
   'Official coverage from the holy sites — Arafah, Muzdalifah and Mina. The channel is live during the days of Hajj and carries other programming for the rest of the year.': 'نقل رسمي من المشاعر المقدسة — عرفة ومزدلفة ومنى. القناة مباشرة في أيام الحج، وتعرض برامج أخرى بقية العام.',

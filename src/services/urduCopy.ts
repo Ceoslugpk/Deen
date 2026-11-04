@@ -659,10 +659,12 @@ export const UR: Record<string, string> = {
   'Alphabetical': 'حروفِ تہجی',
   'Boy': 'لڑکا',
   'Boy or girl': 'لڑکا یا لڑکی',
+  'Boys': 'لڑکے',
   'Clear the search': 'تلاش صاف کریں',
   'Either': 'دونوں میں سے کوئی',
   'Every letter': 'ہر حرف',
   'Girl': 'لڑکی',
+  'Girls': 'لڑکیاں',
   'Given to either': 'دونوں کے لیے',
   'Letter': 'حرف',
   'Muslim Names': 'اسلامی نام',
@@ -670,6 +672,7 @@ export const UR: Record<string, string> = {
   'Search Muslim names': 'اسلامی نام تلاش کریں',
   'Search a name, its Arabic or its meaning': 'نام، اس کا عربی یا مطلب تلاش کریں',
   'Show more': 'مزید دکھائیں',
+  'Unisex': 'دونوں',
   'Show more names': 'مزید نام دکھائیں',
   'names': 'نام',
   'ASK AGAIN': 'دوبارہ پوچھیں',
@@ -1903,4 +1906,89 @@ export const UR: Record<string, string> = {
   'Naskh': 'نسخ',
   'Kufi': 'کوفی',
   'Islamic · Your Daily Companion': 'اسلامی · آپ کا روزمرہ ساتھی',
+
+  /* Khatam — the heading over the completion record. */
+  "Completing the Qur'an": 'قرآن مکمل کرنا',
+
+  /* Quran topics — the three themes a verse can be filed under, beside 'All'. */
+  'Faith': 'ایمان',
+  'Life': 'زندگی',
+  'Spirituality': 'روحانیت',
+
+  /* Hifz — the filter across the top, and the state shown against each
+     Surah. The two are the same words, so one entry serves both. */
+  'all': 'سب',
+  'not started': 'شروع نہیں ہوا',
+  'revising': 'دہرائی جا رہی',
+  'memorized': 'حفظ شدہ',
+
+  /* Duas — the occasions along the top, and the count under each. */
+  'Morning adhkar': 'صبح کے اذکار',
+  'Evening adhkar': 'شام کے اذکار',
+  'Before sleep': 'سونے سے پہلے',
+  'Waking up': 'جاگنے پر',
+  'Mosque': 'مسجد',
+  'Travel': 'سفر',
+  'Protection': 'حفظ و امان',
+  'Forgiveness': 'مغفرت',
+  'dua': 'دعا',
+  'duas': 'دعائیں',
+
+  /* Sunnah prayers. The three names stay in Arabic, as they are said; only
+     the times they are prayed are translated. */
+  'Witr': 'وتر',
+  'Duha': 'ضحیٰ',
+  'Tahajjud': 'تہجد',
+  'After Isha': 'عشاء کے بعد',
+  'Mid-morning, after sunrise': 'دن چڑھے، طلوعِ آفتاب کے بعد',
+  'Night, before Fajr': 'رات میں، فجر سے پہلے',
+
+  /* Umrah packing — the one item in the list still to be translated. */
+  'Expensive jewellery': 'قیمتی زیورات',
+
+  /* Weekly summary — the counted lines. Each is looked up whole by tf(), so
+     the number can sit where Urdu puts it rather than being welded into the
+     sentence the way the English has it. */
+  '{n} entries': '{n} اندراجات',
+  '{n} active day': '{n} دن سرگرم',
+  '{n} active days': '{n} دن سرگرم',
+  '{s} Surahs · {p} pages': '{s} سورتیں · {p} صفحات',
+  '{d} remembrances · {h} hifz reviews': '{d} اذکار · {h} حفظ کے دور',
+  '{n} verses': '{n} آیات',
+  'Surah {n}': 'سورة {n}',
+  '{m} memorized · {r} revising': '{m} حفظ شدہ · {r} دہرائی جا رہی',
+  '{n} counted': '{n} گنا گیا',
+
+  /* Ghusl: what is required. */
+  'Make the intention in the heart, then say: Bismillah.': 'دل میں نیت کریں، پھر بسم اللہ کہیں۔',
+  'Wash both hands three times.': 'دونوں ہاتھ تین بار دھوئیں۔',
+  'Wash away any impurity from the body.': 'بدن سے نجاست دھو کر دور کریں۔',
+  'Perform a complete wudu, as for prayer.': 'نماز والا مکمل وضو کریں۔',
+  'Pour water over the head three times, so it reaches the roots of the hair.': 'سر پر تین بار پانی بہائیں، یوں کہ بالوں کی جڑوں تک پہنچ جائے۔',
+  'Pour water over the whole body, right side first, making sure no patch of skin is left dry.': 'پورے بدن پر پانی بہائیں، پہلے دایاں جانب، اور دھیان رکھیں کہ جلد کا کوئی حصہ خشک نہ رہے۔',
+
+  /* Ghusl: as the Prophet ﷺ performed it. */
+  'Begin with Bismillah and the intention to lift the major impurity.': 'بسم اللہ سے آغاز کریں اور ناپاکی دور کرنے کی نیت کریں۔',
+  'Wash the hands, then the private parts, then any impurity on the body.': 'ہاتھ دھوئیں، پھر شرم گاہ، پھر بدن پر موجود نجاست۔',
+  'Perform wudu in full — the Prophet ﷺ performed wudu before the ghusl.': 'مکمل وضو کریں — نبی ﷺ نے غسل سے پہلے وضو کیا۔',
+  'Rub the hair gently so water reaches the scalp, then pour three handfuls over the head.': 'بالوں کو نرمی سے مل دیں کہ پانی کھوپڑی تک پہنچ جائے، پھر سر پر تین چلو پانی ڈالیں۔',
+  'Start with the right shoulder and the right side of the body, then the left.': 'دائیں کندھے اور بدن کی دائیں جانب سے شروع کریں، پھر بائیں۔',
+  'Rub the body with the hand where the water can reach, and finish by washing the feet.': 'جہاں ہاتھ پہنچے بدن کو مل دیں، اور پاؤں دھو کر ختم کریں۔',
+
+  /* Ghusl: the note carried on every screen that touches these rulings. */
+  'This app records what you tell it and works out the arithmetic. It does not give rulings. The fiqh of hayd, nifas and istihadha turns on your own pattern, your madhab and your circumstances, so take the details to a scholar you trust. See a doctor as well for bleeding that is very heavy, that runs past fifteen days for hayd or forty for nifas, or that changes sharply from what is normal for you.': 'یہ ایپ آپ کی بتائی ہوئی باتیں درج کرتی ہے اور حساب لگاتی ہے۔ یہ کوئی فتویٰ نہیں دیتی۔ حیض، نفاس اور استحاضہ کا حکم آپ کی اپنی عادت، آپ کے مسلک اور آپ کے حالات پر منحصر ہے، اس لیے تفصیلات اپنے بھروسے کے عالم سے پوچھیں۔ ساتھ ہی ڈاکٹر سے بھی ملیں اگر خون بہت زیادہ ہو، یا حیض پندرہ دن اور نفاس چالیس دن سے آگے بڑھ جائے، یا آپ کی معمول کی عادت سے نمایاں فرق ہو۔',
+
+  /* Makkah and Madinah live. The channel and place names are left in
+     English where they are names; the descriptions are translated. */
+  'Saudi Broadcasting Authority': 'سعودی نشریاتی ادارہ',
+  'General Authority for the care of the Two Holy Mosques': 'حرمین شریفین کی نگہداشت کا جنرل ادارہ',
+  'Relayed from Saudi Quran TV': 'سعودی قرآن ٹی وی سے ریلے',
+  'Ministry of Hajj and Umrah': 'وزارتِ حج و عمرہ',
+  'The Two Holy Mosques': 'حرمین شریفین',
+  'The holy sites': 'مقدس مقامات',
+  'The Ka‘bah, the Tawaf, the five daily prayers, Jumu‘ah, and Taraweeh — broadcast from Makkah, twenty-four hours a day.': 'خانہ کعبہ، طواف، پانچوں نمازیں، جمعہ اور تراویح — مکّہ سے چوبیس گھنٹے نشر کیا جاتا ہے۔',
+  'The Authority’s own channel: prayers, sermons and service announcements from both holy mosques.': 'ادارے کا اپنا چینل: دونوں حرموں سے نمازیں، خطبے اور خدمات کے اعلانات۔',
+  'The Prophet’s Mosque ﷺ: the five prayers with its imams, the Friday khutbah, and the Rawdah — from Madinah, twenty-four hours a day.': 'مسجدِ نبوی ﷺ: اس کے ائمہ کے ساتھ پانچوں نمازیں، جمعہ کا خطبہ اور روضہ — مدینہ سے چوبیس گھنٹے۔',
+  'A plain web page carrying the same official feed, for when a phone browser is easier than the YouTube app.': 'ایک سادہ ویب صفحہ جس پر وہی سرکاری نشریات ہیں، جب فون کا براؤزر یوٹیوب ایپ سے آسان ہو۔',
+  'Official coverage from the holy sites — Arafah, Muzdalifah and Mina. The channel is live during the days of Hajj and carries other programming for the rest of the year.': 'مقدس مقامات سے سرکاری نشریات — عرفات، مزدلفہ اور منیٰ۔ یہ چینل حج کے دنوں میں براہِ راست ہوتا ہے، اور سال کے باقی حصے میں دیگر پروگرام نشر کرتا ہے۔',
 };
