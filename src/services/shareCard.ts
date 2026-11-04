@@ -1,5 +1,10 @@
 import { Platform, Share } from 'react-native';
-import * as FileSystem from 'expo-file-system';
+/* The old call-style API lives at /legacy in this SDK. The bare entry point
+   exports only Paths, File and Directory, so importing getInfoAsync from it
+   yields undefined — which used to throw inside the guard below and quietly
+   turn every picture share into a text share. */
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
 import { captureRef } from 'react-native-view-shot';
 
 /**
@@ -32,6 +37,8 @@ export type ShareCardData = {
   shareTitle: string;
   /** Used if the image cannot be produced at all. */
   fallbackText: string;
+  /** Which colours the card wears. Defaults to the Islamic set. */
+  theme?: CardTheme;
 };
 
 export type ShareResult = 'shared' | 'saved' | 'dismissed' | 'text';
@@ -47,6 +54,99 @@ export const CREAM = '#F9F2EB';                // Pearl
 export const CREAM_SOFT = 'rgba(249,242,235,0.72)';
 export const HERO_A = '#2D187D';               // Deep Indigo
 export const HERO_B = '#452D9F';               // Royal Indigo
+
+/**
+ * Which set of colours a card wears.
+ *
+ * A card that leaves the app is seen by people who may never open it, so it
+ * carries the theme it was made in — a card made in the Palestine theme is
+ * green and black, not indigo, the same way the screen it came from was.
+ */
+export type CardTheme = 'islamic' | 'palestine';
+
+/**
+ * The colours that go into a card, per theme.
+ *
+ * Every text entry here was measured against the light end of its own
+ * gradient, which is the worst case, and clears 4.5:1. The two grounds are
+ * not equally dark, which is why the two sets are not the same numbers with
+ * different hues: the Palestine green is much lighter than the indigo, so
+ * its body text has to run nearer solid white to stay readable on it.
+ */
+export type CardPalette = {
+  /** Gradient, top-left to bottom-right. */
+  heroA: string;
+  heroB: string;
+  /** The kicker and the reference — text, so it is a solid colour. */
+  accent: string;
+  /** Corner diamonds and divider dots. Decoration, not text, so it may be
+      softer than the kicker: 3:1 is the bar here rather than 4.5:1. */
+  accentSoft: string;
+  /** Soft radial wash behind the text. */
+  glow: string;
+  /** The same wash faded to nothing, so the gradient ends on the right hue. */
+  glowZero: string;
+  /** Outer frame rule. */
+  frame: string;
+  /** Inner hairline, inside the outer rule. */
+  hairline: string;
+  /** The Arabic, set large. */
+  ink: string;
+  /** The meaning or translation. */
+  body: string;
+  /** The reference line at the foot. */
+  footer: string;
+  /** The vertical rule beside the reference. */
+  rule: string;
+};
+
+export const CARD_PALETTES: Record<CardTheme, CardPalette> = {
+  islamic: {
+    heroA: '#2D187D',
+    heroB: '#452D9F',
+    accent: '#DFB163',                 // 4.98:1
+    accentSoft: 'rgba(223,177,99,0.72)', // 3.26:1, decorative
+    glow: 'rgba(223,177,99,0.20)',
+    glowZero: 'rgba(223,177,99,0)',
+    frame: 'rgba(223,177,99,0.34)',
+    hairline: 'rgba(223,177,99,0.17)',
+    ink: '#F9F2EB',
+    body: 'rgba(249,242,235,0.72)',   // 5.41:1
+    /* Lifted from 0.55, which measured 3.79:1 and so missed the 4.5:1 the
+       small print wants. It is the same colour, just less of it let through. */
+    footer: 'rgba(249,242,235,0.68)', // 4.56:1
+    rule: 'rgba(223,177,99,0.86)',
+  },
+  palestine: {
+    /* Near-black to deep green — the flag's own two dark colours. The green
+       is taken down to 0.45 rather than the theme's 0.18 because a card is
+       solid text laid over the ground, and at 0.18 the body text could not
+       be made to clear 4.5:1 however it was mixed. */
+    heroA: '#001508',
+    heroB: '#00531E',
+    /* White, not the flag's red. Red on this ground measures 2.2:1, under
+       the 3:1 even a decorative rule needs, so the red stays on the flag
+       and the card is dressed in white. */
+    accent: '#FFFFFF',                  // 9.31:1
+    accentSoft: 'rgba(255,255,255,0.80)',
+    glow: 'rgba(255,255,255,0.10)',
+    glowZero: 'rgba(255,255,255,0)',
+    frame: 'rgba(255,255,255,0.30)',
+    hairline: 'rgba(255,255,255,0.16)',
+    ink: '#FFFFFF',                   // 9.31:1
+    body: 'rgba(255,255,255,0.80)',   // 6.58:1
+    footer: 'rgba(255,255,255,0.62)', // 4.61:1
+    rule: 'rgba(255,255,255,0.70)',
+  },
+};
+
+export function cardPalette(theme: CardTheme | undefined | null): CardPalette {
+  return CARD_PALETTES[theme === 'palestine' ? 'palestine' : 'islamic'];
+}
+
+export function isPalestineCard(theme: CardTheme | undefined | null): boolean {
+  return theme === 'palestine';
+}
 
 export const UI_STACK =
   '"IBMPlexSansArabic_400Regular","DMSans_400Regular",system-ui,-apple-system,"Segoe UI",sans-serif';
@@ -167,7 +267,11 @@ export function roundRect(
  * name should not sit in the middle of a tall empty rectangle, and a long
  * supplication should not be squeezed to fit one.
  */
-export async function renderShareCard(data: ShareCardData): Promise<Blob> {
+export async function renderShareCard(
+  data: ShareCardData,
+  theme: CardTheme = 'islamic',
+): Promise<Blob> {
+  const pal = cardPalette(theme);
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('This browser did not give us a canvas to draw on.');
@@ -202,15 +306,15 @@ export async function renderShareCard(data: ShareCardData): Promise<Blob> {
 
   // ---- ground ----
   const grad = ctx.createLinearGradient(0, 0, W, height);
-  grad.addColorStop(0, HERO_A);
-  grad.addColorStop(1, HERO_B);
+  grad.addColorStop(0, pal.heroA);
+  grad.addColorStop(1, pal.heroB);
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, W, height);
 
   // A soft gold wash, so a card with little text is not a flat rectangle.
   const aura = ctx.createRadialGradient(W * 0.82, height * 0.16, 0, W * 0.82, height * 0.16, W * 0.75);
-  aura.addColorStop(0, 'rgba(223,177,99,0.20)');
-  aura.addColorStop(1, 'rgba(223,177,99,0)');
+  aura.addColorStop(0, pal.glow);
+  aura.addColorStop(1, pal.glowZero);
   ctx.fillStyle = aura;
   ctx.fillRect(0, 0, W, height);
 
@@ -218,7 +322,7 @@ export async function renderShareCard(data: ShareCardData): Promise<Blob> {
 
   // ---- kicker ----
   ctx.font = font(24, 700, UI_STACK);
-  ctx.fillStyle = GOLD;
+  ctx.fillStyle = pal.accent;
   ctx.textAlign = 'left';
   ctx.direction = 'ltr';
   ctx.fillText(data.kicker.toUpperCase(), PAD, y + 24);
@@ -229,7 +333,7 @@ export async function renderShareCard(data: ShareCardData): Promise<Blob> {
     y += ARABIC_GAP;
     ctx.textAlign = 'right';
     ctx.direction = 'rtl';
-    ctx.fillStyle = CREAM;
+    ctx.fillStyle = pal.ink;
     ctx.font = font(arabicBlock.size, 400, `"${data.arabicFontFamily || 'NotoNaskhArabic_400Regular'}",${FALLBACK_ARABIC}`);
     const step = Math.round(arabicBlock.size * 1.75);
     for (const line of arabicBlock.lines) {
@@ -242,7 +346,7 @@ export async function renderShareCard(data: ShareCardData): Promise<Blob> {
   y += BODY_GAP;
   ctx.textAlign = 'left';
   ctx.direction = 'ltr';
-  ctx.fillStyle = CREAM_SOFT;
+  ctx.fillStyle = pal.body;
   ctx.font = font(34, 400, UI_STACK);
   for (const line of bodyLines) {
     ctx.fillText(line, PAD, y);
@@ -252,14 +356,14 @@ export async function renderShareCard(data: ShareCardData): Promise<Blob> {
   // ---- footer ----
   if (footerLines.length) {
     y += FOOTER_GAP;
-    ctx.fillStyle = 'rgba(249,242,235,0.55)';
+    ctx.fillStyle = pal.footer;
     ctx.font = font(26, 400, UI_STACK);
     for (const line of footerLines) {
       ctx.fillText(line, PAD + 20, y);
       y += 36;
     }
     // A rule beside the reference rather than above it, so it reads as a note.
-    ctx.fillStyle = GOLD;
+    ctx.fillStyle = pal.rule;
     ctx.fillRect(PAD, y - footerLines.length * 36 - 20, 4, footerLines.length * 36);
   }
 
@@ -274,7 +378,7 @@ export async function renderShareCard(data: ShareCardData): Promise<Blob> {
   }
   ctx.textAlign = 'left';
   ctx.direction = 'ltr';
-  ctx.fillStyle = 'rgba(249,242,235,0.62)';
+  ctx.fillStyle = pal.footer;
   ctx.font = font(24, 600, UI_STACK);
   ctx.fillText('Islamic · Your Daily Companion', PAD + (mark ? 58 : 0), brandY);
 
@@ -303,7 +407,7 @@ function downloadBlob(blob: Blob, filename: string) {
 export async function shareCard(data: ShareCardData, viewRef?: any): Promise<ShareResult> {
   if (Platform.OS === 'web') {
     try {
-      const blob = await renderShareCard(data);
+      const blob = await renderShareCard(data, data.theme);
       const file = new File([blob], data.filename, { type: 'image/png' });
 
       // `canShare` is the only reliable way to know whether the browser will
@@ -323,19 +427,47 @@ export async function shareCard(data: ShareCardData, viewRef?: any): Promise<Sha
       // fall through to the text share below
     }
   } else if (viewRef?.current) {
+    /* Photograph the card, then hand the file to the system. The two steps are
+       kept apart so that failing at one is not mistaken for failing at the
+       other: a capture that throws is a capture problem, and a share sheet
+       the reader closes is a dismissal, not a reason to send their verse as
+       plain text. */
+    let uri: string | null = null;
     try {
-      const uri = await captureRef(viewRef, { format: 'png', quality: 1, result: 'tmpfile' });
-      /* Weighed for the same reason as the verse card: a blank read-back is a
-         PNG of a few hundred bytes, and forwarding that to someone is worse
-         than forwarding the words. */
+      uri = await captureRef(viewRef, { format: 'png', quality: 1, result: 'tmpfile' });
+    } catch {
+      uri = null;
+    }
+
+    if (uri) {
+      /* Weighed because a capture that succeeded is not always a capture with
+         a picture in it: if the view had not been laid out, the read-back is
+         a blank PNG a few hundred bytes long, and forwarding that looks like
+         a bug in the share sheet.
+
+         null means the file could not be weighed at all. That is not the same
+         as a file that weighed in blank, and it must not cost the reader
+         their picture: an unmeasured card is shared, not downgraded. */
       const info = await FileSystem.getInfoAsync(uri).catch(() => null as any);
-      const size = typeof info?.size === 'number' ? info.size : 0;
-      if (size > 4096) {
+      const size = typeof info?.size === 'number' ? info.size : null;
+      if (size === null || size > 4096) {
+        /* expo-sharing is what the backup export already uses. It passes the
+           file out through a content URI, which a bare file:// path is not
+           allowed to do on a modern Android, where handing one over throws. */
+        if (await Sharing.isAvailableAsync()) {
+          try {
+            await Sharing.shareAsync(uri, {
+              mimeType: 'image/png',
+              dialogTitle: data.shareTitle,
+            });
+            return 'shared';
+          } catch {
+            return 'dismissed';
+          }
+        }
         await Share.share({ url: uri, title: data.shareTitle });
         return 'shared';
       }
-    } catch {
-      // fall through to the text share below
     }
   }
 

@@ -1,5 +1,11 @@
 import { Platform, Share } from 'react-native';
-import * as FileSystem from 'expo-file-system';
+/* The old call-style API lives at /legacy in this SDK. The bare entry point
+   exports only Paths, File and Directory, so importing getInfoAsync from it
+   yields undefined — which used to throw inside the guard below and quietly
+   turn every picture share into a text share. */
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
+import { CardTheme, cardPalette } from './shareCard';
 import { captureRef } from 'react-native-view-shot';
 
 /**
@@ -22,6 +28,8 @@ export type VerseCardData = {
   translationName: string;
   /** The Arabic family the reader is currently using, so the card matches it. */
   arabicFontFamily: string;
+  /** Which colours the card wears. Defaults to the Islamic set. */
+  theme?: CardTheme;
 };
 
 const W = 1080;
@@ -33,7 +41,7 @@ const INNER = W - PAD * 2;
    ./shareCard, so a fix to word wrapping reaches every card rather than
    only the verse. */
 import {
-  CREAM, CREAM_SOFT, FALLBACK_ARABIC, fitArabic, font, GOLD, HERO_A, HERO_B,
+  FALLBACK_ARABIC, fitArabic, font,
   loadBrandMark, roundRect, UI_STACK, wrapLines,
 } from './shareCard';
 
@@ -41,6 +49,7 @@ import {
  * Draws the card and returns a PNG blob. Web only.
  */
 async function renderWeb(data: VerseCardData): Promise<Blob> {
+  const pal = cardPalette(data.theme);
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('This browser did not give us a canvas to draw on.');
@@ -76,32 +85,32 @@ async function renderWeb(data: VerseCardData): Promise<Blob> {
 
   // background
   const bg = ctx.createLinearGradient(0, 0, W, H);
-  bg.addColorStop(0, HERO_A);
-  bg.addColorStop(1, HERO_B);
+  bg.addColorStop(0, pal.heroA);
+  bg.addColorStop(1, pal.heroB);
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, W, H);
 
   // a soft glow behind the verse, so the text sits on something
   const glow = ctx.createRadialGradient(W * 0.78, H * 0.24, 0, W * 0.78, H * 0.24, W * 0.62);
-  glow.addColorStop(0, 'rgba(223,177,99,0.20)');
-  glow.addColorStop(1, 'rgba(223,177,99,0)');
+  glow.addColorStop(0, pal.glow);
+  glow.addColorStop(1, pal.glowZero);
   ctx.fillStyle = glow;
   ctx.fillRect(0, 0, W, H);
 
   // ---- the frame: a heavy outer rule and a hairline inside it, with a small
   // diamond set into each corner. One rule reads as a border; two read as a
   // page, which is what this is pretending to be.
-  ctx.strokeStyle = 'rgba(223,177,99,0.34)';
+  ctx.strokeStyle = pal.frame;
   ctx.lineWidth = 3;
   roundRect(ctx, 34, 34, W - 68, H - 68, 44);
   ctx.stroke();
 
-  ctx.strokeStyle = 'rgba(223,177,99,0.17)';
+  ctx.strokeStyle = pal.hairline;
   ctx.lineWidth = 1.5;
   roundRect(ctx, 54, 54, W - 108, H - 108, 32);
   ctx.stroke();
 
-  ctx.fillStyle = 'rgba(223,177,99,0.72)';
+  ctx.fillStyle = pal.accentSoft;
   for (const [cx, cy] of [[70, 70], [W - 70, 70], [70, H - 70], [W - 70, H - 70]]) {
     ctx.beginPath();
     ctx.moveTo(cx, cy - 7);
@@ -116,28 +125,28 @@ async function renderWeb(data: VerseCardData): Promise<Blob> {
   let y = PAD + 34;
   ctx.direction = 'ltr';
   ctx.textAlign = 'left';
-  ctx.fillStyle = GOLD;
+  ctx.fillStyle = pal.accent;
   ctx.font = font(26, 700, UI_STACK);
   const refText = `QURAN ${data.reference}`;
   const refW = ctx.measureText(refText).width;
   const pillH = 54;
   const pillY = y - 34;
   roundRect(ctx, PAD - 20, pillY, refW + 40, pillH, 27);
-  ctx.strokeStyle = 'rgba(223,177,99,0.42)';
+  ctx.strokeStyle = pal.frame;
   ctx.lineWidth = 2;
   ctx.stroke();
-  ctx.fillStyle = 'rgba(223,177,99,0.10)';
+  ctx.fillStyle = pal.hairline;
   ctx.fill();
-  ctx.fillStyle = GOLD;
+  ctx.fillStyle = pal.accent;
   ctx.fillText(refText, PAD, y);
 
   ctx.textAlign = 'right';
-  ctx.fillStyle = 'rgba(248,242,234,0.78)';
+  ctx.fillStyle = pal.body;
   ctx.font = font(30, 400, UI_STACK);
   ctx.fillText(data.surahName, W - PAD, y);
 
   y += 46;
-  ctx.strokeStyle = 'rgba(223,177,99,0.28)';
+  ctx.strokeStyle = pal.frame;
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(PAD, y);
@@ -148,7 +157,7 @@ async function renderWeb(data: VerseCardData): Promise<Blob> {
   y += arabicLine - 18;
   ctx.direction = 'rtl';
   ctx.textAlign = 'right';
-  ctx.fillStyle = CREAM;
+  ctx.fillStyle = pal.ink;
   ctx.font = font(arabic.size, 400, `"${data.arabicFontFamily}",${FALLBACK_ARABIC}`);
   for (const line of arabic.lines) {
     ctx.fillText(line, W - PAD, y);
@@ -159,7 +168,7 @@ async function renderWeb(data: VerseCardData): Promise<Blob> {
     // ---- divider with a diamond ----
     y += 22;
     const midY = y + 12;
-    ctx.strokeStyle = 'rgba(223,177,99,0.32)';
+    ctx.strokeStyle = pal.frame;
     ctx.lineWidth = 2;
     const gap = 40;
     const cx = W / 2;
@@ -170,7 +179,7 @@ async function renderWeb(data: VerseCardData): Promise<Blob> {
     ctx.lineTo(W - PAD, midY);
     ctx.stroke();
     // a diamond flanked by two dots, rather than a diamond on its own
-    ctx.fillStyle = GOLD;
+    ctx.fillStyle = pal.accentSoft;
     ctx.beginPath();
     ctx.moveTo(cx, midY - 10);
     ctx.lineTo(cx + 10, midY);
@@ -188,7 +197,7 @@ async function renderWeb(data: VerseCardData): Promise<Blob> {
     y += 74;
     ctx.direction = 'ltr';
     ctx.textAlign = 'left';
-    ctx.fillStyle = CREAM_SOFT;
+    ctx.fillStyle = pal.body;
     ctx.font = font(34, 400, UI_STACK);
     translationLines.forEach((line, i) => {
       const last = i === translationLines.length - 1;
@@ -198,7 +207,7 @@ async function renderWeb(data: VerseCardData): Promise<Blob> {
   }
 
   // ---- footer, above a hairline ----
-  ctx.strokeStyle = 'rgba(223,177,99,0.22)';
+  ctx.strokeStyle = pal.hairline;
   ctx.lineWidth = 1.5;
   ctx.beginPath();
   ctx.moveTo(PAD, H - PAD - 58);
@@ -207,7 +216,7 @@ async function renderWeb(data: VerseCardData): Promise<Blob> {
 
   ctx.direction = 'ltr';
   ctx.textAlign = 'left';
-  ctx.fillStyle = 'rgba(223,177,99,0.86)';
+  ctx.fillStyle = pal.rule;
   ctx.font = font(26, 400, UI_STACK);
   ctx.fillText(data.translationName || '', PAD, H - PAD - 6);
 
@@ -215,7 +224,7 @@ async function renderWeb(data: VerseCardData): Promise<Blob> {
   const mark = await loadBrandMark();
   const MARK = 36;
   ctx.textAlign = 'right';
-  ctx.fillStyle = 'rgba(248,242,234,0.62)';
+  ctx.fillStyle = pal.footer;
   ctx.font = font(26, 600, UI_STACK);
   ctx.fillText('Islamic', mark ? W - PAD - MARK - 16 : W - PAD, H - PAD - 6);
   if (mark) {
@@ -273,27 +282,50 @@ export async function shareVerseCard(data: VerseCardData, viewRef?: any): Promis
       // fall through to the text share below
     }
   } else if (viewRef?.current) {
+    /* Photograph the card, then hand the file to the system. The two steps are
+       kept apart so that failing at one is not mistaken for failing at the
+       other: a capture that throws is a capture problem, and a share sheet
+       the reader closes is a dismissal, not a reason to send their verse as
+       plain text. */
+    let uri: string | null = null;
     try {
-      const uri = await captureRef(viewRef, {
-        format: 'png',
-        quality: 1,
-        result: 'tmpfile',
-      });
+      uri = await captureRef(viewRef, { format: 'png', quality: 1, result: 'tmpfile' });
+    } catch {
+      uri = null;
+    }
+
+    if (uri) {
       /* A capture that succeeded is not the same as a capture with a picture
          in it. If the view has not been laid out, or was still transparent,
          the read-back is a blank PNG a few hundred bytes long — and sharing
          that looks exactly like a bug in the share sheet. Weigh it first: a
          real card is tens of kilobytes. Anything smaller is treated as a
          failure and the verse goes out as text instead, which is always
-         readable. */
+         readable.
+
+         null means the file could not be weighed at all. That is not the same
+         as a file that weighed in blank, and it must not cost the reader
+         their picture: an unmeasured card is shared, not downgraded. */
       const info = await FileSystem.getInfoAsync(uri).catch(() => null as any);
-      const size = typeof info?.size === 'number' ? info.size : 0;
-      if (size > 4096) {
+      const size = typeof info?.size === 'number' ? info.size : null;
+      if (size === null || size > 4096) {
+        /* expo-sharing is what the backup export already uses. It passes the
+           file out through a content URI, which a bare file:// path is not
+           allowed to do on a modern Android, where handing one over throws. */
+        if (await Sharing.isAvailableAsync()) {
+          try {
+            await Sharing.shareAsync(uri, {
+              mimeType: 'image/png',
+              dialogTitle: `Quran ${data.reference}`,
+            });
+            return 'shared';
+          } catch {
+            return 'dismissed';
+          }
+        }
         await Share.share({ url: uri, title: `Quran ${data.reference}` });
         return 'shared';
       }
-    } catch {
-      // fall through to the text share below
     }
   }
 

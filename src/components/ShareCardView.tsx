@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ShareCardData } from '../services/shareCard';
+import { CardTheme, cardPalette, ShareCardData } from '../services/shareCard';
 
 /** The same mark the app header wears, in its light-on-dark variant:
     the card is a dark gradient, so the dark-background artwork is the
@@ -25,9 +25,10 @@ const BRAND_MARK = require('../../assets/logo-mark.png');
 const W = 1080;
 const PAD = 84;
 
-const GOLD = '#DFB163';
-const CREAM = '#F9F2EB';
-const CREAM_SOFT = 'rgba(249,242,235,0.72)';
+/* The colours come from the card palette in ../services/shareCard so that a
+   card made in the Palestine theme is green and black rather than indigo.
+   The canvas renderer there and this view are two ways of drawing the same
+   card, and they must agree. */
 
 /** Mirrors the ladder in fitArabic(), which walks 78 down to 38 and takes
     the first size whose wrapped block fits the card. There is no canvas
@@ -48,6 +49,8 @@ export type ShareCardViewProps = ShareCardData & {
   /** Passed as a plain prop rather than through forwardRef, whose React 19
       types do not line up with the View instance captureRef expects. */
   viewRef?: any;
+  /** Which colours the card wears. Defaults to the Islamic set. */
+  theme?: CardTheme;
 };
 
 export function ShareCardView({
@@ -57,22 +60,24 @@ export function ShareCardView({
   footer,
   arabicFontFamily,
   viewRef,
+  theme,
 }: ShareCardViewProps) {
+  const pal = cardPalette(theme);
   const arabicSize = arabic ? arabicSizeFor(arabic) : 0;
 
   return (
-    <View ref={viewRef} collapsable={false} style={card.card}>
+    <View ref={viewRef} collapsable={false} style={[card.card, { backgroundColor: pal.heroA }]}>
       <LinearGradient
-        colors={['#2D187D', '#452D9F']}
+        colors={[pal.heroA, pal.heroB]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={StyleSheet.absoluteFill}
       />
       {/* the gold wash, so a card with little text is not a flat rectangle */}
-      <View style={card.glow} />
+      <View style={[card.glow, { backgroundColor: pal.glow }]} />
 
       {!!kicker && (
-        <Text style={card.kicker} numberOfLines={1}>
+        <Text style={[card.kicker, { color: pal.accent }]} numberOfLines={1}>
           {kicker.toUpperCase()}
         </Text>
       )}
@@ -82,6 +87,7 @@ export function ShareCardView({
           style={[
             card.arabic,
             {
+              color: pal.ink,
               fontFamily: arabicFontFamily || undefined,
               fontSize: arabicSize,
               lineHeight: Math.round(arabicSize * 1.75),
@@ -92,18 +98,18 @@ export function ShareCardView({
         </Text>
       )}
 
-      {!!body && <Text style={card.body}>{body}</Text>}
+      {!!body && <Text style={[card.body, { color: pal.body }]}>{body}</Text>}
 
       {!!footer && (
         <View style={card.footerRow}>
-          <View style={card.footerRule} />
-          <Text style={card.footer}>{footer}</Text>
+          <View style={[card.footerRule, { backgroundColor: pal.rule }]} />
+          <Text style={[card.footer, { color: pal.footer }]}>{footer}</Text>
         </View>
       )}
 
       <View style={card.brandRow}>
         <Image source={BRAND_MARK} resizeMode="contain" style={card.brandMark} />
-        <Text style={card.brandText}>Islamic · Your Daily Companion</Text>
+        <Text style={[card.brandText, { color: pal.footer }]}>Islamic · Your Daily Companion</Text>
       </View>
     </View>
   );
@@ -115,7 +121,6 @@ const card = StyleSheet.create({
     paddingHorizontal: PAD,
     paddingTop: PAD,
     paddingBottom: PAD,
-    backgroundColor: '#2D187D',
   },
   glow: {
     position: 'absolute',
@@ -124,23 +129,19 @@ const card = StyleSheet.create({
     width: 900,
     height: 900,
     borderRadius: 450,
-    backgroundColor: 'rgba(223,177,99,0.20)',
   },
   kicker: {
-    color: GOLD,
     fontSize: 24,
     fontFamily: 'DMSans_700Bold',
     letterSpacing: 3,
     textTransform: 'uppercase',
   },
   arabic: {
-    color: CREAM,
     textAlign: 'right',
     writingDirection: 'rtl',
     marginTop: 44,
   },
   body: {
-    color: CREAM_SOFT,
     fontSize: 34,
     lineHeight: 52,
     fontFamily: 'DMSans_400Regular',
@@ -154,12 +155,10 @@ const card = StyleSheet.create({
   footerRule: {
     width: 4,
     alignSelf: 'stretch',
-    backgroundColor: GOLD,
     marginRight: 16,
   },
   footer: {
     flex: 1,
-    color: 'rgba(249,242,235,0.55)',
     fontSize: 26,
     lineHeight: 36,
     fontFamily: 'DMSans_400Regular',
@@ -175,7 +174,6 @@ const card = StyleSheet.create({
     marginRight: 14,
   },
   brandText: {
-    color: 'rgba(249,242,235,0.62)',
     fontSize: 24,
     fontFamily: 'DMSans_600SemiBold',
   },

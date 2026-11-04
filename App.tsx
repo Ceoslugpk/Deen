@@ -178,6 +178,9 @@ const languageOf = (identifier?: string, language?: string) => {
 function useCardShare() {
   const cardRef = useRef<any>(null);
   const [pending, setPending] = useState<ShareCardData | null>(null);
+  /* The card leaves the app, so it wears the theme it was made in rather
+     than one fixed set of colours. */
+  const { theme: cardTheme } = useTheme();
 
   useEffect(() => {
     if (!pending) return;
@@ -189,22 +192,29 @@ function useCardShare() {
         requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
       );
       if (!alive) return;
-      await shareCard(pending, cardRef);
+      await shareCard({ ...pending, theme: cardTheme }, cardRef);
       if (alive) setPending(null);
     };
     void run();
     return () => { alive = false; };
-  }, [pending]);
+  }, [pending, cardTheme]);
 
-  const share = useCallback((data: ShareCardData) => {
-    if (Platform.OS === 'web') { void shareCard(data); return; }
-    setPending(data);
-  }, []);
+  const share = useCallback(
+    (data: ShareCardData) => {
+      /* Stamped here rather than read back out of the palette at draw time,
+         so the card cannot change theme between being asked for and being
+         drawn. */
+      const themed: ShareCardData = { ...data, theme: cardTheme };
+      if (Platform.OS === 'web') { void shareCard(themed); return; }
+      setPending(themed);
+    },
+    [cardTheme],
+  );
 
   const offscreenCard = Platform.OS !== 'web' && pending
     ? (
       <View style={s.offscreenCard} pointerEvents="none" aria-hidden>
-        <ShareCardView viewRef={cardRef} {...pending} />
+        <ShareCardView viewRef={cardRef} {...pending} theme={cardTheme} />
       </View>
     )
     : null;
@@ -3461,6 +3471,8 @@ function VerseShareSheet({ verse, chapter, rtl, T, onClose }: {
   verse: Verse; chapter: Chapter; rtl: boolean; T: (t: string) => string; onClose: () => void;
 }) {
   const { preferences } = useQuranPreferences();
+  /* A card that leaves the app wears the theme it was made in. */
+  const { theme: cardTheme } = useTheme();
   const cardRef = useRef<any>(null);
   const [busy, setBusy] = useState(false);
   const rise = useRef(new Animated.Value(0)).current;
@@ -3474,7 +3486,8 @@ function VerseShareSheet({ verse, chapter, rtl, T, onClose }: {
     reference: verse.verse_key,
     surahName: chapter.name_simple,
     translationName: T(rtl ? preferences.translationLanguage : preferences.translationName),
-    arabicFontFamily: quranFont(preferences.arabicFont)
+    arabicFontFamily: quranFont(preferences.arabicFont),
+    theme: cardTheme,
   };
 
   const asText = async () => {
@@ -3503,7 +3516,7 @@ function VerseShareSheet({ verse, chapter, rtl, T, onClose }: {
   return <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
     {/* captured into a PNG on native; the web path draws on a canvas instead */}
     {Platform.OS !== 'web' && <View style={s.offscreenCard} pointerEvents="none" aria-hidden>
-      <VerseShareCard viewRef={cardRef} {...cardData} />
+      <VerseShareCard viewRef={cardRef} {...cardData} theme={cardTheme} />
     </View>}
     <Pressable accessibilityRole="button" accessibilityLabel={T('Close')} onPress={onClose} style={s.sheetScrim} />
     <Animated.View style={[s.verseSheet, {
@@ -4254,6 +4267,8 @@ function VerseActionsSheet({ verse, chapter, rtl, T, navigation, onClose }: {
   verse: Verse; chapter: Chapter; rtl: boolean; T: (t: string) => string; navigation: any; onClose: () => void;
 }) {
   const { preferences } = useQuranPreferences();
+  /* A card that leaves the app wears the theme it was made in. */
+  const { theme: cardTheme } = useTheme();
   const { height } = useWindowDimensions();
   const [bookmarked, setBookmarked] = useState(false);
   const [reporting, setReporting] = useState(false);
@@ -4275,7 +4290,8 @@ function VerseActionsSheet({ verse, chapter, rtl, T, navigation, onClose }: {
     reference: verse.verse_key,
     surahName: chapter.name_simple,
     translationName: T(rtl ? preferences.translationLanguage : preferences.translationName),
-    arabicFontFamily: quranFont(preferences.arabicFont)
+    arabicFontFamily: quranFont(preferences.arabicFont),
+    theme: cardTheme,
   };
 
   const mark: QuranBookmark = { verseKey: verse.verse_key, surahId: chapter.id, surahName: chapter.name_simple, arabic: verse.text_uthmani, translation: verse.translation || '', savedAt: Date.now() };
@@ -4318,7 +4334,7 @@ function VerseActionsSheet({ verse, chapter, rtl, T, navigation, onClose }: {
   return <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
     {/* captured into a PNG on native; the web path draws on a canvas instead */}
     {Platform.OS !== 'web' && <View style={s.offscreenCard} pointerEvents="none" aria-hidden>
-      <VerseShareCard viewRef={cardRef} {...cardData} />
+      <VerseShareCard viewRef={cardRef} {...cardData} theme={cardTheme} />
     </View>}
     <Pressable accessibilityRole="button" accessibilityLabel={T('Close')} onPress={onClose} style={s.sheetScrim} />
     <Animated.View style={[s.verseSheet, {

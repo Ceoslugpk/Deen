@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { CardPalette, CardTheme, cardPalette } from '../services/shareCard';
 
 /** The same mark the app header wears, in its light-on-dark variant:
     the card is a dark gradient, so the dark-background artwork is the
@@ -19,8 +20,6 @@ const BRAND_MARK = require('../../assets/logo-mark.png');
 
 const W = 1080;
 const PAD = 84;
-const GOLD = '#DFB163';   // Radiant Gold
-const CREAM = '#F9F2EB';  // Pearl
 
 export type VerseShareCardProps = {
   arabic: string;
@@ -32,17 +31,93 @@ export type VerseShareCardProps = {
   /** Passed as a plain prop rather than through forwardRef, whose React 19
       types do not line up with the View instance captureRef expects. */
   viewRef?: any;
+  /** Which colours the card wears. Defaults to the Islamic set. */
+  theme?: CardTheme;
 };
 
+/* Built from the palette rather than written out once, so that a card made
+   in the Palestine theme is green and black instead of indigo. A shared
+   picture leaves the app, and it should look like the app it came from. */
+function makeStyles(pal: CardPalette) {
+  return StyleSheet.create({
+    card: {
+      width: W,
+      paddingHorizontal: PAD,
+      paddingTop: PAD + 34,
+      paddingBottom: PAD,
+      backgroundColor: pal.heroA,
+    },
+    glow: {
+      position: 'absolute',
+      top: -180,
+      right: -180,
+      width: 700,
+      height: 700,
+      borderRadius: 350,
+      backgroundColor: pal.glow,
+    },
+    frameOuter: {
+      position: 'absolute',
+      top: 34, left: 34, right: 34, bottom: 34,
+      borderRadius: 44,
+      borderWidth: 3,
+      borderColor: pal.frame,
+    },
+    frameInner: {
+      position: 'absolute',
+      top: 54, left: 54, right: 54, bottom: 54,
+      borderRadius: 32,
+      borderWidth: 1.5,
+      borderColor: pal.hairline,
+    },
+    corner: {
+      position: 'absolute',
+      width: 14,
+      height: 14,
+      backgroundColor: pal.accentSoft,
+      transform: [{ rotate: '45deg' }],
+    },
+    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    pill: {
+      borderWidth: 2,
+      borderColor: pal.frame,
+      backgroundColor: pal.hairline,
+      borderRadius: 27,
+      paddingHorizontal: 20,
+      paddingVertical: 8,
+    },
+    kicker: { color: pal.accent, fontSize: 26, fontWeight: '700', letterSpacing: 1.4 },
+    surah: { color: pal.body, fontSize: 30 },
+    headerRule: { height: 2, backgroundColor: pal.frame, marginTop: 40 },
+    arabic: { color: pal.ink, textAlign: 'right', marginTop: 56, writingDirection: 'rtl' },
+    dividerRow: { flexDirection: 'row', alignItems: 'center', marginTop: 64, marginBottom: 56 },
+    dividerLine: { flex: 1, height: 2, backgroundColor: pal.frame },
+    dividerDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: pal.accentSoft, marginHorizontal: 16 },
+    diamond: {
+      width: 20,
+      height: 20,
+      backgroundColor: pal.accentSoft,
+      transform: [{ rotate: '45deg' }],
+    },
+    translation: { color: pal.body, fontSize: 34, lineHeight: 52 },
+    footerRule: { height: 1.5, backgroundColor: pal.hairline, marginTop: 72 },
+    footer: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 26 },
+    footerLeft: { color: pal.rule, fontSize: 26 },
+    footerRight: { color: pal.footer, fontSize: 26, fontWeight: '700' },
+    brand: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+    brandMark: { width: 40, height: 40 },
+  });
+}
+
 /** A diamond with a dot either side: the break between Arabic and meaning. */
-function Divider() {
+function Divider({ styles }: { styles: ReturnType<typeof makeStyles> }) {
   return (
-    <View style={cardStyles.dividerRow}>
-      <View style={cardStyles.dividerLine} />
-      <View style={cardStyles.dividerDot} />
-      <View style={cardStyles.diamond} />
-      <View style={cardStyles.dividerDot} />
-      <View style={cardStyles.dividerLine} />
+    <View style={styles.dividerRow}>
+      <View style={styles.dividerLine} />
+      <View style={styles.dividerDot} />
+      <View style={styles.diamond} />
+      <View style={styles.dividerDot} />
+      <View style={styles.dividerLine} />
     </View>
   );
 }
@@ -55,117 +130,51 @@ export function VerseShareCard({
   translationName,
   arabicFontFamily,
   viewRef,
+  theme,
 }: VerseShareCardProps) {
+  const pal = cardPalette(theme);
+  const styles = React.useMemo(() => makeStyles(pal), [pal]);
   const arabicSize = arabic.length > 320 ? 54 : arabic.length > 160 ? 66 : 76;
   return (
-    <View ref={viewRef} collapsable={false} style={cardStyles.card}>
-      <LinearGradient colors={['#2D187D', '#452D9F']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
-      <View style={cardStyles.glow} />
+    <View ref={viewRef} collapsable={false} style={styles.card}>
+      <LinearGradient colors={[pal.heroA, pal.heroB]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
+      <View style={styles.glow} />
 
       {/* two rules, not one, with a diamond set into each corner */}
-      <View style={cardStyles.frameOuter} />
-      <View style={cardStyles.frameInner} />
-      <View style={[cardStyles.corner, { top: 62, left: 62 }]} />
-      <View style={[cardStyles.corner, { top: 62, right: 62 }]} />
-      <View style={[cardStyles.corner, { bottom: 62, left: 62 }]} />
-      <View style={[cardStyles.corner, { bottom: 62, right: 62 }]} />
+      <View style={styles.frameOuter} />
+      <View style={styles.frameInner} />
+      <View style={[styles.corner, { top: 62, left: 62 }]} />
+      <View style={[styles.corner, { top: 62, right: 62 }]} />
+      <View style={[styles.corner, { bottom: 62, left: 62 }]} />
+      <View style={[styles.corner, { bottom: 62, right: 62 }]} />
 
-      <View style={cardStyles.header}>
-        <View style={cardStyles.pill}>
-          <Text style={cardStyles.kicker}>{`QURAN ${reference}`}</Text>
+      <View style={styles.header}>
+        <View style={styles.pill}>
+          <Text style={styles.kicker}>{`QURAN ${reference}`}</Text>
         </View>
-        <Text style={cardStyles.surah}>{surahName}</Text>
+        <Text style={styles.surah}>{surahName}</Text>
       </View>
-      <View style={cardStyles.headerRule} />
+      <View style={styles.headerRule} />
 
-      <Text style={[cardStyles.arabic, { fontFamily: arabicFontFamily, fontSize: arabicSize, lineHeight: Math.round(arabicSize * 1.75) }]}>
+      <Text style={[styles.arabic, { fontFamily: arabicFontFamily, fontSize: arabicSize, lineHeight: Math.round(arabicSize * 1.75) }]}>
         {arabic}
       </Text>
 
       {!!translation && (
         <>
-          <Divider />
-          <Text style={cardStyles.translation}>{translation}</Text>
+          <Divider styles={styles} />
+          <Text style={styles.translation}>{translation}</Text>
         </>
       )}
 
-      <View style={cardStyles.footerRule} />
-      <View style={cardStyles.footer}>
-        <Text style={cardStyles.footerLeft}>{translationName}</Text>
-        <View style={cardStyles.brand}>
-          <Text style={cardStyles.footerRight}>Islamic</Text>
-          <Image source={BRAND_MARK} resizeMode="contain" style={cardStyles.brandMark} />
+      <View style={styles.footerRule} />
+      <View style={styles.footer}>
+        <Text style={styles.footerLeft}>{translationName}</Text>
+        <View style={styles.brand}>
+          <Text style={styles.footerRight}>Islamic</Text>
+          <Image source={BRAND_MARK} resizeMode="contain" style={styles.brandMark} />
         </View>
       </View>
     </View>
   );
 }
-
-const cardStyles = StyleSheet.create({
-  card: {
-    width: W,
-    paddingHorizontal: PAD,
-    paddingTop: PAD + 34,
-    paddingBottom: PAD,
-    backgroundColor: '#2D187D',
-  },
-  glow: {
-    position: 'absolute',
-    top: -180,
-    right: -180,
-    width: 700,
-    height: 700,
-    borderRadius: 350,
-    backgroundColor: 'rgba(223,177,99,0.16)',
-  },
-  frameOuter: {
-    position: 'absolute',
-    top: 34, left: 34, right: 34, bottom: 34,
-    borderRadius: 44,
-    borderWidth: 3,
-    borderColor: 'rgba(223,177,99,0.34)',
-  },
-  frameInner: {
-    position: 'absolute',
-    top: 54, left: 54, right: 54, bottom: 54,
-    borderRadius: 32,
-    borderWidth: 1.5,
-    borderColor: 'rgba(223,177,99,0.17)',
-  },
-  corner: {
-    position: 'absolute',
-    width: 14,
-    height: 14,
-    backgroundColor: 'rgba(223,177,99,0.72)',
-    transform: [{ rotate: '45deg' }],
-  },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  pill: {
-    borderWidth: 2,
-    borderColor: 'rgba(223,177,99,0.42)',
-    backgroundColor: 'rgba(223,177,99,0.10)',
-    borderRadius: 27,
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-  },
-  kicker: { color: GOLD, fontSize: 26, fontWeight: '700', letterSpacing: 1.4 },
-  surah: { color: 'rgba(248,242,234,0.78)', fontSize: 30 },
-  headerRule: { height: 2, backgroundColor: 'rgba(223,177,99,0.28)', marginTop: 40 },
-  arabic: { color: CREAM, textAlign: 'right', marginTop: 56, writingDirection: 'rtl' },
-  dividerRow: { flexDirection: 'row', alignItems: 'center', marginTop: 64, marginBottom: 56 },
-  dividerLine: { flex: 1, height: 2, backgroundColor: 'rgba(223,177,99,0.32)' },
-  dividerDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: GOLD, marginHorizontal: 16 },
-  diamond: {
-    width: 20,
-    height: 20,
-    backgroundColor: GOLD,
-    transform: [{ rotate: '45deg' }],
-  },
-  translation: { color: 'rgba(248,242,234,0.72)', fontSize: 34, lineHeight: 52 },
-  footerRule: { height: 1.5, backgroundColor: 'rgba(223,177,99,0.22)', marginTop: 72 },
-  footer: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 26 },
-  footerLeft: { color: 'rgba(223,177,99,0.86)', fontSize: 26 },
-  footerRight: { color: 'rgba(248,242,234,0.62)', fontSize: 26, fontWeight: '700' },
-  brand: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  brandMark: { width: 40, height: 40 },
-});
