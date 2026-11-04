@@ -10082,13 +10082,21 @@ function HadithCollectionScreen({route,navigation}:any){const {rtl,language:appL
           {loadingBook&&<SkeletonList rows={6} />}
           {!!error&&<ErrorState message={error} retry={()=>setBook(book)}/>}
           {!loadingBook&&<Text style={s.meta}>{filtered.length.toLocaleString()} {T('hadith')}{query.trim().length>=2?` · ${T('matching your search')}`:''}</Text>}
-          {shown.map(hadith=><Tactile key={hadith.id} accessibilityLabel={`${T('Hadith')} ${hadith.number}`} onPress={()=>navigation.navigate('Hadith Detail',{slug,number:hadith.number})} style={s.dataCard}>
+          {shown.map((hadith,position)=><Tactile key={hadith.id} accessibilityLabel={`${T('Hadith')} ${position+1}`} onPress={()=>navigation.navigate('Hadith Detail',{slug,number:hadith.number})} style={s.dataCard}>
             <View style={s.hadithRowTop}>
-              <View style={s.hadithNumber}><Text style={s.hadithNumberText}>{hadith.number}</Text></View>
+              {/* Numbered by position, not by the source's own number.
+                  That number is a row index across the whole collection,
+                  so the first book of Muslim opens at 93 and the second
+                  book of Bukhari at 8 — which reads as random to anyone
+                  counting along. The running position starts at one and
+                  continues, and the source number is kept underneath as
+                  the reference a reader would cite. */}
+              <View style={s.hadithNumber}><Text style={s.hadithNumberText}>{position+1}</Text></View>
               <View style={{flex:1}}>
                 {hadith.grades.length>0&&<Text style={s.hadithRowMeta}>{hadith.grades.map(g=>g.grade).join(' · ')}</Text>}
                 {!!hadith.arabic&&<Text style={s.hadithRowAr} numberOfLines={2}>{hadith.arabic}</Text>}
                 <Text style={s.dataBody} numberOfLines={3}>{hadith.english}</Text>
+                <Text style={s.hadithRowRef}>{hadithSourceLabel(rtl,slug)} {hadith.number}</Text>
                 {read.has(hadith.number)&&<Text style={[s.meta,{marginTop:6}]}>{T('Read')}</Text>}
               </View>
               {ico('chevron-forward',16,C.muted)}
@@ -13758,7 +13766,7 @@ playerTranslationOptionOn:{backgroundColor:C.mint},
   hadithCollectionCard:{backgroundColor:C.card,borderRadius:20,padding:16,marginBottom:12,borderWidth:1,borderColor:C.line,...surface},
   hadithCollectionTop:{flexDirection:'row',alignItems:'center',gap:12},hadithCollectionAr:{color:C.green,fontFamily:'KFGQPCUthmanicHafs',fontSize:19,lineHeight:30,textAlign:'right',writingDirection:'rtl',marginTop:2},hadithCountCol:{alignItems:'flex-end',marginLeft:4},hadithCountNum:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:15,includeFontPadding:false},hadithCountLabel:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:9,marginTop:1},hadithRowMeta:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold',textTransform:'uppercase',marginTop:3},hadithRowAr:{color:C.green,fontFamily:'KFGQPCUthmanicHafs',fontSize:21,lineHeight:36,textAlign:'right',writingDirection:'rtl',marginTop:7,includeFontPadding:false},
   hadithRowTop:{flexDirection:'row',alignItems:'flex-start',gap:12},
-  hadithNumber:{minWidth:34,height:34,borderRadius:12,backgroundColor:C.mint,alignItems:'center',justifyContent:'center',paddingHorizontal:8},
+  hadithNumber:{minWidth:34,height:34,borderRadius:12,backgroundColor:C.mint,alignItems:'center',justifyContent:'center',paddingHorizontal:8},hadithRowRef:{color:C.muted,fontSize:10,marginTop:5,fontFamily:'DMSans_600SemiBold'},
   hadithNumberText:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:12,includeFontPadding:false,textAlign:'center'},
   hadithNumberLarge:{width:46,height:46,borderRadius:16,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},
   hadithDetailHead:{flexDirection:'row',alignItems:'center',gap:12},

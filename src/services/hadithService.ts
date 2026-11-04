@@ -59,6 +59,10 @@ export type HadithCollectionData = {
   loadedAt: number;
   source: string;
   arabicReady: boolean;
+  /* Which language these narrations are actually written in, which is not
+     always the one that was asked for: a collection with no Urdu edition
+     answers in English rather than in nothing. */
+  lang?: string;
 };
 
 export const HADITH_COLLECTIONS: HadithCollection[] = [
@@ -432,13 +436,22 @@ export async function loadHadithCollection(
   if (!force && inflight.has(slug)) return inflight.get(slug) as Promise<HadithCollectionData>;
 
   const task = (async () => {
+    /* Ask in the language the collection actually has.
+
+       Three of the ten collections carry no Urdu at all, and three carry no
+       Turkish, so asking them in those languages answers with nothing and
+       the book opens empty. It looks like missing content and it reads as a
+       bug in the app rather than a gap in the source. The outline already
+       resolved this before asking; the collection did not, which is why a
+       book could look empty here and full on the screen behind it. */
+    const { lang } = await resolveLanguage(slug, language);
     let data: HadithCollectionData | null = null;
     if (!force) {
       const cached = await getCachedJson<HadithCollectionData>('hadith', `collection-${slug}`).catch(() => null);
       if (cached && Array.isArray(cached.hadiths) && cached.hadiths.length) data = cached;
     }
     if (!data) {
-      const detail = await getHadithCollection(slug, language);
+      const detail = await getHadithCollection(slug, lang);
       const books = (detail.books || []).filter((book) => book && typeof book.number === 'number');
       if (!books.length) throw new Error('The collection listed no books');
 
@@ -450,7 +463,7 @@ export async function loadHadithCollection(
         const slice = books.slice(i, i + BOOK_CONCURRENCY);
         // eslint-disable-next-line no-await-in-loop
         const groups = await Promise.all(
-          slice.map((book) => fetchBook(slug, book, force, language).catch(() => [] as Hadith[])),
+          slice.map((book) => fetchBook(slug, book, force, lang).catch(() => [] as Hadith[])),
         );
         groups.forEach((group) => group.forEach((row) => hadiths.push(row)));
       }
@@ -466,6 +479,7 @@ export async function loadHadithCollection(
 
       data = {
         slug,
+        lang,
         name: detail.collection?.name || known.name || slug,
         books: books.map((book) => ({ ...book, name: book.name || 'General' })),
         hadiths,
