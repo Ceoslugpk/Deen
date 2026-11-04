@@ -44,6 +44,33 @@ export function quranFontFamily(id?: QuranFontId | string) {
   return match ? match.family : QURAN_FONTS[0].family;
 }
 
+/**
+ * Accepts either and always returns a family name.
+ *
+ * A share card is handed whichever of the two the caller happens to have:
+ * the reader's preference is an id like 'hafs', while the Quran screens
+ * resolve it first and pass 'KFGQPCUthmanicHafs'. An id is not a family
+ * name, so a card that was given one falls back to a default face and the
+ * reader's choice quietly fails to appear on the card they send.
+ *
+ * Resolving here rather than at each call site means a card cannot get this
+ * wrong, whichever way it is called.
+ */
+export function resolveArabicFamily(value?: string | null): string {
+  if (!value) return quranFontFamily(DEFAULT_QURAN_FONT);
+  const byId = QURAN_FONTS.find((font) => font.id === value);
+  if (byId) return byId.family;
+  // Already a family name? Keep it, so a caller that resolved early still wins.
+  const byFamily = QURAN_FONTS.find((font) => font.family === value);
+  if (byFamily) return byFamily.family;
+  return quranFontFamily(DEFAULT_QURAN_FONT);
+}
+
+/** The id a family name belongs to, or undefined if it is not one of ours. */
+export function arabicFontIdFor(family: string): QuranFontId | undefined {
+  return QURAN_FONTS.find((font) => font.family === family)?.id;
+}
+
 
 export async function ensureQuranFont(id: QuranFontId = DEFAULT_QURAN_FONT): Promise<boolean> {
   if (ready.has(id)) return true;

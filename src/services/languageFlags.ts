@@ -1,3 +1,4 @@
+import { languageByCode } from './languages';
 /**
  * Language codes, and the flag that stands for each one.
  *
@@ -111,8 +112,32 @@ export function languageLabel(code: string): string {
   return LANGUAGE_NAMES[key] || key.toUpperCase() || 'Other';
 }
 
+/**
+ * The name of a language written in that language.
+ *
+ * A picker that lists languages should show each one as its own speakers
+ * write it — اردو rather than "Urdu" — because a reader scanning for their
+ * language finds their own script faster than a translation of its name.
+ *
+ * The dozen languages the app speaks have their names written by hand. For
+ * the long tail the platform is asked, which knows the name of every language
+ * it can render in its own script; where it cannot, the English name stands.
+ */
+export function languageNative(code: string): string {
+  const key = (code || '').toLowerCase().trim();
+  const curated = languageByCode(key);
+  if (curated) return curated.native;
+  try {
+    const named = new Intl.DisplayNames([key], { type: 'language' }).of(key);
+    if (named && named !== key) return named;
+  } catch {
+    /* a runtime without DisplayNames still gets the English name below */
+  }
+  return languageLabel(code);
+}
 
-export type LanguageEntry = { code: string; label: string; flag: string; count: number };
+
+export type LanguageEntry = { code: string; label: string; native: string; flag: string; count: number };
 
 /**
  * The languages present in a set of editions, most-used first.
@@ -133,6 +158,12 @@ export function languagesOf(
     counts.set(code, (counts.get(code) || 0) + 1);
   }
   return [...counts.entries()]
-    .map(([code, count]) => ({ code, label: languageLabel(code), flag: languageFlag(code), count }))
+    .map(([code, count]) => ({
+      code,
+      label: languageLabel(code),
+      native: languageNative(code),
+      flag: languageFlag(code),
+      count,
+    }))
     .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
 }

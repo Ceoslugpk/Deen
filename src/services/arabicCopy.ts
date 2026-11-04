@@ -13,6 +13,8 @@
 // Accessibility labels stay in English on purpose — the QA scripts drive the
 // screens by them, in both languages.
 
+import { UR } from './urduCopy';
+
 const AR: Record<string, string> = {
   'Appearance': 'المظهر',
   'Light, dark, or whatever the device is set to': 'فاتح، أو داكن، أو كما هو مضبوط في الجهاز',
@@ -2490,17 +2492,54 @@ const AR: Record<string, string> = {
   'Continue to be asked. Nothing is scheduled unless you allow it, and every reminder can be switched off later in Settings.': 'سيُطلب منك عند المتابعة. لن تُجدول أي تنبيهات إلا إذا سمحت، ويمكن إيقاف كل تنبيه لاحقًا من الإعدادات.',
 };
 
-const PRAYERS: Record<string, string> = {
+const PRAYERS_AR: Record<string, string> = {
   Fajr: 'الفجر', Sunrise: 'الشروق', Dhuhr: 'الظهر', Asr: 'العصر', Maghrib: 'المغرب', Isha: 'العشاء',
 };
+const PRAYERS_UR: Record<string, string> = {
+  Fajr: 'فجر', Sunrise: 'طلوعِ آفتاب', Dhuhr: 'ظہر', Asr: 'عصر', Maghrib: 'مغرب', Isha: 'عشاء',
+};
+const PRAYER_TABLES: Record<'ar' | 'ur', Record<string, string>> = {
+  ar: PRAYERS_AR,
+  ur: PRAYERS_UR,
+};
 
-export function prayerName(rtl: boolean, name: string): string {
-  return rtl ? PRAYERS[name] ?? name : name;
-}
+export function prayerName(code: string | boolean, name: string): string {
+    const table = tableFor(code);
+    if (!table) return name;
+    return PRAYER_TABLES[table][name] ?? name;
+  }
 
-export function tx(rtl: boolean, text: string): string {
-  return rtl ? AR[text] ?? text : text;
-}
+  /**
+   * Which copy table a language reads from.
+   *
+   * `null` means English: the screens were written in it, so the source text
+   * is already the right answer and there is nothing to look up.
+   */
+  function tableFor(code: string | boolean): 'ar' | 'ur' | null {
+    if (typeof code === 'boolean') return code ? 'ar' : null;
+    if (code === 'ar') return 'ar';
+    if (code === 'ur') return 'ur';
+    return null;
+  }
+
+  /**
+   * Translate one string.
+   *
+   * The first argument is the language code. A boolean is still accepted,
+   * because much of the app was written as tx(rtl, ...) before there was a
+   * third language to choose between: `true` means Arabic, as it always did.
+   *
+   * A string with no entry in the chosen language reads as it does in
+   * English. An unfinished language is therefore never a screen of blanks —
+   * it is a screen that is partly Urdu and partly English until the copy is
+   * finished, which is why a new language can be shipped before it is done.
+   */
+  export function tx(code: string | boolean, text: string): string {
+    const table = tableFor(code);
+    if (table === 'ar') return AR[text] ?? text;
+    if (table === 'ur') return UR[text] ?? text;
+    return text;
+  }
 
 /**
  * Translate a sentence that has numbers in it.
@@ -2515,18 +2554,21 @@ export function tx(rtl: boolean, text: string): string {
  * the Arabic can put the number where Arabic puts it.
  */
 export function tf(
-  rtl: boolean,
+  code: string | boolean,
   text: string,
   values: Record<string, string | number>,
 ): string {
-  const out = rtl ? AR[text] ?? text : text;
+  const out = tx(code, text);
   return out.replace(/\{(\w+)\}/g, (_m, k) => String(values[k] ?? ''));
 }
 
 /** Prayer times arrive from the API as 12-hour clock strings such as "5:42 PM".
     In Arabic they are written with ص for the morning and م for the evening. */
-export function clockTime(rtl: boolean, time: string): string {
-  if (!rtl) return time;
+export function clockTime(code: string | boolean, time: string): string {
+  const table = tableFor(code);
+  if (!table) return time;
+  /* Arabic writes ص for the morning and م for the evening. Urdu is written
+     right to left as well and uses the same two marks. */
   return time.replace(/\s*(AM|PM)\s*$/i, (_match, half: string) =>
     half.toUpperCase() === 'AM' ? ' ص' : ' م',
   );

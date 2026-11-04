@@ -5,8 +5,9 @@ import { Platform, Share } from 'react-native';
    turn every picture share into a text share. */
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
-import { CardTheme, cardPalette } from './shareCard';
+import { CardTheme, cardPalette, documentFontsReady } from './shareCard';
 import { captureRef } from 'react-native-view-shot';
+import { arabicFontIdFor, ensureQuranFont, resolveArabicFamily } from './fonts';
 
 /**
  * Turns a verse into a shareable image card.
@@ -50,12 +51,18 @@ import {
  */
 async function renderWeb(data: VerseCardData): Promise<Blob> {
   const pal = cardPalette(data.theme);
+  /* The reader's chosen face, whichever form the caller had it in, fetched
+     before anything is measured: an unloaded face is measured in the
+     fallback's metrics and the Arabic is then set at the wrong size. */
+  const arabicFamily = resolveArabicFamily(data.arabicFontFamily);
+  await ensureQuranFont(arabicFontIdFor(arabicFamily));
+  await documentFontsReady();
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('This browser did not give us a canvas to draw on.');
 
   // ---- measure pass (logical units) ----
-  const arabic = fitArabic(ctx, data.arabic, data.arabicFontFamily);
+  const arabic = fitArabic(ctx, data.arabic, arabicFamily);
   const arabicLine = Math.round(arabic.size * 1.75);
 
   ctx.font = font(34, 400, UI_STACK);
@@ -158,7 +165,7 @@ async function renderWeb(data: VerseCardData): Promise<Blob> {
   ctx.direction = 'rtl';
   ctx.textAlign = 'right';
   ctx.fillStyle = pal.ink;
-  ctx.font = font(arabic.size, 400, `"${data.arabicFontFamily}",${FALLBACK_ARABIC}`);
+  ctx.font = font(arabic.size, 400, `"${arabicFamily}",${FALLBACK_ARABIC}`);
   for (const line of arabic.lines) {
     ctx.fillText(line, W - PAD, y);
     y += arabicLine;

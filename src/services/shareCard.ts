@@ -6,6 +6,7 @@ import { Platform, Share } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { captureRef } from 'react-native-view-shot';
+import { arabicFontIdFor, ensureQuranFont, resolveArabicFamily } from './fonts';
 
 /**
  * The share-card painter, shared by every screen that turns what you are
@@ -267,14 +268,42 @@ export function roundRect(
  * name should not sit in the middle of a tall empty rectangle, and a long
  * supplication should not be squeezed to fit one.
  */
+/**
+ * Waits for the document's fonts to be usable.
+ *
+ * expo-font registers a fetched face with the browser, but a canvas asked to
+ * measure text in it before it is ready quietly measures in the fallback
+ * instead, and the Arabic is then wrapped and sized for the wrong face.
+ * Web only, like the renderer it serves.
+ */
+export async function documentFontsReady(): Promise<void> {
+  try {
+    const fonts = (document as any)?.fonts;
+    if (fonts?.ready) await fonts.ready;
+  } catch {
+    /* an older browser without the Font Loading API still draws, just without
+       this guarantee */
+  }
+}
+
 export async function renderShareCard(
   data: ShareCardData,
   theme: CardTheme = 'islamic',
 ): Promise<Blob> {
   const pal = cardPalette(theme);
+  /* The reader's chosen face, resolved from whichever form the caller had.
+     Only hafs and naskh are present at launch, so a heavier face has to be
+     fetched before the canvas can measure or draw in it — otherwise the card
+     silently comes out in the default hand. */
+  const arabicFamily = resolveArabicFamily(data.arabicFontFamily);
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('This browser did not give us a canvas to draw on.');
+  await ensureQuranFont(arabicFontIdFor(arabicFamily));
+  /* A face registered moments ago is not necessarily ready to be measured.
+     Without this the first wrap is done in the fallback metrics and the
+     Arabic is set at the wrong size. */
+  await documentFontsReady();
   const mark = await loadBrandMark();
 
   // ---- measure ----
@@ -283,9 +312,7 @@ export async function renderShareCard(
   ctx.font = font(26, 400, UI_STACK);
   const footerLines = data.footer ? wrapLines(ctx, data.footer, INNER - 40, 'ltr') : [];
 
-  const arabicBlock = data.arabic
-    ? fitArabic(ctx, data.arabic, data.arabicFontFamily || 'NotoNaskhArabic_400Regular')
-    : null;
+  const arabicBlock = data.arabic ? fitArabic(ctx, data.arabic, arabicFamily) : null;
 
   const KICKER_H = 46;
   const ARABIC_GAP = 44;
@@ -334,7 +361,7 @@ export async function renderShareCard(
     ctx.textAlign = 'right';
     ctx.direction = 'rtl';
     ctx.fillStyle = pal.ink;
-    ctx.font = font(arabicBlock.size, 400, `"${data.arabicFontFamily || 'NotoNaskhArabic_400Regular'}",${FALLBACK_ARABIC}`);
+    ctx.font = font(arabicBlock.size, 400, `"${arabicFamily}",${FALLBACK_ARABIC}`);
     const step = Math.round(arabicBlock.size * 1.75);
     for (const line of arabicBlock.lines) {
       ctx.fillText(line, W - PAD, y);

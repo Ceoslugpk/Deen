@@ -37,8 +37,15 @@ export type Language = {
   native: string;
   english: string;
   rtl: boolean;
-  /** True once the interface copy exists in this language. */
+  /** True once the interface copy is complete in this language. */
   uiReady: boolean;
+  /**
+   * True while the copy is partly written. A language in this state shows its
+   * own words where they exist and English where they do not, which is better
+   * than nothing and not the same as finished — so the picker says so, rather
+   * than claiming the whole app speaks it.
+   */
+  uiPartial?: boolean;
   /** The Quran text shown beside the Arabic, if the API has one. */
   text?: QuranTextEdition;
   /**
@@ -63,7 +70,10 @@ export const LANGUAGES: Language[] = [
     text: { identifier: 'tafsir_ar_arabic_ar-tafsir-muyassar', name: 'Tafsir al-Muyassar', kind: 'tafsir' },
   },
   {
-    code: 'ur', native: 'اردو', english: 'Urdu', rtl: true, uiReady: false,
+    /* Urdu now has copy of its own. It is not finished — the interface reads
+       in Urdu where the words exist and in English where they do not — so it
+       is marked partial rather than ready, and the picker says as much. */
+    code: 'ur', native: 'اردو', english: 'Urdu', rtl: true, uiReady: false, uiPartial: true,
     text: { identifier: 'tr_ur_abul_ala_maududi', name: 'Abul Ala Maududi', kind: 'translation' },
     voice: { identifier: 'ur.khan', name: 'Shamshad Ali Khan' },
   },

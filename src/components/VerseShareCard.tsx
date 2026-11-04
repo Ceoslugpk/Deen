@@ -2,6 +2,7 @@ import * as React from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { CardPalette, CardTheme, cardPalette } from '../services/shareCard';
+import { resolveArabicFamily } from '../services/fonts';
 
 /** The same mark the app header wears, in its light-on-dark variant:
     the card is a dark gradient, so the dark-background artwork is the
@@ -134,6 +135,7 @@ export function VerseShareCard({
 }: VerseShareCardProps) {
   const pal = cardPalette(theme);
   const styles = React.useMemo(() => makeStyles(pal), [pal]);
+  const arabicFamily = resolveArabicFamily(arabicFontFamily);
   const arabicSize = arabic.length > 320 ? 54 : arabic.length > 160 ? 66 : 76;
   return (
     <View ref={viewRef} collapsable={false} style={styles.card}>
@@ -156,7 +158,7 @@ export function VerseShareCard({
       </View>
       <View style={styles.headerRule} />
 
-      <Text style={[styles.arabic, { fontFamily: arabicFontFamily, fontSize: arabicSize, lineHeight: Math.round(arabicSize * 1.75) }]}>
+      <Text style={[styles.arabic, { fontFamily: arabicFamily, fontSize: arabicSize, lineHeight: Math.round(arabicSize * 1.75) }]}>
         {arabic}
       </Text>
 
