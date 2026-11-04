@@ -97,7 +97,7 @@ import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 import * as Clipboard from 'expo-clipboard';
 import { getCacheUsage, getCachedJson, setCachedJson } from './src/services/contentCache';
 import { AudioSession, AudioSettings, AudioTrackKind, buildQueueForChapter, buildSurahQueue, loadSurahReciters, clearQueue, clearRecentPlays, deletePlaylist, formatClock, getAudioSettings, loadAudioEditions, loadAudioSession, loadAudioSettings, loadPlaylists, loadRecentPlays, nextTrack, playQueue, Playlist, previousTrack, RecentPlay, removeFromQueue, restoreSavedSession, saveAudioSettings, savePlaylist, seekTo, selectQueueItem, setAutoNextSurah, setRepeatCount, setRepeatMode, setRepeatRange, setResumeOnStart, setVolume, stepPlaybackRate, MAX_RATE, MIN_RATE, RATE_STEPS, REPEAT_COUNT_CHOICES, REPEAT_FOREVER, setPlaybackRate, reciterLabel, stopPlayback, syncAudioTranslationToLanguage, togglePlayback, useAudio } from './src/services/audioService';
-import {DEFAULT_HADITH_LANGUAGE, deviceHadithCount, downloadCollection, fetchHadithOne, getHadith, hadithDownloadProgress, searchDeviceHadith, useHadithLanguage, setHadithLanguage, hadithReference, hadithSourceLabel, HADITH_COLLECTIONS, Hadith, HadithOutline, isHadithSaved, loadHadithBook, loadHadithOutline, loadHadithState, markHadithRead, removeDownloadedCollection, removeHadithBookmark, subscribeHadithDownloads, toggleHadithSaved, useDownloadedCollections, useHadithState } from './src/services/hadithService';
+import {DEFAULT_HADITH_LANGUAGE, deviceHadithCount, downloadCollection, fetchHadithOne, getHadith, getHadithLanguage, hadithDownloadProgress, searchDeviceHadith, useHadithLanguage, setHadithLanguage, hadithReference, hadithSourceLabel, HADITH_COLLECTIONS, Hadith, HadithOutline, isHadithSaved, loadHadithBook, loadHadithOutline, loadHadithState, markHadithRead, removeDownloadedCollection, removeHadithBookmark, subscribeHadithDownloads, toggleHadithSaved, useDownloadedCollections, useHadithState } from './src/services/hadithService';
 import { adhanTrack, ADHAN_TRACKS, AdhanTrack, DEFAULT_ADHAN_ID, DEFAULT_FAJR_ID, FAJR_TRACKS } from './src/services/adhanCatalog';
 import { adhanPlaybackSource, downloadAllAdhanTracks, getAdhanCacheState, isAdhanCached, refreshAdhanCache, subscribeAdhanCache, clearAdhanCache } from './src/services/adhanCache';
 import {
@@ -12703,12 +12703,112 @@ class ScreenBoundary extends React.Component<
   }
 }
 
+/* The reading a language is named after, when the catalog offers more than
+   one and the first is not the one to open on.
+
+   The Urdu list is the reason this exists. Its first eight entries are
+   Roman Urdu — the meaning written in Latin letters — because that is how
+   they sort. Handing those to somebody who has just asked to read the app
+   in Urdu would give them the Qur'an in a script they did not ask for,
+   which is worse than the English they were already reading.
+
+   The names of the native-script editions are themselves written in Urdu,
+   so the script of the title is the signal. Where a curated name exists it
+   is preferred; the rest fall back to that test, then to catalog order. */
+const PREFERRED_TRANSLATION: Record<string, string> = {
+  ur: 'tr_ur_fateh_muhammad_jalandhry',
+  en: 'tr_en_saheeh_international',
+  ar: 'tr_ar_buck',
+};
+
+/** True when a title is written in a script other than Latin. */
+function inNativeScript(name: string): boolean {
+  return /[؀-ۿऀ-ॿ਀-੿]/.test(name || '');
+}
+
+/**
+ * The edition to read a language in, or null when the catalog carries none.
+ *
+ * Preference order: the curated id if the catalog has it, then an edition
+ * whose title is in the language's own script, then the first one listed.
+ */
+function bestEditionFor(editions: IslamicEdition[], language: string): IslamicEdition | null {
+  const code = (language || '').toLowerCase();
+  const wanted = editions.filter((e) => (e.language || '').toLowerCase() === code);
+  if (!wanted.length) return null;
+  const preferred = PREFERRED_TRANSLATION[code];
+  if (preferred) {
+    const hit = wanted.find((e) => e.id === preferred);
+    if (hit) return hit;
+  }
+  return wanted.find((e) => inNativeScript(e.displayName)) ?? wanted[0];
+}
+
+/**
+ * Puts the content in the language the app is being read in.
+ *
+ * Choosing Urdu or Arabic used to move the interface and nothing else: the
+ * buttons and headings changed, while the translation under every ayah, the
+ * hadith on the Home screen and the spoken translation stayed English, and
+ * were each switched separately, three screens deep, by anyone who wanted
+ * them to match. They follow the app now.
+ *
+ * Two things are deliberately left alone. A translation picked by hand
+ * afterwards is not put back — the sync runs on a change of language, not
+ * on a change of preference — so the settings screens still work as a way
+ * of overriding it. And where a language has nothing in the catalog,
+ * English is chosen rather than leaving whatever was there, because reading
+ * a translation in a language you did not ask for is the thing being fixed.
+ *
+ * The spoken translation is not touched here. It follows the reading
+ * translation on its own, so it arrives at the right voice through that.
+ */
+function useContentLanguageSync() {
+  const { language, ready } = useLanguage();
+  const { preferences, update, hydrated } = useQuranPreferences();
+
+  /* Hadith. It serves nine languages of its own, which is not the app's
+     list, so an app language it does not carry lands on English. */
+  useEffect(() => {
+    if (!ready) return;
+    const wanted = hadithLanguage(language) ? language : DEFAULT_HADITH_LANGUAGE;
+    if (wanted === getHadithLanguage()) return;
+    void setHadithLanguage(wanted);
+  }, [language, ready]);
+
+  /* The reading translation. One catalog read per change of language,
+     cached by the service for six hours, and used both to see whether the
+     current choice is already in this language and to find the one to
+     move it to. */
+  useEffect(() => {
+    if (!ready || !hydrated) return;
+    let alive = true;
+    void (async () => {
+      const editions = await getEditions('quran').catch(() => [] as IslamicEdition[]);
+      if (!alive || !editions.length) return;
+      const current = editions.find((e) => e.id === preferences.translationEdition);
+      /* Already reading this language — whether we put it there or the
+         reader did — so leave it. */
+      if (current && (current.language || '').toLowerCase() === language.toLowerCase()) return;
+      const pick = bestEditionFor(editions, language) ?? bestEditionFor(editions, 'en');
+      if (!alive || !pick || pick.id === preferences.translationEdition) return;
+      await update({
+        translationEdition: pick.id,
+        translationName: editionDisplayName(pick),
+        translationLanguage: languageLabel(pick.language || 'en'),
+      });
+    })();
+    return () => { alive = false; };
+  }, [language, ready, hydrated, preferences.translationEdition, update]);
+}
+
 function AppShell() {
   const { ready, rtl: rtlNow , language }=useLanguage();  /* rtlNow is a flag here, not a function */
   const { location } = useAppLocation();
   const { settings } = useWorshipSettings();
   const { hydrated } = useQuranPreferences();
   useAudioLanguageSync();
+  useContentLanguageSync();
   const [onboarding, setOnboarding] = useState<boolean | null>(null);
   const [splash, setSplash] = useState(true);
   const [stalled, setStalled] = useState(false);
