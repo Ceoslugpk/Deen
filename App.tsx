@@ -1310,6 +1310,9 @@ const TOOL_IMAGES_PALESTINE: Record<string, any> = {
   Juz: require('./assets/tool-icons/juz-palestine.png'),
   Hizb: require('./assets/tool-icons/hizb-palestine.png'),
   Audio: require('./assets/tool-icons/audio-palestine.png'),
+  /* The Quran screen's reading-preferences card. Its key carries a space, so
+     it is quoted here while the single-word ones above are not. */
+  'Reader Settings': require('./assets/tool-icons/reader-settings-palestine.png'),
 };
 const TOOL_IMAGES_PALESTINE_DARK: Record<string, any> = {
   Vocab: require('./assets/tool-icons/vocab-dark-palestine.png'),
@@ -1321,6 +1324,7 @@ const TOOL_IMAGES_PALESTINE_DARK: Record<string, any> = {
   Juz: require('./assets/tool-icons/juz-dark-palestine.png'),
   Hizb: require('./assets/tool-icons/hizb-dark-palestine.png'),
   Audio: require('./assets/tool-icons/audio-dark-palestine.png'),
+  'Reader Settings': require('./assets/tool-icons/reader-settings-dark-palestine.png'),
 };
 function ToolGraphic({tool,size=64}:{tool:string;size?:number}){const{dark,resolved}=useTheme();
   /* By theme, the way the prayer icons are: a theme carries its lightness with
