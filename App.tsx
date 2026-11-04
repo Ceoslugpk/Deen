@@ -1323,6 +1323,13 @@ const TOOL_IMAGES_PALESTINE: Record<string, any> = {
   'Prophet Names': require('./assets/tool-icons/prophet-names-palestine.png'),
   '99 Names': require('./assets/tool-icons/99-names-of-allah-palestine.png'),
   Names: require('./assets/tool-icons/99-names-of-allah-palestine.png'),
+  /* Adhkar, Ramadan and Shahada. Ramadan is asked for under two keys: the
+     library card, and 'Ramadan Guide' in the worship guides, which has
+     always shared the one drawing with it. */
+  Adhkar: require('./assets/tool-icons/adhkar-palestine.png'),
+  Ramadan: require('./assets/tool-icons/ramadan-palestine.png'),
+  'Ramadan Guide': require('./assets/tool-icons/ramadan-palestine.png'),
+  Shahada: require('./assets/tool-icons/shahada-palestine.png'),
 };
 const TOOL_IMAGES_PALESTINE_DARK: Record<string, any> = {
   Vocab: require('./assets/tool-icons/vocab-dark-palestine.png'),
@@ -1341,6 +1348,10 @@ const TOOL_IMAGES_PALESTINE_DARK: Record<string, any> = {
   'Prophet Names': require('./assets/tool-icons/prophet-names-dark-palestine.png'),
   '99 Names': require('./assets/tool-icons/99-names-of-allah-dark-palestine.png'),
   Names: require('./assets/tool-icons/99-names-of-allah-dark-palestine.png'),
+  Adhkar: require('./assets/tool-icons/adhkar-dark-palestine.png'),
+  Ramadan: require('./assets/tool-icons/ramadan-dark-palestine.png'),
+  'Ramadan Guide': require('./assets/tool-icons/ramadan-dark-palestine.png'),
+  Shahada: require('./assets/tool-icons/shahada-dark-palestine.png'),
 };
 function ToolGraphic({tool,size=64}:{tool:string;size?:number}){const{dark,resolved}=useTheme();
   /* By theme, the way the prayer icons are: a theme carries its lightness with
