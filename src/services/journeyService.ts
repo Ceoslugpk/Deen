@@ -1,4 +1,6 @@
 import { JOURNEY_META_AR, JOURNEY_STEPS_AR } from '../content/journeyAr';
+import { JOURNEY_META_FA, JOURNEY_STEPS_FA } from '../content/journeyFa';
+import { JOURNEY_META_TR, JOURNEY_STEPS_TR } from '../content/journeyTr';
 import { useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -307,22 +309,24 @@ export function readableDate(iso: string) {
 
 /** The Umrah and Hajj wording in the language of the interface. */
 export function journeyMeta(kind: JourneyKind, lang?: string | boolean) {
-  const rtl = lang === true || lang === 'ar';
+  const code = typeof lang === 'string' ? lang : lang === true ? 'ar' : 'en';
   const base = JOURNEY_META[kind];
-  const ar = rtl ? JOURNEY_META_AR[kind] : undefined;
-  return ar ? { ...base, intro: ar.intro } : base;
+  const table = code === 'fa' ? JOURNEY_META_FA : code === 'tr' ? JOURNEY_META_TR : code === 'ar' ? JOURNEY_META_AR : undefined;
+  const own = table?.[kind];
+  return own ? { ...base, intro: own.intro } : base;
 }
 
 /** A single rite in the language of the interface. */
 export function localizeJourneyStep(step: JourneyStep, lang?: string | boolean): JourneyStep {
-  const rtl = lang === true || lang === 'ar';
-  const ar = rtl ? JOURNEY_STEPS_AR[step.id] : undefined;
-  if (!ar) return step;
+  const code = typeof lang === 'string' ? lang : lang === true ? 'ar' : 'en';
+  const table = code === 'fa' ? JOURNEY_STEPS_FA : code === 'tr' ? JOURNEY_STEPS_TR : code === 'ar' ? JOURNEY_STEPS_AR : undefined;
+  const own = table?.[step.id];
+  if (!own) return step;
   return {
     ...step,
-    title: ar.title,
-    short: ar.short,
-    detail: ar.detail,
-    counter: step.counter ? { ...step.counter, label: ar.counterLabel || step.counter.label } : step.counter,
+    title: own.title,
+    short: own.short,
+    detail: own.detail,
+    counter: step.counter ? { ...step.counter, label: own.counterLabel || step.counter.label } : step.counter,
   };
 }

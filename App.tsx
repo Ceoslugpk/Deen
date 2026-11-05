@@ -2264,7 +2264,7 @@ const[quranPosition,setQuranPosition]=useState<any>(null);const[openReflection,s
         reference:`${hadithSourceLabel(language, reportHadith.collection)} · ${reportHadith.number}`,
         source:hadithSourceLabel(language, reportHadith.collection),
         arabic:stripTags(reportHadith.arabic||''), text:stripTags(reportHadith.text||'')}}
-        rtl={rtl} T={T} appLanguage={rtl?'ar':'en'} onClose={()=>setReportHadith(null)}/>
+        rtl={rtl} T={T} appLanguage={language} onClose={()=>setReportHadith(null)}/>
     : null, () => setReportHadith(null));
   useOverlaySheet('home-reflection', !!openReflection, () => openReflection
     ? <ReflectionDetail kind={openReflection} data={data} rtl={rtl} T={T}
@@ -3476,7 +3476,7 @@ function ReaderScreen({route,navigation}:any){
     ? <VerseNoteSheet verse={noteVerse} chapter={full} rtl={rtl} T={T} onClose={()=>setNoteVerse(null)}/>
     : null, () => setNoteVerse(null));
   useOverlaySheet('verse-actions', !!actionsVerse, () => actionsVerse
-    ? <VerseActionsSheet verse={actionsVerse} chapter={full} rtl={rtl} T={T} navigation={navigation} onClose={()=>setActionsVerse(null)}/>
+    ? <VerseActionsSheet verse={actionsVerse} chapter={full} rtl={rtl} T={T} language={language} navigation={navigation} onClose={()=>setActionsVerse(null)}/>
     : null, () => setActionsVerse(null));
   return <Page><Animated.View style={[s.readerBar,{transform:[{translateY:chromeY}]}]}><IconButton name={rtl?'arrow-forward':'arrow-back'} onPress={()=>navigation.goBack()}/>{!narrow&&(canStep(-1)?<Pressable accessibilityLabel={T('Previous section')} onPress={()=>step(-1)} style={s.surahStep}>{ico(rtl?'chevron-forward':'chevron-back',19,C.ink)}</Pressable>:<View style={s.surahStep}/>)}<View style={{alignItems:'center',flex:1}}><Text style={s.readerName} numberOfLines={1}>{title}</Text><Text style={s.meta} numberOfLines={1}>{subtitle}</Text></View>{!narrow&&(canStep(1)?<Pressable accessibilityLabel={T('Next section')} onPress={()=>step(1)} style={s.surahStep}>{ico(rtl?'chevron-back':'chevron-forward',19,C.ink)}</Pressable>:<View style={s.surahStep}/>)}<View style={s.readerHeaderActions}>{section==='surah'&&<Pressable accessibilityLabel={T('Play this Surah')} onPress={()=>{void playSurahFromReader(full,rtl)}} style={s.readerIconBtn}>{ico('play-circle',20,C.ink)}</Pressable>}{section==='surah'&&<Pressable accessibilityLabel={T('Keep this Surah for offline')} onPress={()=>navigation.navigate('Downloads',{chapterId,surahName:full.name_simple})} style={s.readerIconBtn}>{ico('download-outline',20,C.ink)}</Pressable>}<Pressable accessibilityRole="switch" accessibilityState={{checked:focusOn}} accessibilityLabel={`${T('Focus mode')}: ${focusOn?T('On'):T('Off')}`} onPress={()=>update({focusMode:!focusOn})} style={s.readerIconBtn}>{ico(focusOn?'eye':'eye-outline',20,focusOn?C.gold:C.ink)}</Pressable><Pressable accessibilityLabel={T('Reader settings')} onPress={()=>navigation.navigate('Reader Settings')} style={s.readerIconBtn}>{ico('options-outline',20,C.ink)}</Pressable></View></Animated.View><View style={s.readerProgress}><Animated.View style={[s.preloadFill,{width:progressWidth as any}]}/></View>
   <ScrollView keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} ref={scrollRef} contentContainerStyle={s.readerScroll} showsVerticalScrollIndicator={false} scrollEventThrottle={16} onScroll={Animated.event(
@@ -4872,9 +4872,13 @@ function ReaderSettingsScreen({navigation}:any){
  * It is drawn by the overlay host, so the floating menu is behind it rather
  * than across it.
  */
-function VerseActionsSheet({ verse, chapter, rtl, T, navigation, onClose }: {
-  verse: Verse; chapter: Chapter; rtl: boolean; T: (t: string) => string; navigation: any; onClose: () => void;
+function VerseActionsSheet({ verse, chapter, rtl, T, navigation, onClose, language }: {
+  verse: Verse; chapter: Chapter; rtl: boolean; T: (t: string) => string; navigation: any; onClose: () => void; language?: string;
 }) {
+  /* The report carries the language it was written in. Falling back to rtl
+     keeps an unconverted caller working, but the caller should pass it: a
+     boolean files Persian reports as Arabic. */
+  const reportLanguage = language || (rtl ? 'ar' : 'en');
   const { preferences } = useQuranPreferences();
   /* A card that leaves the app wears the theme it was made in. */
   const { theme: cardTheme } = useTheme();
@@ -4938,7 +4942,7 @@ function VerseActionsSheet({ verse, chapter, rtl, T, navigation, onClose }: {
     target={{ kind: 'ayah', reference: verse.verse_key, source: `${T('Surah')} ${chapter.name_simple}`,
       arabic: verse.text_uthmani, text: verse.translation,
       edition: T(rtl ? preferences.translationLanguage : preferences.translationName) }}
-    rtl={rtl} T={T} appLanguage={rtl ? 'ar' : 'en'} onClose={() => setReporting(false)} />, () => setReporting(false));
+    rtl={rtl} T={T} appLanguage={reportLanguage} onClose={() => setReporting(false)} />, () => setReporting(false));
 
   return <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
     {/* captured into a PNG on native; the web path draws on a canvas instead */}
@@ -6047,7 +6051,7 @@ function DuaCard({ dua, read, onRead }: { dua: Dua; read?: boolean; onRead?: () 
           arabic: dua.arabic,
           text: dua.translation,
         }}
-        rtl={rtl} T={T} appLanguage={rtl ? 'ar' : 'en'} onClose={() => setReporting(false)}
+        rtl={rtl} T={T} appLanguage={language} onClose={() => setReporting(false)}
       />
     </Modal>
     {offscreenCard}
@@ -6180,7 +6184,7 @@ function NamesScreen({ navigation }: any) {const {rtl,language:appLanguage}=useL
   const soften = (value: string) => value.toLowerCase().replace(/[^a-z0-9\u0600-\u06ff]/g, '').replace(/aa/g, 'a');
   const needle = soften(query.trim());
   const shown = names.filter((name) => soften(`${name.number} ${name.transliteration} ${name.meaning} ${Object.values(name.meanings || {}).join(' ')} ${name.name}`).includes(needle));
-  const meaning = (name: DivineName) => (rtl || language === 'ar' ? NAMES_MEANING_AR[name.number] : undefined) || name.meanings?.[language] || name.meanings?.en || name.meaning;
+  const meaning = (name: DivineName) => (language === 'ar' ? NAMES_MEANING_AR[name.number] : undefined) || name.meanings?.[language] || name.meanings?.en || name.meaning;
   const pickLanguage = async (code: string) => { setLanguage(code); await saveNameLanguage(code); };
   return <Page><ToolBar title={T('The Beautiful Names')} navigation={navigation}/><ScrollView keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
     <ToolGraphic tool="99 Names" size={81} />
@@ -10226,7 +10230,7 @@ function HadithDetailScreen({route,navigation}:any){const {rtl,language:appLangu
         target={{kind:'hadith',reference:`${collection?.name||''} · ${hadith.number}`,
           source:collection?.name||'', arabic:hadith.arabic, text:hadith.english,
           edition:hadith.grades[0]?.grade}}
-        rtl={rtl} T={T} appLanguage={rtl?'ar':'en'} onClose={()=>setReporting(false)}/>
+        rtl={rtl} T={T} appLanguage={language} onClose={()=>setReporting(false)}/>
     : null, () => setReporting(false));
   return <Page><ToolBar title={rtl ? (collection?.arabicName || T('Hadith')) : (collection?.name || 'Hadith')} navigation={navigation}/>
     {!hadith&&!error&&<SkeletonParagraph lines={4} />}
