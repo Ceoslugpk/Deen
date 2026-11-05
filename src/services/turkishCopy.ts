@@ -2123,4 +2123,5 @@ export const TR: Record<string, string> = {
   "Completing the Qur'an": "Kur'an'ı hatmetme",
   'Live': 'Canlı',
   'facing': 'yönünde',
+  'Hold the phone flat, or in a figure of eight, if the arrow drifts.': 'Ok kayarsa telefonu düz tutun ya da sekiz çizerek hareket ettirin.',
 };

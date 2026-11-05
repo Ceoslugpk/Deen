@@ -2625,6 +2625,8 @@ const AR: Record<string, string> = {
   '{s} day streak · {w}/35 this week': '{s} يوم متتابع · {w}/35 هذا الأسبوع',
   '{w} of 35 prayers marked · {s} day streak': '{w} من 35 صلاة مسجَّلة · {s} يوم متتابع',
   ' · downloaded': ' · مُنزَّلة',
+  'Hold the phone flat, or in a figure of eight, if the arrow drifts.': 'أمسك الهاتف بشكل مسطح، أو حرّكه على شكل رقم ثمانية، إذا انحرف السهم.',
+  'PER GRAM, IN ': 'لكل غرام، بـ ',
 };
 
 const PRAYERS_AR: Record<string, string> = {
