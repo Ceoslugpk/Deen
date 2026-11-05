@@ -119,6 +119,26 @@ const HADITH_NAME_UR: Record<string, string> = {
   dehlawi: 'شاہ ولی اللہ دہلوی کی چالیس احادیث',
 };
 
+/* Indonesian. The titles are given in the spelling Indonesian Islamic
+   publishing uses — "Shahih" rather than "Sahih", "Daud" rather than
+   "Dawud", "Ibnu Majah" rather than "Ibn Majah" — because those are the forms
+   on the Indonesian editions of these books. Only the descriptive parts,
+   "Forty Hadith of ...", are actually translated, and they are written out
+   rather than upper-cased, as the English list does and the Indonesian does
+   not. */
+const HADITH_NAME_ID: Record<string, string> = {
+  bukhari: 'Shahih al-Bukhari',
+  muslim: 'Shahih Muslim',
+  abudawud: 'Sunan Abu Daud',
+  tirmidhi: 'Jami’ at-Tirmidzi',
+  nasai: 'Sunan an-Nasa’i',
+  ibnmajah: 'Sunan Ibnu Majah',
+  malik: 'Muwatha’ Malik',
+  nawawi: 'Empat Puluh Hadis an-Nawawi',
+  qudsi: 'Empat Puluh Hadis Qudsi',
+  dehlawi: 'Empat Puluh Hadis Syah Waliullah ad-Dihlawi',
+};
+
 export function hadithSourceLabel(lang: string | boolean, slug: string): string {
   const code = typeof lang === 'string' ? lang : lang === true ? 'ar' : 'en';
   const known = HADITH_COLLECTIONS.find((collection) => collection.slug.toLowerCase() === (slug || '').toLowerCase());
@@ -128,6 +148,7 @@ export function hadithSourceLabel(lang: string | boolean, slug: string): string 
   if (code === 'fa') return HADITH_NAME_FA[slug] || known?.arabicName || slug;
   if (code === 'tr') return HADITH_NAME_TR[slug] || known?.name || slug;
   if (code === 'ur') return HADITH_NAME_UR[slug] || known?.name || slug;
+  if (code === 'id') return HADITH_NAME_ID[slug] || known?.name || slug;
   return (known?.name || slug).toUpperCase();
 }
 

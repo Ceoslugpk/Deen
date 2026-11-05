@@ -57,7 +57,23 @@ const MEANING_UR: Record<string, string> = {
   'Allah is sufficient for us': 'اللہ ہمیں کافی ہے اور وہ بہترین کارساز ہے',
 };
 
-const MEANING_TABLES: Record<string, Record<string, string>> = { fa: MEANING_FA, tr: MEANING_TR, ur: MEANING_UR, ar: MEANING_AR };
+/* Indonesian. These are the meanings an Indonesian reciter is taught to hold
+   in mind, so the idiom follows that teaching rather than a literal calque of
+   the English: «la hawla» is rendered as the well-known Indonesian phrasing
+   about the power to leave sin and the strength to obey, which is how the
+   phrase is explained in Indonesian majelis, not as "tidak ada kekuatan". */
+const MEANING_ID: Record<string, string> = {
+  'Glory be to Allah': 'Maha Suci Allah',
+  'All praise is for Allah': 'Segala puji bagi Allah',
+  'Allah is the Greatest': 'Allah Maha Besar',
+  'There is no god but Allah': 'Tiada Tuhan selain Allah',
+  'I seek forgiveness from Allah': 'Aku memohon ampun kepada Allah',
+  'O Allah, send blessings upon Muhammad': 'Ya Allah, limpahkan selawat kepada Muhammad',
+  'There is no power except with Allah': 'Tiada daya untuk menjauhi maksiat dan tiada kekuatan untuk berbuat taat kecuali dengan pertolongan Allah',
+  'Allah is sufficient for us': 'Cukuplah Allah bagi kami, dan Dialah sebaik-baik pelindung',
+};
+
+const MEANING_TABLES: Record<string, Record<string, string>> = { fa: MEANING_FA, tr: MEANING_TR, ur: MEANING_UR, id: MEANING_ID, ar: MEANING_AR };
 
 export function dhikrMeaning(phrase: DhikrPhrase, lang?: string | boolean) {
   const code = typeof lang === 'string' ? lang : lang === true ? 'ar' : 'en';

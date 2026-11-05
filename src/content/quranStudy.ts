@@ -124,6 +124,46 @@ export const TAJWEED_TR: Record<string, { name: string; detail: string }> = {
   g: { name: 'Gunne', detail: 'İki harek boyunca tutulan geniz sesi.' },
 };
 
+export const TOPIC_ID: Record<string, { title: string; description: string }> = {
+  oneness: { title: 'Keesaan Allah', description: 'Ayat-ayat yang menegaskan keesaan, kemandirian, dan ketiadaan yang menyerupai Allah secara mutlak.' },
+  trust: { title: 'Tawakal dan bersandar', description: 'Bersandar kepada Allah sembari tetap berikhtiar dan teguh.' },
+  signs: { title: 'Tanda-tanda di alam', description: 'Ayat-ayat yang mengajak merenungkan penciptaan, keteraturan, dan tujuan.' },
+  resurrection: { title: 'Kebangkitan dan kembalinya', description: 'Peringatan tentang pertanggungjawaban, pembaruan, dan kembalinya segala sesuatu kepada Allah.' },
+  parents: { title: 'Orang tua dan keluarga', description: 'Kasih sayang, rasa syukur, dan pergaulan yang baik dalam kehidupan keluarga.' },
+  justice: { title: 'Keadilan dan integritas', description: 'Berdiri teguh membela keadilan sekalipun terasa berat bagi diri sendiri.' },
+  patience: { title: 'Sabar dalam kesulitan', description: 'Memohon pertolongan dengan sabar dan salat ketika keadaan sukar.' },
+  speech: { title: 'Menjaga ucapan', description: 'Mengatakan yang terbaik, menjauhi prasangka, dan menjaga kehormatan sesama.' },
+  remembrance: { title: 'Dzikir dan ketenangan', description: 'Menemukan keteguhan hati melalui dzikir kepada Allah.' },
+  repentance: { title: 'Harapan dan taubat', description: 'Tidak pernah berputus asa dari rahmat-Nya dan kembali dengan sungguh-sungguh setelah salah.' },
+  gratitude: { title: 'Syukur', description: 'Mengenali nikmat dan menyambutnya dengan ibadah yang penuh syukur.' },
+  dua: { title: 'Doa dan kedekatan', description: 'Kedekatan Allah dan undangan-Nya untuk memohon kepada-Nya.' },
+};
+
+export const TOPIC_CATEGORY_ID: Record<string, string> = { Faith: 'Aqidah', Life: 'Kehidupan', Spirituality: 'Spiritualitas' };
+
+/* Indonesian tajwid teaching uses the Arabic rule names as they are: a pupil is
+   taught "qalqalah" and "ghunnah", not an Indonesian description of them, and
+   the rules are named in the Indonesian conventions found in Indonesian
+   tajwid material — Idgham Bighunnah, Idgham Mimi, Ikhfa' Haqiqi — rather
+   than in the transliteration the English list happens to use. Idgham is
+   spelled with "gh", as Indonesian writes it, where the English writes
+   "Idgham" only for some and drops the "h" in others. */
+export const TAJWEED_ID: Record<string, { name: string; detail: string }> = {
+  'h,s,l': { name: 'Huruf yang tidak dibaca', detail: 'Hamzah wasal, tanda diam, dan lam syamsiah tidak dilafalkan secara berdiri sendiri.' },
+  m: { name: 'Mad tabi’i', detail: 'Panjangan baku yang ditahan selama dua harakat.' },
+  p: { name: 'Mad jaiz', detail: 'Panjangan yang boleh dilakukan dua, empat, atau enam harakat.' },
+  n: { name: 'Mad lazim', detail: 'Panjangan yang diwajibkan memanjang.' },
+  o: { name: 'Mad wajib', detail: 'Panjangan yang mesti dilakukan, umumnya empat sampai lima harakat.' },
+  q: { name: 'Qalqalah', detail: 'Pantulan yang terkendali pada salah satu huruf qutbu jidin ketika berharakat sukun.' },
+  c: { name: 'Ikhfa syafawi', detail: 'Bunyi mim yang disembunyikan sebelum huruf ba.' },
+  f: { name: 'Ikhfa haqiqi', detail: 'Nun sukun atau tanwin yang disembunyikan sebelum huruf-hurufnya.' },
+  w: { name: 'Idgham mimi', detail: 'Mim sukun yang melebur ke dalam mim berikutnya.' },
+  i: { name: 'Iqlab', detail: 'Nun sukun atau tanwin berubah menjadi mim yang tersembunyi sebelum huruf ba.' },
+  a: { name: 'Idgham bighunnah', detail: 'Peleburan yang disertai dengung.' },
+  u: { name: 'Idgham bilaghunnah', detail: 'Peleburan tanpa dengung.' },
+  g: { name: 'Ghunnah', detail: 'Bunyi dengung yang ditahan selama dua harakat.' },
+};
+
 export type VocabularyWord={id:string;arabic:string;transliteration:string;meaning:string;root?:string};
 // Ordered from high-frequency Quranic lemmas and verbs documented by the Quranic Arabic Corpus.
 export const QURAN_VOCABULARY:VocabularyWord[]=[
@@ -174,25 +214,25 @@ const langCode=(lang?:string|boolean):string=>typeof lang==='string'?lang:(lang=
 export const topicTitle=(topic:QuranTopic,lang?:string|boolean)=>{
   const c=langCode(lang);
   if(c==='ar')return topic.titleAr;
-  const t=(c==='fa'?TOPIC_FA:c==='tr'?TOPIC_TR:c==='ur'?TOPIC_UR:undefined)?.[topic.id];
+  const t=(c==='fa'?TOPIC_FA:c==='tr'?TOPIC_TR:c==='ur'?TOPIC_UR:c==='id'?TOPIC_ID:undefined)?.[topic.id];
   return t?.title||topic.title;
 };
 export const topicDescription=(topic:QuranTopic,lang?:string|boolean)=>{
   const c=langCode(lang);
   if(c==='ar')return topic.descriptionAr;
-  const t=(c==='fa'?TOPIC_FA:c==='tr'?TOPIC_TR:c==='ur'?TOPIC_UR:undefined)?.[topic.id];
+  const t=(c==='fa'?TOPIC_FA:c==='tr'?TOPIC_TR:c==='ur'?TOPIC_UR:c==='id'?TOPIC_ID:undefined)?.[topic.id];
   return t?.description||topic.description;
 };
 export const topicCategory=(topic:QuranTopic,lang?:string|boolean)=>{
   const c=langCode(lang);
   if(c==='ar')return TOPIC_CATEGORY_AR[topic.category];
-  const t=(c==='fa'?TOPIC_CATEGORY_FA:c==='tr'?TOPIC_CATEGORY_TR:c==='ur'?TOPIC_CATEGORY_UR:undefined)?.[topic.category];
+  const t=(c==='fa'?TOPIC_CATEGORY_FA:c==='tr'?TOPIC_CATEGORY_TR:c==='ur'?TOPIC_CATEGORY_UR:c==='id'?TOPIC_CATEGORY_ID:undefined)?.[topic.category];
   return t||topic.category.toUpperCase();
 };
 const tajweedOwn=(rule:any,lang?:string|boolean)=>{
   const c=langCode(lang);
   if(c==='ar')return undefined;
-  const table=c==='fa'?TAJWEED_FA:c==='tr'?TAJWEED_TR:c==='ur'?TAJWEED_UR:undefined;
+  const table=c==='fa'?TAJWEED_FA:c==='tr'?TAJWEED_TR:c==='ur'?TAJWEED_UR:c==='id'?TAJWEED_ID:undefined;
   return table?.[String((rule?.codes||[]).join(','))];
 };
 export const tajweedName=(rule:any,lang?:string|boolean)=>langCode(lang)==='ar'?(rule as any).nameAr:tajweedOwn(rule,lang)?.name||rule.name;

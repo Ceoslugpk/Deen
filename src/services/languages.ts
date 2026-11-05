@@ -122,10 +122,13 @@ export const LANGUAGES: Language[] = [
        unverified one and leave the player silently dead, no voice is
        offered. The picker reads this as recitation only, which is what it is.
 
-       The interface copy is partly written, so it is marked partial rather
-       than ready: the picker offers it and says so. */
+       The interface copy and the content tables are now written: all 1,488
+       rendered strings and all 242 content strings that Arabic, Urdu, Turkish
+       and Persian carry. It is marked ready rather than partial for that
+       reason. The one thing still missing is a translation voice, which is why
+       the picker reads it as recitation only — see above. */
     code: 'id', native: 'Bahasa Indonesia', english: 'Indonesian', rtl: false,
-    uiReady: false, uiPartial: true,
+    uiReady: true, uiPartial: false,
     text: { identifier: 'tr_id_indonesian_islamic_affairs_minis', name: 'Kementerian Agama RI', kind: 'translation' },
   },
   {

@@ -78,6 +78,19 @@ const MISSED_REASONS_TR: Record<string, { label: string; detail: string }> = {
   other: { label: 'Başka', detail: 'Başka bir sebep' },
 };
 
+/* Indonesian, beside the Arabic for the reason that table exists at all: these
+   are short and fixed, and read better written for the language than run
+   through the general translator. "Haid" and "nifas" are kept, because they
+   are the words the app already uses everywhere else in Indonesian and the
+   words an Indonesian woman hears from her own teacher. */
+const MISSED_REASONS_ID: Record<string, { label: string; detail: string }> = {
+  travel: { label: 'Bepergian', detail: 'Hari yang ditinggalkan ketika bepergian' },
+  illness: { label: 'Sakit', detail: 'Hari yang ditinggalkan karena sakit' },
+  menstruation: { label: 'Haid', detail: 'Puasa yang tidak dikerjakan pada masa haid' },
+  nifas: { label: 'Nifas', detail: 'Puasa yang tidak dikerjakan setelah melahirkan' },
+  other: { label: 'Sebab lain', detail: 'Sebab lain apa pun' },
+};
+
 /**
  * Keyed by language rather than by a direction.
  *
@@ -93,6 +106,8 @@ export function missedReasons(language?: string | boolean) {
         ? MISSED_REASONS_TR
         : language === 'ur'
           ? MISSED_REASONS_UR
+          : language === 'id'
+            ? MISSED_REASONS_ID
       : language === true || language === 'ar'
         ? MISSED_REASONS_AR
         : undefined;
@@ -271,6 +286,7 @@ const ENTRY_WORDS: Record<string, { missed: string; recorded: string; qada: stri
   fa: { missed: 'افطار', recorded: 'ثبت‌شده', qada: 'روزهٔ قضا', voluntary: 'روزهٔ مستحب', ramadan: 'روزهٔ رمضان' },
   tr: { missed: 'Tutulmadı', recorded: 'kayıtlı', qada: 'Kaza orucu', voluntary: 'Nafile oruç', ramadan: 'Ramazan orucu' },
   ur: { missed: 'افطار', recorded: 'درج', qada: 'قضا روزہ', voluntary: 'نفلی روزہ', ramadan: 'رمضان کا روزہ' },
+  id: { missed: 'Tidak berpuasa', recorded: 'tercatat', qada: 'Puasa qada', voluntary: 'Puasa sunnah', ramadan: 'Puasa Ramadan' },
   ar: { missed: 'أُفطر', recorded: 'مسجل', qada: 'صيام قضاء', voluntary: 'صيام تطوع', ramadan: 'صيام رمضان' },
   en: { missed: 'Missed', recorded: 'recorded', qada: 'Make-up fast', voluntary: 'Voluntary fast', ramadan: 'Ramadan fast' },
 };
@@ -294,6 +310,7 @@ function missedReasonTable(language?: string | boolean) {
   if (language === 'fa') return MISSED_REASONS_FA;
   if (language === 'tr') return MISSED_REASONS_TR;
   if (language === 'ur') return MISSED_REASONS_UR;
+  if (language === 'id') return MISSED_REASONS_ID;
   return language === true || language === 'ar' ? MISSED_REASONS_AR : undefined;
 }
 
