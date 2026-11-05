@@ -3,6 +3,7 @@ import { urduReference, WORSHIP_GUIDES_UR } from './worshipGuidesUr';
 import { turkishReference, WORSHIP_GUIDES_TR } from './worshipGuidesTr';
 import { persianReference, WORSHIP_GUIDES_FA } from './worshipGuidesFa';
 import { indonesianReference, WORSHIP_GUIDES_ID } from './worshipGuidesId';
+import { hindiReference, WORSHIP_GUIDES_HI } from './worshipGuidesHi';
 
 export type WorshipGuide = {
   id: string;
@@ -106,6 +107,7 @@ const GUIDE_TABLES: Record<string, {
   tr: { guides: WORSHIP_GUIDES_TR, reference: turkishReference },
   fa: { guides: WORSHIP_GUIDES_FA, reference: persianReference },
   id: { guides: WORSHIP_GUIDES_ID, reference: indonesianReference },
+  hi: { guides: WORSHIP_GUIDES_HI, reference: hindiReference },
 };
 
 /**

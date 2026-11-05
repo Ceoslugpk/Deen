@@ -164,6 +164,53 @@ export const TAJWEED_ID: Record<string, { name: string; detail: string }> = {
   g: { name: 'Ghunnah', detail: 'Bunyi dengung yang ditahan selama dua harakat.' },
 };
 
+
+/* Hindi wording for the topics and the tajweed rules.
+ *
+ * Reached through a language code, never through an `rtl` flag: Arabic, Urdu
+ * and Persian are right-to-left while Hindi is left-to-right, so a boolean
+ * could only ever answer "Arabic or not" and would hand Hindi the Arabic
+ * column — a script the reader does not read.
+ *
+ * The rules keep their Arabic names — मद्द, क़लक़ला, ग़ुन्ना, इख़फ़ा, इद्ग़ाम,
+ * इक़लाब — because that is what a Hindi-speaking pupil is taught and says. A
+ * descriptive Hindi label would be a different thing from the rule, and the
+ * reader would have to unlearn it at the first lesson. Qalqalah and Ghunnah
+ * are entered exactly as the English writes them: they are the same word in
+ * both, which is correct and not a missing translation. */
+export const TOPIC_HI: Record<string, { title: string; description: string }> = {
+  oneness: { title: 'अल्लाह की वहदानियत', description: 'वे आयतें जो अल्लाह की पूर्ण एकता, उसकी बे-नियाज़ी और उसके बे-मिसाल होने की गवाही देती हैं।' },
+  trust: { title: 'तवक्कुल और भरोसा', description: 'असबाब अपनाते और स्थिर रहते हुए अल्लाह पर भरोसा।' },
+  signs: { title: 'कायनात में निशानियाँ', description: 'ऐसे अंश जो रचना, उसके निज़ाम और उसके उद्देश्य पर विचार की दावत देते हैं।' },
+  resurrection: { title: 'दूसरा जीवन और पलटना', description: 'हिसाब, नए सिरे से पैदा किए जाने और अंततः अल्लाह की ओर लौटने की याद दहानी।' },
+  parents: { title: 'माता-पिता और परिवार', description: 'पारिवारिक जीवन में रहम, शुक्र और अच्छा बर्ताव।' },
+  justice: { title: 'इन्साफ़ और दियानत', description: 'इन्साफ़ पर दृढ़ता से खड़े रहना, चाहे वह अपने आप पर भारी पड़े।' },
+  patience: { title: 'तकलीफ़ में सब्र', description: 'मुसीबत के समय सब्र और नमाज़ से मदद माँगना।' },
+  speech: { title: 'ज़बान की हिफ़ाज़त', description: 'बेहतर बात कहना, गुमान से बचना और एक-दूसरे की इज़्ज़त की रक्षा करना।' },
+  remembrance: { title: 'ज़िक्र और सुकून', description: 'अल्लाह के ज़िक्र से दिल को थिरकन मिलना।' },
+  repentance: { title: 'उम्मीद और तौबा', description: 'रहमत से नाउम्मीद न होना और ख़ता के बाद ईमानदारी से लौटना।' },
+  gratitude: { title: 'शुक्र', description: 'नेमतों को पहचानना और उनका जवाब शुक्र की इबादत से देना।' },
+  dua: { title: 'दुआ और क़ुर्ब', description: 'अल्लाह का निकट होना और उसकी दावत कि उससे माँगा जाए।' },
+};
+
+export const TOPIC_CATEGORY_HI: Record<string, string> = { Faith: 'ईमान', Life: 'ज़िंदगी', Spirituality: 'रूहानियत' };
+
+export const TAJWEED_HI: Record<string, { name: string; detail: string }> = {
+  'h,s,l': { name: 'ख़ामोश हुरूफ़', detail: 'हम्ज़ा-ए-वस्ल, ख़ामोश निशान और लाम-ए-शम्सिया अपने आप अदा नहीं होते।' },
+  m: { name: 'मद्द-ए-तबीई', detail: 'सामान्य खिंचाव जो दो हरकत के बराबर रोका जाता है।' },
+  p: { name: 'मद्द-ए-जायज़', detail: 'जायज़ खिंचाव: दो, चार या छह हरकत।' },
+  n: { name: 'मद्द-ए-लाज़िम', detail: 'वह खिंचाव जिसे बढ़ाना आवश्यक है।' },
+  o: { name: 'मद्द-ए-वाजिब', detail: 'अनिवार्य खिंचाव, आम तौर पर चार से पाँच हरकत।' },
+  q: { name: 'Qalqalah', detail: '«ق ط ب ج د» में से किसी अक्षर पर साकिन की हालत में नियंत्रित गूँज।' },
+  c: { name: 'इख़फ़ा-ए-शफ़वी', detail: 'बा से पहले मीम की आवाज़ को छिपाना।' },
+  f: { name: 'इख़फ़ा', detail: 'नून-ए-साकिन या तनवीन को अपने हुरूफ़ से पहले छिपाना।' },
+  w: { name: 'इद्ग़ाम-ए-शफ़वी', detail: 'साकिन मीम का बाद वाली मीम में मिल जाना।' },
+  i: { name: 'इक़लाब', detail: 'बा से पहले नून-ए-साकिन या तनवीन का छिपी हुई मीम की ओर बदल जाना।' },
+  a: { name: 'इद्ग़ाम मअ ग़ुन्ना', detail: 'नाक की गूँज के साथ मिलाना।' },
+  u: { name: 'इद्ग़ाम बिला ग़ुन्ना', detail: 'नाक की गूँज के बिना मिलाना।' },
+  g: { name: 'Ghunnah', detail: 'नाक की आवाज़ जो दो हरकत के बराबर रोकी जाती है।' },
+};
+
 export type VocabularyWord={id:string;arabic:string;transliteration:string;meaning:string;root?:string};
 // Ordered from high-frequency Quranic lemmas and verbs documented by the Quranic Arabic Corpus.
 export const QURAN_VOCABULARY:VocabularyWord[]=[
@@ -214,25 +261,25 @@ const langCode=(lang?:string|boolean):string=>typeof lang==='string'?lang:(lang=
 export const topicTitle=(topic:QuranTopic,lang?:string|boolean)=>{
   const c=langCode(lang);
   if(c==='ar')return topic.titleAr;
-  const t=(c==='fa'?TOPIC_FA:c==='tr'?TOPIC_TR:c==='ur'?TOPIC_UR:c==='id'?TOPIC_ID:undefined)?.[topic.id];
+  const t=(c==='fa'?TOPIC_FA:c==='tr'?TOPIC_TR:c==='ur'?TOPIC_UR:c==='id'?TOPIC_ID:c==='hi'?TOPIC_HI:undefined)?.[topic.id];
   return t?.title||topic.title;
 };
 export const topicDescription=(topic:QuranTopic,lang?:string|boolean)=>{
   const c=langCode(lang);
   if(c==='ar')return topic.descriptionAr;
-  const t=(c==='fa'?TOPIC_FA:c==='tr'?TOPIC_TR:c==='ur'?TOPIC_UR:c==='id'?TOPIC_ID:undefined)?.[topic.id];
+  const t=(c==='fa'?TOPIC_FA:c==='tr'?TOPIC_TR:c==='ur'?TOPIC_UR:c==='id'?TOPIC_ID:c==='hi'?TOPIC_HI:undefined)?.[topic.id];
   return t?.description||topic.description;
 };
 export const topicCategory=(topic:QuranTopic,lang?:string|boolean)=>{
   const c=langCode(lang);
   if(c==='ar')return TOPIC_CATEGORY_AR[topic.category];
-  const t=(c==='fa'?TOPIC_CATEGORY_FA:c==='tr'?TOPIC_CATEGORY_TR:c==='ur'?TOPIC_CATEGORY_UR:c==='id'?TOPIC_CATEGORY_ID:undefined)?.[topic.category];
+  const t=(c==='fa'?TOPIC_CATEGORY_FA:c==='tr'?TOPIC_CATEGORY_TR:c==='ur'?TOPIC_CATEGORY_UR:c==='id'?TOPIC_CATEGORY_ID:c==='hi'?TOPIC_CATEGORY_HI:undefined)?.[topic.category];
   return t||topic.category.toUpperCase();
 };
 const tajweedOwn=(rule:any,lang?:string|boolean)=>{
   const c=langCode(lang);
   if(c==='ar')return undefined;
-  const table=c==='fa'?TAJWEED_FA:c==='tr'?TAJWEED_TR:c==='ur'?TAJWEED_UR:c==='id'?TAJWEED_ID:undefined;
+  const table=c==='fa'?TAJWEED_FA:c==='tr'?TAJWEED_TR:c==='ur'?TAJWEED_UR:c==='id'?TAJWEED_ID:c==='hi'?TAJWEED_HI:undefined;
   return table?.[String((rule?.codes||[]).join(','))];
 };
 export const tajweedName=(rule:any,lang?:string|boolean)=>langCode(lang)==='ar'?(rule as any).nameAr:tajweedOwn(rule,lang)?.name||rule.name;
