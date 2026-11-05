@@ -139,6 +139,34 @@ const HADITH_NAME_ID: Record<string, string> = {
   dehlawi: 'Empat Puluh Hadis Syah Waliullah ad-Dihlawi',
 };
 
+/* Hindi and Malayalam names, written out rather than upper-cased. Both
+   scripts have no case, so an upper-cased name reads as shouting rather than
+   as a title — and the names are Arabic proper nouns either way. */
+const HADITH_NAME_HI: Record<string, string> = {
+  bukhari: 'सहीह अल-बुख़ारी',
+  muslim: 'सहीह मुस्लिम',
+  abudawud: 'सुनन अबू दाऊद',
+  tirmidhi: 'जामि अत-तिर्मिज़ी',
+  nasai: 'सुनन अन-नसाई',
+  ibnmajah: 'सुनन इब्न माजा',
+  malik: 'मुवत्ता मालिक',
+  nawawi: 'अरबईन नववी',
+  qudsi: 'चालीस हदीस क़ुदसी',
+  dehlawi: 'चालीस हदीस: शाह वलीउल्लाह देहलवी',
+};
+const HADITH_NAME_ML: Record<string, string> = {
+  bukhari: 'സ്വഹീഹുൽ ബുഖാരി',
+  muslim: 'സ്വഹീഹു മുസ്‌ലിം',
+  abudawud: 'സുനനു അബീ ദാവൂദ്',
+  tirmidhi: 'ജാമിഅത്തുർമുദി',
+  nasai: 'സുനനുന്നസാഈ',
+  ibnmajah: 'സുനനു ഇബ്നു മാജഃ',
+  malik: 'മുവത്വഃ മാലിക്',
+  nawawi: 'അർബഈൻ നവവി',
+  qudsi: 'നാല്പത് ഹദീസുകൾ ഖുദ്സി',
+  dehlawi: 'നാല്പത് ഹദീസുകൾ ശാഹ് വലിയുല്ലാഹ് ദിഹ്‌ലവി',
+};
+
 export function hadithSourceLabel(lang: string | boolean, slug: string): string {
   const code = typeof lang === 'string' ? lang : lang === true ? 'ar' : 'en';
   const known = HADITH_COLLECTIONS.find((collection) => collection.slug.toLowerCase() === (slug || '').toLowerCase());
@@ -149,6 +177,8 @@ export function hadithSourceLabel(lang: string | boolean, slug: string): string 
   if (code === 'tr') return HADITH_NAME_TR[slug] || known?.name || slug;
   if (code === 'ur') return HADITH_NAME_UR[slug] || known?.name || slug;
   if (code === 'id') return HADITH_NAME_ID[slug] || known?.name || slug;
+  if (code === 'ml') return HADITH_NAME_ML[slug] || known?.name || slug;
+  if (code === 'hi') return HADITH_NAME_HI[slug] || known?.name || slug;
   return (known?.name || slug).toUpperCase();
 }
 

@@ -18,6 +18,7 @@ import { TR } from './turkishCopy';
 import { FA } from './persianCopy';
 import { ID } from './indonesianCopy';
 import { HI } from './hindiCopy';
+import { ML } from './malayalamCopy';
 
 const AR: Record<string, string> = {
   'Appearance': 'المظهر',
@@ -2653,13 +2654,17 @@ const PRAYERS_ID: Record<string, string> = {
 const PRAYERS_HI: Record<string, string> = {
   Fajr: 'फ़ज्र', Sunrise: 'सूर्योदय', Dhuhr: 'ज़ुहर', Asr: 'अस्र', Maghrib: 'मग़रिब', Isha: 'इशा',
 };
-const PRAYER_TABLES: Record<'ar' | 'ur' | 'tr' | 'fa' | 'id' | 'hi', Record<string, string>> = {
+const PRAYERS_ML: Record<string, string> = {
+  Fajr: 'സുബ്ഹി', Sunrise: 'സൂര്യോദയം', Dhuhr: 'ളുഹർ', Asr: 'അസർ', Maghrib: 'മഗ്‌രിബ്', Isha: 'ഇശാ',
+};
+const PRAYER_TABLES: Record<'ar' | 'ur' | 'tr' | 'fa' | 'id' | 'hi' | 'ml', Record<string, string>> = {
   ar: PRAYERS_AR,
   ur: PRAYERS_UR,
   tr: PRAYERS_TR,
   fa: PRAYERS_FA,
   id: PRAYERS_ID,
   hi: PRAYERS_HI,
+  ml: PRAYERS_ML,
 };
 
 export function prayerName(code: string | boolean, name: string): string {
@@ -2674,7 +2679,7 @@ export function prayerName(code: string | boolean, name: string): string {
    * `null` means English: the screens were written in it, so the source text
    * is already the right answer and there is nothing to look up.
    */
-  function tableFor(code: string | boolean): 'ar' | 'ur' | 'tr' | 'fa' | 'id' | 'hi' | null {
+  function tableFor(code: string | boolean): 'ar' | 'ur' | 'tr' | 'fa' | 'id' | 'hi' | 'ml' | null {
     if (typeof code === 'boolean') return code ? 'ar' : null;
     if (code === 'ar') return 'ar';
     if (code === 'ur') return 'ur';
@@ -2682,6 +2687,7 @@ export function prayerName(code: string | boolean, name: string): string {
     if (code === 'fa') return 'fa';
     if (code === 'id') return 'id';
     if (code === 'hi') return 'hi';
+    if (code === 'ml') return 'ml';
     return null;
   }
 
@@ -2705,6 +2711,7 @@ export function prayerName(code: string | boolean, name: string): string {
     if (table === 'fa') return FA[text] ?? text;
     if (table === 'id') return ID[text] ?? text;
     if (table === 'hi') return HI[text] ?? text;
+    if (table === 'ml') return ML[text] ?? text;
     return text;
   }
 

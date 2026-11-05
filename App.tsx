@@ -1081,7 +1081,7 @@ function LanguageProvider({children}:{children:React.ReactNode}){
     /* Persian keeps Latin digits for the same reason Arabic does: switching
      numbering systems halfway down a screen reads as a mistake. */
     const dateLocale=language==='ar'?'ar-u-nu-latn':language==='ur'?'ur':language==='en'?'en':language==='id'?'id'
-      :language==='tr'?'tr':language==='fa'?'fa-u-nu-latn':language==='hi'?'hi':undefined;
+      :language==='tr'?'tr':language==='fa'?'fa-u-nu-latn':language==='hi'?'hi':language==='ml'?'ml':undefined;
     setMoneyLocale(language);setFastingDateLocale(dateLocale);setActivityDateLocale(dateLocale);setJourneyDateLocale(dateLocale);
   },[language]);
   useEffect(()=>{if(Platform.OS==='web'&&typeof document!=='undefined'){
@@ -8140,6 +8140,8 @@ function daysUntilText(days: number, language: string | boolean): string {
   if (language === 'fa') return `${days} روز دیگر`;
   if (language === 'tr') return `${days} gün içinde`;
   if (language === 'hi') return `${days} दिन में`;
+  /* Malayalam puts the count first as well, and "ദിവസം" carries it unchanged. */
+  if (language === 'ml') return `${days} ദിവസം കഴിഞ്ഞ്`;
   return `in ${days} days`;
 }
 

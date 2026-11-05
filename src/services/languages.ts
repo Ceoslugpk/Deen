@@ -17,7 +17,7 @@ export type LanguageCode =
   /* Below: languages the hadith corpus carries that the rest of the app does
      not offer yet — no Quran translation, no recitation voice, no interface
      copy. They exist so hadith can be read in them, not so the app can be. */
-  | 'bn' | 'id' | 'ta' | 'hi';
+  | 'bn' | 'id' | 'ta' | 'hi' | 'ml';
 
 export type QuranTextEdition = {
   /** The AlQuran Cloud identifier, as the reader passes it to the API. */
@@ -136,8 +136,7 @@ export const LANGUAGES: Language[] = [
        English, and the first for a great many readers in India. Three
        Devanagari translations are published on our own API; all three were
        fetched and verified to return Devanagari rather than a Latin
-       transliteration. The Farooq Khan and Ahmed translation is the one the
-       major Quran sites default to, so it is the one offered here.
+       transliteration. The edition named below is the one offered.
 
        No voice, for the same reason Indonesian has none: spoken translations
        come from cdn.islamic.network, where a 403 cannot be told apart from
@@ -163,6 +162,36 @@ export const LANGUAGES: Language[] = [
        Devanagari across the mushaf — the `_la` suffix on other Hindi editions
        is a Latin transliteration and would have shipped the wrong script. */
     text: { identifier: 'tr_hi_suhel_farooq_khan_and_saifur_rah', name: 'सुहेल फ़ारूक़ ख़ान और सैफ़ुर रहमान नदवी', kind: 'translation' },
+  },
+
+  {
+    /* Malayalam: Kerala, and the large Malayali community in the Gulf, which
+       is a large part of who this app is for. Six translations are published
+       on our own API under `ml`; four of them are Latin transliterations, and
+       only two return Malayalam script. Both of those were fetched and read
+       before one was named here — the same check that caught a Latin Hindi
+       edition a round earlier, and for the same reason: the identifier cannot
+       be trusted from its name.
+
+       Karakunnu & Elayavoor is the one offered. It is the translation in
+       widest circulation in Kerala, and it is set more carefully than the
+       alternative, which puts a space before its full stops. Verified
+       Malayalam across the mushaf.
+
+       No voice, for the same reason Indonesian and Hindi have none: spoken
+       translations come from cdn.islamic.network, where a 403 cannot be told
+       apart from "does not exist" because a known-good voice 403s on that
+       path too. Rather than ship an unverified identifier and leave the
+       player silently dead, none is offered and the picker reads it as
+       recitation only.
+
+       Marked partial rather than ready until the interface copy and the
+       content tables are written.
+
+       Malayalam is written left to right, so `rtl` stays false. */
+    code: 'ml', native: 'മലയാളം', english: 'Malayalam', rtl: false,
+    uiReady: false, uiPartial: true,
+    text: { identifier: 'tr_ml_karakunnu_elayavoor', name: 'കാരകുന്ന് & എളയാവൂര്', kind: 'translation' },
   },
   {
     code: 'uz', native: "Oʻzbekcha", english: 'Uzbek', rtl: false, uiReady: false,

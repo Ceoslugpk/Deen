@@ -360,6 +360,35 @@ const COPY = {
       'तीस आयतें जो पढ़ने वाले की सिफ़ारिश करती हैं। इसमें लगभग पाँच मिनट लगते हैं।',
     sleepAction: 'अभी पढ़ें',
   },
+  ml: {
+    channelReminder: 'നിസ്കാര അറിയിപ്പുകൾ',
+    channelAdhan: 'ബാങ്ക്',
+    channelDaily: 'ദിവസേനയുള്ള അറിയിപ്പ്',
+    testTitle: 'നിസ്കാര അറിയിപ്പുകൾ തയ്യാറാണ്',
+    testBodyQuiet:
+      'ഇത് ശാന്തമായ ദിവസേനയുള്ള അറിയിപ്പാണ് — അത് അറിയിപ്പ് പട്ടികയിൽ എത്തി കാത്തിരിക്കും.',
+    testAdhanTitle: 'ബാങ്ക്',
+    testAdhanBody:
+      'ഇതാണ് ബാങ്ക്: അത് മുഴങ്ങുന്നു, സ്ക്രീനിൽ നിൽക്കുന്നു, കൂടെ രണ്ട് ബട്ടണുകളുമുണ്ട്. അവ പരീക്ഷിക്കാൻ «നിശ്ശബ്ദമാക്കുക» അല്ലെങ്കിൽ «നിസ്കരിച്ചു» എന്നതിൽ ടാപ്പ് ചെയ്യുക.',
+    quranTitle: 'നിങ്ങളുടെ ഖുർആൻ സമയം',
+    quranBody: 'ചിന്തിച്ചു വായിക്കുന്ന ഏതാനും ആയത്തുകളോടെ വായന തുടരുക.',
+    webUnsupported:
+      'സിസ്റ്റം അറിയിപ്പുകൾക്ക് ഇൻസ്റ്റാൾ ചെയ്ത iOS അല്ലെങ്കിൽ Android ആപ്പ് ആവശ്യമാണ്.',
+    adhanBody: 'നിസ്കാര സമയമായി.',
+    adhanBodyName: (name: string) => `${name} നിസ്കാര സമയമായി.`,
+    mute: 'നിശ്ശബ്ദമാക്കുക',
+    prayed: 'നിസ്കരിച്ചു',
+    continueTitle: 'നിർത്തിയിടത്തു നിന്ന് തുടരുക',
+    continueBody: (where: string) => `നിങ്ങൾ ${where} വായിക്കുകയായിരുന്നു.`,
+    verseTitle: 'ഇന്നത്തെ ആയത്ത്',
+    hadithTitle: 'ഇന്നത്തെ ഹദീസ്',
+    preAdhan: (name: string, mins: string) => `${name} ${mins} കഴിഞ്ഞ്`,
+    preAdhanBody: (name: string, at: string) => `${name} ${at} ന് ആരംഭിക്കുന്നു.`,
+    sleepTitle: 'ഉറങ്ങുന്നതിന് മുമ്പ് സൂറത്തുൽ മുൽക്ക്',
+    sleepBody:
+      'വായിക്കുന്നവർക്ക് ശുപാർശ ചെയ്യുന്ന മുപ്പത് ആയത്തുകൾ. ഏകദേശം അഞ്ച് മിനിറ്റ് മതി.',
+    sleepAction: 'ഇപ്പോൾ വായിക്കുക',
+  },
 };
 
 /* Keyed by language rather than by a boolean. A boolean can only say
@@ -372,6 +401,7 @@ const copy = (code: string | boolean) => {
   if (code === 'ur') return COPY.ur;
   if (code === 'id') return COPY.id;
   if (code === 'hi') return COPY.hi;
+  if (code === 'ml') return COPY.ml;
   return code === true || code === 'ar' ? COPY.ar : COPY.en;
 };
 
@@ -408,6 +438,8 @@ function minutesWord(code: string | boolean, n: number) {
   if (code === 'id') return `${n} menit`;
   /* Hindi "मिनट" is likewise the same for one and many. */
   if (code === 'hi') return `${n} मिनट`;
+  /* Malayalam "മിനിറ്റ്" likewise takes no plural. */
+  if (code === 'ml') return `${n} മിനിറ്റ്`;
   if (!(code === true || code === 'ar')) return n === 1 ? '1 minute' : `${n} minutes`;
   return `${n} ${arNoun(n, 'دقيقة', 'دقيقتان', 'دقائق', 'دقيقة')}`;
 }
