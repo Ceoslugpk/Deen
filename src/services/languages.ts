@@ -100,7 +100,7 @@ export const LANGUAGES: Language[] = [
     voice: { identifier: 'zh.chinese', name: 'Chinese' },
   },
   {
-    code: 'fa', native: 'فارسی', english: 'Persian', rtl: true, uiReady: false,
+    code: 'fa', native: 'فارسی', english: 'Persian', rtl: true, uiReady: false, uiPartial: true,
     text: { identifier: 'tr_fa_baha_oddin_khorramshahi_2', name: 'Baha Oddin Khorramshahi', kind: 'translation' },
     voice: { identifier: 'fa.hedayatfarfooladvand', name: 'Fooladvand (Hedayatfar)' },
   },
