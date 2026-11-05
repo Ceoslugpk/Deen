@@ -58,7 +58,8 @@ export type EngineStatus = {
 
 export type AudioEngine = {
   /** Bring the transport up. Safe to call more than once. */
-  prepare(): Promise<void>;
+  /** Sources the transport should be built with, where it takes them at construction. */
+  prepare(sources?: { uri: string }[]): Promise<void>;
   /**
    * Load a surah and begin at `index`.
    *
@@ -336,7 +337,20 @@ function createNativeEngine(): AudioEngine {
     }
   }
 
-  async function prepare(): Promise<void> {
+  /**
+   * Built once, with the first queue already in it.
+   *
+   * The sources have to be there at construction rather than added after.
+   * `loadInitialPlaylist` is the only thing that calls `prepare()`, and it
+   * runs inside the constructor: a playlist built empty prepares against
+   * nothing and sits in the idle state, and `add` does not prepare again.
+   * From idle, neither `skipTo` nor `play` is guaranteed to start it, so
+   * the queue has to be present before the playlist exists.
+   *
+   * Later queues are a different matter: by then the transport is prepared,
+   * and clearing and refilling a prepared playlist is ordinary.
+   */
+  async function prepare(sources: { uri: string }[] = []): Promise<void> {
     if (playlist) return;
     try {
       /* Three separate things, and all three are needed.
@@ -355,7 +369,7 @@ function createNativeEngine(): AudioEngine {
     } catch {
       /* audio mode is best-effort on device */
     }
-    playlist = createAudioPlaylist({ updateInterval: 500, loop: 'none' });
+    playlist = createAudioPlaylist({ sources, updateInterval: 500, loop: 'none' });
     bindEvents();
   }
 
@@ -403,14 +417,35 @@ function createNativeEngine(): AudioEngine {
   return {
     prepare,
     async loadQueue(queue, startIndex, autoplay, rate, volume) {
-      await prepare();
+      /* An AudioSource, not a bare string.
+
+         expo-audio patches `AudioPlayer.replace` to run a string through
+         `resolveSource` first, so the web engine — which uses the single
+         player — has always been able to hand it a URI and be understood.
+         There is no such patch on `AudioPlaylist.add`: the string goes
+         straight to Kotlin, where AudioSource is a Record with a `uri`
+         field and a String cannot be converted into one.
+
+         It threw, and selfDrive below swallows what it is given, so the
+         queue stayed empty. Nothing was ever added, nothing was ever
+         played, and the player sat at the bottom of the screen reporting
+         buffering — on Android only, because web never took this path. */
+      const sources = queue.map((track) => ({ uri: track.uri }));
+      const built = !playlist;
+      await prepare(sources);
       currentQueue = queue;
       index = startIndex;
       await selfDrive(() => {
         const p = playlist;
         if (!p) return;
-        p.clear();
-        for (const track of queue) p.add(track.uri);
+        /* Only a rebuild. On the first call the sources were handed to the
+           constructor, which prepared the transport with them in place;
+           clearing and re-adding here would throw that preparation away and
+           leave the player idle. */
+        if (!built) {
+          p.clear();
+          for (const source of sources) p.add(source);
+        }
         /* Rate and volume belong to the player, not the track, and are lost
            when the queue is rebuilt. Re-applied here so a recitation does not
            come back at full speed and full volume after a new surah. */
@@ -425,7 +460,7 @@ function createNativeEngine(): AudioEngine {
       });
     },
     async skipTo(nextIndex, autoplay, rate, volume) {
-      await prepare();
+      await prepare(currentQueue.map((track) => ({ uri: track.uri })));
       index = nextIndex;
       await selfDrive(() => {
         const p = playlist;

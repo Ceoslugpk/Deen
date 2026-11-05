@@ -16,7 +16,7 @@ import {
   AccessibilityInfo, ActivityIndicator, Alert, Animated, BackHandler, Easing, Image, ImageBackground, Linking, Platform,
   Pressable as BarePressable,
   I18nManager, RefreshControl, SafeAreaView, ScrollView, Share, StatusBar, StyleSheet, Switch, Text, TextInput,
-  PanResponder, useColorScheme, useWindowDimensions, View, Modal
+  PanResponder, useColorScheme, useWindowDimensions, View, Modal, Dimensions, Keyboard
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { WebView } from 'react-native-webview';
@@ -237,7 +237,7 @@ import { addDays, addQada, ADVISORY, assessBleeding, BISMILLAH_ARABIC, BLEEDING_
 import { BiometricInfo, biometricInfo, checkPin, removePin, RELOCK_OPTIONS, setPin, startLockWatch, unlockSession, unlockWithBiometric, updateLockSettings, useIsLocked, useLockConfig, loadLockConfig } from './src/services/privacyService';
 import { CURRENCIES, clearHistory, computeZakat, currencySymbol, deleteCalculation, formatMoney, livePrices, loadZakatState, marketIsFresh, pricesAvailable, NISAB_GOLD_GRAMS, NISAB_SILVER_GRAMS, refreshMarket, saveCalculation, setAssetAmount, setBasis, setCurrency, setLiabilityAmount, setMetalPrice, setMoneyLocale, useLiveMetalPrices, useMarket, useZakat } from './src/services/zakatService';
 import { arNoun, clockTime, prayerName, tx, tf } from './src/services/arabicCopy';
-import { downloadSurahAudio, loadDownloads, downloadSurahText, estimateFreeBytes, formatBytes, pauseDownload, removeDownload, resolveAudioSource, resumeDownload, retryDownload, totalDownloadBytes, useDownloads } from './src/services/downloadService';
+import { downloadSurahAudio, loadDownloads, estimateFreeBytes, formatBytes, pauseDownload, removeDownload, resolveAudioSource, resumeDownload, retryDownload, totalDownloadBytes, useDownloads } from './src/services/downloadService';
 import { NAME_LANGUAGES } from './src/services/api';
 import { PROPHETS } from './src/content/prophets';
 import { NAMES_MEANING_AR } from './src/content/namesAr';
@@ -3886,6 +3886,49 @@ function VerseNoteSheet({ verse, chapter, rtl, T, onClose }: {
   const [existing, setExisting] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const rise = useRef(new Animated.Value(0)).current;
+  /* How far the sheet has to rise to clear the keyboard.
+
+     Measured rather than assumed. Android is meant to resize the window when
+     the keyboard opens, and when it does the sheet is already clear and this
+     stays at zero; when it does not, the sheet is measured against the top of
+     the keyboard and lifted by exactly the overlap. Either way it ends up
+     resting on the keyboard rather than behind it or floating above it. */
+  const sheet = useRef<any>(null);
+  const liftRef = useRef(0);
+  const [lift, setLift] = useState(0);
+  useEffect(() => {
+    const adjust = (keyboardHeight: number) => {
+      const node = sheet.current;
+      if (!node?.measureInWindow) return;
+      node.measureInWindow((_x: number, y: number, _w: number, h: number) => {
+        if (!h) return;
+        /* The sheet is already lifted by whatever is in liftRef, so add it
+           back to recover where it would have sat untouched. */
+        const restingBottom = y + h + liftRef.current;
+        const keyboardTop = Dimensions.get('window').height - keyboardHeight;
+        const next = Math.max(0, Math.round(restingBottom - keyboardTop));
+        if (next !== liftRef.current) {
+          liftRef.current = next;
+          setLift(next);
+        }
+      });
+    };
+    const show = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      (event: any) => adjust(event?.endCoordinates?.height || 0)
+    );
+    const hide = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => {
+        liftRef.current = 0;
+        setLift(0);
+      }
+    );
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
   useEffect(() => {
     Animated.spring(rise, { toValue: 1, friction: 9, tension: 130, useNativeDriver: true }).start();
     let live = true;
@@ -3921,7 +3964,8 @@ function VerseNoteSheet({ verse, chapter, rtl, T, onClose }: {
 
   return <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
     <Pressable accessibilityRole="button" accessibilityLabel={T('Close')} onPress={onClose} style={s.sheetScrim} />
-    <Animated.View style={[s.verseSheet, {
+    <Animated.View ref={sheet} style={[s.verseSheet, {
+      bottom: lift,
       transform: [{ translateY: rise.interpolate({ inputRange: [0, 1], outputRange: [340, 0] }) }],
       opacity: rise
     }]}>
@@ -4624,7 +4668,29 @@ function needsPayload(Inner: any, title: string) {
   };
 }
 
-function NoteEditorScreen({route,navigation}:any){const verse:Verse=route.params.verse;const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);const chapter:Chapter=route.params.chapter;const[text,setText]=useState(route.params.verse.note||'');const save=async()=>{if(!text.trim()){if(route.params.verse.note){await deleteNote(verse.verse_key)}navigation.goBack();return}await saveNote({verseKey:verse.verse_key,surahId:chapter.id,surahName:chapter.name_simple,arabic:verse.text_uthmani,translation:verse.translation,note:text.trim(),savedAt:route.params.verse.savedAt||Date.now(),updatedAt:Date.now()});navigation.goBack()};return <Page><ToolBar title={`Note · ${verse.verse_key}`} navigation={navigation}/><View style={s.dataPage}><Text style={s.dataArabic}>{verse.text_uthmani}</Text><TextInput multiline autoFocus value={text} onChangeText={setText} placeholder={T('Write a private reflection…')} style={s.noteInput}/><View style={s.actionRow}><Tactile onPress={save} style={s.primary}><Text style={s.primaryText}>{T('Save note')}</Text></Tactile>{route.params.verse.note&&<Tactile onPress={async()=>{await deleteNote(verse.verse_key);navigation.goBack()}} style={s.dangerButton}><Text style={s.dangerText}>{T('Delete')}</Text></Tactile>}</View></View></Page>}
+function NoteEditorScreen({route,navigation}:any){const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);
+  const chapter:Chapter=route.params.chapter;
+  /* Two different things arrive in `verse`, and they do not agree on what a
+     verse is called.
+
+     From the notes list it is a QuranNote, whose field is `verseKey` and
+     whose text is `arabic`. From a verse's actions in the reader it is a
+     Verse, whose field is `verse_key` and whose text is `text_uthmani`.
+
+     Reading only the Verse names meant the notes list handed this screen
+     `undefined` for the key, and `deleteNote(undefined)` matches nothing —
+     so Delete did nothing at all, and saving wrote a note with no key. */
+  const incoming=route.params.verse;
+  const verseKey:string=incoming.verseKey??incoming.verse_key;
+  const arabic:string=incoming.arabic??incoming.text_uthmani??'';
+  const original:string=incoming.note??'';
+  const savedAt:number=incoming.savedAt??Date.now();
+  const[text,setText]=useState(original);
+  const save=async()=>{const body=text.trim();
+    if(!body){if(original)await deleteNote(verseKey);navigation.goBack();return}
+    await saveNote({verseKey,surahId:chapter.id,surahName:chapter.name_simple,arabic,translation:incoming.translation??'',note:body,savedAt,updatedAt:Date.now()});
+    navigation.goBack()};
+  return <Page><ToolBar title={`Note · ${verseKey}`} navigation={navigation}/><View style={s.dataPage}><Text style={s.dataArabic}>{arabic}</Text><TextInput multiline autoFocus value={text} onChangeText={setText} placeholder={T('Write a private reflection…')} style={s.noteInput}/><View style={s.actionRow}><Tactile onPress={save} style={s.primary}><Text style={s.primaryText}>{T('Save note')}</Text></Tactile>{!!original&&<Tactile onPress={async()=>{await deleteNote(verseKey);navigation.goBack()}} style={s.dangerButton}><Text style={s.dangerText}>{T('Delete')}</Text></Tactile>}</View></View></Page>}
 
 /**
  * How the Quran reads on this screen, as a sheet.
@@ -6030,13 +6096,6 @@ function DownloadsScreen({ route, navigation }: any) {
     label: tf(language,'{e} · full Surah',{e:editionLabel}),
     url
   }));
-  const keepText = () => run('text', () => downloadSurahText({
-    chapterId: focusId as number,
-    chapterName: focusName,
-    script: preferences.scriptEdition === 'quran-indopak' ? 'quran-uthmani' : preferences.scriptEdition,
-    translation: preferences.translationEdition,
-    label: `${preferences.scriptName} · ${preferences.translationName}`
-  }));
   const used = totalDownloadBytes();
   return <Page><ToolBar title={T('Downloads')} navigation={navigation} />
     <ScrollView keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
@@ -6054,7 +6113,6 @@ function DownloadsScreen({ route, navigation }: any) {
         <Text style={s.meta}>{T('Text')}: {T(preferences.scriptName)} · {T(rtl ? preferences.translationLanguage : preferences.translationName)}</Text>
         <View style={s.actionRow}>
           <Pressable accessibilityLabel={T('Keep the audio for this Surah')} disabled={!url || busy === 'audio'} onPress={() => { void keepAudio(); }} style={[s.secondary, (!url || busy === 'audio') && { opacity: 0.5 }]}><Text style={s.secondaryText}>{T(busy === 'audio' ? 'Downloading…' : 'Keep audio')}</Text></Pressable>
-          <Pressable accessibilityLabel={T('Keep the text for this Surah')} disabled={busy === 'text'} onPress={() => { void keepText(); }} style={[s.secondary, busy === 'text' && { opacity: 0.5 }]}><Text style={s.secondaryText}>{T(busy === 'text' ? 'Saving…' : 'Keep text')}</Text></Pressable>
         </View>
         {!url && !!source.note && <Text style={s.meta}>{source.note}</Text>}
         {!!url && <Text style={s.meta}>{T(settings.reciterMode === 'surah' ? 'One file for the whole Surah.' : 'Fetched in 4 MB pieces, checked against the size the source reports, then saved.')}</Text>}
