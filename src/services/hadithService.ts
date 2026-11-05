@@ -79,7 +79,7 @@ export const HADITH_COLLECTIONS: HadithCollection[] = [
 ];
 
 
-/** The collection names in Persian and Turkish, keyed by slug. */
+/** The collection names in Persian, Turkish and Urdu, keyed by slug. */
 const HADITH_NAME_FA: Record<string, string> = {
   bukhari: 'صحیح بخاری',
   muslim: 'صحیح مسلم',
@@ -106,6 +106,19 @@ const HADITH_NAME_TR: Record<string, string> = {
   dehlawi: 'Şah Veliyyullah Dehlevî’nin Kırk Hadisi',
 };
 
+const HADITH_NAME_UR: Record<string, string> = {
+  bukhari: 'صحیح بخاری',
+  muslim: 'صحیح مسلم',
+  abudawud: 'سنن ابی داؤد',
+  tirmidhi: 'جامع ترمذی',
+  nasai: 'سنن نسائی',
+  ibnmajah: 'سنن ابن ماجہ',
+  malik: 'موطا امام مالک',
+  nawawi: 'نووی کی چالیس احادیث',
+  qudsi: 'چالیس احادیثِ قدسیہ',
+  dehlawi: 'شاہ ولی اللہ دہلوی کی چالیس احادیث',
+};
+
 export function hadithSourceLabel(lang: string | boolean, slug: string): string {
   const code = typeof lang === 'string' ? lang : lang === true ? 'ar' : 'en';
   const known = HADITH_COLLECTIONS.find((collection) => collection.slug.toLowerCase() === (slug || '').toLowerCase());
@@ -114,6 +127,7 @@ export function hadithSourceLabel(lang: string | boolean, slug: string): string 
      language upper-cases in the way the English list does. */
   if (code === 'fa') return HADITH_NAME_FA[slug] || known?.arabicName || slug;
   if (code === 'tr') return HADITH_NAME_TR[slug] || known?.name || slug;
+  if (code === 'ur') return HADITH_NAME_UR[slug] || known?.name || slug;
   return (known?.name || slug).toUpperCase();
 }
 

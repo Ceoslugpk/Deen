@@ -46,7 +46,18 @@ const MEANING_TR: Record<string, string> = {
   'Allah is sufficient for us': 'Allah bize yeter; O ne güzel vekîldir',
 };
 
-const MEANING_TABLES: Record<string, Record<string, string>> = { fa: MEANING_FA, tr: MEANING_TR, ar: MEANING_AR };
+const MEANING_UR: Record<string, string> = {
+  'Glory be to Allah': 'اللہ ہر نقص سے پاک ہے',
+  'All praise is for Allah': 'ہر حال میں تعریف اللہ ہی کے لیے ہے',
+  'Allah is the Greatest': 'اللہ سب سے بڑا ہے',
+  'There is no god but Allah': 'اللہ کے سوا کوئی معبودِ برحق نہیں',
+  'I seek forgiveness from Allah': 'میں اللہ سے بخشش مانگتا ہوں',
+  'O Allah, send blessings upon Muhammad': 'اے اللہ، محمد صلی اللہ علیہ وسلم پر رحمتیں اور سلامتی نازل فرما',
+  'There is no power except with Allah': 'گناہ سے بچنے کی طاقت اور نیکی کرنے کی توفیق اللہ ہی کی طرف سے ہے',
+  'Allah is sufficient for us': 'اللہ ہمیں کافی ہے اور وہ بہترین کارساز ہے',
+};
+
+const MEANING_TABLES: Record<string, Record<string, string>> = { fa: MEANING_FA, tr: MEANING_TR, ur: MEANING_UR, ar: MEANING_AR };
 
 export function dhikrMeaning(phrase: DhikrPhrase, lang?: string | boolean) {
   const code = typeof lang === 'string' ? lang : lang === true ? 'ar' : 'en';

@@ -54,6 +54,44 @@ export const TOPIC_CATEGORY_FA: Record<string, string> = { Faith: 'عقیده', 
 export const TOPIC_CATEGORY_TR: Record<string, string> = { Faith: 'İnanç', Life: 'Hayat', Spirituality: 'Maneviyat' };
 
 /** Tajweed rules in Persian and Turkish, keyed by the same colour codes. */
+
+/* Urdu, alongside Persian and Turkish. These existed in Arabic only, and the
+   Arabic was reached through an `rtl` flag - which is true for Urdu too, so
+   Urdu was handed Arabic it does not read. Repairing the flag exposed that
+   there had never been any Urdu to fall back to. */
+export const TOPIC_UR: Record<string, { title: string; description: string }> = {
+  oneness: { title: 'اللہ کی وحدانیت', description: 'آیات جو اللہ کی مطلق وحدانیت، بے نیازی اور بے مثال ہونے کو ثابت کرتی ہیں۔' },
+  trust: { title: 'توکل اور بھروسہ', description: 'اسباب اختیار کرتے اور ثبات قائم رکھتے ہوئے اللہ پر بھروسہ۔' },
+  signs: { title: 'کائنات میں نشانیاں', description: 'تخلیق، نظام اور مقصد پر غور و فکر کی دعوت دینے والے مقامات۔' },
+  resurrection: { title: 'قیامت اور لوٹنا', description: 'حساب، تخلیق کے نئے سرے سے ہونے اور آخر کار اللہ کی طرف لوٹنے کی یاد دہانی۔' },
+  parents: { title: 'والدین اور خاندان', description: 'خاندانی زندگی میں رحم، شکر اور حسنِ معاشرت۔' },
+  justice: { title: 'انصاف اور دیانت', description: 'انصاف کے لیے مضبوطی سے کھڑا ہونا، چاہے وہ ذاتی طور پر دشوار ہو۔' },
+  patience: { title: 'مشکل میں صبر', description: 'سختی کے وقت صبر اور نماز سے مدد مانگنا۔' },
+  speech: { title: 'زبان کی حفاظت', description: 'بہترین بات کہنا، بدگمانی سے بچنا اور ایک دوسرے کی عزت کی حفاظت کرنا۔' },
+  remembrance: { title: 'ذکر اور سکون', description: 'اللہ کے ذکر سے دل کو سکون ملنا۔' },
+  repentance: { title: 'امید اور توبہ', description: 'رحمت سے کبھی ناامید نہ ہونا اور خطا کے بعد خلوص سے لوٹنا۔' },
+  gratitude: { title: 'شکر', description: 'نعمتوں کو پہچاننا اور شکر گزار عبادت سے اس کا جواب دینا۔' },
+  dua: { title: 'دعا اور قرب', description: 'اللہ کا اپنے بندے سے قریب ہونا اور اس کا دعا کی دعوت دینا۔' },
+};
+
+export const TOPIC_CATEGORY_UR: Record<string, string> = { Faith: 'عقیدہ', Life: 'زندگی', Spirituality: 'روحانیت' };
+
+export const TAJWEED_UR: Record<string, { name: string; detail: string }> = {
+  'h,s,l': { name: 'غیر ملفوظی حروف', detail: 'ہمزۂ وصل، خاموش نشانات اور لامِ شمسیہ الگ سے ادا نہیں ہوتے۔' },
+  m: { name: 'مدّ طبیعی', detail: 'دو حرکتوں کی مقدار کی عام کشش۔' },
+  p: { name: 'مدّ جائز', detail: 'دو، چار یا چھ حرکتوں کی مقدار کی جائز کشش۔' },
+  n: { name: 'مدّ لازم', detail: 'چھ حرکتوں کی مقدار کی لازمی کشش۔' },
+  o: { name: 'مدّ واجب', detail: 'واجب کشش، عموماً چار یا پانچ حرکتیں۔' },
+  q: { name: 'قلقلہ', detail: 'سکون کی حالت میں «قطب جد» کے حروف میں سے کسی پر ایک مضبوط گونج۔' },
+  c: { name: 'اخفائے شفوی', detail: 'باء سے پہلے میم کی آواز کو چھپانا۔' },
+  f: { name: 'اخفاء', detail: 'نونِ ساکن یا تنوین کو اس کے حروف سے پہلے چھپانا۔' },
+  w: { name: 'ادغامِ شفوی', detail: 'میمِ ساکن کا بعد والی میم میں مل جانا۔' },
+  i: { name: 'اقلاب', detail: 'باء سے پہلے نونِ ساکن یا تنوین کا پوشیدہ میم میں بدل جانا۔' },
+  a: { name: 'ادغام با غُنّہ', detail: 'ناک کی گونج کے ساتھ ادغام۔' },
+  u: { name: 'ادغام بلا غُنّہ', detail: 'ناک کی گونج کے بغیر ادغام۔' },
+  g: { name: 'غُنّہ', detail: 'ناک کی وہ آواز جو دو حرکتیں روک کر ادا کی جائے۔' },
+};
+
 export const TAJWEED_FA: Record<string, { name: string; detail: string }> = {
   'h,s,l': { name: 'حروفِ ناخوانا', detail: 'همزهٔ وصل، نشانه‌های بی‌صدا و لامِ شمسی به‌تنهایی خوانده نمی‌شوند.' },
   m: { name: 'مدّ طبیعی', detail: 'کششِ معمول به اندازهٔ دو حرکت.' },
@@ -136,25 +174,25 @@ const langCode=(lang?:string|boolean):string=>typeof lang==='string'?lang:(lang=
 export const topicTitle=(topic:QuranTopic,lang?:string|boolean)=>{
   const c=langCode(lang);
   if(c==='ar')return topic.titleAr;
-  const t=(c==='fa'?TOPIC_FA:c==='tr'?TOPIC_TR:undefined)?.[topic.id];
+  const t=(c==='fa'?TOPIC_FA:c==='tr'?TOPIC_TR:c==='ur'?TOPIC_UR:undefined)?.[topic.id];
   return t?.title||topic.title;
 };
 export const topicDescription=(topic:QuranTopic,lang?:string|boolean)=>{
   const c=langCode(lang);
   if(c==='ar')return topic.descriptionAr;
-  const t=(c==='fa'?TOPIC_FA:c==='tr'?TOPIC_TR:undefined)?.[topic.id];
+  const t=(c==='fa'?TOPIC_FA:c==='tr'?TOPIC_TR:c==='ur'?TOPIC_UR:undefined)?.[topic.id];
   return t?.description||topic.description;
 };
 export const topicCategory=(topic:QuranTopic,lang?:string|boolean)=>{
   const c=langCode(lang);
   if(c==='ar')return TOPIC_CATEGORY_AR[topic.category];
-  const t=(c==='fa'?TOPIC_CATEGORY_FA:c==='tr'?TOPIC_CATEGORY_TR:undefined)?.[topic.category];
+  const t=(c==='fa'?TOPIC_CATEGORY_FA:c==='tr'?TOPIC_CATEGORY_TR:c==='ur'?TOPIC_CATEGORY_UR:undefined)?.[topic.category];
   return t||topic.category.toUpperCase();
 };
 const tajweedOwn=(rule:any,lang?:string|boolean)=>{
   const c=langCode(lang);
   if(c==='ar')return undefined;
-  const table=c==='fa'?TAJWEED_FA:c==='tr'?TAJWEED_TR:undefined;
+  const table=c==='fa'?TAJWEED_FA:c==='tr'?TAJWEED_TR:c==='ur'?TAJWEED_UR:undefined;
   return table?.[String((rule?.codes||[]).join(','))];
 };
 export const tajweedName=(rule:any,lang?:string|boolean)=>langCode(lang)==='ar'?(rule as any).nameAr:tajweedOwn(rule,lang)?.name||rule.name;
