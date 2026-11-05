@@ -2627,6 +2627,7 @@ const AR: Record<string, string> = {
   ' · downloaded': ' · مُنزَّلة',
   'Hold the phone flat, or in a figure of eight, if the arrow drifts.': 'أمسك الهاتف بشكل مسطح، أو حرّكه على شكل رقم ثمانية، إذا انحرف السهم.',
   'PER GRAM, IN ': 'لكل غرام، بـ ',
+  '{pos} the {metal} nisab': '{pos} نصاب {metal}',
 };
 
 const PRAYERS_AR: Record<string, string> = {
@@ -2720,13 +2721,21 @@ export function tf(
   return out.replace(/\{(\w+)\}/g, (_m, k) => String(values[k] ?? ''));
 }
 
-/** Prayer times arrive from the API as 12-hour clock strings such as "5:42 PM".
-    In Arabic they are written with ص for the morning and م for the evening. */
+/**
+ * Prayer times arrive from the API as 12-hour clock strings such as "5:42 PM".
+ *
+ * ص and م are how *Arabic* writes the morning and the evening, and Urdu uses
+ * the same two marks. They are not a property of "not English", which is what
+ * this function used to test: Turkish and Indonesian are written in Latin
+ * script and do not use them at all, so both were being handed "5:42 م".
+ *
+ * Persian is kept in the list only because that is how it has shipped; it is
+ * arguable, since Persian more often writes ق.ظ and ب.ظ. Left alone rather
+ * than changed here, because Persian is not what this fix is about.
+ */
 export function clockTime(code: string | boolean, time: string): string {
   const table = tableFor(code);
-  if (!table) return time;
-  /* Arabic writes ص for the morning and م for the evening. Urdu is written
-     right to left as well and uses the same two marks. */
+  if (table !== 'ar' && table !== 'ur' && table !== 'fa') return time;
   return time.replace(/\s*(AM|PM)\s*$/i, (_match, half: string) =>
     half.toUpperCase() === 'AM' ? ' ص' : ' م',
   );

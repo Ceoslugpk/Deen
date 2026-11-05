@@ -302,6 +302,35 @@ const COPY = {
       sleepBody: 'تیس آیات جو پڑھنے والے کی سفارش کرتی ہیں۔ اس میں تقریباً پانچ منٹ لگتے ہیں۔',
       sleepAction: 'ابھی پڑھیں',
     },
+  id: {
+    channelReminder: 'Pengingat salat',
+    channelAdhan: 'Adzan',
+    channelDaily: 'Pengingat harian',
+    testTitle: 'Pengingat salat sudah siap',
+    testBodyQuiet:
+      'Ini pengingat harian yang pelan — ia masuk ke bilah notifikasi dan menanti.',
+    testAdhanTitle: 'Adzan',
+    testAdhanBody:
+      'Ini adzan: ia berbunyi, tetap di layar, dan membawa dua tombol. Ketuk «Bisukan» atau «Tandai sudah salat» untuk mencobanya.',
+    quranTitle: 'Waktu Al-Quran Anda',
+    quranBody: 'Lanjutkan bacaan Anda dengan beberapa ayat yang direnungkan.',
+    webUnsupported:
+      'Notifikasi sistem memerlukan aplikasi iOS atau Android yang terpasang.',
+    adhanBody: 'Telah masuk waktu salat.',
+    adhanBodyName: (name: string) => `Waktu ${name} telah tiba.`,
+    mute: 'Bisukan',
+    prayed: 'Tandai sudah salat',
+    continueTitle: 'Lanjutkan dari yang terakhir',
+    continueBody: (where: string) => `Anda sedang membaca ${where}.`,
+    verseTitle: 'Ayat hari ini',
+    hadithTitle: 'Hadis hari ini',
+    preAdhan: (name: string, mins: string) => `${name} dalam ${mins}`,
+    preAdhanBody: (name: string, at: string) => `${name} dimulai pukul ${at}.`,
+    sleepTitle: 'Surah Al-Mulk sebelum tidur',
+    sleepBody:
+      'Tiga puluh ayat yang memberi syafaat bagi pembacanya. Membutuhkan waktu sekitar lima menit.',
+    sleepAction: 'Baca sekarang',
+  },
 };
 
 /* Keyed by language rather than by a boolean. A boolean can only say
@@ -312,6 +341,7 @@ const copy = (code: string | boolean) => {
   if (code === 'fa') return COPY.fa;
   if (code === 'tr') return COPY.tr;
   if (code === 'ur') return COPY.ur;
+  if (code === 'id') return COPY.id;
   return code === true || code === 'ar' ? COPY.ar : COPY.en;
 };
 
@@ -343,6 +373,9 @@ function minutesWord(code: string | boolean, n: number) {
   if (code === 'fa') return `${n} دقیقه`;
   if (code === 'tr') return `${n} dakika`;
   if (code === 'ur') return `${n} منٹ`;
+  /* Indonesian has no plural for this: "menit" is the same for one and many,
+     so unlike English it needs no branch on n. */
+  if (code === 'id') return `${n} menit`;
   if (!(code === true || code === 'ar')) return n === 1 ? '1 minute' : `${n} minutes`;
   return `${n} ${arNoun(n, 'دقيقة', 'دقيقتان', 'دقائق', 'دقيقة')}`;
 }

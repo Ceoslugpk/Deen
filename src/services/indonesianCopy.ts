@@ -1506,4 +1506,5 @@ export const ID: Record<string, string> = {
   '{w} {g} · {d} {m} {y} AH': '{w} {g} · {d} {m} {y} H',
   '“Indeed there is a Surah in the Qur’an of thirty Ayat, which intercedes for a man until he is forgiven. It is [Surah] Tabarak Alladhi Biyadihil-Mulk.”': '“Sesungguhnya dalam Al-Quran ada satu surah tiga puluh ayat yang memberi syafaat bagi pembacanya hingga ia diampuni. Itulah [Surah] Tabarakalladzi biyadihil-mulk.”',
   '− 1 day': '− 1 hari',
+  '{pos} the {metal} nisab': '{pos} nisab {metal}',
 };

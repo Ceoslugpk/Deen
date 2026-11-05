@@ -1790,4 +1790,5 @@ export const FA: Record<string, string> = {
   '“Indeed there is a Surah in the Qur’an of thirty Ayat, which intercedes for a man until he is forgiven. It is [Surah] Tabarak Alladhi Biyadihil-Mulk.”': '«در قرآن سوره‌ای است سی آیه که برای صاحبش شفاعت می‌کند تا آمرزیده شود؛ و آن «تبارک الذی بیده الملک» است.»',
   '− 1 day': '− 1 روز',
   'Hold the phone flat, or in a figure of eight, if the arrow drifts.': 'اگر پیکان منحرف می‌شود، گوشی را صاف نگه دارید یا آن را به شکل عدد هشت حرکت دهید.',
+  '{pos} the {metal} nisab': '{pos} نصاب {metal}',
 };

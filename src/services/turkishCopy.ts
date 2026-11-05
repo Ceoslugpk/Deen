@@ -2124,4 +2124,5 @@ export const TR: Record<string, string> = {
   'Live': 'Canlı',
   'facing': 'yönünde',
   'Hold the phone flat, or in a figure of eight, if the arrow drifts.': 'Ok kayarsa telefonu düz tutun ya da sekiz çizerek hareket ettirin.',
+  '{pos} the {metal} nisab': '{pos} {metal} nisab',
 };

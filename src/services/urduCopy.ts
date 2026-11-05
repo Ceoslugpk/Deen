@@ -2082,4 +2082,5 @@ export const UR: Record<string, string> = {
   'Live': 'لائیو',
   'facing': 'سمت',
   'Hold the phone flat, or in a figure of eight, if the arrow drifts.': 'اگر تیر ہٹنے لگے تو فون کو سیدھا رکھیں، یا آٹھ کے عدد کی صورت میں حرکت دیں۔',
+  '{pos} the {metal} nisab': '{pos} {metal} نصاب',
 };
