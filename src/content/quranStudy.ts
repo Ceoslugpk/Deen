@@ -211,6 +211,41 @@ export const TAJWEED_HI: Record<string, { name: string; detail: string }> = {
   g: { name: 'Ghunnah', detail: 'नाक की आवाज़ जो दो हरकत के बराबर रोकी जाती है।' },
 };
 
+/* Malayalam. The tajweed terms are written as the Kerala madrasa writes them —
+   ഖൽഖല, ഗുന്ന, ഇഖ്ഫാഅ്, ഇദ്ഗാം — because that is the form a Malayali reader
+   who has been taught to recite already knows them by, and not the Latin
+   transliteration the English list happens to carry. */
+export const TOPIC_ML: Record<string, { title: string; description: string }> = {
+  oneness: { title: 'അല്ലാഹുവിന്റെ ഏകത്വം', description: 'അല്ലാഹുവിന്റെ പരിപൂർണ ഏകത്വം, അവന്റെ സ്വയംപര്യാപ്തത, അവനെ ഒന്നിനോടും ഉപമിക്കാനാവാത്തത് എന്നിവയ്ക്ക് സാക്ഷ്യം വഹിക്കുന്ന ആയത്തുകൾ.' },
+  trust: { title: 'തവക്കുൽ', description: 'കാരണങ്ങൾ സ്വീകരിച്ചുകൊണ്ടും സ്ഥിരതയോടെയും അല്ലാഹുവിൽ ഭരമേൽപിക്കുക.' },
+  signs: { title: 'പ്രപഞ്ചത്തിലെ ദൃഷ്ടാന്തങ്ങൾ', description: 'സൃഷ്ടി, അതിന്റെ ക്രമം, അതിന്റെ ലക്ഷ്യം എന്നിവയെക്കുറിച്ച് ചിന്തിക്കാൻ ക്ഷണിക്കുന്ന ഭാഗങ്ങൾ.' },
+  resurrection: { title: 'പുനരുത്ഥാനവും മടക്കവും', description: 'വിചാരണ, പുനഃസൃഷ്ടി, ഒടുവിൽ അല്ലാഹുവിലേക്കുള്ള മടക്കം എന്നിവയുടെ ഓർമ്മപ്പെടുത്തൽ.' },
+  parents: { title: 'മാതാപിതാക്കളും കുടുംബവും', description: 'കുടുംബജീവിതത്തിൽ കരുണ, നന്ദി, നല്ല പെരുമാറ്റം.' },
+  justice: { title: 'നീതിയും സത്യസന്ധതയും', description: 'സ്വന്തം നന്മയ്ക്കെതിരായാലും നീതിയിൽ ഉറച്ചുനിൽക്കുക.' },
+  patience: { title: 'വിഷമതകളിലെ ക്ഷമ', description: 'പ്രയാസസമയത്ത് ക്ഷമയും നിസ്കാരവും കൊണ്ട് സഹായം തേടുക.' },
+  speech: { title: 'നാവിന്റെ സംരക്ഷണം', description: 'നല്ലതു പറയുക, ഊഹക്കച്ചവടം ഒഴിവാക്കുക, അന്യോന്യമുള്ള അന്തസ്സ് കാക്കുക.' },
+  remembrance: { title: 'ദിക്‌റും സമാധാനവും', description: 'അല്ലാഹുവിന്റെ ദിക്‌റിലൂടെ ഹൃദയത്തിന് ശാന്തി ലഭിക്കുന്നു.' },
+  repentance: { title: 'പ്രതീക്ഷയും തൗബയും', description: 'കാരുണ്യത്തിൽ നിരാശപ്പെടാതിരിക്കുകയും തെറ്റിനുശേഷം നിഷ്കളങ്കമായി മടങ്ങുകയും ചെയ്യുക.' },
+  gratitude: { title: 'നന്ദി', description: 'അനുഗ്രഹങ്ങളെ തിരിച്ചറിയുക, അവയ്ക്ക് നന്ദിയുടെ ആരാധനയോടെ മറുപടി നൽകുക.' },
+  dua: { title: 'ദുആയും സാമീപ്യവും', description: 'അല്ലാഹുവിന്റെ സാമീപ്യവും അവനോട് ചോദിക്കാനുള്ള അവന്റെ ക്ഷണവും.' },
+};
+export const TOPIC_CATEGORY_ML: Record<string, string> = { Faith: 'അഖീദ', Life: 'ജീവിതം', Spirituality: 'ആത്മീയത' };
+export const TAJWEED_ML: Record<string, { name: string; detail: string }> = {
+  'h,s,l': { name: 'നിശ്ശബ്ദ അക്ഷരങ്ങൾ', detail: 'ഹംസത്തുൽ വസ്ല്, നിശ്ശബ്ദ ചിഹ്നങ്ങൾ, ശംസിയ്യ ലാം എന്നിവ സ്വതന്ത്രമായി ഉച്ചരിക്കപ്പെടുന്നില്ല.' },
+  m: { name: 'മദ്ദ് തബീഈ', detail: 'രണ്ടു ഹറക്കത്ത് നീളത്തിൽ നിർത്തുന്ന സാധാരണ ദീർഘീകരണം.' },
+  p: { name: 'മദ്ദ് ജാഇസ്', detail: 'അനുവദനീയമായ ദീർഘീകരണം: രണ്ട്, നാല് അല്ലെങ്കിൽ ആറ് ഹറക്കത്ത്.' },
+  n: { name: 'മദ്ദ് ലാസിം', detail: 'നീട്ടൽ നിർബന്ധമായിട്ടുള്ള ദീർഘീകരണം.' },
+  o: { name: 'മദ്ദ് വാജിബ്', detail: 'നിർബന്ധമായ ദീർഘീകരണം, സാധാരണയായി നാലു മുതൽ അഞ്ചു ഹറക്കത്ത്.' },
+  q: { name: 'ഖൽഖല', detail: '«ق ط ب ج د» എന്ന അക്ഷരങ്ങളിൽ ഏതെങ്കിലുമൊന്നിന് സുകൂൻ വരുമ്പോഴുള്ള നിയന്ത്രിതമായ പ്രതിധ്വനി.' },
+  c: { name: 'ഇഖ്ഫാഅ് ശഫവീ', detail: 'ബാഇന് മുമ്പ് മീമിന്റെ ശബ്ദം മറയ്ക്കുക.' },
+  f: { name: 'ഇഖ്ഫാഅ്', detail: 'നൂനു സാകിനയെയോ തൻവീനെയോ അതിന്റെ അക്ഷരങ്ങൾക്ക് മുമ്പ് മറയ്ക്കുക.' },
+  w: { name: 'ഇദ്ഗാം ശഫവീ', detail: 'സാകിനായ മീം പിന്നാലെ വരുന്ന മീമിൽ ചേരുന്നു.' },
+  i: { name: 'ഇഖ്‌ലാബ്', detail: 'ബാഇന് മുമ്പ് നൂനു സാകിനയോ തൻവീനോ മറഞ്ഞ മീമായി മാറുന്നു.' },
+  a: { name: 'ഇദ്ഗാം ബിഗുന്ന', detail: 'മൂക്കിലെ മൂളലോടെയുള്ള ചേർക്കൽ.' },
+  u: { name: 'ഇദ്ഗാം ബിലാ ഗുന്ന', detail: 'മൂക്കിലെ മൂളൽ ഇല്ലാതെയുള്ള ചേർക്കൽ.' },
+  g: { name: 'ഗുന്ന', detail: 'രണ്ടു ഹറക്കത്ത് നീളത്തിൽ നിർത്തുന്ന മൂക്കിലെ ശബ്ദം.' },
+};
+
 export type VocabularyWord={id:string;arabic:string;transliteration:string;meaning:string;root?:string};
 // Ordered from high-frequency Quranic lemmas and verbs documented by the Quranic Arabic Corpus.
 export const QURAN_VOCABULARY:VocabularyWord[]=[
@@ -261,25 +296,25 @@ const langCode=(lang?:string|boolean):string=>typeof lang==='string'?lang:(lang=
 export const topicTitle=(topic:QuranTopic,lang?:string|boolean)=>{
   const c=langCode(lang);
   if(c==='ar')return topic.titleAr;
-  const t=(c==='fa'?TOPIC_FA:c==='tr'?TOPIC_TR:c==='ur'?TOPIC_UR:c==='id'?TOPIC_ID:c==='hi'?TOPIC_HI:undefined)?.[topic.id];
+  const t=(c==='fa'?TOPIC_FA:c==='tr'?TOPIC_TR:c==='ur'?TOPIC_UR:c==='id'?TOPIC_ID:c==='hi'?TOPIC_HI:c==='ml'?TOPIC_ML:undefined)?.[topic.id];
   return t?.title||topic.title;
 };
 export const topicDescription=(topic:QuranTopic,lang?:string|boolean)=>{
   const c=langCode(lang);
   if(c==='ar')return topic.descriptionAr;
-  const t=(c==='fa'?TOPIC_FA:c==='tr'?TOPIC_TR:c==='ur'?TOPIC_UR:c==='id'?TOPIC_ID:c==='hi'?TOPIC_HI:undefined)?.[topic.id];
+  const t=(c==='fa'?TOPIC_FA:c==='tr'?TOPIC_TR:c==='ur'?TOPIC_UR:c==='id'?TOPIC_ID:c==='hi'?TOPIC_HI:c==='ml'?TOPIC_ML:undefined)?.[topic.id];
   return t?.description||topic.description;
 };
 export const topicCategory=(topic:QuranTopic,lang?:string|boolean)=>{
   const c=langCode(lang);
   if(c==='ar')return TOPIC_CATEGORY_AR[topic.category];
-  const t=(c==='fa'?TOPIC_CATEGORY_FA:c==='tr'?TOPIC_CATEGORY_TR:c==='ur'?TOPIC_CATEGORY_UR:c==='id'?TOPIC_CATEGORY_ID:c==='hi'?TOPIC_CATEGORY_HI:undefined)?.[topic.category];
+  const t=(c==='fa'?TOPIC_CATEGORY_FA:c==='tr'?TOPIC_CATEGORY_TR:c==='ur'?TOPIC_CATEGORY_UR:c==='id'?TOPIC_CATEGORY_ID:c==='hi'?TOPIC_CATEGORY_HI:c==='ml'?TOPIC_CATEGORY_ML:undefined)?.[topic.category];
   return t||topic.category.toUpperCase();
 };
 const tajweedOwn=(rule:any,lang?:string|boolean)=>{
   const c=langCode(lang);
   if(c==='ar')return undefined;
-  const table=c==='fa'?TAJWEED_FA:c==='tr'?TAJWEED_TR:c==='ur'?TAJWEED_UR:c==='id'?TAJWEED_ID:c==='hi'?TAJWEED_HI:undefined;
+  const table=c==='fa'?TAJWEED_FA:c==='tr'?TAJWEED_TR:c==='ur'?TAJWEED_UR:c==='id'?TAJWEED_ID:c==='hi'?TAJWEED_HI:c==='ml'?TAJWEED_ML:undefined;
   return table?.[String((rule?.codes||[]).join(','))];
 };
 export const tajweedName=(rule:any,lang?:string|boolean)=>langCode(lang)==='ar'?(rule as any).nameAr:tajweedOwn(rule,lang)?.name||rule.name;
