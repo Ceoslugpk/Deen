@@ -59,6 +59,25 @@ const MISSED_REASONS_UR: Record<string, { label: string; detail: string }> = {
   other: { label: 'کوئی اور وجہ', detail: 'کوئی اور وجہ' },
 };
 
+/* Persian and Turkish, beside the Arabic for the reason that table exists at
+   all: these are short and fixed, and read better written for the language
+   than run through the general translator. */
+const MISSED_REASONS_FA: Record<string, { label: string; detail: string }> = {
+  travel: { label: 'سفر', detail: 'روزی که در سفر افطار شد' },
+  illness: { label: 'بیماری', detail: 'روزی که به سبب بیماری افطار شد' },
+  menstruation: { label: 'عادت ماهانه', detail: 'روزی که در ایام عادت ماهانه روزه گرفته نشد' },
+  nifas: { label: 'نفاس', detail: 'روزی که پس از زایمان روزه گرفته نشد' },
+  other: { label: 'دلیل دیگر', detail: 'هر دلیل دیگر' },
+};
+
+const MISSED_REASONS_TR: Record<string, { label: string; detail: string }> = {
+  travel: { label: 'Yolculuk', detail: 'Yolculuk sırasında tutulmayan gün' },
+  illness: { label: 'Hastalık', detail: 'Hastalık sebebiyle tutulmayan gün' },
+  menstruation: { label: 'Âdet', detail: 'Âdet döneminde tutulmayan oruç' },
+  nifas: { label: 'Lohusalık', detail: 'Doğumdan sonra tutulmayan oruç' },
+  other: { label: 'Başka', detail: 'Başka bir sebep' },
+};
+
 /**
  * Keyed by language rather than by a direction.
  *
@@ -68,8 +87,12 @@ const MISSED_REASONS_UR: Record<string, { label: string; detail: string }> = {
  */
 export function missedReasons(language?: string | boolean) {
   const table =
-    language === 'ur'
-      ? MISSED_REASONS_UR
+    language === 'fa'
+      ? MISSED_REASONS_FA
+      : language === 'tr'
+        ? MISSED_REASONS_TR
+        : language === 'ur'
+          ? MISSED_REASONS_UR
       : language === true || language === 'ar'
         ? MISSED_REASONS_AR
         : undefined;
@@ -242,20 +265,36 @@ function summariseMonths(entries: FastEntry[]): FastMonth[] {
  * Takes the language rather than a direction. Urdu is right-to-left as well,
  * so a two-way switch handed it the Arabic and never its own words.
  */
+/* The few fixed words the entry label needs, in each language. Kept as a table
+   rather than chained ternaries so adding a language is one row. */
+const ENTRY_WORDS: Record<string, { missed: string; recorded: string; qada: string; voluntary: string; ramadan: string }> = {
+  fa: { missed: 'افطار', recorded: 'ثبت‌شده', qada: 'روزهٔ قضا', voluntary: 'روزهٔ مستحب', ramadan: 'روزهٔ رمضان' },
+  tr: { missed: 'Tutulmadı', recorded: 'kayıtlı', qada: 'Kaza orucu', voluntary: 'Nafile oruç', ramadan: 'Ramazan orucu' },
+  ur: { missed: 'افطار', recorded: 'درج', qada: 'قضا روزہ', voluntary: 'نفلی روزہ', ramadan: 'رمضان کا روزہ' },
+  ar: { missed: 'أُفطر', recorded: 'مسجل', qada: 'صيام قضاء', voluntary: 'صيام تطوع', ramadan: 'صيام رمضان' },
+  en: { missed: 'Missed', recorded: 'recorded', qada: 'Make-up fast', voluntary: 'Voluntary fast', ramadan: 'Ramadan fast' },
+};
+
 export function labelForEntry(entry: FastEntry, language?: string | boolean) {
-  const ur = language === 'ur';
-  const ar = language === true || language === 'ar';
+  const code = typeof language === 'string' ? language : language === true ? 'ar' : 'en';
+  const w = ENTRY_WORDS[code] || ENTRY_WORDS.en;
   if (entry.type === 'missed') {
     const reason = MISSED_REASONS.find((item) => item.id === entry.reason);
-    const table = ur ? MISSED_REASONS_UR : ar ? MISSED_REASONS_AR : undefined;
+    const table = missedReasonTable(language);
     const own = table?.[entry.reason || ''];
-    const label = own?.label || reason?.label || (ur ? 'درج' : ar ? 'مسجل' : 'recorded');
-    const head = ur ? 'افطار' : ar ? 'أُفطر' : 'Missed';
-    return `${head} · ${label}`;
+    const label = own?.label || reason?.label || w.recorded;
+    return `${w.missed} · ${label}`;
   }
-  if (entry.type === 'qada') return ur ? 'قضا روزہ' : ar ? 'صيام قضاء' : 'Make-up fast';
-  if (entry.type === 'voluntary') return ur ? 'نفلی روزہ' : ar ? 'صيام تطوع' : 'Voluntary fast';
-  return ur ? 'رمضان کا روزہ' : ar ? 'صيام رمضان' : 'Ramadan fast';
+  if (entry.type === 'qada') return w.qada;
+  if (entry.type === 'voluntary') return w.voluntary;
+  return w.ramadan;
+}
+
+function missedReasonTable(language?: string | boolean) {
+  if (language === 'fa') return MISSED_REASONS_FA;
+  if (language === 'tr') return MISSED_REASONS_TR;
+  if (language === 'ur') return MISSED_REASONS_UR;
+  return language === true || language === 'ar' ? MISSED_REASONS_AR : undefined;
 }
 
 export function readableDate(date: string) {

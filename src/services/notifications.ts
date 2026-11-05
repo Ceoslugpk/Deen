@@ -202,6 +202,56 @@ const COPY = {
     sleepBody: 'Thirty verses that intercede for the one who recites them. It takes about five minutes.',
     sleepAction: 'Read it now',
   },
+  fa: {
+    channelReminder: 'یادآوری‌های نماز',
+    channelAdhan: 'اذان',
+    channelDaily: 'یادآوری روزانه',
+    testTitle: 'یادآوری‌های نماز آماده است',
+    testBodyQuiet: 'این یادآوریِ آرامِ روزانه است — به نوار اعلان‌ها می‌آید و منتظر می‌ماند.',
+    testAdhanTitle: 'اذان',
+    testAdhanBody: 'این اذان است: صدا می‌دهد، روی صفحه می‌ماند و دو دکمه دارد. برای امتحان «بی‌صدا» یا «خوانده‌ام» را بزنید.',
+    quranTitle: 'وقت قرآن',
+    quranBody: 'تلاوت خود را با چند آیهٔ همراه با تدبّر ادامه دهید.',
+    webUnsupported: 'اعلان‌های سیستمی نیازمند نسخهٔ نصب‌شدهٔ برنامه روی iOS یا اندروید است.',
+    adhanBody: 'وقت نماز فرا رسیده است.',
+    adhanBodyName: (name: string) => `وقت ${name} فرا رسیده است.`,
+    mute: 'بی‌صدا',
+    prayed: 'خوانده‌ام',
+    continueTitle: 'ادامه از همان‌جا که بودید',
+    continueBody: (where: string) => `در حال خواندن ${where} بودید.`,
+    verseTitle: 'آیهٔ روز',
+    hadithTitle: 'حدیث روز',
+    preAdhan: (name: string, mins: string) => `${name} در ${mins}`,
+    preAdhanBody: (name: string, at: string) => `${name} در ساعت ${at} آغاز می‌شود.`,
+    sleepTitle: 'سورهٔ ملک پیش از خواب',
+    sleepBody: 'سی آیه که برای قاریِ خود شفاعت می‌کند. حدود پنج دقیقه زمان می‌برد.',
+    sleepAction: 'همین حالا بخوانید',
+  },
+  tr: {
+    channelReminder: 'Namaz hatırlatmaları',
+    channelAdhan: 'Ezan',
+    channelDaily: 'Günlük hatırlatma',
+    testTitle: 'Namaz hatırlatmaları hazır',
+    testBodyQuiet: 'Bu sessiz günlük hatırlatmadır — bildirim tepsisine gelir ve bekler.',
+    testAdhanTitle: 'Ezan',
+    testAdhanBody: 'Bu ezandır: ses verir, ekranda kalır ve iki düğme taşır. Denemek için «Sessize al» veya «Kıldım»a dokunun.',
+    quranTitle: 'Kur’an vakti',
+    quranBody: 'Okumanızı birkaç ayetle, üzerinde düşünerek sürdürün.',
+    webUnsupported: 'Sistem bildirimleri için iOS veya Android uygulamasının kurulu olması gerekir.',
+    adhanBody: 'Namaz vakti geldi.',
+    adhanBodyName: (name: string) => `${name} vakti geldi.`,
+    mute: 'Sessize al',
+    prayed: 'Kıldım',
+    continueTitle: 'Kaldığınız yerden devam edin',
+    continueBody: (where: string) => `${where} okuyordunuz.`,
+    verseTitle: 'Günün ayeti',
+    hadithTitle: 'Günün hadisi',
+    preAdhan: (name: string, mins: string) => `${name} ${mins} içinde`,
+    preAdhanBody: (name: string, at: string) => `${name} saat ${at}te başlıyor.`,
+    sleepTitle: 'Uyumadan önce Mülk suresi',
+    sleepBody: 'Okuyanı için şefaat eden otuz ayet. Yaklaşık beş dakika sürüyor.',
+    sleepAction: 'Şimdi oku',
+  },
   ar: {
     channelReminder: 'تذكيرات الصلاة',
     channelAdhan: 'الأذان',
@@ -258,8 +308,12 @@ const COPY = {
    "Arabic or not", so the moment a third language arrives every notification
    a speaker of it receives is in English - and these are the words that reach
    someone before the app is even open. */
-const copy = (code: string | boolean) =>
-  code === 'ur' ? COPY.ur : code === true || code === 'ar' ? COPY.ar : COPY.en;
+const copy = (code: string | boolean) => {
+  if (code === 'fa') return COPY.fa;
+  if (code === 'tr') return COPY.tr;
+  if (code === 'ur') return COPY.ur;
+  return code === true || code === 'ar' ? COPY.ar : COPY.en;
+};
 
 /**
  * Surah Al-Mulk, and why it is the one this reminder is about.
@@ -286,6 +340,8 @@ export const SLEEP_SURAH = {
 
 /** Minutes, with the Arabic noun agreeing with the number in front of it. */
 function minutesWord(code: string | boolean, n: number) {
+  if (code === 'fa') return `${n} دقیقه`;
+  if (code === 'tr') return `${n} dakika`;
   if (code === 'ur') return `${n} منٹ`;
   if (!(code === true || code === 'ar')) return n === 1 ? '1 minute' : `${n} minutes`;
   return `${n} ${arNoun(n, 'دقيقة', 'دقيقتان', 'دقائق', 'دقيقة')}`;

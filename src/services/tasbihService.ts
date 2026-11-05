@@ -21,8 +21,37 @@ const MEANING_AR: Record<string, string> = {
   'Allah is sufficient for us': 'حسبنا الله ونعم الوكيل',
 };
 
-export function dhikrMeaning(phrase: DhikrPhrase, rtl?: boolean) {
-  return rtl ? (MEANING_AR[phrase.meaning] || phrase.meaning) : phrase.meaning;
+
+/** The same meanings in Persian and Turkish, for the same reason: a boolean
+ *  cannot tell three right-to-left languages apart. */
+const MEANING_FA: Record<string, string> = {
+  'Glory be to Allah': 'خداوند از هر نقصی پاک و منزّه است',
+  'All praise is for Allah': 'در هر حالی، سپاس از آنِ خداوند است',
+  'Allah is the Greatest': 'خداوند از هر چیز بزرگ‌تر است',
+  'There is no god but Allah': 'هیچ معبودی به‌حق جز الله نیست',
+  'I seek forgiveness from Allah': 'از خداوند آمرزش می‌طلبم',
+  'O Allah, send blessings upon Muhammad': 'بارخدایا، بر محمد صلی‌الله علیه و آله و سلم درود و سلام فرست',
+  'There is no power except with Allah': 'هیچ نیرو و توانی جز به خداوند نیست',
+  'Allah is sufficient for us': 'خداوند ما را بس است و او نیکو کارسازی است',
+};
+
+const MEANING_TR: Record<string, string> = {
+  'Glory be to Allah': 'Allah her türlü eksiklikten münezzehtir',
+  'All praise is for Allah': 'Her durumda hamd Allah’a mahsustur',
+  'Allah is the Greatest': 'Allah her şeyden büyüktür',
+  'There is no god but Allah': 'Allah’tan başka hak ilah yoktur',
+  'I seek forgiveness from Allah': 'Allah’tan bağışlanma dilerim',
+  'O Allah, send blessings upon Muhammad': 'Allah’ım, Muhammed’e salât ve selâm eyle',
+  'There is no power except with Allah': 'Güç ve kuvvet yalnızca Allah’tandır',
+  'Allah is sufficient for us': 'Allah bize yeter; O ne güzel vekîldir',
+};
+
+const MEANING_TABLES: Record<string, Record<string, string>> = { fa: MEANING_FA, tr: MEANING_TR, ar: MEANING_AR };
+
+export function dhikrMeaning(phrase: DhikrPhrase, lang?: string | boolean) {
+  const code = typeof lang === 'string' ? lang : lang === true ? 'ar' : 'en';
+  const table = MEANING_TABLES[code];
+  return (table && table[phrase.meaning]) || phrase.meaning;
 }
 
 export type DhikrPhrase = { id: string; arabic: string; transliteration: string; meaning: string };

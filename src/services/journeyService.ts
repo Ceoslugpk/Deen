@@ -306,14 +306,16 @@ export function readableDate(iso: string) {
 }
 
 /** The Umrah and Hajj wording in the language of the interface. */
-export function journeyMeta(kind: JourneyKind, rtl?: boolean) {
+export function journeyMeta(kind: JourneyKind, lang?: string | boolean) {
+  const rtl = lang === true || lang === 'ar';
   const base = JOURNEY_META[kind];
   const ar = rtl ? JOURNEY_META_AR[kind] : undefined;
   return ar ? { ...base, intro: ar.intro } : base;
 }
 
 /** A single rite in the language of the interface. */
-export function localizeJourneyStep(step: JourneyStep, rtl?: boolean): JourneyStep {
+export function localizeJourneyStep(step: JourneyStep, lang?: string | boolean): JourneyStep {
+  const rtl = lang === true || lang === 'ar';
   const ar = rtl ? JOURNEY_STEPS_AR[step.id] : undefined;
   if (!ar) return step;
   return {
