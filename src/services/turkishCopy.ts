@@ -2117,4 +2117,10 @@ export const TR: Record<string, string> = {
   '{n} playlists stored on this device.': 'Bu cihazda {n} çalma listesi kayıtlı.',
   'I intend to lift the major impurity.': 'Büyük hadesi kaldırmaya niyet ettim.',
   'Allowing…': 'İzin veriliyor…',
+  "Prophets named in the Qur'an": "Kur'an'da adı geçen peygamberler",
+  "Prophets in the Qur'an": "Kur'an'daki peygamberler",
+  "Twenty-five prophets are named in the Qur'an. Open one to read the verse the reference points to.": "Kur'an'da yirmi beş peygamberin adı geçer. Referansın işaret ettiği âyeti okumak için birini açın.",
+  "Completing the Qur'an": "Kur'an'ı hatmetme",
+  'Live': 'Canlı',
+  'facing': 'yönünde',
 };

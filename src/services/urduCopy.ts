@@ -2076,4 +2076,9 @@ export const UR: Record<string, string> = {
   'I intend to lift the major impurity.': 'میں حدثِ اکبر کو دور کرنے کی نیت کرتا ہوں۔',
   'Allow notifications': 'اطلاعات کی اجازت دیں',
   'Allowing…': 'اجازت دی جا رہی ہے…',
+  "Prophets named in the Qur'an": 'قرآن میں مذکور انبیاء',
+  "Prophets in the Qur'an": 'قرآن میں انبیاء',
+  "Twenty-five prophets are named in the Qur'an. Open one to read the verse the reference points to.": 'قرآن میں پچیس انبیاء کا ذکر ہے۔ حوالہ جس آیت کی طرف اشارہ کرتا ہے، اسے پڑھنے کے لیے کسی ایک کو کھولیں۔',
+  'Live': 'لائیو',
+  'facing': 'سمت',
 };
