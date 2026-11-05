@@ -310,6 +310,37 @@ export async function getNotificationHealth(): Promise<NotificationHealth> {
   return current.status as NotificationHealth;
 }
 
+export type NotificationStatus = {
+  health: NotificationHealth;
+  /** Whether the system would still show the prompt if we asked. */
+  canAsk: boolean;
+};
+
+/**
+ * The permission state, and separately whether asking is still any use.
+ *
+ * `health` alone is not enough to decide whether to ask, and reading it that
+ * way is what stopped the onboarding from ever raising the prompt.
+ *
+ * On Android 13 the status of a device that has never been asked is `denied`,
+ * not `undetermined`: POST_NOTIFICATIONS has not been granted, so
+ * `areNotificationsEnabled()` is false, and expo maps that to denied before
+ * considering whether anybody has refused anything. It looks exactly like a
+ * person who said no, and any check written against the status alone quietly
+ * skips the one device that most needs asking.
+ *
+ * `canAskAgain` is the part that distinguishes them, so that is what this
+ * carries. A device that has genuinely refused keeps answering false.
+ */
+export async function getNotificationStatus(): Promise<NotificationStatus> {
+  if (Platform.OS === 'web') return { health: 'unsupported', canAsk: false };
+  const current = await Notifications.getPermissionsAsync();
+  return {
+    health: current.status as NotificationHealth,
+    canAsk: current.status !== 'granted' && current.canAskAgain !== false,
+  };
+}
+
 /** The channels the app posts to. */
 export const CHANNEL_ADHAN = 'adhan';
 /** The adhan, for the case where the recording itself will sound instead. */

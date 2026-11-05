@@ -62,7 +62,7 @@ import {
   loadAppliedDirection, saveAppliedDirection
 } from './src/services/localState';
 import {
-  actionFromResponse, cancelAllNotifications, getNotificationHealth, getScheduledCount,
+  actionFromResponse, cancelAllNotifications, getNotificationStatus, NotificationStatus, getScheduledCount,
   NotificationHealth, prayerFromNotification, requestNotificationPermission, schedulePrayerNotifications, sendTestNotification,
   inspectAdhanAudio, openExactAlarmSettings, type AdhanAudio,
   SLEEP_SURAH, openNotificationSettings } from './src/services/notifications';
@@ -7578,6 +7578,9 @@ const ADHAN_AUDIO_REASON: Record<string, string> = {
 function NotificationScreen({navigation}:any){const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);
   const{location}=useAppLocation();const{settings,update}=useWorshipSettings();
   const[health,setHealth]=useState<NotificationHealth>('undetermined');
+  /* Android 13 reports a never-asked device as `denied`; canAsk is what
+     separates that from a real refusal. See getNotificationStatus. */
+  const[canAsk,setCanAsk]=useState(true);
   const[working,setWorking]=useState(false);
   const[queued,setQueued]=useState(0);
   const[battery,setBattery]=useState<BatteryState>('unknown');
@@ -7587,10 +7590,10 @@ function NotificationScreen({navigation}:any){const {rtl,language}=useLanguage()
      of leaving somebody to discover it at prayer time. */
   const[audio,setAudio]=useState<AdhanAudio|null>(null);
 
-  useEffect(()=>{getNotificationHealth().then(setHealth);void getScheduledCount().then(setQueued);void getBatteryOptimizationState().then(setBattery)},[]);
+  useEffect(()=>{void getNotificationStatus().then(st=>{setHealth(st.health);setCanAsk(st.canAsk)});void getScheduledCount().then(setQueued);void getBatteryOptimizationState().then(setBattery)},[]);
   useEffect(()=>{void inspectAdhanAudio(settings).then(setAudio)},[settings]);
 
-  const permission=async()=>{const next=await requestNotificationPermission(language);setHealth(next)};
+  const permission=async()=>{await requestNotificationPermission(language);const next=await getNotificationStatus();setHealth(next.health);setCanAsk(next.canAsk)};
   const sync=async()=>{
     if(!location)return Alert.alert(T('Location needed'),T('Choose a prayer location before scheduling reminders.'));
     setWorking(true);
@@ -7626,19 +7629,19 @@ function NotificationScreen({navigation}:any){const {rtl,language}=useLanguage()
       <Text style={s.intro}>{T('Permission and scheduling happen on your device. No notification profile is sent to us.')}</Text>
 
       <View style={[s.healthCard,{marginBottom:4}]}>
-        <View style={[s.healthDot,{backgroundColor:health==='granted'?C.success:health==='denied'?C.coral:C.gold}]}/>
+        <View style={[s.healthDot,{backgroundColor:health==='granted'?C.success:!canAsk&&health==='denied'?C.coral:C.gold}]}/>
         <View style={{flex:1}}>
           <Text style={s.sourceTitle}>{T('Permission')}: {T(health)}</Text>
           <Text style={s.sourceBody}>{health==='unsupported'
             ? T('System scheduling is available in the installed mobile app.')
-            : health==='denied'
+            : !canAsk&&health==='denied'
               ? T('Declined earlier. Turn it on in the system settings for this app.')
               : queued?T(tf(language,'{n} scheduled right now.',{n:queued})):T('You remain in control through system settings.')}</Text>
         </View>
-        {health!=='granted'&&health!=='unsupported'&&(health==='denied'
-          /* Declined once means the system prompt will not be shown again, so
-             asking again is a button that does nothing. The way back is the
-             app's own page in the system settings. */
+        {health!=='granted'&&health!=='unsupported'&&(!canAsk&&health==='denied'
+          /* Genuinely declined, so the system prompt will not be shown again
+             and asking again is a button that does nothing. The way back is
+             the app's own page in the system settings. */
           ? <Tactile onPress={()=>{void openNotificationSettings()}} style={s.ghostSmall}><Text style={s.ghostText}>{T('Open settings')}</Text></Tactile>
           : <Tactile onPress={permission} style={s.ghostSmall}><Text style={s.ghostText}>{T('Allow')}</Text></Tactile>)}
       </View>
@@ -12337,11 +12340,22 @@ function OnboardingLocation() {
 function OnboardingNotifications() {
   const { rtl , language }=useLanguage(); const T = (text: string) => tx(language, text);
   const { theme, setTheme } = useTheme();
-  const [health, setHealth] = useState<NotificationHealth>('undetermined');
+  const [status, setStatus] = useState<NotificationStatus>({ health: 'undetermined', canAsk: true });
+  const [asking, setAsking] = useState(false);
 
-  useEffect(() => { void getNotificationHealth().then(setHealth); }, []);
+  useEffect(() => { void getNotificationStatus().then(setStatus); }, []);
 
-  const granted = health === 'granted';
+  const granted = status.health === 'granted';
+  /* Never asked, and refused, look alike in `health` and are told apart by
+     `canAsk`. See getNotificationStatus. */
+  const neverAsked = !granted && status.canAsk;
+
+  const ask = async () => {
+    setAsking(true);
+    await requestNotificationPermission(language);
+    setStatus(await getNotificationStatus());
+    setAsking(false);
+  };
 
   return <View style={s.onbList}>
     <View style={s.onbPromise}>
@@ -12368,18 +12382,25 @@ function OnboardingNotifications() {
 
     {granted
       ? <View style={s.onbChosen}>{ico('checkmark-circle', 18, C.green)}<Text style={s.onbChosenText}>{T('Allowed. Every reminder can be switched off in Settings.')}</Text></View>
-      : health === 'denied'
+      : neverAsked
         ? <View style={s.onbNote}>
-            <Text style={s.onbNoteText}>{T('Permission was declined earlier, so reminders stay off. You can turn them on in the system settings for this app at any time.')}</Text>
-          </View>
-        : <View style={s.onbNote}>
-            {/* There is no button here on purpose.
-                Asking for a permission from a button is asking twice: once to
-                press, once to answer. The system prompt is the ask, so it is
-                raised by Continue below — the tap you were going to make
-                anyway — and this screen is left to say what is being offered. */}
             <Text style={s.onbNoteText}>{T('Continue to be asked. Nothing is scheduled unless you allow it, and every reminder can be switched off later in Settings.')}</Text>
-          </View>}
+            {/* A button after all. The prompt is also raised by Continue, but
+                somebody who wants to answer on this screen should be able to,
+                and on Android the answer only comes from a real request — a
+                screen that describes what would happen never produces one. */}
+            <Tactile accessibilityRole="button" accessibilityLabel={T('Allow notifications')}
+              onPress={() => { void ask(); }} style={[s.primary, { marginTop: 12, alignSelf: 'stretch' }]}>
+              <Text style={s.primaryText}>{T(asking ? 'Allowing…' : 'Allow notifications')}</Text>
+            </Tactile>
+          </View>
+        : status.health === 'unsupported'
+          ? <View style={s.onbNote}>
+              <Text style={s.onbNoteText}>{T('Nothing is scheduled unless you allow it, and every reminder has its own switch in Settings.')}</Text>
+            </View>
+          : <View style={s.onbNote}>
+              <Text style={s.onbNoteText}>{T('Permission was declined earlier, so reminders stay off. You can turn them on in the system settings for this app at any time.')}</Text>
+            </View>}
 
     {/* Which colours the app wears. It lives here rather than on a screen of
         its own because it is not needed for the app to work, so it does not
@@ -12871,11 +12892,16 @@ function Onboarding({ onFinish }: { onFinish: () => void }) {
         {step === steps.length - 1 && <MotionPress style={s.onbGhost} onPress={() => void finish(true)}><Text style={s.onbGhostText}>{T('Skip')}</Text></MotionPress>}
         <MotionPress style={[s.onbCta, busy && s.onbCtaOff]} onPress={() => {
           if (step < steps.length - 1) {
-            /* Leaving the notifications step raises the system prompt. Asked
-               from Continue rather than from its own button, so the reader
-               answers once instead of pressing "allow" and then answering. */
-            if (step === NOTIFICATION_STEP) void getNotificationHealth().then((current) => {
-              if (current === 'granted' || current === 'denied' || current === 'unsupported') return;
+            /* Leaving the notifications step raises the system prompt, for
+               anybody who has not answered the button on that step already. */
+            /* Gate on canAsk, never on the status alone. On Android 13 a
+               device that has never been asked reports `denied`, so any check
+               written against the status silently skips the one device that
+               most needs asking — which is why the prompt never appeared here.
+               Someone who has already answered on this screen is covered too:
+               canAsk is false the moment they have. */
+            if (step === NOTIFICATION_STEP) void getNotificationStatus().then((current) => {
+              if (!current.canAsk) return;
               void requestNotificationPermission(language);
             });
             setStep(step + 1);

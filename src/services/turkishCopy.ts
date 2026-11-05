@@ -2116,4 +2116,5 @@ export const TR: Record<string, string> = {
   'Selected full-Surah reciter: {r} · {n} available': 'Seçili tüm sure kârisi: {r} · {n} mevcut',
   '{n} playlists stored on this device.': 'Bu cihazda {n} çalma listesi kayıtlı.',
   'I intend to lift the major impurity.': 'Büyük hadesi kaldırmaya niyet ettim.',
+  'Allowing…': 'İzin veriliyor…',
 };

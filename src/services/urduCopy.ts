@@ -2074,4 +2074,6 @@ export const UR: Record<string, string> = {
   '{n} playlists stored on this device.': 'اس آلے پر {n} فہرستیں محفوظ ہیں۔',
 
   'I intend to lift the major impurity.': 'میں حدثِ اکبر کو دور کرنے کی نیت کرتا ہوں۔',
+  'Allow notifications': 'اطلاعات کی اجازت دیں',
+  'Allowing…': 'اجازت دی جا رہی ہے…',
 };

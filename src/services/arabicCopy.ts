@@ -2559,6 +2559,7 @@ const AR: Record<string, string> = {
   'Verse queue · saved {d}': 'طابور الآيات · حُفظ {d}',
   'Selected reciter: {r}': 'القارئ المختار: {r}',
   'Selected full-Surah reciter: {r} · {n} available': 'قارئ السورة كاملة: {r} · {n} متاح',
+  'Allowing…': 'جارٍ السماح…',
 };
 
 const PRAYERS_AR: Record<string, string> = {
