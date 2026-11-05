@@ -331,6 +331,35 @@ const COPY = {
       'Tiga puluh ayat yang memberi syafaat bagi pembacanya. Membutuhkan waktu sekitar lima menit.',
     sleepAction: 'Baca sekarang',
   },
+  hi: {
+    channelReminder: 'नमाज़ की याददिहानियाँ',
+    channelAdhan: 'अज़ान',
+    channelDaily: 'दैनिक याददिहानी',
+    testTitle: 'नमाज़ की याददिहानियाँ तैयार हैं',
+    testBodyQuiet:
+      'यह शांत दैनिक याददिहानी है — यह आपकी सूचना-ट्रे में आकर ठहरती है।',
+    testAdhanTitle: 'अज़ान',
+    testAdhanBody:
+      'यह अज़ान है: यह बजती है, स्क्रीन पर रहती है, और इसके साथ दो बटन होते हैं। उन्हें आज़माने के लिए «ख़ामोश» या «नमाज़ अदा» पर टैप करें।',
+    quranTitle: 'आपका क़ुरआन समय',
+    quranBody: 'कुछ सोची-समझी आयतों के साथ अपना पठन जारी रखें।',
+    webUnsupported:
+      'सिस्टम सूचनाओं के लिए इंस्टॉल किया iOS या Android ऐप आवश्यक है।',
+    adhanBody: 'नमाज़ का समय हो गया है।',
+    adhanBodyName: (name: string) => `${name} का समय हो गया है।`,
+    mute: 'ख़ामोश',
+    prayed: 'नमाज़ अदा की गई',
+    continueTitle: 'वहीं से आगे बढ़ें जहाँ छोड़ा था',
+    continueBody: (where: string) => `आप ${where} पढ़ रहे थे।`,
+    verseTitle: 'दिन की आयत',
+    hadithTitle: 'दिन की हदीस',
+    preAdhan: (name: string, mins: string) => `${name} ${mins} में`,
+    preAdhanBody: (name: string, at: string) => `${name} ${at} बजे शुरू होती है।`,
+    sleepTitle: 'सोने से पहले सूरह अल-मुल्क',
+    sleepBody:
+      'तीस आयतें जो पढ़ने वाले की सिफ़ारिश करती हैं। इसमें लगभग पाँच मिनट लगते हैं।',
+    sleepAction: 'अभी पढ़ें',
+  },
 };
 
 /* Keyed by language rather than by a boolean. A boolean can only say
@@ -342,6 +371,7 @@ const copy = (code: string | boolean) => {
   if (code === 'tr') return COPY.tr;
   if (code === 'ur') return COPY.ur;
   if (code === 'id') return COPY.id;
+  if (code === 'hi') return COPY.hi;
   return code === true || code === 'ar' ? COPY.ar : COPY.en;
 };
 
@@ -376,6 +406,8 @@ function minutesWord(code: string | boolean, n: number) {
   /* Indonesian has no plural for this: "menit" is the same for one and many,
      so unlike English it needs no branch on n. */
   if (code === 'id') return `${n} menit`;
+  /* Hindi "मिनट" is likewise the same for one and many. */
+  if (code === 'hi') return `${n} मिनट`;
   if (!(code === true || code === 'ar')) return n === 1 ? '1 minute' : `${n} minutes`;
   return `${n} ${arNoun(n, 'دقيقة', 'دقيقتان', 'دقائق', 'دقيقة')}`;
 }

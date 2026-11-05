@@ -1076,7 +1076,10 @@ function LanguageProvider({children}:{children:React.ReactNode}){
     /* Indonesian dates are named like the other explicit languages rather than
        left to the device, so a reader who has chosen Indonesian in the app gets
        Indonesian dates even if the phone itself is set to something else. */
-    const dateLocale=language==='ar'?'ar-u-nu-latn':language==='ur'?'ur':language==='en'?'en':language==='id'?'id':undefined;
+    /* Persian keeps Latin digits for the same reason Arabic does: switching
+     numbering systems halfway down a screen reads as a mistake. */
+    const dateLocale=language==='ar'?'ar-u-nu-latn':language==='ur'?'ur':language==='en'?'en':language==='id'?'id'
+      :language==='tr'?'tr':language==='fa'?'fa-u-nu-latn':language==='hi'?'hi':undefined;
     setMoneyLocale(language);setFastingDateLocale(dateLocale);setActivityDateLocale(dateLocale);setJourneyDateLocale(dateLocale);
   },[language]);
   useEffect(()=>{if(Platform.OS==='web'&&typeof document!=='undefined'){
@@ -8084,6 +8087,11 @@ function daysUntilText(days: number, language: string | boolean): string {
   /* Indonesian "hari" has no plural: "12 hari" is twelve days, the same as
      "1 hari" is one. It also puts the number after the word, not before. */
   if (language === 'id') return `dalam ${days} hari`;
+  /* Persian "روز", Turkish "gün" and Hindi "दिन" all carry the count the same
+     way regardless of the number, so none of them needs a branch on days. */
+  if (language === 'fa') return `${days} روز دیگر`;
+  if (language === 'tr') return `${days} gün içinde`;
+  if (language === 'hi') return `${days} दिन में`;
   return `in ${days} days`;
 }
 

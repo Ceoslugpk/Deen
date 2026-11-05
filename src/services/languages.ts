@@ -145,11 +145,24 @@ export const LANGUAGES: Language[] = [
        Rather than ship an unverified identifier and leave the player silently
        dead, none is offered and the picker reads as recitation only.
 
-       Marked partial rather than ready until the interface copy and the
-       content tables are written. */
+       The interface copy and the content tables are now written: the full
+       2,758-string union that Arabic, Urdu, Turkish, Persian and Indonesian
+       hold between them, plus the rites, fiqh, tajweed and topic tables. It is
+       marked ready rather than partial for that reason. The one thing still
+       missing is a translation voice, which is why the picker reads it as
+       recitation only — see above.
+
+       Devanagari is written left to right, so `rtl` stays false and Hindi must
+       never reach a helper that picks a table from a boolean direction. */
     code: 'hi', native: 'हिन्दी', english: 'Hindi', rtl: false,
-    uiReady: false, uiPartial: true,
-    text: { identifier: 'tr_hi_muhammad_farooq_khan_and_muhamma', name: 'फ़ारूक़ ख़ान & अहमद', kind: 'translation' },
+    uiReady: true, uiPartial: false,
+    /* Suhel Farooq Khan and Saifur Rahman Nadwi, chosen over the two other
+       Devanagari editions because its register is the one this app's Hindi is
+       written in: it keeps رحمن and رحيم as रहमान व रहीम and writes क़ायनात
+       where the alternatives Sanskritise to संसार and प्रशंसा. Verified
+       Devanagari across the mushaf — the `_la` suffix on other Hindi editions
+       is a Latin transliteration and would have shipped the wrong script. */
+    text: { identifier: 'tr_hi_suhel_farooq_khan_and_saifur_rah', name: 'सुहेल फ़ारूक़ ख़ान और सैफ़ुर रहमान नदवी', kind: 'translation' },
   },
   {
     code: 'uz', native: "Oʻzbekcha", english: 'Uzbek', rtl: false, uiReady: false,
