@@ -1,4 +1,6 @@
 import { arabicReference, WORSHIP_GUIDES_AR } from './worshipGuidesAr';
+import { urduReference, WORSHIP_GUIDES_UR } from './worshipGuidesUr';
+import { turkishReference, WORSHIP_GUIDES_TR } from './worshipGuidesTr';
 
 export type WorshipGuide = {
   id: string;
@@ -87,19 +89,40 @@ export const WORSHIP_GUIDES: WorshipGuide[] = [
 ];
 
 /**
- * Returns the guide in the language of the interface. A guide without an Arabic
- * wording yet simply reads in English, so nothing on the screen is ever blank.
+ * The wordings a guide can be read in, keyed by id.
+ *
+ * English is not here: it is the source of truth and lives on the guide itself.
+ * A guide with no wording in the chosen language falls back to it, so nothing
+ * on the screen is ever blank.
  */
-export function localizeGuide(guide: WorshipGuide, rtl?: boolean): WorshipGuide {
-  const ar = rtl ? WORSHIP_GUIDES_AR[guide.id] : undefined;
-  if (!ar) return guide;
+const GUIDE_TABLES: Record<string, {
+  guides: Record<string, { title: string; subtitle: string; introduction: string; steps: string[]; note?: string }>;
+  reference: (label: string) => string;
+}> = {
+  ar: { guides: WORSHIP_GUIDES_AR, reference: arabicReference },
+  ur: { guides: WORSHIP_GUIDES_UR, reference: urduReference },
+  tr: { guides: WORSHIP_GUIDES_TR, reference: turkishReference },
+};
+
+/**
+ * Returns the guide in the language of the interface.
+ *
+ * Takes a language code, not an `rtl` flag. Two of the three languages here are
+ * right-to-left and one is left-to-right, so a boolean cannot tell them apart:
+ * it read Urdu as Arabic and Turkish as English, which is how both languages
+ * ended up with guide screens in the wrong tongue.
+ */
+export function localizeGuide(guide: WorshipGuide, language?: string | null): WorshipGuide {
+  const table = language ? GUIDE_TABLES[language] : undefined;
+  const wording = table?.guides[guide.id];
+  if (!table || !wording) return guide;
   return {
     ...guide,
-    title: ar.title,
-    subtitle: ar.subtitle,
-    introduction: ar.introduction,
-    steps: ar.steps.length ? ar.steps : guide.steps,
-    note: ar.note !== undefined ? ar.note : guide.note,
-    references: guide.references.map((ref) => ({ ...ref, label: arabicReference(ref.label) })),
+    title: wording.title,
+    subtitle: wording.subtitle,
+    introduction: wording.introduction,
+    steps: wording.steps.length ? wording.steps : guide.steps,
+    note: wording.note !== undefined ? wording.note : guide.note,
+    references: guide.references.map((ref) => ({ ...ref, label: table.reference(ref.label) })),
   };
 }

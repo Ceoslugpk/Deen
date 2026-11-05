@@ -2073,4 +2073,5 @@ export const UR: Record<string, string> = {
   'Selected full-Surah reciter: {r} · {n} available': 'منتخب مکمل سورۃ کا قاری: {r} · {n} دستیاب',
   '{n} playlists stored on this device.': 'اس آلے پر {n} فہرستیں محفوظ ہیں۔',
 
+  'I intend to lift the major impurity.': 'میں حدثِ اکبر کو دور کرنے کی نیت کرتا ہوں۔',
 };

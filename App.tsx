@@ -7891,7 +7891,7 @@ function GuideDirectory({route,navigation}:any){const {rtl,language}=useLanguage
      screen, beside the timetable they belong with, and having them in both
      places made two tiles that look like different features show the same
      six things. */
-  const guides=WORSHIP_GUIDES.filter((guide)=>!RAMADAN_GUIDE_IDS.includes(guide.id));return <Page><ToolBar title={T('Worship guides')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><ToolGraphic tool="Worship guides" size={87}/><Text style={s.dataTitle}>{T('Learn with references')}</Text><Text style={s.intro}>{T('Concise educational overviews with transparent Qur’an and Hadith references. Detailed rulings should be learned from a qualified local scholar.')}</Text><View style={s.guideGrid}>{guides.map(guide=>{const g=localizeGuide(guide,rtl);return <MotionPress key={guide.id} onPress={()=>navigation.navigate('Guide Detail',{guide})} style={s.guideCard}><View style={s.guideCardInner}><ToolGraphic tool={guide.id} size={69}/><Text style={s.exploreTitle}>{g.title}</Text><Text style={s.exploreBody}>{g.subtitle}</Text><View style={s.exploreArrow}>{ico(rtl ? 'arrow-back' : 'arrow-forward',15,C.green)}</View></View></MotionPress>})}</View></ScrollView></Page>}
+  const guides=WORSHIP_GUIDES.filter((guide)=>!RAMADAN_GUIDE_IDS.includes(guide.id));return <Page><ToolBar title={T('Worship guides')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><ToolGraphic tool="Worship guides" size={87}/><Text style={s.dataTitle}>{T('Learn with references')}</Text><Text style={s.intro}>{T('Concise educational overviews with transparent Qur’an and Hadith references. Detailed rulings should be learned from a qualified local scholar.')}</Text><View style={s.guideGrid}>{guides.map(guide=>{const g=localizeGuide(guide,language);return <MotionPress key={guide.id} onPress={()=>navigation.navigate('Guide Detail',{guide})} style={s.guideCard}><View style={s.guideCardInner}><ToolGraphic tool={guide.id} size={69}/><Text style={s.exploreTitle}>{g.title}</Text><Text style={s.exploreBody}>{g.subtitle}</Text><View style={s.exploreArrow}>{ico(rtl ? 'arrow-back' : 'arrow-forward',15,C.green)}</View></View></MotionPress>})}</View></ScrollView></Page>}
 /**
  * The evidence for a guide, shown in full on the page rather than as a link
  * out. Both kinds are held on the device in guideSources, so a guide reads
@@ -7946,7 +7946,7 @@ function GuideReferences({ guide, navigation }: { guide: WorshipGuide; navigatio
   </>);
 }
 
-function GuideDetailInner({route,navigation}:any){const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);const guide:WorshipGuide=localizeGuide(route.params.guide,rtl);return <Page><ToolBar title={guide.title} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><ToolGraphic tool={guide.id} size={92}/>{guide.arabic&&<LinearGradient colors={[C.heroA,C.heroB]} style={s.guideHero}><Text style={s.guideHeroKicker}>{T('The testimony of faith')}</Text><Text style={s.guideHeroArabic}>{guide.arabic}</Text></LinearGradient>}<Text style={s.dataTitle}>{guide.subtitle}</Text><Text style={s.intro}>{guide.introduction}</Text><Section title={T('Step by step')}/><View style={s.settings}>{guide.steps.map((step,i)=><View key={step} style={[s.guideStep, i===guide.steps.length-1&&s.guideStepLast]}><View style={s.stepNo}><Text style={s.stepNoText}>{i+1}</Text></View><Text style={s.guideStepText}>{step}</Text></View>)}</View>{guide.note&&<View style={s.guideNote}><Text style={s.sourceTitle}>{T('Important note')}</Text><Text style={s.sourceBody}>{guide.note}</Text></View>}<GuideReferences guide={guide} navigation={navigation}/></ScrollView></Page>}
+function GuideDetailInner({route,navigation}:any){const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);const guide:WorshipGuide=localizeGuide(route.params.guide,language);return <Page><ToolBar title={guide.title} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><ToolGraphic tool={guide.id} size={92}/>{guide.arabic&&<LinearGradient colors={[C.heroA,C.heroB]} style={s.guideHero}><Text style={s.guideHeroKicker}>{T('The testimony of faith')}</Text><Text style={s.guideHeroArabic}>{guide.arabic}</Text></LinearGradient>}<Text style={s.dataTitle}>{guide.subtitle}</Text><Text style={s.intro}>{guide.introduction}</Text><Section title={T('Step by step')}/><View style={s.settings}>{guide.steps.map((step,i)=><View key={step} style={[s.guideStep, i===guide.steps.length-1&&s.guideStepLast]}><View style={s.stepNo}><Text style={s.stepNoText}>{i+1}</Text></View><Text style={s.guideStepText}>{step}</Text></View>)}</View>{guide.note&&<View style={s.guideNote}><Text style={s.sourceTitle}>{T('Important note')}</Text><Text style={s.sourceBody}>{guide.note}</Text></View>}<GuideReferences guide={guide} navigation={navigation}/></ScrollView></Page>}
 
 /**
  * The fixed dates of the Islamic year.
@@ -8348,7 +8348,7 @@ function RamadanScreen({ navigation }: any) {
         six of them are not listed twice under two different names. */}
     <Section title={T('Guides')} action={String(RAMADAN_GUIDES.length)}/>
     <View style={s.ramGuideGrid}>{RAMADAN_GUIDES.map((guide) => {
-      const g = localizeGuide(guide, rtl);
+      const g = localizeGuide(guide, language);
       return <MotionPress key={guide.id} onPress={() => navigation.navigate('Guide Detail', { guide })} style={s.ramGuideCard}>
         <View style={s.ramGuideIcon}><ToolGraphic tool={guide.id} size={44}/></View>
         <Text style={s.ramGuideTitle} numberOfLines={2}>{g.title}</Text>
@@ -8994,7 +8994,7 @@ function GhuslScreen({ navigation }: any) {
         <Text style={s.dataArabic}>{BISMILLAH_ARABIC}</Text>
         <Text style={s.dataMeta}>{T('THE INTENTION, IN THE HEART AND ON THE TONGUE')}</Text>
         <Text style={s.dataArabic}>{NIYYAH_ARABIC}</Text>
-        <Text style={s.dataBody}>{rtl ? `${NIYYAH_ARABIC} — ${NIYYAH_TRANSLITERATION}` : `${NIYYAH_TRANSLITERATION} — ${NIYYAH_MEANING}`}</Text>
+        <Text style={s.dataBody}>{language === 'ar' ? `${NIYYAH_ARABIC} — ${NIYYAH_TRANSLITERATION}` : `${NIYYAH_TRANSLITERATION} — ${T(NIYYAH_MEANING)}`}</Text>
       </View>
 
       <Section title={T('What is required')} />
