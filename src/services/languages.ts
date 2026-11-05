@@ -185,12 +185,13 @@ export const LANGUAGES: Language[] = [
        player silently dead, none is offered and the picker reads it as
        recitation only.
 
-       Marked partial rather than ready until the interface copy and the
-       content tables are written.
+       The interface copy and the content tables are now written, and the
+       copy covers the whole union of every other language's table — 2,766
+       strings, the most complete in the app. Ready.
 
        Malayalam is written left to right, so `rtl` stays false. */
     code: 'ml', native: 'മലയാളം', english: 'Malayalam', rtl: false,
-    uiReady: false, uiPartial: true,
+    uiReady: true, uiPartial: false,
     text: { identifier: 'tr_ml_karakunnu_elayavoor', name: 'കാരകുന്ന് & എളയാവൂര്', kind: 'translation' },
   },
   {
