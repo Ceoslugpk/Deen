@@ -16,6 +16,7 @@
 import { UR } from './urduCopy';
 import { TR } from './turkishCopy';
 import { FA } from './persianCopy';
+import { ID } from './indonesianCopy';
 
 const AR: Record<string, string> = {
   'Appearance': 'المظهر',
@@ -2641,11 +2642,15 @@ const PRAYERS_TR: Record<string, string> = {
 const PRAYERS_FA: Record<string, string> = {
   Fajr: 'صبح', Sunrise: 'طلوع آفتاب', Dhuhr: 'ظهر', Asr: 'عصر', Maghrib: 'مغرب', Isha: 'عشا',
 };
-const PRAYER_TABLES: Record<'ar' | 'ur' | 'tr' | 'fa', Record<string, string>> = {
+const PRAYERS_ID: Record<string, string> = {
+  Fajr: 'Subuh', Sunrise: 'Terbit matahari', Dhuhr: 'Zuhur', Asr: 'Asar', Maghrib: 'Magrib', Isha: 'Isya',
+};
+const PRAYER_TABLES: Record<'ar' | 'ur' | 'tr' | 'fa' | 'id', Record<string, string>> = {
   ar: PRAYERS_AR,
   ur: PRAYERS_UR,
   tr: PRAYERS_TR,
   fa: PRAYERS_FA,
+  id: PRAYERS_ID,
 };
 
 export function prayerName(code: string | boolean, name: string): string {
@@ -2660,12 +2665,13 @@ export function prayerName(code: string | boolean, name: string): string {
    * `null` means English: the screens were written in it, so the source text
    * is already the right answer and there is nothing to look up.
    */
-  function tableFor(code: string | boolean): 'ar' | 'ur' | 'tr' | 'fa' | null {
+  function tableFor(code: string | boolean): 'ar' | 'ur' | 'tr' | 'fa' | 'id' | null {
     if (typeof code === 'boolean') return code ? 'ar' : null;
     if (code === 'ar') return 'ar';
     if (code === 'ur') return 'ur';
     if (code === 'tr') return 'tr';
     if (code === 'fa') return 'fa';
+    if (code === 'id') return 'id';
     return null;
   }
 
@@ -2687,6 +2693,7 @@ export function prayerName(code: string | boolean, name: string): string {
     if (table === 'ur') return UR[text] ?? text;
     if (table === 'tr') return TR[text] ?? text;
     if (table === 'fa') return FA[text] ?? text;
+    if (table === 'id') return ID[text] ?? text;
     return text;
   }
 

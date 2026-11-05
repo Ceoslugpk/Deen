@@ -110,6 +110,25 @@ export const LANGUAGES: Language[] = [
     voice: { identifier: 'fa.hedayatfarfooladvand', name: 'Fooladvand (Hedayatfar)' },
   },
   {
+    /* Indonesian carries the largest Muslim population of any language here.
+       The Ministry of Religious Affairs translation is published on our own
+       API, so the Quran text is wired from the start.
+
+       No voice, deliberately. The spoken translations come from
+       cdn.islamic.network, and no Indonesian identifier there could be
+       verified — every candidate returned 403. Since a known-good voice
+       (en.walk) also returns 403 on that path, a 403 cannot distinguish
+       "wrong identifier" from "does not exist", so rather than ship an
+       unverified one and leave the player silently dead, no voice is
+       offered. The picker reads this as recitation only, which is what it is.
+
+       The interface copy is partly written, so it is marked partial rather
+       than ready: the picker offers it and says so. */
+    code: 'id', native: 'Bahasa Indonesia', english: 'Indonesian', rtl: false,
+    uiReady: false, uiPartial: true,
+    text: { identifier: 'tr_id_indonesian_islamic_affairs_minis', name: 'Kementerian Agama RI', kind: 'translation' },
+  },
+  {
     code: 'uz', native: "Oʻzbekcha", english: 'Uzbek', rtl: false, uiReady: false,
     text: { identifier: 'tr_uz_muhammad_sodik_muhammad_yusuf', name: 'Muhammad Sodik Muhammad Yusuf', kind: 'translation' },
     voice: { identifier: 'uz.sodik-audio', name: 'Muhammad Sodik Yusuf' },
