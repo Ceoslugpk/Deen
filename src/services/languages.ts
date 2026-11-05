@@ -17,7 +17,7 @@ export type LanguageCode =
   /* Below: languages the hadith corpus carries that the rest of the app does
      not offer yet — no Quran translation, no recitation voice, no interface
      copy. They exist so hadith can be read in them, not so the app can be. */
-  | 'bn' | 'id' | 'ta';
+  | 'bn' | 'id' | 'ta' | 'hi';
 
 export type QuranTextEdition = {
   /** The AlQuran Cloud identifier, as the reader passes it to the API. */
@@ -130,6 +130,26 @@ export const LANGUAGES: Language[] = [
     code: 'id', native: 'Bahasa Indonesia', english: 'Indonesian', rtl: false,
     uiReady: true, uiPartial: false,
     text: { identifier: 'tr_id_indonesian_islamic_affairs_minis', name: 'Kementerian Agama RI', kind: 'translation' },
+  },
+  {
+    /* Hindi is the second language of the app's largest audience after
+       English, and the first for a great many readers in India. Three
+       Devanagari translations are published on our own API; all three were
+       fetched and verified to return Devanagari rather than a Latin
+       transliteration. The Farooq Khan and Ahmed translation is the one the
+       major Quran sites default to, so it is the one offered here.
+
+       No voice, for the same reason Indonesian has none: spoken translations
+       come from cdn.islamic.network, where a 403 cannot be told apart from
+       "does not exist" because a known-good voice 403s on that path too.
+       Rather than ship an unverified identifier and leave the player silently
+       dead, none is offered and the picker reads as recitation only.
+
+       Marked partial rather than ready until the interface copy and the
+       content tables are written. */
+    code: 'hi', native: 'हिन्दी', english: 'Hindi', rtl: false,
+    uiReady: false, uiPartial: true,
+    text: { identifier: 'tr_hi_muhammad_farooq_khan_and_muhamma', name: 'फ़ारूक़ ख़ान & अहमद', kind: 'translation' },
   },
   {
     code: 'uz', native: "Oʻzbekcha", english: 'Uzbek', rtl: false, uiReady: false,

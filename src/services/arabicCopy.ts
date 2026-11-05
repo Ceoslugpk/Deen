@@ -17,6 +17,7 @@ import { UR } from './urduCopy';
 import { TR } from './turkishCopy';
 import { FA } from './persianCopy';
 import { ID } from './indonesianCopy';
+import { HI } from './hindiCopy';
 
 const AR: Record<string, string> = {
   'Appearance': 'المظهر',
@@ -2648,12 +2649,16 @@ const PRAYERS_FA: Record<string, string> = {
 const PRAYERS_ID: Record<string, string> = {
   Fajr: 'Subuh', Sunrise: 'Terbit matahari', Dhuhr: 'Zuhur', Asr: 'Asar', Maghrib: 'Magrib', Isha: 'Isya',
 };
-const PRAYER_TABLES: Record<'ar' | 'ur' | 'tr' | 'fa' | 'id', Record<string, string>> = {
+const PRAYERS_HI: Record<string, string> = {
+  Fajr: 'फ़ज्र', Sunrise: 'सूर्योदय', Dhuhr: 'ज़ुहर', Asr: 'अस्र', Maghrib: 'मग़रिब', Isha: 'इशा',
+};
+const PRAYER_TABLES: Record<'ar' | 'ur' | 'tr' | 'fa' | 'id' | 'hi', Record<string, string>> = {
   ar: PRAYERS_AR,
   ur: PRAYERS_UR,
   tr: PRAYERS_TR,
   fa: PRAYERS_FA,
   id: PRAYERS_ID,
+  hi: PRAYERS_HI,
 };
 
 export function prayerName(code: string | boolean, name: string): string {
@@ -2668,13 +2673,14 @@ export function prayerName(code: string | boolean, name: string): string {
    * `null` means English: the screens were written in it, so the source text
    * is already the right answer and there is nothing to look up.
    */
-  function tableFor(code: string | boolean): 'ar' | 'ur' | 'tr' | 'fa' | 'id' | null {
+  function tableFor(code: string | boolean): 'ar' | 'ur' | 'tr' | 'fa' | 'id' | 'hi' | null {
     if (typeof code === 'boolean') return code ? 'ar' : null;
     if (code === 'ar') return 'ar';
     if (code === 'ur') return 'ur';
     if (code === 'tr') return 'tr';
     if (code === 'fa') return 'fa';
     if (code === 'id') return 'id';
+    if (code === 'hi') return 'hi';
     return null;
   }
 
@@ -2697,6 +2703,7 @@ export function prayerName(code: string | boolean, name: string): string {
     if (table === 'tr') return TR[text] ?? text;
     if (table === 'fa') return FA[text] ?? text;
     if (table === 'id') return ID[text] ?? text;
+    if (table === 'hi') return HI[text] ?? text;
     return text;
   }
 
