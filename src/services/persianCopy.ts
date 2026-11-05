@@ -1437,6 +1437,7 @@ export const FA: Record<string, string> = {
   'The transliteration': 'آوانویسی',
   'The verse as it is written': 'آیه به همان‌گونه که نوشته شده',
   'The verse card was saved to your downloads.': 'کارت آیه در بارگیری‌های شما ذخیره شد.',
+  'The hadith card was saved to your downloads.': 'کارت حدیظ در دانلودهای شما ذخیره شد.',
   'The verse could not be loaded.': 'آیه بارگیری نشد.',
   'The verse on menstruation': 'آیهٔ مربوط به حیض',
   'The verse under your finger, again and again.': 'آیهٔ زیر انگشتتان، بارها و بارها.',

@@ -1397,6 +1397,7 @@ export const TR: Record<string, string> = {
   'The transliteration': 'Okunuş',
   'The verse as it is written': 'Ayetin yazıldığı hâli',
   'The verse card was saved to your downloads.': 'Ayet kartı indirilenlerinize kaydedildi.',
+  'The hadith card was saved to your downloads.': 'Hadis kartı indirilenlere kaydedildi.',
   'The verse under your finger, again and again.': 'Parmağınızın altındaki ayet, tekrar tekrar.',
   'The whole Surah, then again from the top.': 'Tüm sure, sonra baştan tekrar.',
   'The women’s screens can be put behind a gate. The PIN is stored as a salted digest, never as the digits themselves, and the face or fingerprint scan is handled entirely by your phone — this app is only told yes or no.': 'Kadınlara ait ekranlar bir kapının ardına konabilir. PIN, hanelerin kendisi olarak değil tuzlanmış bir özet olarak saklanır; yüz veya parmak izi taraması tamamen telefonunuz tarafından yapılır — bu uygulamaya yalnızca evet ya da hayır bildirilir.',

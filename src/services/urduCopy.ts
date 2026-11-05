@@ -1313,6 +1313,7 @@ export const UR: Record<string, string> = {
   'The transliteration': 'نقل حرفی',
   'The verse as it is written': 'آیت جیسے لکھی گئی ہے',
   'The verse card was saved to your downloads.': 'آیت کا کارڈ آپ کے ڈاؤن لوڈز میں محفوظ ہو گیا۔',
+  'The hadith card was saved to your downloads.': 'حدیظ کا کارڈ آپ کے ڈاؤن لوڈ میں محفوظ ہو گیا۔',
   'The verse under your finger, again and again.': 'آپ کی انگلی کے نیچے والی آیت، بار بار۔',
   'The whole Surah, then again from the top.': 'پوری سورۃ، پھر شروع سے دوبارہ۔',
   'The women’s screens can be put behind a gate. The PIN is stored as a salted digest, never as the digits themselves, and the face or fingerprint scan is handled entirely by your phone — this app is only told yes or no.': 'خواتین کی اسکرینیں دروازے کے پیچھے رکھی جا سکتی ہیں۔ پن نمکین ڈائجسٹ کی صورت میں محفوظ ہوتا ہے، خود ہندسوں کی صورت میں کبھی نہیں، اور چہرے یا انگلی کا نشان مکمل طور پر آپ کا فون سنبھالتا ہے — اس ایپ کو صرف ہاں یا نہ بتایا جاتا ہے۔',

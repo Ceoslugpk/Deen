@@ -1700,6 +1700,7 @@ const AR: Record<string, string> = {
   'The transliteration': 'النقل الحرفي',
   'The verse as it is written': 'الآية كما كُتبت',
   'The verse card was saved to your downloads.': 'حُفظت بطاقة الآية في التنزيلات.',
+  'The hadith card was saved to your downloads.': 'حُفظت بطاقة الحديث في التنزيلات.',
   'The verse under your finger, again and again.': 'الآية التي تحت إصبعك، مرة بعد مرة.',
   'The whole Surah, then again from the top.': 'السورة كاملة، ثم من أولها مرة أخرى.',
   'Theme': 'السمة',

@@ -1328,6 +1328,7 @@ export const ID: Record<string, string> = {
   'The transliteration': 'Transliterasinya',
   'The verse as it is written': 'Ayat sebagaimana tertulis',
   'The verse card was saved to your downloads.': 'Kartu ayat tersimpan di unduhan Anda.',
+  'The hadith card was saved to your downloads.': 'Kartu hadis tersimpan di unduhan Anda.',
   'The verse could not be loaded.': 'Ayat tidak dapat dimuat.',
   'The verse on menstruation': 'Ayat tentang haid',
   'The verse under your finger, again and again.': 'Ayat di bawah jari Anda, berulang-ulang.',

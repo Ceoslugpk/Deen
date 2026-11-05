@@ -2257,6 +2257,7 @@ export const HI: Record<string, string> = {
   'The twenty-five prophets named in the Qur’an': 'क़ुरआन में बताए पच्चीस नबी',
   'The verse as it is written': 'आयत जैसी लिखी है',
   'The verse card was saved to your downloads.': 'आयत कार्ड आपके डाउनलोड में सहेजा गया।',
+  'The hadith card was saved to your downloads.': 'हदीस कार्ड आपके डाउनलोड में सहेजा गया।',
   'The verse could not be loaded.': 'आयत लोड नहीं हो सकी।',
   'The verse on menstruation': 'हैज़ पर आयत',
   'The verse under your finger, again and again.': 'आपकी उँगली के नीचे आयत, बार-बार।',
