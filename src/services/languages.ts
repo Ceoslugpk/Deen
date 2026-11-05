@@ -100,7 +100,12 @@ export const LANGUAGES: Language[] = [
     voice: { identifier: 'zh.chinese', name: 'Chinese' },
   },
   {
-    code: 'fa', native: 'فارسی', english: 'Persian', rtl: true, uiReady: false, uiPartial: true,
+    /* Every string the interface shows is now written in Persian, so it is
+       marked ready rather than partial: the same standard as Urdu and
+       Turkish. The Quran, hadith, adhkar and dua content stays in the
+       language its source published it in — that is content, not interface,
+       and translating it is not ours to do. */
+    code: 'fa', native: 'فارسی', english: 'Persian', rtl: true, uiReady: true,
     text: { identifier: 'tr_fa_baha_oddin_khorramshahi_2', name: 'Baha Oddin Khorramshahi', kind: 'translation' },
     voice: { identifier: 'fa.hedayatfarfooladvand', name: 'Fooladvand (Hedayatfar)' },
   },
