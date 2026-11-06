@@ -13,7 +13,7 @@
  */
 
 export type LanguageCode =
-  | 'en' | 'ar' | 'ur' | 'fr' | 'tr' | 'ru' | 'zh' | 'fa' | 'uz' | 'kk' | 'my' | 'vi' | 'az' | 'bs'
+  | 'en' | 'ar' | 'ur' | 'fr' | 'tr' | 'ru' | 'zh' | 'fa' | 'uz' | 'kk' | 'my' | 'vi' | 'az' | 'bs' | 'bg'
   /* Below: languages the hadith corpus carries that the rest of the app does
      not offer yet — no Quran translation, no recitation voice, no interface
      copy. They exist so hadith can be read in them, not so the app can be. */
@@ -347,6 +347,18 @@ export const LANGUAGES: Language[] = [
        added to assets/fonts. */
     code: 'bs', native: 'Bosanski', english: 'Bosnian', rtl: false, uiReady: true, uiPartial: false,
     text: { identifier: 'tr_bs_besim_korkut', name: 'Besim Korkut', kind: 'translation' },
+  },
+  {
+    /* Bulgarian. Cyrillic: the Theophanov edition is the only one of the three
+       that is actually written in Bulgarian — the two `_latin_script` variants
+       are transliterations and were rejected the same way the Bosnian ones
+       were. No voice: the Islamic Data reciter catalogue carries 403 reciters
+       and not one of them is Bulgarian. No new font: not a single face in
+       assets/fonts covers Cyrillic, and Russian, Kazakh and Cyrillic Uzbek
+       already ship that way, rendering through the system fallback. Bulgarian
+       follows the same path rather than diverging from it. */
+    code: 'bg', native: 'Български', english: 'Bulgarian', rtl: false, uiReady: true, uiPartial: false,
+    text: { identifier: 'tr_bg_tzvetan_theophanov', name: 'Tzvetan Theophanov', kind: 'translation' },
   },
   {
     code: 'my', native: 'မြန်မာ', english: 'Burmese', rtl: false, uiReady: false,

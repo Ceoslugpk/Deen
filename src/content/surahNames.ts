@@ -29,7 +29,7 @@
  * api.quran.com/api/v4/chapters. All 114 present for all ten languages.
  */
 
-export type SurahNameLanguage = 'en' | 'ar' | 'ur' | 'fa' | 'id' | 'hi' | 'ml' | 'tr' | 'ru' | 'fr' | 'bn' | 'ms' | 'ta' | 'uz' | 'zh' | 'kk' | 'vi' | 'az' | 'bs';
+export type SurahNameLanguage = 'en' | 'ar' | 'ur' | 'fa' | 'id' | 'hi' | 'ml' | 'tr' | 'ru' | 'fr' | 'bn' | 'ms' | 'ta' | 'uz' | 'zh' | 'kk' | 'vi' | 'az' | 'bs' | 'bg';
 
 /* English */
 /* English is the source: the transliteration the app has always shown. */
@@ -2308,6 +2308,135 @@ export const SURAH_NAMES_BS: Record<number, string> = {
   114: "En-Nas",
 };
 
+// Bulgarian surah names, in Cyrillic.
+//
+// Taken from the Bulgarian Wikipedia list (bg.wikipedia.org/wiki/Сура), which cites
+// the Bulgarian Quran translation at koranbg.com, and cross-checked against the
+// surah index published by the Grand Mufti's office (grandmufti.bg) — the two agree
+// on every name they both list. The article is kept and the definite form is not
+// assimilated: Ал-Бакара, Ан-Ниса, Ат-Тауба, Аш-Шуара, as Bulgarian prints them.
+//
+// The quranenc Bulgarian index was rejected: it mixes Latin characters into the
+// Cyrillic (Ал-Aнам, Тагаaбун, Нeбаа), carries Turkish forms (Нух-алейхисселям)
+// and inconsistent transliterations (ал-Китал for Мухаммад).
+
+const SURAH_NAMES_BG: Record<number, string> = {
+  1: 'Ал-Фатиха',
+  2: 'Ал-Бакара',
+  3: 'Ал-Имран',
+  4: 'Ан-Ниса',
+  5: 'Ал-Маида',
+  6: 'Ал-Анам',
+  7: 'Ал-Араф',
+  8: 'Ал-Анфал',
+  9: 'Ат-Тауба',
+  10: 'Юнус',
+  11: 'Худ',
+  12: 'Юсуф',
+  13: 'Ар-Раад',
+  14: 'Ибрахим',
+  15: 'Ал-Хиджр',
+  16: 'Ан-Нахл',
+  17: 'Ал-Исра',
+  18: 'Ал-Кахф',
+  19: 'Мариам',
+  20: 'Та Ха',
+  21: 'Ал-Анбиа',
+  22: 'Ал-Хадж',
+  23: 'Ал-Муаминун',
+  24: 'Ан-Нур',
+  25: 'Ал-Фуркан',
+  26: 'Аш-Шуара',
+  27: 'Ан-Намл',
+  28: 'Ал-Касас',
+  29: 'Ал-Анкабут',
+  30: 'Ар-Рум',
+  31: 'Лукман',
+  32: 'Ас-Саджда',
+  33: 'Ал-Ахзаб',
+  34: 'Саба',
+  35: 'Фатир',
+  36: 'Йа Син',
+  37: 'Ас-Саффат',
+  38: 'Сад',
+  39: 'Аз-Зумар',
+  40: 'Гафир',
+  41: 'Фуссилат',
+  42: 'Аш-Шура',
+  43: 'Аз-Зухруф',
+  44: 'Ад-Духан',
+  45: 'Ал-Джасиа',
+  46: 'Ал-Ахкаф',
+  47: 'Мухаммад',
+  48: 'Ал-Фатх',
+  49: 'Ал-Худжурат',
+  50: 'Каф',
+  51: 'Аз-Зарийат',
+  52: 'Ат-Тур',
+  53: 'Ан-Наджм',
+  54: 'Ал-Камар',
+  55: 'Ар-Рахман',
+  56: 'Ал-Уакиа',
+  57: 'Ал-Хадид',
+  58: 'Ал-Муджадала',
+  59: 'Ал-Хашр',
+  60: 'Ал-Мумтахана',
+  61: 'Ас-Сафф',
+  62: 'Ал-Джумуа',
+  63: 'Ал-Мунафикун',
+  64: 'Ат-Тагабун',
+  65: 'Ат-Талак',
+  66: 'Ат-Тахрим',
+  67: 'Ал-Мулк',
+  68: 'Ал-Калам',
+  69: 'Ал-Хакка',
+  70: 'Ал-Мааридж',
+  71: 'Нух',
+  72: 'Ал-Джинн',
+  73: 'Ал-Музаммил',
+  74: 'Ал-Мудассир',
+  75: 'Ал-Кийама',
+  76: 'Ал-Инсан',
+  77: 'Ал-Мурсалат',
+  78: 'Ан-Наба',
+  79: 'Ан-Назиат',
+  80: 'Абаса',
+  81: 'Ат-Такуир',
+  82: 'Ал-Инфитар',
+  83: 'Ал-Мутаффифин',
+  84: 'Ал-Иншикак',
+  85: 'Ал-Бурудж',
+  86: 'Ат-Тарик',
+  87: 'Ал-Аля',
+  88: 'Ал-Гашийа',
+  89: 'Ал-Фаджр',
+  90: 'Ал-Балад',
+  91: 'Аш-Шамс',
+  92: 'Ал-Лайл',
+  93: 'Ад-Духа',
+  94: 'Ал-Инширах',
+  95: 'Ат-Тин',
+  96: 'Ал-Алак',
+  97: 'Ал-Кадр',
+  98: 'Ал-Байина',
+  99: 'Аз-Зилзала',
+  100: 'Ал-Адиат',
+  101: 'Ал-Кариа',
+  102: 'Ат-Такасур',
+  103: 'Ал-Аср',
+  104: 'Ал-Хумаза',
+  105: 'Ал-Фил',
+  106: 'Курайш',
+  107: 'Ал-Маун',
+  108: 'Ал-Каусар',
+  109: 'Ал-Кафирун',
+  110: 'Ан-Наср',
+  111: 'Ал-Масад',
+  112: 'Ал-Ихлас',
+  113: 'Ал-Фалак',
+  114: 'Ан-Нас',
+};
+
 const TABLES: Record<SurahNameLanguage, Record<number, string>> = {
   en: SURAH_NAMES_EN,
   ar: SURAH_NAMES_AR,
@@ -2328,6 +2457,7 @@ const TABLES: Record<SurahNameLanguage, Record<number, string>> = {
   vi: SURAH_NAMES_VI,
   az: SURAH_NAMES_AZ,
   bs: SURAH_NAMES_BS,
+  bg: SURAH_NAMES_BG,
 };
 
 /**
