@@ -122,11 +122,12 @@ export const LANGUAGES: Language[] = [
        unverified one and leave the player silently dead, no voice is
        offered. The picker reads this as recitation only, which is what it is.
 
-       The interface copy and the content tables are now written: all 1,488
-       rendered strings and all 242 content strings that Arabic, Urdu, Turkish
-       and Persian carry. It is marked ready rather than partial for that
-       reason. The one thing still missing is a translation voice, which is why
-       the picker reads it as recitation only — see above. */
+       The interface copy is now complete on the union measure: 2,766 strings,
+       the whole union of every other language's table, and the seven
+       concatenation fragments the other tables carry. It was marked ready
+       earlier on the narrower rendered-string measure; it is complete now on
+       the wide one too. The one thing still missing is a translation voice,
+       which is why the picker reads it as recitation only — see above. */
     code: 'id', native: 'Bahasa Indonesia', english: 'Indonesian', rtl: false,
     uiReady: true, uiPartial: false,
     text: { identifier: 'tr_id_indonesian_islamic_affairs_minis', name: 'Kementerian Agama RI', kind: 'translation' },
