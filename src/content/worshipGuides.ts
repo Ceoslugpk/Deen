@@ -14,6 +14,7 @@ import { uzbekReference, WORSHIP_GUIDES_UZ } from './worshipGuidesUz';
 import { chineseReference, WORSHIP_GUIDES_ZH } from './worshipGuidesZh';
 import { kazakhReference, WORSHIP_GUIDES_KK } from './worshipGuidesKk';
 import { vietnameseReference, WORSHIP_GUIDES_VI } from './worshipGuidesVi';
+import { azerbaijaniReference, WORSHIP_GUIDES_AZ } from './worshipGuidesAz';
 
 export type WorshipGuide = {
   id: string;
@@ -128,6 +129,7 @@ const GUIDE_TABLES: Record<string, {
   zh: { guides: WORSHIP_GUIDES_ZH, reference: chineseReference },
   kk: { guides: WORSHIP_GUIDES_KK, reference: kazakhReference },
   vi: { guides: WORSHIP_GUIDES_VI, reference: vietnameseReference },
+  az: { guides: WORSHIP_GUIDES_AZ, reference: azerbaijaniReference },
 };
 
 /**

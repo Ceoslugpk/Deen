@@ -28,6 +28,7 @@ import { UZ } from './uzbekCopy';
 import { ZH } from './chineseCopy';
 import { KK } from './kazakhCopy';
 import { VI } from './vietnameseCopy';
+import { AZ } from './azCopy';
 
 const AR: Record<string, string> = {
   '  (file per Surah)': '  (ملف لكل سورة)',
@@ -2851,10 +2852,16 @@ const PRAYERS_KK: Record<string, string> = {
 const PRAYERS_VI: Record<string, string> = {
   Fajr: 'Fajr', Sunrise: 'Mặt trời mọc', Dhuhr: 'Dhuhr', Asr: 'Asr', Maghrib: 'Maghrib', Isha: 'Isha',
 };
+/* Azerbaijani names the prayers in its own words, as every Azerbaijani
+   prayer-time page does: the dawn prayer is Sübh, the late-morning one Zöhr
+   and the night one İşa. Sunrise is Günəş, the plain word for the sun. */
+const PRAYERS_AZ: Record<string, string> = {
+  Fajr: 'Sübh', Sunrise: 'Günəş', Dhuhr: 'Zöhr', Asr: 'Əsr', Maghrib: 'Məğrib', Isha: 'İşa',
+};
 const PRAYERS_UZ: Record<string, string> = {
   Fajr: 'Бомдод', Sunrise: 'Қуёш чиқиши', Dhuhr: 'Пешин', Asr: 'Аср', Maghrib: 'Шом', Isha: 'Хуфтон',
 };
-const PRAYER_TABLES: Record<'ar' | 'ur' | 'tr' | 'fa' | 'id' | 'hi' | 'ml' | 'ru' | 'fr' | 'bn' | 'ms' | 'ta' | 'uz' | 'zh' | 'kk' | 'vi', Record<string, string>> = {
+const PRAYER_TABLES: Record<'ar' | 'ur' | 'tr' | 'fa' | 'id' | 'hi' | 'ml' | 'ru' | 'fr' | 'bn' | 'ms' | 'ta' | 'uz' | 'zh' | 'kk' | 'vi' | 'az', Record<string, string>> = {
   ar: PRAYERS_AR,
   ur: PRAYERS_UR,
   tr: PRAYERS_TR,
@@ -2871,6 +2878,7 @@ const PRAYER_TABLES: Record<'ar' | 'ur' | 'tr' | 'fa' | 'id' | 'hi' | 'ml' | 'ru
   zh: PRAYERS_ZH,
   kk: PRAYERS_KK,
   vi: PRAYERS_VI,
+  az: PRAYERS_AZ,
 };
 
 export function prayerName(code: string | boolean, name: string): string {
@@ -2885,7 +2893,7 @@ export function prayerName(code: string | boolean, name: string): string {
    * `null` means English: the screens were written in it, so the source text
    * is already the right answer and there is nothing to look up.
    */
-  function tableFor(code: string | boolean): 'ar' | 'ur' | 'tr' | 'fa' | 'id' | 'hi' | 'ml' | 'ru' | 'fr' | 'bn' | 'ms' | 'ta' | 'uz' | 'zh' | 'kk' | 'vi' | null {
+  function tableFor(code: string | boolean): 'ar' | 'ur' | 'tr' | 'fa' | 'id' | 'hi' | 'ml' | 'ru' | 'fr' | 'bn' | 'ms' | 'ta' | 'uz' | 'zh' | 'kk' | 'vi' | 'az' | null {
     if (typeof code === 'boolean') return code ? 'ar' : null;
     if (code === 'ar') return 'ar';
     if (code === 'ur') return 'ur';
@@ -2903,6 +2911,7 @@ export function prayerName(code: string | boolean, name: string): string {
     if (code === 'zh') return 'zh';
     if (code === 'kk') return 'kk';
     if (code === 'vi') return 'vi';
+    if (code === 'az') return 'az';
     return null;
   }
 
@@ -2936,6 +2945,7 @@ export function prayerName(code: string | boolean, name: string): string {
     if (table === 'zh') return ZH[text] ?? text;
     if (table === 'kk') return KK[text] ?? text;
     if (table === 'vi') return VI[text] ?? text;
+    if (table === 'az') return AZ[text] ?? text;
     return text;
   }
 
