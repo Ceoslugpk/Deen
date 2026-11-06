@@ -13,7 +13,7 @@
  */
 
 export type LanguageCode =
-  | 'en' | 'ar' | 'ur' | 'fr' | 'tr' | 'ru' | 'zh' | 'fa' | 'uz' | 'kk' | 'my' | 'vi'
+  | 'en' | 'ar' | 'ur' | 'fr' | 'tr' | 'ru' | 'zh' | 'fa' | 'uz' | 'kk' | 'my' | 'vi' | 'az'
   /* Below: languages the hadith corpus carries that the rest of the app does
      not offer yet — no Quran translation, no recitation voice, no interface
      copy. They exist so hadith can be read in them, not so the app can be. */
@@ -290,6 +290,41 @@ export const LANGUAGES: Language[] = [
        Urdu, Bengali, Malay and Tamil in reading the translation in silence. */
     code: 'vi', native: 'Tiếng Việt', english: 'Vietnamese', rtl: false, uiReady: true, uiPartial: false,
     text: { identifier: 'tr_vi_translation_pioneers_center', name: 'Ruwwad Center', kind: 'translation' },
+  },
+  {
+    /*
+     Azerbaijani. Six translations sit on the API, and only two of them are
+     usable. Two are the same texts stripped of their diacritics — the
+     `_latin_script` and `_2` editions write "agcaqanadı", "boyuklukdə",
+     "Iman", "sukur" where the language writes ağcaqanadı, böyüklükdə, İman,
+     şükür — and a third, Alikhan Musayev's second revision, carries 5,637
+     soft hyphens across 533 sampled verses, one inside almost every word.
+
+     Of the two that remain, Musayev was chosen over Məmmədəliyev & Bünyadov
+     on the text itself. Məmmədəliyev & Bünyadov is the better-known
+     translation and its vocabulary is richer — 487 occurrences of Allah
+     against 406, and namaz, Peyğəmbər, Cənnət, Cəhənnəm throughout — but
+     22% of its characters sit inside parentheses, and in 39% of verses the
+     glosses take more than a quarter of the line. Surah 112 reads "(Ya
+     Peyğəmbər! Allahın zatı və sifətləri haqqında səndən soruşan müşriklərə)
+     de: “(Mənim Rəbbim olan) O Allah birdir (heç bir şəriki yoxdur);" where
+     Musayev reads "De: “O Allah Təkdir!”". In a reader the translation sits
+     under the Arabic in a narrow column, and a gloss every other line does
+     not fit one. Musayev carries the same vocabulary — namaz, oruc, zəkat,
+     həcc, Cənnət, Cəhənnəm, Peyğəmbər, and never Tanrı for Allah — with
+     glosses in under 1% of its text.
+
+     No voice. None of the 403 reciters in the catalogue is Azerbaijani, and
+     every plausible `az.*` identifier on the CDN answers 403 — checked
+     against Uzbek on the same path, which answers 206. Azerbaijani joins
+     Persian, Urdu, Bengali, Malay, Tamil and Vietnamese in reading the
+     translation in silence.
+
+     No new font. DM Sans already carries all sixty-two letters of the
+     Azerbaijani alphabet, so unlike Vietnamese this language needs nothing
+     added to assets/fonts. */
+    code: 'az', native: 'Azərbaycan', english: 'Azerbaijani', rtl: false, uiReady: true, uiPartial: false,
+    text: { identifier: 'tr_az_alikhan_musayev', name: 'Alikhan Musayev', kind: 'translation' },
   },
   {
     code: 'my', native: 'မြန်မာ', english: 'Burmese', rtl: false, uiReady: false,
