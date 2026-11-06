@@ -72,12 +72,29 @@ export const LANGUAGES: Language[] = [
   {
     /* Every string the interface can show is written in Urdu: the screens,
        the tab bar, and the notifications that arrive before the app is even
-       opened. Marked ready, because it is. The Quran, hadith, adhkar, dua and
-       names content stays in the language its source published it in — that
-       is content, not interface, and translating it is not ours to do. */
-    code: 'ur', native: 'اردو', english: 'Urdu', rtl: true, uiReady: true,
+       opened. And the content tables with them — the full 2,766-key union
+       every copy table holds between them, all four spacing variants of the
+       concatenation fragments included, plus the eleven worship guides, the
+       twelve Quran topics, the thirteen tajweed rules and both journeys.
+       Marked ready and no longer partial.
+
+       The Quran, hadith, adhkar, dua and names content stays in the language
+       its source published it in — that is content, not interface, and
+       translating it is not ours to do.
+
+       No translation voice, measured the same way Persian was. Spoken
+       translations come from cdn.islamic.network, and all nine Urdu editions
+       the API lists return 403 there. The control makes that 403 readable:
+       on the identical path, editions that do carry recordings — ar.alafasy,
+       fr.leclerc, tr.vakfi-audio — all return 200. So it means there is
+       nothing to play, not that the identifier is wrong.
+
+       Nothing is broken by the omission. The player does not read a voice
+       from this list; it resolves one from the live catalogue and, where a
+       language has no recording, plays the Arabic alone. Recitation only. */
+    code: 'ur', native: 'اردو', english: 'Urdu', rtl: true,
+    uiReady: true, uiPartial: false,
     text: { identifier: 'tr_ur_abul_ala_maududi', name: 'Abul Ala Maududi', kind: 'translation' },
-    voice: { identifier: 'ur.khan', name: 'Shamshad Ali Khan' },
   },
   {
     code: 'fr', native: 'Français', english: 'French', rtl: false, uiReady: false,
