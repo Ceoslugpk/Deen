@@ -341,6 +341,37 @@ export const TAJWEED_FR: Record<string, { name: string; detail: string }> = {
 
 export const TOPIC_CATEGORY_RU: Record<string, string> = { Faith: 'Вера', Life: 'Жизнь', Spirituality: 'Духовность' };
 
+export const TOPIC_BN: Record<string, { title: string; description: string }> = {
+  oneness: { title: 'আল্লাহর একত্ব', description: 'আল্লাহর পরম একত্ব, অমুখাপেক্ষিতা ও অতুলনীয়তা নিশ্চিত করা আয়াতসমূহ।' },
+  trust: { title: 'ভরসা ও নির্ভরতা', description: 'সচেতন আমল ও অবিচলতার সাথে আল্লাহর ওপর ভরসা।' },
+  signs: { title: 'সৃষ্টিতে নিদর্শন', description: 'সৃষ্টি, শৃঙ্খলা ও উদ্দেশ্য নিয়ে চিন্তার আহ্বান জানানো অংশ।' },
+  resurrection: { title: 'পুনরুত্থান ও প্রত্যাবর্তন', description: 'হিসাব, নবায়ন ও আল্লাহর দিকে শেষ প্রত্যাবর্তনের অনুস্মারক।' },
+  parents: { title: 'পিতামাতা ও পরিবার', description: 'পারিবারিক জীবনে দয়া, কৃতজ্ঞতা ও উত্তম আচরণ।' },
+  justice: { title: 'ন্যায়বিচার ও সততা', description: 'ব্যক্তিগতভাবে কঠিন হলেও ন্যায়ের পক্ষে দৃঢ়ভাবে দাঁড়ানো।' },
+  patience: { title: 'কষ্টে ধৈর্য', description: 'কষ্টের সময় ধৈর্য ও নামাজের মাধ্যমে সাহায্য চাওয়া।' },
+  speech: { title: 'সচেতন কথা', description: 'যা উত্তম তা বলা, সন্দেহ এড়ানো ও একে অপরের মর্যাদা রক্ষা করা।' },
+  remembrance: { title: 'জিকির ও প্রশান্তি', description: 'আল্লাহর স্মরণের মাধ্যমে অন্তরের স্থিরতা খোঁজা।' },
+  repentance: { title: 'আশা ও তাওবা', description: 'রহমত থেকে কখনো নিরাশ না হয়ে এবং ভুলের পর আন্তরিকভাবে ফিরে আসা।' },
+  gratitude: { title: 'কৃতজ্ঞতা', description: 'নেয়ামতকে চেনা ও কৃতজ্ঞ ইবাদাতের মাধ্যমে সাড়া দেওয়া।' },
+  dua: { title: 'দোয়া ও নৈকট্য', description: 'আল্লাহর নৈকট্য ও তাঁকে ডাকার আহ্বান।' },
+};
+export const TOPIC_CATEGORY_BN: Record<string, string> = { Faith: 'ঈমান', Life: 'জীবন', Spirituality: 'আধ্যাত্মিকতা' };
+export const TAJWEED_BN: Record<string, { name: string; detail: string }> = {
+  'h,s,l': { name: 'নীরব অক্ষর', detail: 'হামজাতুল ওয়াসল, নীরব চিহ্ন ও শামসী লাম স্বাধীনভাবে উচ্চারিত হয় না।' },
+  m: { name: 'স্বাভাবিক মাদ', detail: 'দুই স্বর গণনা ধরে রাখা আদর্শ দীর্ঘায়ন।' },
+  p: { name: 'মাদ জায়েজ', detail: 'দুই, চার বা ছয় গণনার অনুমোদিত দীর্ঘায়ন।' },
+  n: { name: 'মাদ লাজিম', detail: 'একটি আবশ্যক দীর্ঘায়ন, যতটা দরকার ততক্ষণ ধরে রাখা।' },
+  o: { name: 'মাদ ওয়াজিব', detail: 'একটি আবশ্যক দীর্ঘায়ন, সাধারণত চার থেকে পাঁচ গণনা।' },
+  q: { name: 'ক্বলক্বলা', detail: 'সুকুন থাকা অবস্থায় قطب جد অক্ষরের একটিতে একটি নিয়ন্ত্রিত প্রতিধ্বনি।' },
+  c: { name: 'ইখফা শফয়ী', detail: 'বা-এর আগে একটি গোপন মীমের ধ্বনি।' },
+  f: { name: 'ইখফা', detail: 'তার অক্ষরের আগে একটি গোপন নূন সাকিন বা তানবিন।' },
+  w: { name: 'ইদগাম শফয়ী', detail: 'পরবর্তী মীমে মীম সাকিনের একীভবন।' },
+  i: { name: 'ইক্বলাব', detail: 'বা-এর আগে নূন সাকিন বা তানবিন গোপন মীমের দিকে বদলে যায়।' },
+  a: { name: 'গুন্নাসহ ইদগাম', detail: 'অনুনাসিকতাসহ একীভবন।' },
+  u: { name: 'গুন্নাবিহীন ইদগাম', detail: 'অনুনাসিকতা ছাড়া একীভবন।' },
+  g: { name: 'গুন্না', detail: 'দুই গণনা ধরে রাখা অনুনাসিক ধ্বনি।' },
+};
+
 export const TAJWEED_RU: Record<string, { name: string; detail: string }> = {
   'h,s,l': { name: 'Нечитаемые буквы', detail: 'Хамзат аль-васль, немые знаки и солнечный лям не произносятся отдельно.' },
   m: { name: 'Естественный мадд', detail: 'Обычное удлинение на две огласовки.' },
@@ -360,25 +391,25 @@ export const TAJWEED_RU: Record<string, { name: string; detail: string }> = {
 export const topicTitle=(topic:QuranTopic,lang?:string|boolean)=>{
   const c=langCode(lang);
   if(c==='ar')return topic.titleAr;
-  const t=(c==='fr'?TOPIC_FR:c==='fa'?TOPIC_FA:c==='ru'?TOPIC_RU:c==='tr'?TOPIC_TR:c==='ur'?TOPIC_UR:c==='id'?TOPIC_ID:c==='hi'?TOPIC_HI:c==='ml'?TOPIC_ML:undefined)?.[topic.id];
+  const t=(c==='bn'?TOPIC_BN:c==='fr'?TOPIC_FR:c==='fa'?TOPIC_FA:c==='ru'?TOPIC_RU:c==='tr'?TOPIC_TR:c==='ur'?TOPIC_UR:c==='id'?TOPIC_ID:c==='hi'?TOPIC_HI:c==='ml'?TOPIC_ML:undefined)?.[topic.id];
   return t?.title||topic.title;
 };
 export const topicDescription=(topic:QuranTopic,lang?:string|boolean)=>{
   const c=langCode(lang);
   if(c==='ar')return topic.descriptionAr;
-  const t=(c==='fr'?TOPIC_FR:c==='fa'?TOPIC_FA:c==='ru'?TOPIC_RU:c==='tr'?TOPIC_TR:c==='ur'?TOPIC_UR:c==='id'?TOPIC_ID:c==='hi'?TOPIC_HI:c==='ml'?TOPIC_ML:undefined)?.[topic.id];
+  const t=(c==='bn'?TOPIC_BN:c==='fr'?TOPIC_FR:c==='fa'?TOPIC_FA:c==='ru'?TOPIC_RU:c==='tr'?TOPIC_TR:c==='ur'?TOPIC_UR:c==='id'?TOPIC_ID:c==='hi'?TOPIC_HI:c==='ml'?TOPIC_ML:undefined)?.[topic.id];
   return t?.description||topic.description;
 };
 export const topicCategory=(topic:QuranTopic,lang?:string|boolean)=>{
   const c=langCode(lang);
   if(c==='ar')return TOPIC_CATEGORY_AR[topic.category];
-  const t=(c==='fr'?TOPIC_CATEGORY_FR:c==='fa'?TOPIC_CATEGORY_FA:c==='ru'?TOPIC_CATEGORY_RU:c==='tr'?TOPIC_CATEGORY_TR:c==='ur'?TOPIC_CATEGORY_UR:c==='id'?TOPIC_CATEGORY_ID:c==='hi'?TOPIC_CATEGORY_HI:c==='ml'?TOPIC_CATEGORY_ML:undefined)?.[topic.category];
+  const t=(c==='bn'?TOPIC_CATEGORY_BN:c==='fr'?TOPIC_CATEGORY_FR:c==='fa'?TOPIC_CATEGORY_FA:c==='ru'?TOPIC_CATEGORY_RU:c==='tr'?TOPIC_CATEGORY_TR:c==='ur'?TOPIC_CATEGORY_UR:c==='id'?TOPIC_CATEGORY_ID:c==='hi'?TOPIC_CATEGORY_HI:c==='ml'?TOPIC_CATEGORY_ML:undefined)?.[topic.category];
   return t||topic.category.toUpperCase();
 };
 const tajweedOwn=(rule:any,lang?:string|boolean)=>{
   const c=langCode(lang);
   if(c==='ar')return undefined;
-  const table=c==='fr'?TAJWEED_FR:c==='fa'?TAJWEED_FA:c==='ru'?TAJWEED_RU:c==='tr'?TAJWEED_TR:c==='ur'?TAJWEED_UR:c==='id'?TAJWEED_ID:c==='hi'?TAJWEED_HI:c==='ml'?TAJWEED_ML:undefined;
+  const table=c==='bn'?TAJWEED_BN:c==='fr'?TAJWEED_FR:c==='fa'?TAJWEED_FA:c==='ru'?TAJWEED_RU:c==='tr'?TAJWEED_TR:c==='ur'?TAJWEED_UR:c==='id'?TAJWEED_ID:c==='hi'?TAJWEED_HI:c==='ml'?TAJWEED_ML:undefined;
   return table?.[String((rule?.codes||[]).join(','))];
 };
 export const tajweedName=(rule:any,lang?:string|boolean)=>langCode(lang)==='ar'?(rule as any).nameAr:tajweedOwn(rule,lang)?.name||rule.name;

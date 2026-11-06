@@ -112,6 +112,13 @@ export const LANGUAGES: Language[] = [
     voice: { identifier: 'ru.kuliev-audio', name: 'Elmir Kuliev' },
   },
   {
+    code: 'bn', native: 'বাংলা', english: 'Bengali', rtl: false, uiReady: true, uiPartial: false,
+    text: { identifier: 'tr_bn_muhiuddin_khan', name: 'Muhiuddin Khan', kind: 'translation' },
+    /* No Bengali recitation is served by any of the audio hosts the app uses
+       — every candidate returned 403 — so there is deliberately no voice
+       here, and the reader offers Bengali text without audio. */
+  },
+  {
     code: 'zh', native: '中文', english: 'Chinese', rtl: false, uiReady: false,
     text: { identifier: 'tr_zh_ma_jian_latin_script', name: 'Ma Jian', kind: 'translation' },
     voice: { identifier: 'zh.chinese', name: 'Chinese' },
