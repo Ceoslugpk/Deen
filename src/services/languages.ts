@@ -137,7 +137,7 @@ export const LANGUAGES: Language[] = [
        Malay. */
   },
   {
-    code: 'zh', native: '中文', english: 'Chinese', rtl: false, uiReady: false,
+    code: 'zh', native: '中文', english: 'Chinese', rtl: false, uiReady: true, uiPartial: false,
     text: { identifier: 'tr_zh_ma_jian', name: 'Ma Jian', kind: 'translation' },
     voice: { identifier: 'zh.chinese', name: 'Chinese' },
   },
