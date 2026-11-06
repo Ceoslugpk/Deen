@@ -263,7 +263,7 @@ export const LANGUAGES: Language[] = [
     voice: { identifier: 'uz.sodik-audio', name: 'Muhammad Sodik Yusuf' },
   },
   {
-    code: 'kk', native: 'Қазақша', english: 'Kazakh', rtl: false, uiReady: false,
+    code: 'kk', native: 'Қазақша', english: 'Kazakh', rtl: false, uiReady: true, uiPartial: false,
     text: { identifier: 'tr_kk_khalifah_altai', name: 'Khalifah Altai', kind: 'translation' },
     voice: { identifier: 'kk.khalifahaltai-audio', name: 'Khalifah Altai' },
   },

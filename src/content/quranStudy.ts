@@ -496,6 +496,37 @@ export const TAJWEED_ZH: Record<string, { name: string; detail: string }> = {
   g: { name: '鼻音', detail: '持续两拍的鼻音。' },
 };
 
+export const TOPIC_KK: Record<string, { title: string; description: string }> = {
+  oneness: { title: 'Аллаһтың бірлігі', description: 'Аллаһтың мүлдем жалғыз, ешкімге мұқтаж емес және теңдессіз екенін растайтын аяттар.' },
+  trust: { title: 'Тәуекел мен сенім', description: 'Аллаһқа тәуекел ету, әрі ұқыпты әрекет пен тұрақтылық.' },
+  signs: { title: 'Жаратылыстағы белгілер', description: 'Жаратылыс, тәртіп пен мақсат туралы ойға шақыратын үзінділер.' },
+  resurrection: { title: 'Қайта тірілу және оралу', description: 'Есеп беру, жаңару және Аллаһқа соңғы қайту туралы еске салулар.' },
+  parents: { title: 'Ата-ана мен отбасы', description: 'Отбасы өміріндегі мейірім, шүкір мен көркем мінез.' },
+  justice: { title: 'Әділет пен адалдық', description: 'Өзіне қиын болса да әділет үшін берік тұру.' },
+  patience: { title: 'Қиындықтағы сабыр', description: 'Қиындықта сабыр мен намаз арқылы жәрдем тілеу.' },
+  speech: { title: 'Тілді сақтау', description: 'Ең жақсысын айту, күдіктен аулақ болу және бір-бірінің абыройын қорғау.' },
+  remembrance: { title: 'Зікір мен тыныштық', description: 'Аллаһты еске алу арқылы жүрек тыныштығын табу.' },
+  repentance: { title: 'Үміт пен тәубе', description: 'Мейірімнен еш үміт үзбей, қатеден кейін шын қайту.' },
+  gratitude: { title: 'Шүкір', description: 'Нығметті танып, шүкіршілік ғибадатпен жауап қайтару.' },
+  dua: { title: 'Дұға мен жақындық', description: 'Аллаһтың жақындығы және Оған жалбарынуға шақыру.' },
+};
+export const TOPIC_CATEGORY_KK: Record<string, string> = { Faith: 'Иман', Life: 'Өмір', Spirituality: 'Руханилық' };
+export const TAJWEED_KK: Record<string, { name: string; detail: string }> = {
+  'h,s,l': { name: 'Сәкин әріптер', detail: 'Уасл хамзасы, сүкүн белгілері және күндізгі ләм жеке айтылмайды.' },
+  m: { name: 'Табиғи мадд', detail: 'Екі дауысты өлшеміне созылатын әдеттегі созу.' },
+  p: { name: 'Жәйіз мадд', detail: 'Екі, төрт немесе алты өлшемге рұқсат етілген созу.' },
+  n: { name: 'Ләзім мадд', detail: 'Алты өлшемге созылатын қажетті созу.' },
+  o: { name: 'Уәжіп мадд', detail: 'Міндетті созу, көбінесе төрт-бес өлшем.' },
+  q: { name: 'Қалқала', detail: 'Сүкүн келгенде قطب جد әріптерінің бірінде жаңғырық пайда болады.' },
+  c: { name: 'Ихфа шафауи', detail: 'Ба әрпінің алдындағы жасырын мим дыбысы.' },
+  f: { name: 'Ихфо', detail: 'Әріптерінің алдындағы жасырын сәкин нун не танвин.' },
+  w: { name: 'Идғам шафауи', detail: 'Сәкин мимнің келесі мимге бірігуі.' },
+  i: { name: 'Иқлоб', detail: 'Сәкин нун не танвин ба әрпінің алдында жасырын мимге айналады.' },
+  a: { name: 'Ғұнналы идғам', detail: 'Мұрын үнімен қосарланған бірігу.' },
+  u: { name: 'Ғұннасыз идғам', detail: 'Мұрын үнінсіз бірігу.' },
+  g: { name: 'Ғұнна', detail: 'Екі өлшемге созылған мұрын дыбысы.' },
+};
+
 export const TAJWEED_RU: Record<string, { name: string; detail: string }> = {
   'h,s,l': { name: 'Нечитаемые буквы', detail: 'Хамзат аль-васль, немые знаки и солнечный лям не произносятся отдельно.' },
   m: { name: 'Естественный мадд', detail: 'Обычное удлинение на две огласовки.' },
@@ -515,25 +546,25 @@ export const TAJWEED_RU: Record<string, { name: string; detail: string }> = {
 export const topicTitle=(topic:QuranTopic,lang?:string|boolean)=>{
   const c=langCode(lang);
   if(c==='ar')return topic.titleAr;
-  const t=(c==='zh'?TOPIC_ZH:c==='uz'?TOPIC_UZ:c==='ta'?TOPIC_TA:c==='ms'?TOPIC_MS:c==='bn'?TOPIC_BN:c==='fr'?TOPIC_FR:c==='fa'?TOPIC_FA:c==='ru'?TOPIC_RU:c==='tr'?TOPIC_TR:c==='ur'?TOPIC_UR:c==='id'?TOPIC_ID:c==='hi'?TOPIC_HI:c==='ml'?TOPIC_ML:undefined)?.[topic.id];
+  const t=(c==='zh'?TOPIC_ZH:c==='kk'?TOPIC_KK:c==='uz'?TOPIC_UZ:c==='ta'?TOPIC_TA:c==='ms'?TOPIC_MS:c==='bn'?TOPIC_BN:c==='fr'?TOPIC_FR:c==='fa'?TOPIC_FA:c==='ru'?TOPIC_RU:c==='tr'?TOPIC_TR:c==='ur'?TOPIC_UR:c==='id'?TOPIC_ID:c==='hi'?TOPIC_HI:c==='ml'?TOPIC_ML:undefined)?.[topic.id];
   return t?.title||topic.title;
 };
 export const topicDescription=(topic:QuranTopic,lang?:string|boolean)=>{
   const c=langCode(lang);
   if(c==='ar')return topic.descriptionAr;
-  const t=(c==='zh'?TOPIC_ZH:c==='uz'?TOPIC_UZ:c==='ta'?TOPIC_TA:c==='ms'?TOPIC_MS:c==='bn'?TOPIC_BN:c==='fr'?TOPIC_FR:c==='fa'?TOPIC_FA:c==='ru'?TOPIC_RU:c==='tr'?TOPIC_TR:c==='ur'?TOPIC_UR:c==='id'?TOPIC_ID:c==='hi'?TOPIC_HI:c==='ml'?TOPIC_ML:undefined)?.[topic.id];
+  const t=(c==='zh'?TOPIC_ZH:c==='kk'?TOPIC_KK:c==='uz'?TOPIC_UZ:c==='ta'?TOPIC_TA:c==='ms'?TOPIC_MS:c==='bn'?TOPIC_BN:c==='fr'?TOPIC_FR:c==='fa'?TOPIC_FA:c==='ru'?TOPIC_RU:c==='tr'?TOPIC_TR:c==='ur'?TOPIC_UR:c==='id'?TOPIC_ID:c==='hi'?TOPIC_HI:c==='ml'?TOPIC_ML:undefined)?.[topic.id];
   return t?.description||topic.description;
 };
 export const topicCategory=(topic:QuranTopic,lang?:string|boolean)=>{
   const c=langCode(lang);
   if(c==='ar')return TOPIC_CATEGORY_AR[topic.category];
-  const t=(c==='zh'?TOPIC_CATEGORY_ZH:c==='uz'?TOPIC_CATEGORY_UZ:c==='ta'?TOPIC_CATEGORY_TA:c==='ms'?TOPIC_CATEGORY_MS:c==='bn'?TOPIC_CATEGORY_BN:c==='fr'?TOPIC_CATEGORY_FR:c==='fa'?TOPIC_CATEGORY_FA:c==='ru'?TOPIC_CATEGORY_RU:c==='tr'?TOPIC_CATEGORY_TR:c==='ur'?TOPIC_CATEGORY_UR:c==='id'?TOPIC_CATEGORY_ID:c==='hi'?TOPIC_CATEGORY_HI:c==='ml'?TOPIC_CATEGORY_ML:undefined)?.[topic.category];
+  const t=(c==='zh'?TOPIC_CATEGORY_ZH:c==='kk'?TOPIC_CATEGORY_KK:c==='uz'?TOPIC_CATEGORY_UZ:c==='ta'?TOPIC_CATEGORY_TA:c==='ms'?TOPIC_CATEGORY_MS:c==='bn'?TOPIC_CATEGORY_BN:c==='fr'?TOPIC_CATEGORY_FR:c==='fa'?TOPIC_CATEGORY_FA:c==='ru'?TOPIC_CATEGORY_RU:c==='tr'?TOPIC_CATEGORY_TR:c==='ur'?TOPIC_CATEGORY_UR:c==='id'?TOPIC_CATEGORY_ID:c==='hi'?TOPIC_CATEGORY_HI:c==='ml'?TOPIC_CATEGORY_ML:undefined)?.[topic.category];
   return t||topic.category.toUpperCase();
 };
 const tajweedOwn=(rule:any,lang?:string|boolean)=>{
   const c=langCode(lang);
   if(c==='ar')return undefined;
-  const table=c==='zh'?TAJWEED_ZH:c==='uz'?TAJWEED_UZ:c==='ta'?TAJWEED_TA:c==='ms'?TAJWEED_MS:c==='bn'?TAJWEED_BN:c==='fr'?TAJWEED_FR:c==='fa'?TAJWEED_FA:c==='ru'?TAJWEED_RU:c==='tr'?TAJWEED_TR:c==='ur'?TAJWEED_UR:c==='id'?TAJWEED_ID:c==='hi'?TAJWEED_HI:c==='ml'?TAJWEED_ML:undefined;
+  const table=c==='zh'?TAJWEED_ZH:c==='kk'?TAJWEED_KK:c==='uz'?TAJWEED_UZ:c==='ta'?TAJWEED_TA:c==='ms'?TAJWEED_MS:c==='bn'?TAJWEED_BN:c==='fr'?TAJWEED_FR:c==='fa'?TAJWEED_FA:c==='ru'?TAJWEED_RU:c==='tr'?TAJWEED_TR:c==='ur'?TAJWEED_UR:c==='id'?TAJWEED_ID:c==='hi'?TAJWEED_HI:c==='ml'?TAJWEED_ML:undefined;
   return table?.[String((rule?.codes||[]).join(','))];
 };
 export const tajweedName=(rule:any,lang?:string|boolean)=>langCode(lang)==='ar'?(rule as any).nameAr:tajweedOwn(rule,lang)?.name||rule.name;
