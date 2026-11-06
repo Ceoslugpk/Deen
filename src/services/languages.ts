@@ -138,7 +138,7 @@ export const LANGUAGES: Language[] = [
   },
   {
     code: 'zh', native: '中文', english: 'Chinese', rtl: false, uiReady: false,
-    text: { identifier: 'tr_zh_ma_jian_latin_script', name: 'Ma Jian', kind: 'translation' },
+    text: { identifier: 'tr_zh_ma_jian', name: 'Ma Jian', kind: 'translation' },
     voice: { identifier: 'zh.chinese', name: 'Chinese' },
   },
   {
