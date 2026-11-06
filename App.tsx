@@ -20,6 +20,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { WebView } from 'react-native-webview';
+import * as SplashScreen from 'expo-splash-screen';
 import { haptic, isHapticsSupported, setHapticsEnabled, withHaptic, type HapticKind } from './src/services/haptics';
 import { createNavigationContainerRef, NavigationContainer, StackActions, useFocusEffect, useNavigation } from '@react-navigation/native';
 const KFGQPCUthmanicHafs = require('./assets/fonts/KFGQPCUthmanicHafs.ttf');
@@ -1892,7 +1893,7 @@ function AppHeader() {
   const canGoBack = useCanGoBack();
   return <View style={s.appHeader}>
     {canGoBack
-      ? <IconButton name={rtl ? 'arrow-forward' : 'arrow-back'} onPress={() => navigation.goBack()} />
+      ? <IconButton name={rtl ? 'arrow-forward' : 'arrow-back'} label={tx(language,'Back')} onPress={() => goBackOrHome(navigation)} />
       : <View style={s.appHeaderBrand}>
         <Image source={LOGO_MARK} resizeMode="contain" style={s.appLogo} />
         <Text style={s.appName} numberOfLines={1}>{T('Islamic')}</Text>
@@ -3090,6 +3091,18 @@ function NextPrayerPill({ prayer, prayers, language, rtl, still, scrollY }: {
      count. */
   const span = Math.max(1, target - from);
   const run = Math.min(1, Math.max(0, (now - from) / span));
+  /* The bar is drawn in measured points rather than as a percentage.
+
+     The pill shrinks to fit its contents — it carries a minWidth and sits
+     in a centred wrapper — so the track's `100%` had no definite width to
+     resolve against, and the fill was then a percentage of that. On the web
+     the browser takes a second pass and the bar appears; on native the
+     fraction collapsed and the fill measured zero, which is why the pill
+     showed its countdown and no bar on Android. Measuring the track once
+     and giving the fill a number makes it identical on every platform and
+     independent of how the pill happens to be sized. */
+  const [trackWidth, setTrackWidth] = useState(0);
+  const fillWidth = trackWidth > 0 ? Math.round(trackWidth * run * 100) / 100 : 0;
   const left = Math.max(0, Math.floor((target - now) / 1000));
   const hh = Math.floor(left / 3600);
   const mm = Math.floor((left - hh * 3600) / 60);
@@ -3120,8 +3133,14 @@ function NextPrayerPill({ prayer, prayers, language, rtl, still, scrollY }: {
           long is left without saying how long there was, so a wait of
           four minutes out of four hours looks the same as one four
           minutes out of forty. This is the other half of that. */}
-      <View style={s.nextPillTrack}>
-        <View style={[s.nextPillFill, { width: `${(run * 100).toFixed(1)}%` } as any]} />
+      <View
+        style={s.nextPillTrack}
+        onLayout={(e) => {
+          const w = e?.nativeEvent?.layout?.width || 0;
+          if (w > 0) setTrackWidth((prev) => (Math.abs(prev - w) > 0.5 ? w : prev));
+        }}
+      >
+        <View style={[s.nextPillFill, { width: fillWidth }]} />
       </View>
     </View>
   </Animated.View>;
@@ -3537,7 +3556,7 @@ function ReaderScreen({route,navigation}:any){
   useOverlaySheet('verse-actions', !!actionsVerse, () => actionsVerse
     ? <VerseActionsSheet verse={actionsVerse} chapter={full} rtl={rtl} T={T} language={language} navigation={navigation} onClose={()=>setActionsVerse(null)}/>
     : null, () => setActionsVerse(null));
-  return <Page><Animated.View style={[s.readerBar,{transform:[{translateY:chromeY}]}]}><IconButton name={rtl?'arrow-forward':'arrow-back'} onPress={()=>navigation.goBack()}/>{!narrow&&(canStep(-1)?<Pressable accessibilityLabel={T('Previous section')} onPress={()=>step(-1)} style={s.surahStep}>{ico(rtl?'chevron-forward':'chevron-back',19,C.ink)}</Pressable>:<View style={s.surahStep}/>)}<View style={{alignItems:'center',flex:1}}><Text style={s.readerName} numberOfLines={1}>{title}</Text><Text style={s.meta} numberOfLines={1}>{subtitle}</Text></View>{!narrow&&(canStep(1)?<Pressable accessibilityLabel={T('Next section')} onPress={()=>step(1)} style={s.surahStep}>{ico(rtl?'chevron-back':'chevron-forward',19,C.ink)}</Pressable>:<View style={s.surahStep}/>)}<View style={s.readerHeaderActions}>{section==='surah'&&<Pressable accessibilityLabel={T('Play this Surah')} onPress={()=>{void playSurahFromReader(full,rtl)}} style={s.readerIconBtn}>{ico('play-circle',20,C.ink)}</Pressable>}{section==='surah'&&<Pressable accessibilityLabel={T('Keep this Surah for offline')} onPress={()=>navigation.navigate('Downloads',{chapterId,surahName:full.name_simple})} style={s.readerIconBtn}>{ico('download-outline',20,C.ink)}</Pressable>}<Pressable accessibilityRole="switch" accessibilityState={{checked:focusOn}} accessibilityLabel={`${T('Focus mode')}: ${focusOn?T('On'):T('Off')}`} onPress={()=>update({focusMode:!focusOn})} style={s.readerIconBtn}>{ico(focusOn?'eye':'eye-outline',20,focusOn?C.gold:C.ink)}</Pressable><Pressable accessibilityLabel={T('Reader settings')} onPress={()=>navigation.navigate('Reader Settings')} style={s.readerIconBtn}>{ico('options-outline',20,C.ink)}</Pressable></View></Animated.View><View style={s.readerProgress}><Animated.View style={[s.preloadFill,{width:progressWidth as any}]}/></View>
+  return <Page><Animated.View style={[s.readerBar,{transform:[{translateY:chromeY}]}]}><IconButton name={rtl?'arrow-forward':'arrow-back'} onPress={()=>goBackOrHome(navigation)}/>{!narrow&&(canStep(-1)?<Pressable accessibilityLabel={T('Previous section')} onPress={()=>step(-1)} style={s.surahStep}>{ico(rtl?'chevron-forward':'chevron-back',19,C.ink)}</Pressable>:<View style={s.surahStep}/>)}<View style={{alignItems:'center',flex:1}}><Text style={s.readerName} numberOfLines={1}>{title}</Text><Text style={s.meta} numberOfLines={1}>{subtitle}</Text></View>{!narrow&&(canStep(1)?<Pressable accessibilityLabel={T('Next section')} onPress={()=>step(1)} style={s.surahStep}>{ico(rtl?'chevron-back':'chevron-forward',19,C.ink)}</Pressable>:<View style={s.surahStep}/>)}<View style={s.readerHeaderActions}>{section==='surah'&&<Pressable accessibilityLabel={T('Play this Surah')} onPress={()=>{void playSurahFromReader(full,rtl)}} style={s.readerIconBtn}>{ico('play-circle',20,C.ink)}</Pressable>}{section==='surah'&&<Pressable accessibilityLabel={T('Keep this Surah for offline')} onPress={()=>navigation.navigate('Downloads',{chapterId,surahName:full.name_simple})} style={s.readerIconBtn}>{ico('download-outline',20,C.ink)}</Pressable>}<Pressable accessibilityRole="switch" accessibilityState={{checked:focusOn}} accessibilityLabel={`${T('Focus mode')}: ${focusOn?T('On'):T('Off')}`} onPress={()=>update({focusMode:!focusOn})} style={s.readerIconBtn}>{ico(focusOn?'eye':'eye-outline',20,focusOn?C.gold:C.ink)}</Pressable><Pressable accessibilityLabel={T('Reader settings')} onPress={()=>navigation.navigate('Reader Settings')} style={s.readerIconBtn}>{ico('options-outline',20,C.ink)}</Pressable></View></Animated.View><View style={s.readerProgress}><Animated.View style={[s.preloadFill,{width:progressWidth as any}]}/></View>
   <ScrollView keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} ref={scrollRef} contentContainerStyle={s.readerScroll} showsVerticalScrollIndicator={false} scrollEventThrottle={16} onScroll={Animated.event(
     [{nativeEvent:{contentOffset:{y:progressY}}}],
     {useNativeDriver:false,listener:(e:any)=>{const{contentOffset}=e.nativeEvent;if(focusOn){const dy=contentOffset.y-scrollY.current;if(dy>4&&chromeShown)setChromeShown(false)}scrollY.current=contentOffset.y;
@@ -4673,11 +4692,20 @@ function TranslationScreen({navigation}:any){const{preferences,update}=useQuranP
   const[language,setLanguage]=useState(currentCode);
   useEffect(()=>{setLanguage(currentCode)},[currentCode]);
 
+  /* The rows are built here rather than inside the sheet's render callback.
+     `useOverlaySheet` hands that callback to the overlay host, which invokes it
+     as a plain function during *its own* render — so a hook written inside it
+     is registered against the host, not against this screen. The host renders
+     one such call per open sheet, so the number of hooks it registers rises and
+     falls as sheets open and close, and React throws "rendered fewer hooks than
+     expected". That is what took this screen down on opening the sheet. */
+  const languageRows=useMemo(()=>languages.map((e)=>({code:e.code,native:e.native,label:e.label,flag:e.flag,count:e.count})),[languages]);
+
   /* Registered on the overlay layer rather than drawn inside the page: the
      floating tab bar paints after the screens, so a sheet rendered inline is
      drawn underneath it and its lower rows cannot be reached. */
   useOverlaySheet('translations-language', picking, () => (
-    <LanguagePickerSheet rtl={rtl} T={T} rows={useMemo(()=>languages.map((e)=>({code:e.code,native:e.native,label:e.label,flag:e.flag,count:e.count})),[languages])} selected={language}
+    <LanguagePickerSheet rtl={rtl} T={T} rows={languageRows} selected={language}
       onPick={(code)=>setLanguage(code)} onClose={()=>setPicking(false)}/>
   ), () => setPicking(false));
 
@@ -4703,7 +4731,7 @@ function TranslationScreen({navigation}:any){const{preferences,update}=useQuranP
         translationName:editionDisplayName(e),
         translationLanguage:languageLabel(e.language||'en'),
       });
-      navigation.goBack();
+      goBackOrHome(navigation);
     }}/>}
   </ScrollView>
 </Page>}
@@ -4746,10 +4774,10 @@ function NoteEditorScreen({route,navigation}:any){const {rtl,language}=useLangua
   const savedAt:number=incoming.savedAt??Date.now();
   const[text,setText]=useState(original);
   const save=async()=>{const body=text.trim();
-    if(!body){if(original)await deleteNote(verseKey);navigation.goBack();return}
+    if(!body){if(original)await deleteNote(verseKey);goBackOrHome(navigation);return}
     await saveNote({verseKey,surahId:chapter.id,surahName:chapter.name_simple,arabic,translation:incoming.translation??'',note:body,savedAt,updatedAt:Date.now()});
-    navigation.goBack()};
-  return <Page><ToolBar title={`Note · ${verseKey}`} navigation={navigation}/><View style={s.dataPage}><Text style={s.dataArabic}>{arabic}</Text><TextInput multiline autoFocus value={text} onChangeText={setText} placeholder={T('Write a private reflection…')} style={s.noteInput}/><View style={s.actionRow}><Tactile onPress={save} style={s.primary}><Text style={s.primaryText}>{T('Save note')}</Text></Tactile>{!!original&&<Tactile onPress={async()=>{await deleteNote(verseKey);navigation.goBack()}} style={s.dangerButton}><Text style={s.dangerText}>{T('Delete')}</Text></Tactile>}</View></View></Page>}
+    goBackOrHome(navigation)};
+  return <Page><ToolBar title={`Note · ${verseKey}`} navigation={navigation}/><View style={s.dataPage}><Text style={s.dataArabic}>{arabic}</Text><TextInput multiline autoFocus value={text} onChangeText={setText} placeholder={T('Write a private reflection…')} style={s.noteInput}/><View style={s.actionRow}><Tactile onPress={save} style={s.primary}><Text style={s.primaryText}>{T('Save note')}</Text></Tactile>{!!original&&<Tactile onPress={async()=>{await deleteNote(verseKey);goBackOrHome(navigation)}} style={s.dangerButton}><Text style={s.dangerText}>{T('Delete')}</Text></Tactile>}</View></View></Page>}
 
 /**
  * How the Quran reads on this screen, as a sheet.
@@ -4804,8 +4832,14 @@ function ReaderSettingsScreen({navigation}:any){
   const current=useMemo(()=>languages.find(l=>l.code===currentCode),[languages,currentCode]);
   const[language,setLanguage]=useState(currentCode);
   useEffect(()=>{setLanguage(currentCode)},[currentCode]);
+  /* Built in the body, not at the point of use: the sheet below is rendered
+     conditionally, so a `useMemo` written inside that expression would be
+     skipped on every render where the condition is false. React then sees the
+     hook count change and throws "rendered more hooks than expected" — which is
+     what took this screen down when the language row was tapped. */
+  const languageRows=useMemo(()=>languages.map((e)=>({code:e.code,native:e.native,label:e.label,flag:e.flag,count:e.count})),[languages]);
 
-  const close=()=>navigation.goBack();
+  const close=()=>goBackOrHome(navigation);
   const Switch=({on,label,detail,glyph,onPress}:{on:boolean;label:string;detail:string;glyph:string;onPress:()=>void})=>(
     <Tactile accessibilityRole="switch" accessibilityState={{checked:on}} onPress={onPress} style={s.setting}>
       <MotionGlyph name={glyph} size={19}/>
@@ -4914,7 +4948,7 @@ function ReaderSettingsScreen({navigation}:any){
         </ScrollView>
       </Animated.View>
 
-      {picking==='translation'&&<LanguagePickerSheet rtl={rtl} T={T} rows={useMemo(()=>languages.map((e)=>({code:e.code,native:e.native,label:e.label,flag:e.flag,count:e.count})),[languages])} selected={language}
+      {picking==='translation'&&<LanguagePickerSheet rtl={rtl} T={T} rows={languageRows} selected={language}
         onPick={(code)=>setLanguage(code)} onClose={()=>setPicking(null)}/>}
     </View>
   ), close);
@@ -5432,7 +5466,7 @@ function MemorizeTestScreen({ navigation, route }: any) {
     <Text style={s.emptyBody}>{surahId
       ? T('This Surah has no verses to hand at the moment.')
       : T('Flag a verse during practice and it will wait for you here.')}</Text>
-    <Tactile onPress={() => navigation.goBack()} style={s.primary}><Text style={s.primaryText}>{T('Back')}</Text></Tactile>
+    <Tactile onPress={() => goBackOrHome(navigation)} style={s.primary}><Text style={s.primaryText}>{T('Back')}</Text></Tactile>
   </View></Page>;
 
   const useTajweed = preferences.scriptEdition === 'quran-tajweed' && (open || !!answer);
@@ -5772,7 +5806,11 @@ function ExploreHome({navigation}:any){
     navigation.navigate(item.route,item.params);
   };
   return <Page><ScrollView keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}><AppHeader/><Text style={s.intro}>{T('Remembrance, trusted learning and step-by-step guidance—organized by purpose rather than hidden in a feature grid.')}</Text>{libraryGroups.map(group=><View key={group.label}><Text style={s.libraryKicker}>{T(group.label)}</Text><Text style={s.libraryHeading}>{T(group.title)}</Text><View style={s.exploreGrid}>{group.items.map((item)=>{return <MotionPress key={item.title} onPress={()=>open(item)} style={s.exploreCard}><View style={s.exploreCardInner}><ToolGraphic tool={item.title} size={72}/><Text style={s.exploreTitle}>{T(item.title)}</Text><Text style={s.exploreBody}>{T(item.caption)}</Text><View style={s.exploreArrow}>{ico(rtl ? 'arrow-back' : 'arrow-forward',15,C.green)}</View></View></MotionPress>})}</View></View>)}</ScrollView></Page>;}
-function ToolBar({title,navigation}:any){const {rtl,language}=useLanguage();return <View style={s.readerBar}><IconButton name={rtl?'arrow-forward':'arrow-back'} onPress={()=>navigation.goBack()}/><Text style={s.readerName}>{title}</Text><View style={{width:44}}/></View>}
+/* The back control every secondary screen wears. It goes through
+   `goBackOrHome` rather than calling `goBack()` itself: a screen that passes
+   no navigator — or one sitting at the bottom of its stack — used to leave
+   this arrow pointing at nothing. */
+function ToolBar({title,navigation}:any){const {rtl,language}=useLanguage();return <View style={s.readerBar}><IconButton name={rtl?'arrow-forward':'arrow-back'} label={tx(language,'Back')} onPress={()=>goBackOrHome(navigation)}/><Text style={s.readerName}>{title}</Text><View style={{width:44}}/></View>}
 /* Sixteen points, the usual navigational set. Left as the Latin abbreviations
    in both languages: they are the standard notation on a compass rather than
    prose, and an invented Arabic for "north-north-east" would be a guess
@@ -6595,7 +6633,7 @@ function JourneyScreenInner({ route, navigation }: any) {
   const [verseError, setVerseError] = useState('');
   const wentBack = useRef(false);
   useEffect(() => {
-    if (!journey && !wentBack.current) { wentBack.current = true; navigation.goBack(); }
+    if (!journey && !wentBack.current) { wentBack.current = true; goBackOrHome(navigation); }
   }, [journey, navigation]);
 
   const loadVerses = async (step: JourneyStep) => {
@@ -6703,10 +6741,10 @@ function JourneyScreenInner({ route, navigation }: any) {
       <View style={s.dataCard}>
         <Text style={s.dataBody}>{T(progress.done === progress.total ? 'Every rite is marked. You can keep the journey in your history, or start a fresh one the next time you go.' : 'Mark each rite as you complete it. Counts and notes are saved as you go.')}</Text>
         <View style={s.actionRow}>
-          {progress.done === progress.total && <Tactile accessibilityLabel={T('Complete this journey')} onPress={() => { completeJourney(kind); navigation.goBack(); }} style={s.primary}><Text style={s.primaryText}>{T('Complete journey')}</Text></Tactile>}
+          {progress.done === progress.total && <Tactile accessibilityLabel={T('Complete this journey')} onPress={() => { completeJourney(kind); goBackOrHome(navigation); }} style={s.primary}><Text style={s.primaryText}>{T('Complete journey')}</Text></Tactile>}
           <Tactile accessibilityLabel={T('Start this journey again from the beginning')} onPress={() => { clearJourney(kind); startJourney(kind, JOURNEY_META[kind].title); }} style={s.secondary}><Text style={s.secondaryText}>{T('Start again')}</Text></Tactile>
         </View>
-        <Tactile accessibilityLabel={T('Delete this journey')} onPress={() => { clearJourney(kind); navigation.goBack(); }} style={s.dangerButton}><Text style={s.dangerText}>{T('Delete journey')}</Text></Tactile>
+        <Tactile accessibilityLabel={T('Delete this journey')} onPress={() => { clearJourney(kind); goBackOrHome(navigation); }} style={s.dangerButton}><Text style={s.dangerText}>{T('Delete journey')}</Text></Tactile>
       </View>
       <View style={s.apiPanel}>
         <Text style={s.apiTitle}>{tx(language, 'A note on the rites')}</Text>
@@ -6996,7 +7034,7 @@ function LocationSetupScreen({navigation}:any){const {rtl,language}=useLanguage(
     haptic('success');
     loc.setManual({label:`${city.name}, ${city.countryName}`,latitude:city.latitude,longitude:city.longitude,timezone:city.timezone});
     void rememberCity(city);
-    navigation.goBack();
+    goBackOrHome(navigation);
   };
 
   const saveManual=()=>{
@@ -7005,7 +7043,7 @@ function LocationSetupScreen({navigation}:any){const {rtl,language}=useLanguage(
       setError(T('Enter a name and valid latitude and longitude.'));return}
     haptic('success');
     loc.setManual({label:label.trim(),latitude,longitude});
-    navigation.goBack();
+    goBackOrHome(navigation);
   };
 
   return <Page><ToolBar title={T('Location')} navigation={navigation}/>
@@ -10456,20 +10494,44 @@ function HadithLanguageNotice({wanted,onReset}:{wanted:string;onReset:()=>void})
   </View>;
 }
 
-const DATA_SOURCES: { name: string; ar: string; endpoint: string; detail: string; arDetail: string }[] = [
-  { name: 'Islamic Data', ar: 'البيانات الإسلامية', endpoint: 'api.islamicdata.uz',
+/**
+ * Where each part of the app's content comes from.
+ *
+ * The rows are named for what they carry and say who provides it, rather
+ * than listing hostnames. A reader deciding whether to trust a source is
+ * asking who stands behind it, and `api.islamicdata.uz` answers a question
+ * they did not ask — the servers are the app's own, so the honest answer is
+ * the app itself. Where nothing is fetched at all, the row says so, because
+ * "no request leaves your device" is the single most reassuring thing on
+ * this screen and it was previously written as the absence of a hostname.
+ */
+const DATA_SOURCES: { name: string; ar: string; provider: string; arProvider: string; detail: string; arDetail: string }[] = [
+  { name: 'Quran text, translations and Tafsir', ar: 'نص القرآن والترجمات والتفاسير',
+    provider: 'Provided by Islamic · Your Daily Companion', arProvider: 'يوفره تطبيق إسلامك · رفيقك اليومي',
     detail: 'The app’s own server. Every Arabic script — Uthmani, Imla’i simple, IndoPak and Tajweed — all 484 translations and every Tafsir, the Surah, Juz and Hizb structure, and Quran search.',
     arDetail: 'خادم التطبيق نفسه. كل الرسوم القرآنية — العثماني والإملائي البسيط والهندي والتجويد — وجميع الترجمات وكل التفاسير، وترتيب السور والأجزاء والأحزاب، والبحث في القرآن.' },
-  { name: 'Islamic Data Audio', ar: 'الصوتيات — البيانات الإسلامية', endpoint: 'audio.islamicdata.uz',
+  { name: 'Recitation and adhan audio', ar: 'تلاوات القرآن والأذان',
+    provider: 'Provided by Islamic · Your Daily Companion', arProvider: 'يوفره تطبيق إسلامك · رفيقك اليومي',
     detail: 'Every recitation and every spoken translation, ayah by ayah, plus the full-Surah reciters drawn from all the providers behind one catalogue. Both adhan catalogues are served here too, though the recordings themselves ship inside the app so they can sound from a notification. Kept audio for a verse-by-verse reciter is the one thing still fetched whole from the Islamic Network CDN.',
     arDetail: 'كل التلاوات وكل تلاوات المعنى آية بآية، إضافة إلى قرّاء السورة كاملة من جميع المزوّدين في فهرس واحد. ويُقدَّم فهرسا الأذان من هنا أيضًا، مع أن التسجيلات نفسها مخزّنة داخل التطبيق لتعمل من الإشعار. الصوت المحفوظ لقارئ آية بآية هو الشيء الوحيد الذي ما زال يُجلب كاملاً من شبكة إسلاميك.' },
-  { name: 'Islamic Data Misc', ar: 'متنوّعات — البيانات الإسلامية', endpoint: 'misc.islamicdata.uz',
+  { name: 'Prices and city search', ar: 'الأسعار والبحث عن المدن',
+    provider: 'Provided by Islamic · Your Daily Companion', arProvider: 'يوفره تطبيق إسلامك · رفيقك اليومي',
     detail: 'Gold and silver prices and the currency rates Zakat is worked out from, and city search when a place is not in the list kept on the device.',
     arDetail: 'أسعار الذهب والفضة وأسعار العملات التي تُحسب منها الزكاة، والبحث عن المدن عندما لا يكون المكان في القائمة المحفوظة على الجهاز.' },
-  { name: 'On your device', ar: 'على جهازك', endpoint: 'no network request',
+  { name: 'On your device', ar: 'على جهازك',
+    provider: 'Worked out on your device · no network request', arProvider: 'يُحسب على جهازك · بلا أي طلب شبكة',
     detail: 'Prayer times, the Hijri date, the Ramadan timetable, and the 604-page Mushaf layout with the Juz and Hizb divisions — kept with the app rather than asked for, so a page of the Quran opens without a connection. Every adhan recording is stored here too, eighteen for the day and two for dawn, which is what lets the call sound at Fajr with no network at all. The sun does not need the internet, and nothing about where you are is sent anywhere.',
     arDetail: 'تُحسب مواقيت الصلاة والتاريخ الهجري وجدول رمضان على جهازك من إحداثياتك، كما يُحفظ ترتيب صفحات المصحف الـ604 مع تقسيم الأجزاء والأحزاب، فتُفتح صفحة القرآن بلا اتصال. وتُخزَّن كل تسجيلات الأذان هنا أيضًا، ثمانية عشر للنهار واثنان للفجر، وهو ما يجعل الأذان يعمل في الفجر بلا أي اتصال. فالشمس لا تحتاج إلى إنترنت، ولا يُرسل أي شيء عن موقعك إلى أي جهة.' },
-  { name: 'Gold and silver prices', ar: 'أسعار الذهب والفضة', endpoint: 'misc.islamicdata.uz', detail: 'Spot gold and silver prices per troy ounce, converted to a price per gram for the nisab threshold.', arDetail: 'أسعار الذهب والفضة الفورية للأوقية، وتحوّل إلى سعر الغرام لحساب النصاب.' }, { name: 'Exchange rates', ar: 'أسعار الصرف', endpoint: 'misc.islamicdata.uz', detail: 'Daily reference exchange rates, used to show Zakat figures in the currency you choose.', arDetail: 'أسعار صرف مرجعية يومية، تُستخدم لعرض أرقام الزكاة بالعملة التي تختارها.' }, { name: 'MP3Quran', ar: 'إم بي 3 قرآن', endpoint: 'audio.islamicdata.uz',
+  { name: 'Gold and silver prices', ar: 'أسعار الذهب والفضة',
+    provider: 'Provided by Islamic · Your Daily Companion', arProvider: 'يوفره تطبيق إسلامك · رفيقك اليومي',
+    detail: 'Spot gold and silver prices per troy ounce, converted to a price per gram for the nisab threshold.',
+    arDetail: 'أسعار الذهب والفضة الفورية للأوقية، وتحوّل إلى سعر الغرام لحساب النصاب.' },
+  { name: 'Exchange rates', ar: 'أسعار الصرف',
+    provider: 'Provided by Islamic · Your Daily Companion', arProvider: 'يوفره تطبيق إسلامك · رفيقك اليومي',
+    detail: 'Daily reference exchange rates, used to show Zakat figures in the currency you choose.',
+    arDetail: 'أسعار صرف مرجعية يومية، تُستخدم لعرض أرقام الزكاة بالعملة التي تختارها.' },
+  { name: 'Full-Surah reciters', ar: 'قرّاء السورة كاملة',
+    provider: 'Provided by Islamic · Your Daily Companion', arProvider: 'يوفره تطبيق إسلامك · رفيقك اليومي',
     detail: 'Complete Surah recitations from published reciters, used when you play a whole Surah rather than verse by verse.',
     arDetail: 'تلاوات كاملة للسور من القرّاء المنشورين، وتُستخدم عند تشغيل السورة كاملة.' },
 ];
@@ -10482,7 +10544,7 @@ function DataSourcesScreen({ navigation }: any) {
       <Text style={s.dataBody}>{tx(language, 'Everything the app opens is fetched from these public, keyless sources. No account, and no key, is needed for any of them.')}</Text>
       {DATA_SOURCES.map((source) => <View key={source.name} style={s.apiPanel}>
         <Text style={s.apiTitle}>{rtl ? source.ar : source.name}</Text>
-        <Text style={s.meta}>{source.endpoint}</Text>
+        <Text style={s.dataProvider}>{rtl ? source.arProvider : source.provider}</Text>
         <Text style={s.apiText}>{rtl ? source.arDetail : source.detail}</Text>
       </View>)}
       <View style={s.apiPanel}><Text style={s.apiTitle}>{tx(language, 'Kept on this device')}</Text>
@@ -11007,11 +11069,14 @@ const LEGAL_DOCS: Record<string, LegalDoc> = {
 
 };
 
-function LegalScreen({ route }: any) {
+function LegalScreen({ route, navigation }: any) {
   const { rtl , language }=useLanguage(); const T = (text: string) => tx(language, text);
   const key = route?.params?.doc || 'privacy';
   const doc = LEGAL_DOCS[key] || LEGAL_DOCS.privacy;
-  return <Page><ToolBar title={T(doc.title)} navigation={undefined} />
+  /* The header needs the navigator. This screen used to take only `route` and
+     hand the toolbar `undefined`, so the arrow called `goBack()` on nothing and
+     the press threw — the report was a back button that led to a blank page. */
+  return <Page><ToolBar title={T(doc.title)} navigation={navigation} />
     <ScrollView keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
       <Text style={s.dataTitle}>{T(doc.title)}</Text>
       <Text style={s.meta}>{T('Last updated')}: {doc.updated}</Text>
@@ -11078,7 +11143,9 @@ function SettingsScreen({navigation}:any){
 
   return <Page>
     <ScrollView {...SCROLL} contentContainerStyle={s.scroll}>
-      <View style={s.backRow}><IconButton name={rtl ? 'arrow-forward' : 'arrow-back'} onPress={() => navigation.goBack()} /></View>
+      {/* Settings is the root of its stack, so goBack() alone would sit there.
+          goBackOrHome sends a reader who arrived by deep link back to the tabs. */}
+      <View style={s.backRow}><IconButton name={rtl ? 'arrow-forward' : 'arrow-back'} label={tx(language,'Back')} onPress={() => goBackOrHome(navigation)} /></View>
       <TopBar overline={tx(language, 'PRIVATE BY DESIGN')} title={tx(language, 'Settings')} right={<MotionGlyph name="shield-checkmark-outline" size={20} />} />
       <LinearGradient colors={[C.heroA, C.green]} style={s.privacyHero}>
         <MotionGlyph name="shield-checkmark-outline" size={25} inverse />
@@ -11281,6 +11348,30 @@ function navigateWhenReady(name: string, params?: any) {
   unsub = nav.addListener?.('state', fire);
   /* It may have become ready between the check above and the subscribe. */
   setTimeout(fire, 0);
+}
+
+/**
+ * Leave a screen, however it was reached and however deep it sits.
+ *
+ * Every back control in the app routes through here rather than calling
+ * `navigation.goBack()` directly, because `goBack()` has two failure modes
+ * and both of them strand the reader. At the bottom of a stack it is a silent
+ * no-op, so the arrow looks broken. And where the navigation object is
+ * missing — a screen that never took it as a prop — it throws, which the
+ * screen boundary turns into an empty page. The legal documents did exactly
+ * that: they were given a header with no navigator behind it.
+ *
+ * So: go back when there is somewhere to go back to, and otherwise land on
+ * the tabs. A control that always does something is worth more than one that
+ * is usually right.
+ */
+function goBackOrHome(navigation?: any) {
+  try {
+    if (navigation?.canGoBack?.()) { navigation.goBack(); return; }
+    if (navigation?.goBack) { navigation.goBack(); return; }
+  } catch { /* there is nowhere to go back to — fall through */ }
+  /* Reached when the navigator was missing or already at its root. */
+  try { navigateWhenReady('Main'); } catch { /* the navigator is not ready */ }
 }
 const AUDIO_LANGUAGES: Record<string, string> = {
   en: 'English', ur: 'Urdu', zh: 'Chinese', fr: 'French', ru: 'Russian',
@@ -11635,7 +11726,7 @@ function AudioPlayerScreen({ navigation }: any) {
     <ToolGraphic tool="Recitations" size={87} />
     <Text style={s.dataTitle}>{T('Nothing is playing')}</Text>
     <Text style={s.intro}>{T('Choose a reciter and a Surah from the audio center to start listening.')}</Text>
-    <Tactile onPress={() => navigation.goBack()} style={s.primary}><Text style={s.primaryText}>{T('Open audio center')}</Text></Tactile>
+    <Tactile onPress={() => goBackOrHome(navigation)} style={s.primary}><Text style={s.primaryText}>{T('Open audio center')}</Text></Tactile>
   </View></Page>;
 
   return <Page><ScrollView keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
@@ -12111,6 +12202,22 @@ function Root() {
 /** The splash stays at least this long, so the mark has time to settle. */
 const SPLASH_MIN_MS = 1150;
 
+/* Hold the native splash until the one this app draws is actually on screen.
+
+   Without this, Android hides its own splash the moment the bundle mounts, and
+   the window behind it — the default light grey of the launch theme — shows
+   through for a frame or two before React paints. On a cold start that read as
+   a grey flash in front of the splash. Keeping the native layer up until the
+   drawn splash has mounted means the two hand over with nothing between them.
+
+   The catch matters: on the web there is no native splash to hold, and the
+   call rejects rather than throwing the app away. */
+SplashScreen.preventAutoHideAsync().catch(() => {});
+/* A backstop. If the drawn splash never mounts — a render that throws before
+   it, or a bundle that stalls — the native layer must still come down, or the
+   app sits behind a splash it cannot get past. */
+setTimeout(() => { void SplashScreen.hideAsync().catch(() => {}); }, 8000);
+
 /** A child that rises into place. Used to stagger the language cards. */
 function RiseIn({ delay = 0, distance = 14, children, style }: { delay?: number; distance?: number; children: React.ReactNode; style?: any; key?: string | number }) {
   const value = useRef(new Animated.Value(0)).current;
@@ -12231,6 +12338,14 @@ function Splash({ ready, progress, onDone }: { ready: boolean; progress: number;
   const { dark, resolved } = useTheme();
   const { rtl , language }=useLanguage();
   const T = (text: string) => tx(language, text);
+  /* The native splash has been held since the module loaded. Now that this
+     one is mounted and has painted its own indigo field, the two are showing
+     the same picture, so the layer underneath can go. Hiding from inside an
+     effect rather than on a timer means the handover cannot open a gap. */
+  useEffect(() => {
+    const id = requestAnimationFrame(() => { void SplashScreen.hideAsync().catch(() => {}); });
+    return () => cancelAnimationFrame(id);
+  }, []);
   const still = useCalmMotion();
   const draw = useRef(new Animated.Value(0)).current;
   const settle = useRef(new Animated.Value(1)).current;
@@ -13803,7 +13918,7 @@ mushafPageNoText:{color:C.green,fontFamily:'Newsreader_700Bold',fontSize:16},mus
   tcCard:{backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},
   tcCardHead:{flexDirection:'row',alignItems:'center',gap:8,paddingBottom:10,marginBottom:10,borderBottomWidth:1,borderColor:C.line},
   tcCardName:{flex:1,color:C.ink,fontSize:13,fontFamily:'DMSans_700Bold'},
-  tcCardLang:{color:C.muted,fontSize:10,fontFamily:'DMSans_700Bold'},juzGrid:{flexDirection:'row',flexWrap:'wrap',gap:8},juzCard:{width:'22.8%',aspectRatio:1,backgroundColor:C.card,borderRadius:16,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,...surface},juzNo:{color:C.green,fontFamily:'Newsreader_600SemiBold',fontSize:23},preloadScore:{backgroundColor:C.white,borderRadius:24,padding:20,borderWidth:1,borderColor:C.line},cacheUsage:{color:C.green,fontFamily:'DMSans_600SemiBold',fontSize:10,marginTop:8},preloadTrack:{height:9,borderRadius:4,backgroundColor:C.mint,overflow:'hidden',marginVertical:12},preloadFill:{height:'100%',backgroundColor:C.green,borderRadius:4},planGrid:{flexDirection:'row',flexWrap:'wrap',gap:12},planCard:{width:'48%',minHeight:130,backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},planDays:{color:C.green,fontFamily:'Newsreader_600SemiBold',fontSize:36},planToday:{backgroundColor:C.white,borderRadius:20,padding:16,marginTop:16,flexDirection:'row',alignItems:'center',justifyContent:'space-between',borderWidth:1,borderColor:C.line},practiceLaunch:{backgroundColor:C.mint,borderRadius:20,padding:16,marginBottom:16,flexDirection:'row',alignItems:'center',justifyContent:'space-between',borderWidth:1,borderColor:C.line},recallCard:{minHeight:340,backgroundColor:C.white,borderRadius:28,padding:20,borderWidth:1,borderColor:C.line,...shadow},recallPrompt:{color:C.ink,fontFamily:'Newsreader_600SemiBold',fontSize:21,lineHeight:29,marginTop:28,textAlign:'center'},recallArabic:{color:C.green,fontFamily:'KFGQPCUthmanicHafs',fontSize:32,lineHeight:58,textAlign:'right',marginTop:24,paddingTop:20,borderTopWidth:1,borderColor:C.line,writingDirection:'rtl'},revealArea:{flex:1,minHeight:110,alignItems:'center',justifyContent:'center',gap:8,marginTop:20,borderTopWidth:1,borderColor:C.line},hifzStatus:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10,textTransform:'uppercase'},intro:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:14,lineHeight:19,marginTop:0,marginBottom:20},exploreGrid:{flexDirection:'row',flexWrap:'wrap',gap:12},exploreCard:{flexGrow:1,flexBasis:'31%',minWidth:150},exploreCardInner:{minHeight:164,backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},exploreTitle:{color:C.ink,fontSize:16,fontFamily:'DMSans_700Bold',marginTop:12},exploreBody:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:11,lineHeight:15,marginTop:4,flex:1},exploreArrow:{width:29,height:29,borderRadius:16,backgroundColor:C.mint,alignItems:'center',justifyContent:'center',alignSelf:'flex-end'},apiPanel:{backgroundColor:C.deep,borderRadius:24,padding:20,marginTop:12},apiTitle:{color:C.onAccent,fontSize:14,fontFamily:'DMSans_700Bold',marginTop:16},apiText:{color:C.onAccent,fontSize:10,marginTop:4},
+  tcCardLang:{color:C.muted,fontSize:10,fontFamily:'DMSans_700Bold'},juzGrid:{flexDirection:'row',flexWrap:'wrap',gap:8},juzCard:{width:'22.8%',aspectRatio:1,backgroundColor:C.card,borderRadius:16,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,...surface},juzNo:{color:C.green,fontFamily:'Newsreader_600SemiBold',fontSize:23},preloadScore:{backgroundColor:C.white,borderRadius:24,padding:20,borderWidth:1,borderColor:C.line},cacheUsage:{color:C.green,fontFamily:'DMSans_600SemiBold',fontSize:10,marginTop:8},preloadTrack:{height:9,borderRadius:4,backgroundColor:C.mint,overflow:'hidden',marginVertical:12},preloadFill:{height:'100%',backgroundColor:C.green,borderRadius:4},planGrid:{flexDirection:'row',flexWrap:'wrap',gap:12},planCard:{width:'48%',minHeight:130,backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},planDays:{color:C.green,fontFamily:'Newsreader_600SemiBold',fontSize:36},planToday:{backgroundColor:C.white,borderRadius:20,padding:16,marginTop:16,flexDirection:'row',alignItems:'center',justifyContent:'space-between',borderWidth:1,borderColor:C.line},practiceLaunch:{backgroundColor:C.mint,borderRadius:20,padding:16,marginBottom:16,flexDirection:'row',alignItems:'center',justifyContent:'space-between',borderWidth:1,borderColor:C.line},recallCard:{minHeight:340,backgroundColor:C.white,borderRadius:28,padding:20,borderWidth:1,borderColor:C.line,...shadow},recallPrompt:{color:C.ink,fontFamily:'Newsreader_600SemiBold',fontSize:21,lineHeight:29,marginTop:28,textAlign:'center'},recallArabic:{color:C.green,fontFamily:'KFGQPCUthmanicHafs',fontSize:32,lineHeight:58,textAlign:'right',marginTop:24,paddingTop:20,borderTopWidth:1,borderColor:C.line,writingDirection:'rtl'},revealArea:{flex:1,minHeight:110,alignItems:'center',justifyContent:'center',gap:8,marginTop:20,borderTopWidth:1,borderColor:C.line},hifzStatus:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10,textTransform:'uppercase'},intro:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:14,lineHeight:19,marginTop:0,marginBottom:20},exploreGrid:{flexDirection:'row',flexWrap:'wrap',gap:12},exploreCard:{flexGrow:1,flexBasis:'31%',minWidth:150},exploreCardInner:{minHeight:164,backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},exploreTitle:{color:C.ink,fontSize:16,fontFamily:'DMSans_700Bold',marginTop:12},exploreBody:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:11,lineHeight:15,marginTop:4,flex:1},exploreArrow:{width:29,height:29,borderRadius:16,backgroundColor:C.mint,alignItems:'center',justifyContent:'center',alignSelf:'flex-end'},apiPanel:{backgroundColor:C.deep,borderRadius:24,padding:20,marginTop:12},apiTitle:{color:C.onAccent,fontSize:14,fontFamily:'DMSans_700Bold',marginTop:16},apiText:{color:C.onAccent,fontSize:10,marginTop:4},dataProvider:{color:C.onAccent,fontSize:10.5,fontFamily:'DMSans_600SemiBold',marginTop:3,opacity:.72,letterSpacing:.2},
  toolPage:{width:'100%',maxWidth:780,alignSelf:'center',alignItems:'center',padding:24,paddingTop:24,paddingBottom:BOTTOM_RESERVE},toolPageScroll:{flexGrow:1},toolEyebrow:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.2,marginTop:20},compass:{width:260,height:260,borderRadius:130,backgroundColor:C.white,borderWidth:12,borderColor:C.line,alignItems:'center',justifyContent:'center',marginTop:32,...shadow},compassRose:{position:'absolute',width:'100%',height:'100%',alignItems:'center',justifyContent:'center'},compassLive:{fontFamily:'DMSans_600SemiBold',fontSize:11,color:C.green,marginTop:8},compassHint:{color:C.muted,fontSize:11,marginTop:4,textAlign:'center'},north:{position:'absolute',top:12,color:C.coral,fontSize:10,fontFamily:'DMSans_700Bold'},compassArrow:{alignItems:'center',justifyContent:'center'},kaaba:{position:'absolute',right:43,bottom:47,width:31,height:31,backgroundColor:C.deep,borderRadius:4},kaabaGold:{height:5,backgroundColor:C.gold,marginTop:8},direction:{color:C.ink,fontSize:31,fontFamily:'DMSans_700Bold',marginTop:24},directionText:{color:C.muted,fontSize:11,marginTop:4},primary:{backgroundColor:C.accent,paddingHorizontal:20,paddingVertical:12,minHeight:48,alignItems:'center',justifyContent:'center',borderRadius:16,marginTop:20},primaryText:{color:C.onAccentInk,fontSize:11,fontFamily:'DMSans_700Bold'},tasbihAr:{color:C.ink,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:32,marginTop:16,writingDirection:'rtl'},counter:{width:205,height:205,borderRadius:103,backgroundColor:C.accent,alignItems:'center',justifyContent:'center',borderWidth:12,borderColor:C.line,marginVertical:32,...shadow},counterNo:{color:C.onAccent,fontSize:58,fontFamily:'DMSans_700Bold'},counterGoal:{color:C.onAccent,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.3},secondary:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:8,minHeight:44,backgroundColor:C.white,paddingHorizontal:16,paddingVertical:12,borderRadius:16,borderWidth:1,borderColor:C.line,marginHorizontal:4},secondaryText:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold'},
  summaryScore:{backgroundColor:C.deep,borderRadius:24,padding:20,flexDirection:'row',justifyContent:'space-between',...shadow,borderTopColor:depth.edge},summaryDay:{minHeight:66,flexDirection:'row',alignItems:'center',gap:12,paddingHorizontal:16,borderBottomWidth:1,borderColor:C.line},summaryDots:{flexDirection:'row',gap:4},summaryDot:{width:8,height:8,borderRadius:4,backgroundColor:C.mint},summaryDotDone:{backgroundColor:C.green},cityGrid:{flexDirection:'row',flexWrap:'wrap',gap:8},cityCard:{width:'48.5%',minHeight:76,backgroundColor:C.card,borderRadius:16,padding:12,borderWidth:1,borderColor:C.line,...surface},cityCardActive:{backgroundColor:C.mint,borderColor:C.line},cityName:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:12},formCard:{backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},
   rsEyebrow:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.2,marginBottom:10},

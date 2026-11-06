@@ -9,7 +9,12 @@
     "splash": {
       "backgroundColor": "#2D187D",
       "resizeMode": "contain",
-      "image": "./assets/splash-icon.png"
+      "image": "./assets/splash-icon.png",
+      "dark": {
+        "backgroundColor": "#2D187D",
+        "resizeMode": "contain",
+        "image": "./assets/splash-icon.png"
+      }
     },
     "ios": {
       "supportsTablet": true,
@@ -27,7 +32,17 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "splash": {
+        "backgroundColor": "#2D187D",
+        "resizeMode": "contain",
+        "image": "./assets/splash-icon.png",
+        "dark": {
+          "backgroundColor": "#2D187D",
+          "resizeMode": "contain",
+          "image": "./assets/splash-icon.png"
+        }
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png",
@@ -35,6 +50,19 @@
     },
     "plugins": [
       "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#2D187D",
+          "image": "./assets/splash-icon.png",
+          "resizeMode": "contain",
+          "dark": {
+            "backgroundColor": "#2D187D",
+            "image": "./assets/splash-icon.png",
+            "resizeMode": "contain"
+          }
+        }
+      ],
       [
       "expo-audio",
       {
