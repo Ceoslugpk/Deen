@@ -2320,7 +2320,7 @@ export const SURAH_NAMES_BS: Record<number, string> = {
 // Cyrillic (Ал-Aнам, Тагаaбун, Нeбаа), carries Turkish forms (Нух-алейхисселям)
 // and inconsistent transliterations (ал-Китал for Мухаммад).
 
-const SURAH_NAMES_BG: Record<number, string> = {
+export const SURAH_NAMES_BG: Record<number, string> = {
   1: 'Ал-Фатиха',
   2: 'Ал-Бакара',
   3: 'Ал-Имран',
