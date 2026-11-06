@@ -17,7 +17,7 @@ export type LanguageCode =
   /* Below: languages the hadith corpus carries that the rest of the app does
      not offer yet — no Quran translation, no recitation voice, no interface
      copy. They exist so hadith can be read in them, not so the app can be. */
-  | 'bn' | 'id' | 'ta' | 'hi' | 'ml';
+  | 'bn' | 'id' | 'ta' | 'hi' | 'ml' | 'ms';
 
 export type QuranTextEdition = {
   /** The AlQuran Cloud identifier, as the reader passes it to the API. */
@@ -117,6 +117,15 @@ export const LANGUAGES: Language[] = [
     /* No Bengali recitation is served by any of the audio hosts the app uses
        — every candidate returned 403 — so there is deliberately no voice
        here, and the reader offers Bengali text without audio. */
+  },
+  {
+    code: 'ms', native: 'Bahasa Melayu', english: 'Malay', rtl: false, uiReady: true, uiPartial: false,
+    text: { identifier: 'tr_ms_abdullah_muhammad_basmeih', name: 'Abdullah Muhammad Basmeih', kind: 'translation' },
+    /* No Malay recitation is served by any of the audio hosts the app uses
+       — every candidate returned 403, and the recitation lists carry no Malay
+       reciter — so there is deliberately no voice here, and the reader offers
+       Malay text without audio, as it already does for Persian, Urdu,
+       Indonesian and Bengali. */
   },
   {
     code: 'zh', native: '中文', english: 'Chinese', rtl: false, uiReady: false,

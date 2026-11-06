@@ -372,6 +372,37 @@ export const TAJWEED_BN: Record<string, { name: string; detail: string }> = {
   g: { name: 'গুন্না', detail: 'দুই গণনা ধরে রাখা অনুনাসিক ধ্বনি।' },
 };
 
+export const TOPIC_MS: Record<string, { title: string; description: string }> = {
+  oneness: { title: 'Keesaan Allah', description: 'Ayat-ayat yang menegaskan keesaan Allah yang mutlak, keberdikarian-Nya dan tiada yang menyamai-Nya.' },
+  trust: { title: 'Tawakal dan berserah', description: 'Berserah kepada Allah bersama tindakan yang sedar dan keteguhan.' },
+  signs: { title: 'Tanda-tanda pada ciptaan', description: 'Petikan yang menjemput renungan tentang ciptaan, ketertiban dan tujuan.' },
+  resurrection: { title: 'Kebangkitan dan kembalian', description: 'Peringatan tentang pertanggungjawaban, pembaharuan, dan kembalian akhir kepada Allah.' },
+  parents: { title: 'Ibu bapa dan keluarga', description: 'Kasih sayang, kesyukuran dan akhlak yang baik dalam kehidupan keluarga.' },
+  justice: { title: 'Keadilan dan integriti', description: 'Berdiri teguh menegakkan keadilan walau pun terasa berat bagi diri sendiri.' },
+  patience: { title: 'Kesabaran dalam kesusahan', description: 'Memohon pertolongan melalui kesabaran dan solat ketika susah.' },
+  speech: { title: 'Pertuturan yang berhati-hati', description: 'Mengucapkan apa yang terbaik, mengelak prasangka dan menjaga maruah antara satu sama lain.' },
+  remembrance: { title: 'Zikir dan ketenangan', description: 'Menemui keteguhan hati melalui zikir kepada Allah.' },
+  repentance: { title: 'Harapan dan taubat', description: 'Tidak pernah berputus asa daripada rahmat dan kembali dengan ikhlas selepas tersilap.' },
+  gratitude: { title: 'Kesyukuran', description: 'Mengenali nikmat dan membalasnya dengan ibadat yang penuh kesyukuran.' },
+  dua: { title: 'Doa dan kedekatan', description: 'Kedekatan Allah dan jemputan untuk berdoa kepada-Nya.' },
+};
+export const TOPIC_CATEGORY_MS: Record<string, string> = { Faith: 'Akidah', Life: 'Kehidupan', Spirituality: 'Kerohanian' };
+export const TAJWEED_MS: Record<string, { name: string; detail: string }> = {
+  'h,s,l': { name: 'Huruf yang tidak dibaca', detail: 'Hamzah wasal, tanda senyap dan lam syamsiah tidak disebut secara berasingan.' },
+  m: { name: 'Madd tabii', detail: 'Pemanjangan biasa yang ditahan selama dua kiraan vokal.' },
+  p: { name: 'Madd jaiz', detail: 'Pemanjangan yang diharuskan sebanyak dua, empat atau enam kiraan.' },
+  n: { name: 'Madd lazim', detail: 'Pemanjangan yang diwajibkan, ditahan selama tempoh yang diperlukan.' },
+  o: { name: 'Madd wajib', detail: 'Pemanjangan yang diwajibkan, biasanya empat hingga lima kiraan.' },
+  q: { name: 'Qalqalah', detail: 'Gema yang terkawal pada salah satu huruf قطب جد apabila ia bersukun.' },
+  c: { name: 'Ikhfa syafawi', detail: 'Bunyi mim yang disembunyikan sebelum ba.' },
+  f: { name: 'Ikhfa', detail: 'Nun sakinah atau tanwin yang disembunyikan sebelum huruf-hurufnya.' },
+  w: { name: 'Idgham syafawi', detail: 'Idgham mim sakinah ke dalam mim yang berikutnya.' },
+  i: { name: 'Iqlab', detail: 'Nun sakinah atau tanwin berubah kepada mim yang disembunyikan sebelum ba.' },
+  a: { name: 'Idgham dengan ghunnah', detail: 'Idgham yang disertai dengungan sengau.' },
+  u: { name: 'Idgham tanpa ghunnah', detail: 'Idgham tanpa dengungan sengau.' },
+  g: { name: 'Ghunnah', detail: 'Bunyi sengau yang ditahan selama dua kiraan.' },
+};
+
 export const TAJWEED_RU: Record<string, { name: string; detail: string }> = {
   'h,s,l': { name: 'Нечитаемые буквы', detail: 'Хамзат аль-васль, немые знаки и солнечный лям не произносятся отдельно.' },
   m: { name: 'Естественный мадд', detail: 'Обычное удлинение на две огласовки.' },
@@ -391,25 +422,25 @@ export const TAJWEED_RU: Record<string, { name: string; detail: string }> = {
 export const topicTitle=(topic:QuranTopic,lang?:string|boolean)=>{
   const c=langCode(lang);
   if(c==='ar')return topic.titleAr;
-  const t=(c==='bn'?TOPIC_BN:c==='fr'?TOPIC_FR:c==='fa'?TOPIC_FA:c==='ru'?TOPIC_RU:c==='tr'?TOPIC_TR:c==='ur'?TOPIC_UR:c==='id'?TOPIC_ID:c==='hi'?TOPIC_HI:c==='ml'?TOPIC_ML:undefined)?.[topic.id];
+  const t=(c==='ms'?TOPIC_MS:c==='bn'?TOPIC_BN:c==='fr'?TOPIC_FR:c==='fa'?TOPIC_FA:c==='ru'?TOPIC_RU:c==='tr'?TOPIC_TR:c==='ur'?TOPIC_UR:c==='id'?TOPIC_ID:c==='hi'?TOPIC_HI:c==='ml'?TOPIC_ML:undefined)?.[topic.id];
   return t?.title||topic.title;
 };
 export const topicDescription=(topic:QuranTopic,lang?:string|boolean)=>{
   const c=langCode(lang);
   if(c==='ar')return topic.descriptionAr;
-  const t=(c==='bn'?TOPIC_BN:c==='fr'?TOPIC_FR:c==='fa'?TOPIC_FA:c==='ru'?TOPIC_RU:c==='tr'?TOPIC_TR:c==='ur'?TOPIC_UR:c==='id'?TOPIC_ID:c==='hi'?TOPIC_HI:c==='ml'?TOPIC_ML:undefined)?.[topic.id];
+  const t=(c==='ms'?TOPIC_MS:c==='bn'?TOPIC_BN:c==='fr'?TOPIC_FR:c==='fa'?TOPIC_FA:c==='ru'?TOPIC_RU:c==='tr'?TOPIC_TR:c==='ur'?TOPIC_UR:c==='id'?TOPIC_ID:c==='hi'?TOPIC_HI:c==='ml'?TOPIC_ML:undefined)?.[topic.id];
   return t?.description||topic.description;
 };
 export const topicCategory=(topic:QuranTopic,lang?:string|boolean)=>{
   const c=langCode(lang);
   if(c==='ar')return TOPIC_CATEGORY_AR[topic.category];
-  const t=(c==='bn'?TOPIC_CATEGORY_BN:c==='fr'?TOPIC_CATEGORY_FR:c==='fa'?TOPIC_CATEGORY_FA:c==='ru'?TOPIC_CATEGORY_RU:c==='tr'?TOPIC_CATEGORY_TR:c==='ur'?TOPIC_CATEGORY_UR:c==='id'?TOPIC_CATEGORY_ID:c==='hi'?TOPIC_CATEGORY_HI:c==='ml'?TOPIC_CATEGORY_ML:undefined)?.[topic.category];
+  const t=(c==='ms'?TOPIC_CATEGORY_MS:c==='bn'?TOPIC_CATEGORY_BN:c==='fr'?TOPIC_CATEGORY_FR:c==='fa'?TOPIC_CATEGORY_FA:c==='ru'?TOPIC_CATEGORY_RU:c==='tr'?TOPIC_CATEGORY_TR:c==='ur'?TOPIC_CATEGORY_UR:c==='id'?TOPIC_CATEGORY_ID:c==='hi'?TOPIC_CATEGORY_HI:c==='ml'?TOPIC_CATEGORY_ML:undefined)?.[topic.category];
   return t||topic.category.toUpperCase();
 };
 const tajweedOwn=(rule:any,lang?:string|boolean)=>{
   const c=langCode(lang);
   if(c==='ar')return undefined;
-  const table=c==='bn'?TAJWEED_BN:c==='fr'?TAJWEED_FR:c==='fa'?TAJWEED_FA:c==='ru'?TAJWEED_RU:c==='tr'?TAJWEED_TR:c==='ur'?TAJWEED_UR:c==='id'?TAJWEED_ID:c==='hi'?TAJWEED_HI:c==='ml'?TAJWEED_ML:undefined;
+  const table=c==='ms'?TAJWEED_MS:c==='bn'?TAJWEED_BN:c==='fr'?TAJWEED_FR:c==='fa'?TAJWEED_FA:c==='ru'?TAJWEED_RU:c==='tr'?TAJWEED_TR:c==='ur'?TAJWEED_UR:c==='id'?TAJWEED_ID:c==='hi'?TAJWEED_HI:c==='ml'?TAJWEED_ML:undefined;
   return table?.[String((rule?.codes||[]).join(','))];
 };
 export const tajweedName=(rule:any,lang?:string|boolean)=>langCode(lang)==='ar'?(rule as any).nameAr:tajweedOwn(rule,lang)?.name||rule.name;
