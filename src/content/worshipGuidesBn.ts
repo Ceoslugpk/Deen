@@ -174,10 +174,21 @@ export const WORSHIP_GUIDES_BN: Record<string, WorshipGuideBn> = {
   },
 };
 
-/** The citation forms used in the guide references: "Qur’an 5:6", "Sahih al-Bukhari 164". */
+/**
+ * The citation forms used in the guide references: "Qur’an 5:6", "Sahih
+ * al-Bukhari 164".
+ *
+ * The digits are converted as well as the words. Bengali reads its own
+ * numerals, and the rest of the app already does — গ্রাম counts, dates and
+ * the "Quran 2:222" copy are all written in them, so a citation left in Latin
+ * digits would be the one place on the screen that was not.
+ */
+const BN_DIGITS: Record<string, string> = { '0': '০', '1': '১', '2': '২', '3': '৩', '4': '৪', '5': '৫', '6': '৬', '7': '৭', '8': '৮', '9': '৯' };
+
 export function bengaliReference(label: string): string {
   return label
     .replace('Qur’an', 'কুরআন')
     .replace('Sahih al-Bukhari', 'সহিহ বুখারি')
-    .replace('Sahih Muslim', 'সহিহ মুসলিম');
+    .replace('Sahih Muslim', 'সহিহ মুসলিম')
+    .replace(/[0-9]/g, (d) => BN_DIGITS[d]);
 }
