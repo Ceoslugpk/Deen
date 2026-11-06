@@ -13,7 +13,7 @@
  */
 
 export type LanguageCode =
-  | 'en' | 'ar' | 'ur' | 'fr' | 'tr' | 'ru' | 'zh' | 'fa' | 'uz' | 'kk' | 'my' | 'vi' | 'az'
+  | 'en' | 'ar' | 'ur' | 'fr' | 'tr' | 'ru' | 'zh' | 'fa' | 'uz' | 'kk' | 'my' | 'vi' | 'az' | 'bs'
   /* Below: languages the hadith corpus carries that the rest of the app does
      not offer yet — no Quran translation, no recitation voice, no interface
      copy. They exist so hadith can be read in them, not so the app can be. */
@@ -325,6 +325,28 @@ export const LANGUAGES: Language[] = [
      added to assets/fonts. */
     code: 'az', native: 'Azərbaycan', english: 'Azerbaijani', rtl: false, uiReady: true, uiPartial: false,
     text: { identifier: 'tr_az_alikhan_musayev', name: 'Alikhan Musayev', kind: 'translation' },
+  },
+  {
+    /* Bosnian. Besim Korkut's translation — the canonical Bosnian rendering,
+       the one printed in the standard Bosnian mushaf and the one every
+       Bosnian Qur'an site reproduces. Of the eleven Bosnian editions on the
+       API, the four marked "latin script" are de-accented (1.2 Bosnian
+       letters per thousand characters against 27 for the real ones), so they
+       were set aside; Korkut, Mlivo and Dar Al-Salam remain, and Korkut is
+       the one readers recognise.
+
+       Bosnian writes the article as it is pronounced, so the names read
+       El-Bekare, En-Nisa, Et-Tevba, Eš-Šura and En-Nas rather than with an
+       unassimilated Al-. The list is quran.is's Bosnian index, cross-checked
+       against islam.ba and the Ahmadiyya Bosnian Qur'an.
+
+       No voice: no host serves Bosnian recitation — the Islamic Data
+       reciter catalogue has none and every CDN path returns 403. No new
+       font: DM Sans carries every letter of the Bosnian alphabet (č ć ž š đ
+       and their capitals), so unlike Vietnamese this language needs nothing
+       added to assets/fonts. */
+    code: 'bs', native: 'Bosanski', english: 'Bosnian', rtl: false, uiReady: true, uiPartial: false,
+    text: { identifier: 'tr_bs_besim_korkut', name: 'Besim Korkut', kind: 'translation' },
   },
   {
     code: 'my', native: 'မြန်မာ', english: 'Burmese', rtl: false, uiReady: false,
