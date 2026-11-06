@@ -22,6 +22,12 @@
  * any more than it can tell Urdu from Arabic.
  */
 export const HI: Record<string, string> = {
+  '  (file per Surah)': '  (प्रति सूरह फ़ाइल)',
+  '  (full-Surah file)': '  (पूरी सूरह की फ़ाइल)',
+  '  verse actions': '  आयत क्रियाएँ',
+  '  · buffering': '  · बफ़र हो रहा है',
+  '  · playing': '  · चल रहा है',
+  '  — ': '  — ',
   '  →': '  →',
   ' (file per Surah)': ' (प्रति सूरह फ़ाइल)',
   ' (full-Surah file)': ' (पूरी सूरह की फ़ाइल)',
@@ -2210,6 +2216,7 @@ export const HI: Record<string, string> = {
   'The ghusl — what is required': 'ग़ुस्ल — क्या आवश्यक है',
   'The grading or authenticity': 'श्रेणी या प्रामाणिकता',
   'The greater pilgrimage, on the 8th to the 13th of Dhul-Hijjah, with its standing at ‘Arafah at its centre.': 'हज, बड़ी हज, 8 से 13 ज़िल-हिज्जा तक, जिसका केंद्र अरफ़ात में वुक़ूफ़ है।',
+  'The hadith card was saved to your downloads.': 'हदीस कार्ड आपके डाउनलोड में सहेजा गया।',
   'The hayd has ended — what follows is istihada': 'हैज़ समाप्त हो चुका है — इसके बाद इस्तिहाज़ा है',
   'The holy sites': 'पवित्र स्थान',
   'The hour is kept on this device only. It is not sent anywhere and is not used for tracking.': 'समय केवल इस डिवाइस पर रखा जाता है। यह कहीं नहीं भेजा जाता और ट्रैकिंग के लिए उपयोग नहीं होता।',
@@ -2257,7 +2264,6 @@ export const HI: Record<string, string> = {
   'The twenty-five prophets named in the Qur’an': 'क़ुरआन में बताए पच्चीस नबी',
   'The verse as it is written': 'आयत जैसी लिखी है',
   'The verse card was saved to your downloads.': 'आयत कार्ड आपके डाउनलोड में सहेजा गया।',
-  'The hadith card was saved to your downloads.': 'हदीस कार्ड आपके डाउनलोड में सहेजा गया।',
   'The verse could not be loaded.': 'आयत लोड नहीं हो सकी।',
   'The verse on menstruation': 'हैज़ पर आयत',
   'The verse under your finger, again and again.': 'आपकी उँगली के नीचे आयत, बार-बार।',
@@ -2778,6 +2784,7 @@ export const HI: Record<string, string> = {
   'اردو': 'उर्दू',
   'العربية': 'अरबी',
   '—': '—',
+  '“Finish this reading” files it as complete and begins the next one — for a reading finished before you installed the app.': '«यह पठन पूरा करें» इसे पूर्ण दर्ज करता है और अगला शुरू करता है — उन पठनों के लिए जो आपने ऐप इंस्टॉल करने से पहले पूरे किए।',
   '“Indeed there is a Surah in the Qur’an of thirty Ayat, which intercedes for a man until he is forgiven. It is [Surah] Tabarak Alladhi Biyadihil-Mulk.”': '“निश्चय ही क़ुरआन में तीस आयतों की एक सूरह है, जो एक व्यक्ति के लिए सिफ़ारिश करती है यहाँ तक कि उसे क्षमा कर दिया जाए। वह सूरह तबारकल्लज़ी बियदिहिल-मुल्क है।”',
   '“Labbayka Allāhumma labbayk, labbayka lā sharīka laka labbayk, inna al-ḥamda wa an-ni‘mata laka wa al-mulk, lā sharīka lak.” Men recite it aloud; women recite it quietly. Continue until you begin Tawaf.': '«लब्बैक अल्लाहुम्मा लब्बैक, लब्बैक ला शरीका लका लब्बैक, इन्न-अल-हम्दा वन-नि‘मता लका वल-मुल्क, ला शरीका लक।» पुरुष इसे ऊँची आवाज़ में कहते हैं; महिलाएँ धीमे स्वर में। तवाफ़ शुरू करने तक जारी रखें।',
   '− 1 day': '− 1 दिन',
