@@ -128,6 +128,15 @@ export const LANGUAGES: Language[] = [
        Indonesian and Bengali. */
   },
   {
+    code: 'ta', native: 'தமிழ்', english: 'Tamil', rtl: false, uiReady: true, uiPartial: false,
+    text: { identifier: 'tr_ta_abdul_hameed_baqavi', name: 'Abdul Hameed Baqavi', kind: 'translation' },
+    /* No Tamil recitation is served by any of the audio hosts the app uses
+       — every candidate returned 403 across six editions — so there is
+       deliberately no voice here, and the reader offers Tamil text without
+       audio, as it already does for Persian, Urdu, Indonesian, Bengali and
+       Malay. */
+  },
+  {
     code: 'zh', native: '中文', english: 'Chinese', rtl: false, uiReady: false,
     text: { identifier: 'tr_zh_ma_jian_latin_script', name: 'Ma Jian', kind: 'translation' },
     voice: { identifier: 'zh.chinese', name: 'Chinese' },

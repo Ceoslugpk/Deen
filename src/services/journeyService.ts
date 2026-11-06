@@ -9,6 +9,7 @@ import { JOURNEY_META_HI, JOURNEY_STEPS_HI } from '../content/journeyHi';
 import { JOURNEY_META_ML, JOURNEY_STEPS_ML } from '../content/journeyMl';
 import { JOURNEY_META_BN, JOURNEY_STEPS_BN } from '../content/journeyBn';
 import { JOURNEY_META_MS, JOURNEY_STEPS_MS } from '../content/journeyMs';
+import { JOURNEY_META_TA, JOURNEY_STEPS_TA } from '../content/journeyTa';
 import { useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -319,7 +320,7 @@ export function readableDate(iso: string) {
 export function journeyMeta(kind: JourneyKind, lang?: string | boolean) {
   const code = typeof lang === 'string' ? lang : lang === true ? 'ar' : 'en';
   const base = JOURNEY_META[kind];
-  const table = code === 'ms' ? JOURNEY_META_MS : code === 'bn' ? JOURNEY_META_BN : code === 'fr' ? JOURNEY_META_FR : code === 'fa' ? JOURNEY_META_FA : code === 'ru' ? JOURNEY_META_RU : code === 'tr' ? JOURNEY_META_TR : code === 'ur' ? JOURNEY_META_UR : code === 'id' ? JOURNEY_META_ID : code === 'hi' ? JOURNEY_META_HI : code === 'ml' ? JOURNEY_META_ML : code === 'ar' ? JOURNEY_META_AR : undefined;
+  const table = code === 'ta' ? JOURNEY_META_TA : code === 'ms' ? JOURNEY_META_MS : code === 'bn' ? JOURNEY_META_BN : code === 'fr' ? JOURNEY_META_FR : code === 'fa' ? JOURNEY_META_FA : code === 'ru' ? JOURNEY_META_RU : code === 'tr' ? JOURNEY_META_TR : code === 'ur' ? JOURNEY_META_UR : code === 'id' ? JOURNEY_META_ID : code === 'hi' ? JOURNEY_META_HI : code === 'ml' ? JOURNEY_META_ML : code === 'ar' ? JOURNEY_META_AR : undefined;
   const own = table?.[kind];
   return own ? { ...base, intro: own.intro } : base;
 }
@@ -327,7 +328,7 @@ export function journeyMeta(kind: JourneyKind, lang?: string | boolean) {
 /** A single rite in the language of the interface. */
 export function localizeJourneyStep(step: JourneyStep, lang?: string | boolean): JourneyStep {
   const code = typeof lang === 'string' ? lang : lang === true ? 'ar' : 'en';
-  const table = code === 'ms' ? JOURNEY_STEPS_MS : code === 'bn' ? JOURNEY_STEPS_BN : code === 'fr' ? JOURNEY_STEPS_FR : code === 'fa' ? JOURNEY_STEPS_FA : code === 'ru' ? JOURNEY_STEPS_RU : code === 'tr' ? JOURNEY_STEPS_TR : code === 'ur' ? JOURNEY_STEPS_UR : code === 'id' ? JOURNEY_STEPS_ID : code === 'hi' ? JOURNEY_STEPS_HI : code === 'ml' ? JOURNEY_STEPS_ML : code === 'ar' ? JOURNEY_STEPS_AR : undefined;
+  const table = code === 'ta' ? JOURNEY_STEPS_TA : code === 'ms' ? JOURNEY_STEPS_MS : code === 'bn' ? JOURNEY_STEPS_BN : code === 'fr' ? JOURNEY_STEPS_FR : code === 'fa' ? JOURNEY_STEPS_FA : code === 'ru' ? JOURNEY_STEPS_RU : code === 'tr' ? JOURNEY_STEPS_TR : code === 'ur' ? JOURNEY_STEPS_UR : code === 'id' ? JOURNEY_STEPS_ID : code === 'hi' ? JOURNEY_STEPS_HI : code === 'ml' ? JOURNEY_STEPS_ML : code === 'ar' ? JOURNEY_STEPS_AR : undefined;
   const own = table?.[step.id];
   if (!own) return step;
   return {

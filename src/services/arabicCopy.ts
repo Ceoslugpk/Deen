@@ -23,6 +23,7 @@ import { RU } from './russianCopy';
 import { FR } from './frenchCopy';
 import { BN } from './bengaliCopy';
 import { MS } from './malayCopy';
+import { TA } from './tamilCopy';
 
 const AR: Record<string, string> = {
   '  (file per Surah)': '  (ملف لكل سورة)',
@@ -2831,7 +2832,10 @@ const PRAYERS_BN: Record<string, string> = {
 const PRAYERS_MS: Record<string, string> = {
   Fajr: 'Subuh', Sunrise: 'Terbit fajar', Dhuhr: 'Zohor', Asr: 'Asar', Maghrib: 'Maghrib', Isha: 'Isyak',
 };
-const PRAYER_TABLES: Record<'ar' | 'ur' | 'tr' | 'fa' | 'id' | 'hi' | 'ml' | 'ru' | 'fr' | 'bn' | 'ms', Record<string, string>> = {
+const PRAYERS_TA: Record<string, string> = {
+  Fajr: 'ஃபஜ்ர்', Sunrise: 'சூரிய உதயம்', Dhuhr: 'ழுஹர்', Asr: 'அஸர்', Maghrib: 'மஃரிப்', Isha: 'இஷா',
+};
+const PRAYER_TABLES: Record<'ar' | 'ur' | 'tr' | 'fa' | 'id' | 'hi' | 'ml' | 'ru' | 'fr' | 'bn' | 'ms' | 'ta', Record<string, string>> = {
   ar: PRAYERS_AR,
   ur: PRAYERS_UR,
   tr: PRAYERS_TR,
@@ -2843,6 +2847,7 @@ const PRAYER_TABLES: Record<'ar' | 'ur' | 'tr' | 'fa' | 'id' | 'hi' | 'ml' | 'ru
   fr: PRAYERS_FR,
   bn: PRAYERS_BN,
   ms: PRAYERS_MS,
+  ta: PRAYERS_TA,
 };
 
 export function prayerName(code: string | boolean, name: string): string {
@@ -2857,7 +2862,7 @@ export function prayerName(code: string | boolean, name: string): string {
    * `null` means English: the screens were written in it, so the source text
    * is already the right answer and there is nothing to look up.
    */
-  function tableFor(code: string | boolean): 'ar' | 'ur' | 'tr' | 'fa' | 'id' | 'hi' | 'ml' | 'ru' | 'fr' | 'bn' | 'ms' | null {
+  function tableFor(code: string | boolean): 'ar' | 'ur' | 'tr' | 'fa' | 'id' | 'hi' | 'ml' | 'ru' | 'fr' | 'bn' | 'ms' | 'ta' | null {
     if (typeof code === 'boolean') return code ? 'ar' : null;
     if (code === 'ar') return 'ar';
     if (code === 'ur') return 'ur';
@@ -2870,6 +2875,7 @@ export function prayerName(code: string | boolean, name: string): string {
     if (code === 'fr') return 'fr';
     if (code === 'bn') return 'bn';
     if (code === 'ms') return 'ms';
+    if (code === 'ta') return 'ta';
     return null;
   }
 
@@ -2898,6 +2904,7 @@ export function prayerName(code: string | boolean, name: string): string {
     if (table === 'fr') return FR[text] ?? text;
     if (table === 'bn') return BN[text] ?? text;
     if (table === 'ms') return MS[text] ?? text;
+    if (table === 'ta') return TA[text] ?? text;
     return text;
   }
 
