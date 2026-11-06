@@ -212,6 +212,7 @@ const CODE_TO_FLAG: Record<string, string> = {
   ms: 'my', ps: 'pk', ku: 'iq', bn: 'bd', hi: 'in', de: 'de',
   es: 'es', nl: 'nl', it: 'it', pt: 'pt', sw: 'ke', so: 'so',
   sq: 'al', bs: 'ba', tg: 'tj', ky: 'kg', az: 'az', tt: 'ru',
+  bg: 'bg',
 };
 
 export function flagFor(code: string): string {
