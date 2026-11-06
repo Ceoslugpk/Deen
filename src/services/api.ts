@@ -6,6 +6,7 @@ import {
   juzOfVerse, juzVerseKeys, MUSHAF_PAGE_COUNT, pageOfVerse, pageSegments,
   QURAN_AYAH_COUNT, rubOfVerse, rubVerseKeys, scriptEditionId, versesInSurah,
 } from './quranMeta';
+import { surahName, SURAH_NAMES_AR } from '../content/surahNames';
 import { DEFAULT_TRANSLATION_EDITION } from './quranState';
 import { fetchHadithOne, getHadithLanguage } from './hadithService';
 import {
@@ -511,9 +512,6 @@ export async function getPageVerses(page: number, options: { script?: string; tr
     workerTexts(translation, keys.map((k) => k.split(':')[0])),
   ]);
 
-  const chapters = await getChapters().catch(() => [] as Chapter[]);
-  const names = new Map(chapters.map((c) => [c.id, c.name_simple]));
-
   return keys.map((key) => {
     const [surahText, verseText] = key.split(':');
     const surah = Number(surahText);
@@ -526,7 +524,7 @@ export async function getPageVerses(page: number, options: { script?: string; tr
       page,
       juz: juzOfVerse(surah, verse),
       hizbQuarter: rubOfVerse(surah, verse),
-      surah_name: names.get(surah) || `Surah ${surah}`,
+      surah_name: surahName(surah),
     };
   }).filter((verse) => verse.text_uthmani);
 }
@@ -562,11 +560,9 @@ export async function getAyahForDate(date: Date, edition = DEFAULT_TRANSLATION_E
   if (!translation && edition !== DEFAULT_TRANSLATION_EDITION) {
     translation = (await workerTexts(DEFAULT_TRANSLATION_EDITION, [String(surah)]))?.get(verseKey);
   }
-  const chapters = await getChapters().catch(() => [] as Chapter[]);
-  const chapter = chapters.find((c) => c.id === surah);
   return {
-    reference: `${chapter?.name_simple || `Surah ${surah}`} ${surah}:${verse}`,
-    arabicReference: `${chapter?.name_arabic || ''} ${surah}:${verse}`.trim(),
+    reference: `${surahName(surah)} ${surah}:${verse}`,
+    arabicReference: `${SURAH_NAMES_AR[surah] || ''} ${surah}:${verse}`.trim(),
     arabic: arabicText,
     translation: translation || '',
   };
@@ -598,9 +594,6 @@ async function versesForDivision(
     workerTexts(translation, keys.map((k) => k.split(':')[0])),
   ]);
 
-  const chapters = await getChapters().catch(() => [] as Chapter[]);
-  const names = new Map(chapters.map((c) => [c.id, c.name_simple]));
-
   return keys.map((key) => {
     const [surahText, verseText] = key.split(':');
     const surah = Number(surahText);
@@ -613,7 +606,7 @@ async function versesForDivision(
       page: pageOfVerse(surah, verse),
       juz: juzFor(surah, verse) || fallbackJuz,
       hizbQuarter: rubOfVerse(surah, verse),
-      surah_name: names.get(surah) || `Surah ${surah}`,
+      surah_name: surahName(surah),
     } as Verse & { surah_name: string };
   }).filter((verse) => verse.text_uthmani);
 }
@@ -703,8 +696,6 @@ export async function searchQuran(query: string, edition = DEFAULT_TRANSLATION_E
     /* Surah names come from the same server as the text. Reaching for the
        chapter list on the other provider here would mean a search could fail
        on their outage while everything it needs is sat in our own cache. */
-    const chapters = await getWorkerChapters().catch(() => [] as IslamicChapter[]);
-    const names = new Map(chapters.map((c) => [c.number, c.nameSimple]));
     const matches: QuranSearchResult[] = [];
     for (const { surah, rows } of book) {
       for (const row of rows || []) {
@@ -712,7 +703,7 @@ export async function searchQuran(query: string, edition = DEFAULT_TRANSLATION_E
           matches.push({
             verseKey: row.verseKey,
             surahId: surah,
-            surahName: names.get(surah) || `Surah ${surah}`,
+            surahName: surahName(surah),
             ayah: row.numberInSurah,
             text: row.text,
             edition,

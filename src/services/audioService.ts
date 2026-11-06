@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { engine } from './audioEngine';
-import { AudioEdition, getAudioEditions, getChapters, getSurahAudio, getSurahReciters, SurahAudioAyah, SurahReciter } from './api';
+import { AudioEdition, getAudioEditions, getSurahAudio, getSurahReciters, SurahAudioAyah, SurahReciter } from './api';
 import { getCachedJson, setCachedJson } from './contentCache';
 import { localAudioUri } from './downloadService';
+import { surahName } from '../content/surahNames';
 
 /**
  * Phase 3 — Quran audio foundation.
@@ -695,8 +696,7 @@ export async function playQueue(queue: AudioTrack[], startIndex = 0) {
  */
 export async function playChapter(chapterId: number, autoplay = true) {
   if (chapterId < 1 || chapterId > 114) return;
-  const chapters = await getChapters().catch(() => []);
-  const name = chapters.find((entry) => entry.id === chapterId)?.name_simple || `Surah ${chapterId}`;
+  const name = surahName(chapterId);
   const queue = await buildQueueForChapter(chapterId, name, settings);
   resetRepeatProgress();
   await playQueue(queue, 0);

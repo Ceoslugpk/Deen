@@ -238,6 +238,8 @@ import { buildWeeklySummary, loadActivity, logAdhkarRead, logHifzReview, logMush
 import { addDays, addQada, ADVISORY, assessBleeding, BISMILLAH_ARABIC, BLEEDING_GUIDANCE, cycleStats, dayKey, daysBetween, deleteCycle, deleteNifas, deleteQada, endCycle, endNifas, EXPLANATIONS, FLOW_LEVELS, formatDay, formatLongDay, GHUSL_FARD, GHUSL_SUNNAH, LIMITS, loadWomensState, logPurity, nifasStats, NIYYAH_ARABIC, NIYYAH_MEANING, NIYYAH_TRANSLITERATION, PurityStatus, QadaReason, QADA_REASONS, qadaStats, RAMADAN_ADVISORY, RAMADAN_NOTES, RAMADAN_STATE_LABEL, ramadanPlan, RamadanPlanDay, recentPurity, REFERENCES, SCHOOL_NOTE, setFlow, setOptedIn, startCycle, startNifas, THESE_DAYS_ACTS, THESE_DAYS_ADVISORY, THESE_DAYS_ANCHOR, THESE_DAYS_DISPUTED, TheseDaysAct, toggleQada, TUHR_SIGNS, useWomens, WORSHIP_GUIDANCE } from './src/services/womensService';
 import { BiometricInfo, biometricInfo, checkPin, removePin, RELOCK_OPTIONS, setPin, startLockWatch, unlockSession, unlockWithBiometric, updateLockSettings, useIsLocked, useLockConfig, loadLockConfig } from './src/services/privacyService';
 import { CURRENCIES, clearHistory, computeZakat, currencySymbol, deleteCalculation, formatMoney, livePrices, loadZakatState, marketIsFresh, pricesAvailable, NISAB_GOLD_GRAMS, NISAB_SILVER_GRAMS, refreshMarket, saveCalculation, setAssetAmount, setBasis, setCurrency, setLiabilityAmount, setMetalPrice, setMoneyLocale, useLiveMetalPrices, useMarket, useZakat } from './src/services/zakatService';
+import { setSurahNameLanguage } from './src/content/surahNames';
+
 import { arNoun, clockTime, prayerName, tx, tf } from './src/services/arabicCopy';
 import { downloadSurahAudio, loadDownloads, estimateFreeBytes, formatBytes, pauseDownload, removeDownload, resolveAudioSource, resumeDownload, retryDownload, totalDownloadBytes, useDownloads } from './src/services/downloadService';
 import { NAME_LANGUAGES } from './src/services/api';
@@ -1083,6 +1085,9 @@ function LanguageProvider({children}:{children:React.ReactNode}){
     const dateLocale=language==='ar'?'ar-u-nu-latn':language==='ur'?'ur':language==='en'?'en':language==='id'?'id'
       :language==='tr'?'tr':language==='fa'?'fa-u-nu-latn':language==='hi'?'hi':language==='ml'?'ml':undefined;
     setMoneyLocale(language);setFastingDateLocale(dateLocale);setActivityDateLocale(dateLocale);setJourneyDateLocale(dateLocale);
+    /* Surah names are looked up from a table rather than asked of the API,
+       so they need telling which language to answer in the same way. */
+    setSurahNameLanguage(language);
   },[language]);
   useEffect(()=>{if(Platform.OS==='web'&&typeof document!=='undefined'){
     const dir=rtl?'rtl':'ltr';
