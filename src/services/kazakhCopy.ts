@@ -408,7 +408,7 @@ export const KK: Record<string, string> = {
   'sent': 'жіберілді',
   'since': 'бастап',
   'surahs': 'сүре',
-  'the': 'the',
+  'the': '',
   'to go': 'қалды',
   'today': 'бүгін',
   'verse': 'аят',
