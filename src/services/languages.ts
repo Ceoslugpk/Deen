@@ -258,7 +258,7 @@ export const LANGUAGES: Language[] = [
     text: { identifier: 'tr_ml_karakunnu_elayavoor', name: 'കാരകുന്ന് & എളയാവൂര്', kind: 'translation' },
   },
   {
-    code: 'uz', native: "Oʻzbekcha", english: 'Uzbek', rtl: false, uiReady: false,
+    code: 'uz', native: "Oʻzbekcha", english: 'Uzbek', rtl: false, uiReady: true, uiPartial: false,
     text: { identifier: 'tr_uz_muhammad_sodik_muhammad_yusuf', name: 'Muhammad Sodik Muhammad Yusuf', kind: 'translation' },
     voice: { identifier: 'uz.sodik-audio', name: 'Muhammad Sodik Yusuf' },
   },

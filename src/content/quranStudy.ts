@@ -434,6 +434,37 @@ export const TAJWEED_TA: Record<string, { name: string; detail: string }> = {
   g: { name: 'குன்னா', detail: 'இரண்டு அளவுகளுக்கு நிறுத்திப்படும் மூக்கொலி.' },
 };
 
+export const TOPIC_UZ: Record<string, { title: string; description: string }> = {
+  oneness: { title: 'Аллоҳнинг ягоналиги', description: 'Аллоҳнинг мутлақ ягоналиги, беҳожатлиги ва тенгсизлигини тасдиқловчи оятлар.' },
+  trust: { title: 'Таваккул ва суяниш', description: 'Аллоҳга суяниш билан бирга сабабларга ёпишиш ва матонатли бўлиш.' },
+  signs: { title: 'Оламдаги белгилар', description: 'Яратилиш, тартиб ва мақсад ҳақида ўйлашга чорловчи парчалар.' },
+  resurrection: { title: 'Қайта тирилиш ва қайтиш', description: 'Ҳисоб, яратилишнинг янгиланиши ва Аллоҳга сўнгги қайтиш ҳақида эслатмалар.' },
+  parents: { title: 'Ота-она ва оила', description: 'Оила ҳаётида раҳм-шафқат, шукр ва гўзал муомала.' },
+  justice: { title: 'Адолат ва ростгўйлик', description: 'Шахсан қийин бўлса ҳам адолат учун қатъий туриш.' },
+  patience: { title: 'Машаққатда сабр', description: 'Оғирликда сабр қилиш ва намоз орқали ёрдам сўраш.' },
+  speech: { title: 'Тилни сақлаш', description: 'Энг яхши сўзни айтиш, гумондан сақланиш ва бир-бирингизнинг қадр-қимматини ҳимоя қилиш.' },
+  remembrance: { title: 'Зикр ва хотиржамлик', description: 'Аллоҳнинг зикри билан қалб хотиржамлигини топиш.' },
+  repentance: { title: 'Умид ва тавба', description: 'Раҳматдан умидсизланмай, хатодан кейин чин дилдан қайтиш.' },
+  gratitude: { title: 'Шукр', description: 'Неъматларни кўриб, шукр ва ибодат билан жавоб қайтариш.' },
+  dua: { title: 'Дуо ва яқинлик', description: 'Аллоҳнинг бандага яқинлиги ва Унга дуо билан мурожаат қилишга чақириғи.' },
+};
+export const TOPIC_CATEGORY_UZ: Record<string, string> = { Faith: 'Иймон', Life: 'Ҳаёт', Spirituality: 'Маънавият' };
+export const TAJWEED_UZ: Record<string, { name: string; detail: string }> = {
+  'h,s,l': { name: 'Ўқилмайдиган ҳарфлар', detail: 'Ҳамзатул-васл, сокин белгилар ва қуёш ломи алоҳида талаффуз қилинмайди.' },
+  m: { name: 'Табиий мадд', detail: 'Икки ҳаракат миқдоридаги одатий чўзиш.' },
+  p: { name: 'Жоиз мадд', detail: 'Икки, тўрт ёки олти ҳаракат миқдоридаги жоиз чўзиш.' },
+  n: { name: 'Лозим мадд', detail: 'Олти ҳаракат миқдоридаги зарурий чўзиш.' },
+  o: { name: 'Вожиб мадд', detail: 'Одатда тўрт ёки беш ҳаракат миқдоридаги вожиб чўзиш.' },
+  q: { name: 'Қалқала', detail: 'قطب جد ҳарфларидан бири сокин бўлганда бошқариладиган акс садо.' },
+  c: { name: 'Ихфои шафавий', detail: 'Бо ҳарфидан олдин яширилган мим товуши.' },
+  f: { name: 'Ихфо', detail: 'Ўз ҳарфларидан олдин сокин нун ёки танвиннинг яширилиши.' },
+  w: { name: 'Идғоми шафавий', detail: 'Сокин мимнинг кейинги мимга қўшилиб кетиши.' },
+  i: { name: 'Иқлоб', detail: 'Бо ҳарфидан олдин сокин нун ёки танвиннинг яширилган мимга айланиши.' },
+  a: { name: 'Ғуннали идғом', detail: 'Бурун товуши билан қўшилиб кетиш.' },
+  u: { name: 'Ғуннасиз идғом', detail: 'Бурун товушисиз қўшилиб кетиш.' },
+  g: { name: 'Ғунна', detail: 'Икки ҳаракат миқдорида ушлаб туриладиган бурун товуши.' },
+};
+
 export const TAJWEED_RU: Record<string, { name: string; detail: string }> = {
   'h,s,l': { name: 'Нечитаемые буквы', detail: 'Хамзат аль-васль, немые знаки и солнечный лям не произносятся отдельно.' },
   m: { name: 'Естественный мадд', detail: 'Обычное удлинение на две огласовки.' },
@@ -453,25 +484,25 @@ export const TAJWEED_RU: Record<string, { name: string; detail: string }> = {
 export const topicTitle=(topic:QuranTopic,lang?:string|boolean)=>{
   const c=langCode(lang);
   if(c==='ar')return topic.titleAr;
-  const t=(c==='ta'?TOPIC_TA:c==='ms'?TOPIC_MS:c==='bn'?TOPIC_BN:c==='fr'?TOPIC_FR:c==='fa'?TOPIC_FA:c==='ru'?TOPIC_RU:c==='tr'?TOPIC_TR:c==='ur'?TOPIC_UR:c==='id'?TOPIC_ID:c==='hi'?TOPIC_HI:c==='ml'?TOPIC_ML:undefined)?.[topic.id];
+  const t=(c==='uz'?TOPIC_UZ:c==='ta'?TOPIC_TA:c==='ms'?TOPIC_MS:c==='bn'?TOPIC_BN:c==='fr'?TOPIC_FR:c==='fa'?TOPIC_FA:c==='ru'?TOPIC_RU:c==='tr'?TOPIC_TR:c==='ur'?TOPIC_UR:c==='id'?TOPIC_ID:c==='hi'?TOPIC_HI:c==='ml'?TOPIC_ML:undefined)?.[topic.id];
   return t?.title||topic.title;
 };
 export const topicDescription=(topic:QuranTopic,lang?:string|boolean)=>{
   const c=langCode(lang);
   if(c==='ar')return topic.descriptionAr;
-  const t=(c==='ta'?TOPIC_TA:c==='ms'?TOPIC_MS:c==='bn'?TOPIC_BN:c==='fr'?TOPIC_FR:c==='fa'?TOPIC_FA:c==='ru'?TOPIC_RU:c==='tr'?TOPIC_TR:c==='ur'?TOPIC_UR:c==='id'?TOPIC_ID:c==='hi'?TOPIC_HI:c==='ml'?TOPIC_ML:undefined)?.[topic.id];
+  const t=(c==='uz'?TOPIC_UZ:c==='ta'?TOPIC_TA:c==='ms'?TOPIC_MS:c==='bn'?TOPIC_BN:c==='fr'?TOPIC_FR:c==='fa'?TOPIC_FA:c==='ru'?TOPIC_RU:c==='tr'?TOPIC_TR:c==='ur'?TOPIC_UR:c==='id'?TOPIC_ID:c==='hi'?TOPIC_HI:c==='ml'?TOPIC_ML:undefined)?.[topic.id];
   return t?.description||topic.description;
 };
 export const topicCategory=(topic:QuranTopic,lang?:string|boolean)=>{
   const c=langCode(lang);
   if(c==='ar')return TOPIC_CATEGORY_AR[topic.category];
-  const t=(c==='ta'?TOPIC_CATEGORY_TA:c==='ms'?TOPIC_CATEGORY_MS:c==='bn'?TOPIC_CATEGORY_BN:c==='fr'?TOPIC_CATEGORY_FR:c==='fa'?TOPIC_CATEGORY_FA:c==='ru'?TOPIC_CATEGORY_RU:c==='tr'?TOPIC_CATEGORY_TR:c==='ur'?TOPIC_CATEGORY_UR:c==='id'?TOPIC_CATEGORY_ID:c==='hi'?TOPIC_CATEGORY_HI:c==='ml'?TOPIC_CATEGORY_ML:undefined)?.[topic.category];
+  const t=(c==='uz'?TOPIC_CATEGORY_UZ:c==='ta'?TOPIC_CATEGORY_TA:c==='ms'?TOPIC_CATEGORY_MS:c==='bn'?TOPIC_CATEGORY_BN:c==='fr'?TOPIC_CATEGORY_FR:c==='fa'?TOPIC_CATEGORY_FA:c==='ru'?TOPIC_CATEGORY_RU:c==='tr'?TOPIC_CATEGORY_TR:c==='ur'?TOPIC_CATEGORY_UR:c==='id'?TOPIC_CATEGORY_ID:c==='hi'?TOPIC_CATEGORY_HI:c==='ml'?TOPIC_CATEGORY_ML:undefined)?.[topic.category];
   return t||topic.category.toUpperCase();
 };
 const tajweedOwn=(rule:any,lang?:string|boolean)=>{
   const c=langCode(lang);
   if(c==='ar')return undefined;
-  const table=c==='ta'?TAJWEED_TA:c==='ms'?TAJWEED_MS:c==='bn'?TAJWEED_BN:c==='fr'?TAJWEED_FR:c==='fa'?TAJWEED_FA:c==='ru'?TAJWEED_RU:c==='tr'?TAJWEED_TR:c==='ur'?TAJWEED_UR:c==='id'?TAJWEED_ID:c==='hi'?TAJWEED_HI:c==='ml'?TAJWEED_ML:undefined;
+  const table=c==='uz'?TAJWEED_UZ:c==='ta'?TAJWEED_TA:c==='ms'?TAJWEED_MS:c==='bn'?TAJWEED_BN:c==='fr'?TAJWEED_FR:c==='fa'?TAJWEED_FA:c==='ru'?TAJWEED_RU:c==='tr'?TAJWEED_TR:c==='ur'?TAJWEED_UR:c==='id'?TAJWEED_ID:c==='hi'?TAJWEED_HI:c==='ml'?TAJWEED_ML:undefined;
   return table?.[String((rule?.codes||[]).join(','))];
 };
 export const tajweedName=(rule:any,lang?:string|boolean)=>langCode(lang)==='ar'?(rule as any).nameAr:tajweedOwn(rule,lang)?.name||rule.name;
