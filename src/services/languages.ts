@@ -66,7 +66,7 @@ export const LANGUAGES: Language[] = [
     voice: { identifier: 'en.walk', name: 'Ibrahim Walk' },
   },
   {
-    code: 'ar', native: 'العربية', english: 'Arabic', rtl: true, uiReady: true,
+    code: 'ar', native: 'العربية', english: 'Arabic', rtl: true, uiReady: true, uiPartial: false,
     text: { identifier: 'tafsir_ar_arabic_ar-tafsir-muyassar', name: 'Tafsir al-Muyassar', kind: 'tafsir' },
   },
   {
@@ -102,7 +102,7 @@ export const LANGUAGES: Language[] = [
     voice: { identifier: 'fr.leclerc', name: 'Youssouf Leclerc' },
   },
   {
-    code: 'tr', native: 'Türkçe', english: 'Turkish', rtl: false, uiReady: true,
+    code: 'tr', native: 'Türkçe', english: 'Turkish', rtl: false, uiReady: true, uiPartial: false,
     text: { identifier: 'tr_tr_diyanet_isleri_3', name: 'Diyanet İşleri', kind: 'translation' },
     voice: { identifier: 'tr.vakfi-audio', name: 'Diyanet Vakfı' },
   },
