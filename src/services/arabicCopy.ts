@@ -1625,7 +1625,7 @@ const AR: Record<string, string> = {
   'Quran text, prayer times, hadith, the Names, supplications and the countdown to Hajj come from api.islamicdata.uz. Recitation audio comes from cdn.islamic.network. The adhan recordings you choose are downloaded from audio.islamicdata.uz. Gold and silver prices used by the Zakat calculator come from misc.islamicdata.uz. Each of these receives the request needed to answer it and nothing about you.': 'نصّ القرآن ومواقيت الصلاة والحديث والأسماء والأدعية والعدّ التنازلي للحج تأتي من api.islamicdata.uz. ويأتي صوت التلاوة من cdn.islamicnetwork. وتُنزَّل تسجيلات الأذان التي تختارها من audio.islamicdata.uz. وتأتي أسعار الذهب والفضة التي تستخدمها حاسبة الزكاة من misc.islamicdata.uz. ولا يتلقّى أيٌّ منها سوى الطلب اللازم للإجابة عنه، ولا شيء عنك.',
   'Quran topics': 'موضوعات القرآن',
   'Quran vocabulary': 'مفردات القرآن',
-  'RAM': 'رمضان',
+  'RAM': 'رام',
   'READ': 'اقرأ',
   'READING MODE': 'وضع القراءة',
   'READING PROGRESS': 'تقدّم القراءة',

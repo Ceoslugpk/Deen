@@ -1615,7 +1615,7 @@ export const UR: Record<string, string> = {
   'Quran text, prayer times, hadith, the Names, supplications and the countdown to Hajj come from api.islamicdata.uz. Recitation audio comes from cdn.islamic.network. The adhan recordings you choose are downloaded from audio.islamicdata.uz. Gold and silver prices used by the Zakat calculator come from misc.islamicdata.uz. Each of these receives the request needed to answer it and nothing about you.': 'قرآن کا متن، نماز کے اوقات، حدیث، اسماء، دعائیں اور حج کی گنتی api.islamicdata.uz سے آتے ہیں۔ تلاوت کی آواز cdn.islamicnetwork سے آتی ہے۔ آپ کی منتخب اذان کی ریکارڈنگز audio.islamicdata.uz سے ڈاؤن لوڈ ہوتی ہیں۔ زکوٰۃ کے حساب میں استعمال ہونے والے سونے اور چاندی کے نرخ misc.islamicdata.uz سے آتے ہیں۔ ان میں سے ہر ایک کو صرف اتنی درخواست ملتی ہے جتنی جواب کے لیے ضروری ہے، اور آپ کے بارے میں کچھ نہیں۔',
   'Quran topics': 'قرآنی موضوعات',
   'Quran vocabulary': 'قرآنی الفاظ',
-  'RAM': 'رمضان',
+  'RAM': 'RAM',
   'READ': 'تلاوت',
   'READING MODE': 'پڑھنے کا انداز',
   'READING PROGRESS': 'پڑھنے کی پیش رفت',

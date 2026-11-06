@@ -110,7 +110,7 @@ export const RU: Record<string, string> = {
   'Faith': 'Вера',
   'Fajr': 'Фаджр',
   'Faster': 'Быстрее',
-  'Feet': 'Шаги',
+  'Feet': 'Ступни',
   'Fewer': 'Меньше',
   'Flow': 'Поток',
   'Forty': 'Сорок',

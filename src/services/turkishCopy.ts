@@ -743,7 +743,7 @@ export const TR: Record<string, string> = {
   'Fasting timetable': 'Oruç takvimi',
   'Fasting, and the days owed': 'Oruç ve tutulmayan günler',
   'Featured reading': 'Öne çıkan okuma',
-  'Feet': 'Adım',
+  'Feet': 'Ayaklar',
   'Fetched in 4 MB pieces, checked against the size the source reports, then saved.': '4 MB\'lık parçalar halinde çekilir, kaynağın bildirdiği boyutla karşılaştırılır, sonra kaydedilir.',
   'Fetching…': 'Getiriliyor…',
   'Fewer': 'Daha az',
