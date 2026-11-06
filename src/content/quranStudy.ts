@@ -543,28 +543,59 @@ export const TAJWEED_RU: Record<string, { name: string; detail: string }> = {
   g: { name: 'Гунна', detail: 'Носовой звук, удерживаемый в течение двух огласовок.' },
 };
 
+export const TOPIC_VI: Record<string, { title: string; description: string }> = {
+  oneness: { title: 'Sự duy nhất của Allah', description: 'Những câu xác nhận rằng Allah tuyệt đối duy nhất, không cần đến bất cứ điều gì và không có gì sánh bằng Ngài.' },
+  trust: { title: 'Tawakkul và sự tin tưởng', description: 'Nương tựa vào Allah, cùng với sự nỗ lực có ý thức và sự kiên trì.' },
+  signs: { title: 'Các dấu hiệu trong tạo hóa', description: 'Những đoạn mời gọi suy ngẫm về sự tạo hóa, trật tự và mục đích.' },
+  resurrection: { title: 'Sự sống lại và sự trở về', description: 'Những lời nhắc nhở về việc thanh toán, sự tái tạo và sự trở về cuối cùng với Allah.' },
+  parents: { title: 'Cha mẹ và gia đình', description: 'Lòng nhân từ, sự biết ơn và đối xử tốt đẹp trong đời sống gia đình.' },
+  justice: { title: 'Công lý và sự ngay thẳng', description: 'Đứng vững vì công lý, ngay cả khi điều đó khó khăn cho chính mình.' },
+  patience: { title: 'Sự kiên nhẫn trong gian khó', description: 'Cầu xin sự trợ giúp bằng sự kiên nhẫn và lễ nguyện trong thời gian khó khăn.' },
+  speech: { title: 'Giữ gìn lưỡi', description: 'Nói điều tốt đẹp nhất, tránh sự nghi ngờ và bảo vệ danh dự của người khác.' },
+  remembrance: { title: 'Dhikr và sự tĩnh lặng', description: 'Tìm thấy sự bình an của con tim qua việc tưởng nhớ Allah.' },
+  repentance: { title: 'Hy vọng và sự hối cải', description: 'Không bao giờ tuyệt vọng về lòng thương xót, và quay về chân thành sau lỗi lầm.' },
+  gratitude: { title: 'Lòng biết ơn', description: 'Nhận biết các ân huệ và đáp lại chúng bằng sự thờ phụng biết ơn.' },
+  dua: { title: 'Dua và sự gần gũi', description: 'Sự gần gũi của Allah và lời mời gọi cầu xin Ngài.' },
+};
+export const TOPIC_CATEGORY_VI: Record<string, string> = { Faith: 'Đức tin', Life: 'Đời sống', Spirituality: 'Tâm linh' };
+export const TAJWEED_VI: Record<string, { name: string; detail: string }> = {
+  'h,s,l': { name: 'Các chữ cái câm', detail: 'Hamzat al-waṣl, các dấu câm và lām mặt trời không được phát âm độc lập.' },
+  m: { name: 'Madd bình thường', detail: 'Độ kéo dài thông thường được giữ trong hai nhịp nguyên âm.' },
+  p: { name: 'Madd được phép', detail: 'Độ kéo dài được phép là hai, bốn hoặc sáu nhịp.' },
+  n: { name: 'Madd cần thiết', detail: 'Độ kéo dài bắt buộc, sáu nhịp.' },
+  o: { name: 'Madd bắt buộc', detail: 'Độ kéo dài bắt buộc, thường là bốn đến năm nhịp.' },
+  q: { name: 'Qalqalah', detail: 'Một âm vang được kiểm soát ở một trong các chữ قطب جد khi mang sukūn.' },
+  c: { name: 'Ikhfāʾ shafawī', detail: 'Âm mīm được giấu trước bāʾ.' },
+  f: { name: 'Ikhfāʾ', detail: 'Nūn sākin hoặc tanwīn được giấu trước các chữ của nó.' },
+  w: { name: 'Idghām shafawī', detail: 'Sự đồng hóa của mīm sākin vào một mīm theo sau.' },
+  i: { name: 'Iqlāb', detail: 'Nūn sākin hoặc tanwīn chuyển thành một mīm được giấu trước bāʾ.' },
+  a: { name: 'Idghām với ghunnah', detail: 'Sự đồng hóa kèm theo âm vang mũi.' },
+  u: { name: 'Idghām không ghunnah', detail: 'Sự đồng hóa không có âm vang mũi.' },
+  g: { name: 'Ghunnah', detail: 'Âm mũi được giữ trong hai nhịp.' },
+};
+
 export const topicTitle=(topic:QuranTopic,lang?:string|boolean)=>{
   const c=langCode(lang);
   if(c==='ar')return topic.titleAr;
-  const t=(c==='zh'?TOPIC_ZH:c==='kk'?TOPIC_KK:c==='uz'?TOPIC_UZ:c==='ta'?TOPIC_TA:c==='ms'?TOPIC_MS:c==='bn'?TOPIC_BN:c==='fr'?TOPIC_FR:c==='fa'?TOPIC_FA:c==='ru'?TOPIC_RU:c==='tr'?TOPIC_TR:c==='ur'?TOPIC_UR:c==='id'?TOPIC_ID:c==='hi'?TOPIC_HI:c==='ml'?TOPIC_ML:undefined)?.[topic.id];
+  const t=(c==='vi'?TOPIC_VI:c==='zh'?TOPIC_ZH:c==='kk'?TOPIC_KK:c==='uz'?TOPIC_UZ:c==='ta'?TOPIC_TA:c==='ms'?TOPIC_MS:c==='bn'?TOPIC_BN:c==='fr'?TOPIC_FR:c==='fa'?TOPIC_FA:c==='ru'?TOPIC_RU:c==='tr'?TOPIC_TR:c==='ur'?TOPIC_UR:c==='id'?TOPIC_ID:c==='hi'?TOPIC_HI:c==='ml'?TOPIC_ML:undefined)?.[topic.id];
   return t?.title||topic.title;
 };
 export const topicDescription=(topic:QuranTopic,lang?:string|boolean)=>{
   const c=langCode(lang);
   if(c==='ar')return topic.descriptionAr;
-  const t=(c==='zh'?TOPIC_ZH:c==='kk'?TOPIC_KK:c==='uz'?TOPIC_UZ:c==='ta'?TOPIC_TA:c==='ms'?TOPIC_MS:c==='bn'?TOPIC_BN:c==='fr'?TOPIC_FR:c==='fa'?TOPIC_FA:c==='ru'?TOPIC_RU:c==='tr'?TOPIC_TR:c==='ur'?TOPIC_UR:c==='id'?TOPIC_ID:c==='hi'?TOPIC_HI:c==='ml'?TOPIC_ML:undefined)?.[topic.id];
+  const t=(c==='vi'?TOPIC_VI:c==='zh'?TOPIC_ZH:c==='kk'?TOPIC_KK:c==='uz'?TOPIC_UZ:c==='ta'?TOPIC_TA:c==='ms'?TOPIC_MS:c==='bn'?TOPIC_BN:c==='fr'?TOPIC_FR:c==='fa'?TOPIC_FA:c==='ru'?TOPIC_RU:c==='tr'?TOPIC_TR:c==='ur'?TOPIC_UR:c==='id'?TOPIC_ID:c==='hi'?TOPIC_HI:c==='ml'?TOPIC_ML:undefined)?.[topic.id];
   return t?.description||topic.description;
 };
 export const topicCategory=(topic:QuranTopic,lang?:string|boolean)=>{
   const c=langCode(lang);
   if(c==='ar')return TOPIC_CATEGORY_AR[topic.category];
-  const t=(c==='zh'?TOPIC_CATEGORY_ZH:c==='kk'?TOPIC_CATEGORY_KK:c==='uz'?TOPIC_CATEGORY_UZ:c==='ta'?TOPIC_CATEGORY_TA:c==='ms'?TOPIC_CATEGORY_MS:c==='bn'?TOPIC_CATEGORY_BN:c==='fr'?TOPIC_CATEGORY_FR:c==='fa'?TOPIC_CATEGORY_FA:c==='ru'?TOPIC_CATEGORY_RU:c==='tr'?TOPIC_CATEGORY_TR:c==='ur'?TOPIC_CATEGORY_UR:c==='id'?TOPIC_CATEGORY_ID:c==='hi'?TOPIC_CATEGORY_HI:c==='ml'?TOPIC_CATEGORY_ML:undefined)?.[topic.category];
+  const t=(c==='vi'?TOPIC_CATEGORY_VI:c==='zh'?TOPIC_CATEGORY_ZH:c==='kk'?TOPIC_CATEGORY_KK:c==='uz'?TOPIC_CATEGORY_UZ:c==='ta'?TOPIC_CATEGORY_TA:c==='ms'?TOPIC_CATEGORY_MS:c==='bn'?TOPIC_CATEGORY_BN:c==='fr'?TOPIC_CATEGORY_FR:c==='fa'?TOPIC_CATEGORY_FA:c==='ru'?TOPIC_CATEGORY_RU:c==='tr'?TOPIC_CATEGORY_TR:c==='ur'?TOPIC_CATEGORY_UR:c==='id'?TOPIC_CATEGORY_ID:c==='hi'?TOPIC_CATEGORY_HI:c==='ml'?TOPIC_CATEGORY_ML:undefined)?.[topic.category];
   return t||topic.category.toUpperCase();
 };
 const tajweedOwn=(rule:any,lang?:string|boolean)=>{
   const c=langCode(lang);
   if(c==='ar')return undefined;
-  const table=c==='zh'?TAJWEED_ZH:c==='kk'?TAJWEED_KK:c==='uz'?TAJWEED_UZ:c==='ta'?TAJWEED_TA:c==='ms'?TAJWEED_MS:c==='bn'?TAJWEED_BN:c==='fr'?TAJWEED_FR:c==='fa'?TAJWEED_FA:c==='ru'?TAJWEED_RU:c==='tr'?TAJWEED_TR:c==='ur'?TAJWEED_UR:c==='id'?TAJWEED_ID:c==='hi'?TAJWEED_HI:c==='ml'?TAJWEED_ML:undefined;
+  const table=c==='vi'?TAJWEED_VI:c==='zh'?TAJWEED_ZH:c==='kk'?TAJWEED_KK:c==='uz'?TAJWEED_UZ:c==='ta'?TAJWEED_TA:c==='ms'?TAJWEED_MS:c==='bn'?TAJWEED_BN:c==='fr'?TAJWEED_FR:c==='fa'?TAJWEED_FA:c==='ru'?TAJWEED_RU:c==='tr'?TAJWEED_TR:c==='ur'?TAJWEED_UR:c==='id'?TAJWEED_ID:c==='hi'?TAJWEED_HI:c==='ml'?TAJWEED_ML:undefined;
   return table?.[String((rule?.codes||[]).join(','))];
 };
 export const tajweedName=(rule:any,lang?:string|boolean)=>langCode(lang)==='ar'?(rule as any).nameAr:tajweedOwn(rule,lang)?.name||rule.name;

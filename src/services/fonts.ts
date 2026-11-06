@@ -92,6 +92,80 @@ export async function ensureQuranFont(id: QuranFontId = DEFAULT_QURAN_FONT): Pro
   return task;
 }
 
+/**
+ * The Latin face used for Vietnamese.
+ *
+ * The interface is set in DM Sans, which ships only the `latin` and
+ * `latin-ext` subsets — it has no Vietnamese at all. It is missing the horned
+ * vowels ơ and ư and roughly half the tone-marked vowels, so Vietnamese in DM
+ * Sans renders as a mixture: most letters come from DM Sans and the rest fall
+ * back to whatever the system font happens to be, often inside a single word.
+ * Roughly three words in five are affected.
+ *
+ * That is different from the scripts this app already handles. DM Sans has no
+ * Cyrillic, Arabic or CJK either, but a language written in those falls back
+ * entirely and so renders in one consistent face. Vietnamese falls back
+ * partially, which is the one case that looks wrong.
+ *
+ * Be Vietnam Pro is used instead whenever the interface is in Vietnamese: full
+ * Vietnamese coverage, and a superset of DM Sans for every other Latin
+ * language this app ships. It is fetched the first time Vietnamese is chosen
+ * rather than at launch, so nobody who never reads Vietnamese pays for it.
+ */
+const VIETNAMESE_FACE_ASSETS: Record<string, any> = {
+  DMSans_400Regular: require('../../assets/fonts/BeVietnamPro-Regular.ttf'),
+  DMSans_500Medium: require('../../assets/fonts/BeVietnamPro-Medium.ttf'),
+  DMSans_600SemiBold: require('../../assets/fonts/BeVietnamPro-SemiBold.ttf'),
+  DMSans_700Bold: require('../../assets/fonts/BeVietnamPro-Bold.ttf'),
+};
+
+/** DM Sans family name to its Be Vietnam Pro counterpart, by weight. */
+export const VIETNAMESE_FACE_MAP: Record<string, string> = {
+  DMSans_400Regular: 'BeVietnamPro_400Regular',
+  DMSans_500Medium: 'BeVietnamPro_500Medium',
+  DMSans_600SemiBold: 'BeVietnamPro_600SemiBold',
+  DMSans_700Bold: 'BeVietnamPro_700Bold',
+};
+
+/** The DM Sans families, i.e. every family the Vietnamese face stands in for. */
+export const LATIN_UI_FACES = Object.keys(VIETNAMESE_FACE_MAP);
+
+let vietnameseReady = false;
+let vietnameseTask: Promise<boolean> | null = null;
+
+/**
+ * Load the Vietnamese face once, and report whether it can be used.
+ *
+ * Resolves false on a device that cannot read the assets, in which case the
+ * app stays on DM Sans rather than pointing at a family that was never
+ * registered — an unregistered family name renders as no text at all, which
+ * is far worse than the fallback it was meant to replace.
+ */
+export async function ensureVietnameseFont(): Promise<boolean> {
+  if (vietnameseReady) return true;
+  if (vietnameseTask) return vietnameseTask;
+  const request: Record<string, any> = {};
+  LATIN_UI_FACES.forEach((family) => {
+    request[VIETNAMESE_FACE_MAP[family]] = VIETNAMESE_FACE_ASSETS[family];
+  });
+  vietnameseTask = Font.loadAsync(request)
+    .then(() => {
+      vietnameseReady = true;
+      vietnameseTask = null;
+      return true;
+    })
+    .catch(() => {
+      vietnameseTask = null;
+      return false;
+    });
+  return vietnameseTask;
+}
+
+/** Whether the Vietnamese face is already in memory, without loading it. */
+export function vietnameseFontReady(): boolean {
+  return vietnameseReady;
+}
+
 export function useQuranFont(id?: QuranFontId | string): string {
   const resolved = (id as QuranFontId) || DEFAULT_QURAN_FONT;
   const [family, setFamily] = useState(() => (ready.has(resolved) ? quranFontFamily(resolved) : quranFontFamily(DEFAULT_QURAN_FONT)));

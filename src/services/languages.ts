@@ -13,7 +13,7 @@
  */
 
 export type LanguageCode =
-  | 'en' | 'ar' | 'ur' | 'fr' | 'tr' | 'ru' | 'zh' | 'fa' | 'uz' | 'kk' | 'my'
+  | 'en' | 'ar' | 'ur' | 'fr' | 'tr' | 'ru' | 'zh' | 'fa' | 'uz' | 'kk' | 'my' | 'vi'
   /* Below: languages the hadith corpus carries that the rest of the app does
      not offer yet — no Quran translation, no recitation voice, no interface
      copy. They exist so hadith can be read in them, not so the app can be. */
@@ -266,6 +266,30 @@ export const LANGUAGES: Language[] = [
     code: 'kk', native: 'Қазақша', english: 'Kazakh', rtl: false, uiReady: true, uiPartial: false,
     text: { identifier: 'tr_kk_khalifah_altai', name: 'Khalifah Altai', kind: 'translation' },
     voice: { identifier: 'kk.khalifahaltai-audio', name: 'Khalifah Altai' },
+  },
+  {
+    /* Five Vietnamese editions are published, and two of them are unusable:
+       `tr_vi_hassan_abdulkarim_latin_script` and
+       `tr_vi_rowwad_translation_center_latin` are the same translations with
+       every diacritic stripped — "Hay noi: Be toi cau xin Thuong De cua nhan
+       loai". Vietnamese without its tone marks reads as a different language,
+       so both were set aside.
+
+       Of the two that remain, Ruwwad was chosen over Hasan Abdul-Karim on the
+       text itself. Over eleven sample Surahs, 46 of Abdul-Karim's 736 verses
+       carry footnote markers that have leaked into the body — "Nhân danh
+       Allah(, Đấng Rất Mực Độ Lượng ... Dung(2)". Ruwwad has two such verses
+       in the same sample, and reads as complete sentences: "Ngươi (Thiên Sứ
+       Muhammad) hãy nói: "Ngài là Allah, Đấng Duy Nhất."" It also keeps the
+       honorific on the Prophet, which the other drops.
+
+       No voice. Neither the 190 audio editions on the Islamic Network nor the
+       403-reciter catalogue carries a Vietnamese recitation, and every
+       plausible `vi.*` identifier on the CDN answers 403 — checked against
+       Uzbek on the same path, which answers 206. Vietnamese joins Persian,
+       Urdu, Bengali, Malay and Tamil in reading the translation in silence. */
+    code: 'vi', native: 'Tiếng Việt', english: 'Vietnamese', rtl: false, uiReady: true, uiPartial: false,
+    text: { identifier: 'tr_vi_translation_pioneers_center', name: 'Ruwwad Center', kind: 'translation' },
   },
   {
     code: 'my', native: 'မြန်မာ', english: 'Burmese', rtl: false, uiReady: false,
