@@ -100,14 +100,34 @@ export const LANGUAGES: Language[] = [
     voice: { identifier: 'zh.chinese', name: 'Chinese' },
   },
   {
-    /* Every string the interface shows is now written in Persian, so it is
-       marked ready rather than partial: the same standard as Urdu and
-       Turkish. The Quran, hadith, adhkar and dua content stays in the
-       language its source published it in — that is content, not interface,
-       and translating it is not ours to do. */
-    code: 'fa', native: 'فارسی', english: 'Persian', rtl: true, uiReady: true,
+    /* Every string the interface shows is now written in Persian, and the
+       content tables with it: the full 2,766-key union that all seven
+       non-English copy tables hold between them, the seven concatenation
+       fragments included, plus the eleven worship guides, the twelve Quran
+       topics, the thirteen tajweed rules and both journeys. So it is marked
+       ready, and no longer partial.
+
+       The Quran, hadith, adhkar and dua content stays in the language its
+       source published it in — that is content, not interface, and
+       translating it is not ours to do.
+
+       No translation voice, and this one is measured rather than assumed.
+       Spoken translations come from cdn.islamic.network, and all fourteen
+       Persian editions the API lists return 403 there. That 403 is
+       meaningful, which is the part worth recording: on the identical path,
+       editions that do carry recordings — ar.alafasy, fr.leclerc,
+       tr.vakfi-audio — all return 200. So a 403 here means there is nothing
+       to play, not that the identifier is wrong. (English fares no better:
+       en.walk is a text edition with no recording either.)
+
+       Nothing is broken by this. The player does not read a voice from this
+       list at all; it resolves one from the live catalogue, and where a
+       language has no recording it plays the Arabic alone rather than a
+       translation the reader did not choose. Recitation only, then — which
+       is what leaving this entry off now says. */
+    code: 'fa', native: 'فارسی', english: 'Persian', rtl: true,
+    uiReady: true, uiPartial: false,
     text: { identifier: 'tr_fa_baha_oddin_khorramshahi_2', name: 'Baha Oddin Khorramshahi', kind: 'translation' },
-    voice: { identifier: 'fa.hedayatfarfooladvand', name: 'Fooladvand (Hedayatfar)' },
   },
   {
     /* Indonesian carries the largest Muslim population of any language here.
