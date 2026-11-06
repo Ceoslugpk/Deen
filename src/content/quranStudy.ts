@@ -307,6 +307,38 @@ export const TOPIC_RU: Record<string, { title: string; description: string }> = 
   gratitude: { title: 'Благодарность', description: 'Замечать блага и отвечать на них благодарностью и поклонением.' },
   dua: { title: 'Дуа и близость', description: 'Близость Аллаха к рабу и Его призыв обращаться к Нему с мольбой.' },
 };
+export const TOPIC_FR: Record<string, { title: string; description: string }> = {
+  oneness: { title: 'L’unicité', description: 'Versets affirmant l’unicité absolue, l’indépendance et l’incomparabilité d’Allah.' },
+  trust: { title: 'La confiance et le recours à Allah', description: 'S’en remettre à Allah tout en agissant avec discernement et constance.' },
+  signs: { title: 'Les signes dans la création', description: 'Passages invitant à réfléchir sur la création, l’ordre et le but.' },
+  resurrection: { title: 'La résurrection et le retour', description: 'Rappels de la reddition des comptes, du renouveau et du retour final vers Allah.' },
+  parents: { title: 'Les parents et la famille', description: 'Miséricorde, gratitude et excellente conduite au sein de la famille.' },
+  justice: { title: 'La justice et la droiture', description: 'Se tenir fermement pour la justice même quand c’est personnellement difficile.' },
+  patience: { title: 'La patience dans l’épreuve', description: 'Chercher secours par la patience et la prière dans l’épreuve.' },
+  speech: { title: 'Garder sa langue', description: 'Dire ce qui est meilleur, éviter le soupçon et protéger la dignité d’autrui.' },
+  remembrance: { title: 'Le dhikr et la sérénité', description: 'Trouver la sérénité du cœur par le rappel d’Allah.' },
+  repentance: { title: 'L’espoir et le repentir', description: 'Ne jamais désespérer de la miséricorde et revenir sincèrement après la faute.' },
+  gratitude: { title: 'La gratitude', description: 'Reconnaître les bienfaits et y répondre par une adoration reconnaissante.' },
+  dua: { title: 'L’invocation et la proximité', description: 'La proximité d’Allah et l’invitation à L’invoquer.' },
+};
+export const TOPIC_CATEGORY_FR: Record<string, string> = { Faith: 'Foi', Life: 'Vie', Spirituality: 'Spiritualité' };
+
+export const TAJWEED_FR: Record<string, { name: string; detail: string }> = {
+  'h,s,l': { name: 'Lettres non prononcées', detail: 'La hamzat al-wasl, les marques muettes et le lām solaire ne se prononcent pas isolément.' },
+  m: { name: 'Madd naturel', detail: 'Allongement standard tenu pendant deux voyelles.' },
+  p: { name: 'Madd permis', detail: 'Un allongement permis de deux, quatre ou six temps.' },
+  n: { name: 'Madd nécessaire', detail: 'Un allongement requis, tenu le temps qu’il faut.' },
+  o: { name: 'Madd obligatoire', detail: 'Un allongement obligatoire, généralement de quatre à cinq temps.' },
+  q: { name: 'Qalqala', detail: 'Un écho maîtrisé sur l’une des lettres قطب جد lorsqu’elle porte le sukūn.' },
+  c: { name: 'Ikhfā shafawī', detail: 'Un son mīm dissimulé devant bāʾ.' },
+  f: { name: 'Ikhfā', detail: 'Un nūn sākin ou un tanwīn dissimulé devant ses lettres.' },
+  w: { name: 'Idghām shafawī', detail: 'Assimilation du mīm sākin dans un mīm suivant.' },
+  i: { name: 'Iqlāb', detail: 'Le nūn sākin ou le tanwīn se change en mīm dissimulé devant bāʾ.' },
+  a: { name: 'Idghām avec ghunna', detail: 'Assimilation accompagnée d’une résonance nasale.' },
+  u: { name: 'Idghām sans ghunna', detail: 'Assimilation sans résonance nasale.' },
+  g: { name: 'Ghunna', detail: 'Un son nasal tenu pendant deux temps.' },
+};
+
 export const TOPIC_CATEGORY_RU: Record<string, string> = { Faith: 'Вера', Life: 'Жизнь', Spirituality: 'Духовность' };
 
 export const TAJWEED_RU: Record<string, { name: string; detail: string }> = {
@@ -328,25 +360,25 @@ export const TAJWEED_RU: Record<string, { name: string; detail: string }> = {
 export const topicTitle=(topic:QuranTopic,lang?:string|boolean)=>{
   const c=langCode(lang);
   if(c==='ar')return topic.titleAr;
-  const t=(c==='fa'?TOPIC_FA:c==='ru'?TOPIC_RU:c==='tr'?TOPIC_TR:c==='ur'?TOPIC_UR:c==='id'?TOPIC_ID:c==='hi'?TOPIC_HI:c==='ml'?TOPIC_ML:undefined)?.[topic.id];
+  const t=(c==='fr'?TOPIC_FR:c==='fa'?TOPIC_FA:c==='ru'?TOPIC_RU:c==='tr'?TOPIC_TR:c==='ur'?TOPIC_UR:c==='id'?TOPIC_ID:c==='hi'?TOPIC_HI:c==='ml'?TOPIC_ML:undefined)?.[topic.id];
   return t?.title||topic.title;
 };
 export const topicDescription=(topic:QuranTopic,lang?:string|boolean)=>{
   const c=langCode(lang);
   if(c==='ar')return topic.descriptionAr;
-  const t=(c==='fa'?TOPIC_FA:c==='ru'?TOPIC_RU:c==='tr'?TOPIC_TR:c==='ur'?TOPIC_UR:c==='id'?TOPIC_ID:c==='hi'?TOPIC_HI:c==='ml'?TOPIC_ML:undefined)?.[topic.id];
+  const t=(c==='fr'?TOPIC_FR:c==='fa'?TOPIC_FA:c==='ru'?TOPIC_RU:c==='tr'?TOPIC_TR:c==='ur'?TOPIC_UR:c==='id'?TOPIC_ID:c==='hi'?TOPIC_HI:c==='ml'?TOPIC_ML:undefined)?.[topic.id];
   return t?.description||topic.description;
 };
 export const topicCategory=(topic:QuranTopic,lang?:string|boolean)=>{
   const c=langCode(lang);
   if(c==='ar')return TOPIC_CATEGORY_AR[topic.category];
-  const t=(c==='fa'?TOPIC_CATEGORY_FA:c==='ru'?TOPIC_CATEGORY_RU:c==='tr'?TOPIC_CATEGORY_TR:c==='ur'?TOPIC_CATEGORY_UR:c==='id'?TOPIC_CATEGORY_ID:c==='hi'?TOPIC_CATEGORY_HI:c==='ml'?TOPIC_CATEGORY_ML:undefined)?.[topic.category];
+  const t=(c==='fr'?TOPIC_CATEGORY_FR:c==='fa'?TOPIC_CATEGORY_FA:c==='ru'?TOPIC_CATEGORY_RU:c==='tr'?TOPIC_CATEGORY_TR:c==='ur'?TOPIC_CATEGORY_UR:c==='id'?TOPIC_CATEGORY_ID:c==='hi'?TOPIC_CATEGORY_HI:c==='ml'?TOPIC_CATEGORY_ML:undefined)?.[topic.category];
   return t||topic.category.toUpperCase();
 };
 const tajweedOwn=(rule:any,lang?:string|boolean)=>{
   const c=langCode(lang);
   if(c==='ar')return undefined;
-  const table=c==='fa'?TAJWEED_FA:c==='ru'?TAJWEED_RU:c==='tr'?TAJWEED_TR:c==='ur'?TAJWEED_UR:c==='id'?TAJWEED_ID:c==='hi'?TAJWEED_HI:c==='ml'?TAJWEED_ML:undefined;
+  const table=c==='fr'?TAJWEED_FR:c==='fa'?TAJWEED_FA:c==='ru'?TAJWEED_RU:c==='tr'?TAJWEED_TR:c==='ur'?TAJWEED_UR:c==='id'?TAJWEED_ID:c==='hi'?TAJWEED_HI:c==='ml'?TAJWEED_ML:undefined;
   return table?.[String((rule?.codes||[]).join(','))];
 };
 export const tajweedName=(rule:any,lang?:string|boolean)=>langCode(lang)==='ar'?(rule as any).nameAr:tajweedOwn(rule,lang)?.name||rule.name;

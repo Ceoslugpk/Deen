@@ -97,7 +97,7 @@ export const LANGUAGES: Language[] = [
     text: { identifier: 'tr_ur_abul_ala_maududi', name: 'Abul Ala Maududi', kind: 'translation' },
   },
   {
-    code: 'fr', native: 'Français', english: 'French', rtl: false, uiReady: false,
+    code: 'fr', native: 'Français', english: 'French', rtl: false, uiReady: true, uiPartial: false,
     text: { identifier: 'tr_fr_muhammad_hamidullah', name: 'Muhammad Hamidullah', kind: 'translation' },
     voice: { identifier: 'fr.leclerc', name: 'Youssouf Leclerc' },
   },
