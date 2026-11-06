@@ -107,7 +107,7 @@ export const LANGUAGES: Language[] = [
     voice: { identifier: 'tr.vakfi-audio', name: 'Diyanet Vakfı' },
   },
   {
-    code: 'ru', native: 'Русский', english: 'Russian', rtl: false, uiReady: false,
+    code: 'ru', native: 'Русский', english: 'Russian', rtl: false, uiReady: true, uiPartial: false,
     text: { identifier: 'tr_ru_elmir_kuliev', name: 'Elmir Kuliev', kind: 'translation' },
     voice: { identifier: 'ru.kuliev-audio', name: 'Elmir Kuliev' },
   },

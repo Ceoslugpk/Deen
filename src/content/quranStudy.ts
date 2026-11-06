@@ -293,28 +293,60 @@ export const TOPIC_CATEGORY_AR:Record<string,string>={Faith:'العقيدة',Lif
    still means Arabic, so any caller not yet converted keeps working. */
 const langCode=(lang?:string|boolean):string=>typeof lang==='string'?lang:(lang===true?'ar':'en');
 
+export const TOPIC_RU: Record<string, { title: string; description: string }> = {
+  oneness: { title: 'Единобожие', description: 'Аяты, утверждающие абсолютное единство, независимость и несравнимость Аллаха.' },
+  trust: { title: 'Упование и доверие', description: 'Полагаться на Аллаха, вместе с тем держась за причины и проявляя стойкость.' },
+  signs: { title: 'Знамения в творении', description: 'Отрывки, зовущие к размышлению о творении, порядке и цели.' },
+  resurrection: { title: 'Воскрешение и возвращение', description: 'Напоминание об отчёте, обновлении творения и последнем возвращении к Аллаху.' },
+  parents: { title: 'Родители и семья', description: 'Милосердие, благодарность и доброе обхождение в семейной жизни.' },
+  justice: { title: 'Справедливость и правдивость', description: 'Твёрдо стоять за справедливость, даже когда это трудно лично вам.' },
+  patience: { title: 'Терпение в трудности', description: 'Терпение в тяготе и обращение за помощью через намаз.' },
+  speech: { title: 'Хранение языка', description: 'Говорить лучшее, избегать подозрений и защищать достоинство людей.' },
+  remembrance: { title: 'Зикр и покой', description: 'Обретать покой сердцем через поминание Аллаха.' },
+  repentance: { title: 'Надежда и покаяние', description: 'Не терять надежды на милость и искренне возвращаться после ошибки.' },
+  gratitude: { title: 'Благодарность', description: 'Замечать блага и отвечать на них благодарностью и поклонением.' },
+  dua: { title: 'Дуа и близость', description: 'Близость Аллаха к рабу и Его призыв обращаться к Нему с мольбой.' },
+};
+export const TOPIC_CATEGORY_RU: Record<string, string> = { Faith: 'Вера', Life: 'Жизнь', Spirituality: 'Духовность' };
+
+export const TAJWEED_RU: Record<string, { name: string; detail: string }> = {
+  'h,s,l': { name: 'Нечитаемые буквы', detail: 'Хамзат аль-васль, немые знаки и солнечный лям не произносятся отдельно.' },
+  m: { name: 'Естественный мадд', detail: 'Обычное удлинение на две огласовки.' },
+  p: { name: 'Дозволенный мадд', detail: 'Дозволенное удлинение на две, четыре или шесть огласовок.' },
+  n: { name: 'Необходимый мадд', detail: 'Необходимое удлинение на шесть огласовок.' },
+  o: { name: 'Обязательный мадд', detail: 'Обязательное удлинение, обычно на четыре или пять огласовок.' },
+  q: { name: 'Калькаля', detail: 'Сдержанный отзвук на одной из букв قطب جد при наличии сукуна.' },
+  c: { name: 'Ихфа шафави', detail: 'Скрытие звука «мим» перед буквой «ба».' },
+  f: { name: 'Ихфа', detail: 'Скрытие «нун» с сукуном или танвина перед их буквами.' },
+  w: { name: 'Идгам шафави', detail: 'Слияние «мим» с сукуном с последующей «мим».' },
+  i: { name: 'Икляб', detail: 'Превращение «нун» с сукуном или танвина в скрытую «мим» перед буквой «ба».' },
+  a: { name: 'Идгам с гунной', detail: 'Слияние, сопровождаемое носовым призвуком.' },
+  u: { name: 'Идгам без гунны', detail: 'Слияние без носового призвука.' },
+  g: { name: 'Гунна', detail: 'Носовой звук, удерживаемый в течение двух огласовок.' },
+};
+
 export const topicTitle=(topic:QuranTopic,lang?:string|boolean)=>{
   const c=langCode(lang);
   if(c==='ar')return topic.titleAr;
-  const t=(c==='fa'?TOPIC_FA:c==='tr'?TOPIC_TR:c==='ur'?TOPIC_UR:c==='id'?TOPIC_ID:c==='hi'?TOPIC_HI:c==='ml'?TOPIC_ML:undefined)?.[topic.id];
+  const t=(c==='fa'?TOPIC_FA:c==='ru'?TOPIC_RU:c==='tr'?TOPIC_TR:c==='ur'?TOPIC_UR:c==='id'?TOPIC_ID:c==='hi'?TOPIC_HI:c==='ml'?TOPIC_ML:undefined)?.[topic.id];
   return t?.title||topic.title;
 };
 export const topicDescription=(topic:QuranTopic,lang?:string|boolean)=>{
   const c=langCode(lang);
   if(c==='ar')return topic.descriptionAr;
-  const t=(c==='fa'?TOPIC_FA:c==='tr'?TOPIC_TR:c==='ur'?TOPIC_UR:c==='id'?TOPIC_ID:c==='hi'?TOPIC_HI:c==='ml'?TOPIC_ML:undefined)?.[topic.id];
+  const t=(c==='fa'?TOPIC_FA:c==='ru'?TOPIC_RU:c==='tr'?TOPIC_TR:c==='ur'?TOPIC_UR:c==='id'?TOPIC_ID:c==='hi'?TOPIC_HI:c==='ml'?TOPIC_ML:undefined)?.[topic.id];
   return t?.description||topic.description;
 };
 export const topicCategory=(topic:QuranTopic,lang?:string|boolean)=>{
   const c=langCode(lang);
   if(c==='ar')return TOPIC_CATEGORY_AR[topic.category];
-  const t=(c==='fa'?TOPIC_CATEGORY_FA:c==='tr'?TOPIC_CATEGORY_TR:c==='ur'?TOPIC_CATEGORY_UR:c==='id'?TOPIC_CATEGORY_ID:c==='hi'?TOPIC_CATEGORY_HI:c==='ml'?TOPIC_CATEGORY_ML:undefined)?.[topic.category];
+  const t=(c==='fa'?TOPIC_CATEGORY_FA:c==='ru'?TOPIC_CATEGORY_RU:c==='tr'?TOPIC_CATEGORY_TR:c==='ur'?TOPIC_CATEGORY_UR:c==='id'?TOPIC_CATEGORY_ID:c==='hi'?TOPIC_CATEGORY_HI:c==='ml'?TOPIC_CATEGORY_ML:undefined)?.[topic.category];
   return t||topic.category.toUpperCase();
 };
 const tajweedOwn=(rule:any,lang?:string|boolean)=>{
   const c=langCode(lang);
   if(c==='ar')return undefined;
-  const table=c==='fa'?TAJWEED_FA:c==='tr'?TAJWEED_TR:c==='ur'?TAJWEED_UR:c==='id'?TAJWEED_ID:c==='hi'?TAJWEED_HI:c==='ml'?TAJWEED_ML:undefined;
+  const table=c==='fa'?TAJWEED_FA:c==='ru'?TAJWEED_RU:c==='tr'?TAJWEED_TR:c==='ur'?TAJWEED_UR:c==='id'?TAJWEED_ID:c==='hi'?TAJWEED_HI:c==='ml'?TAJWEED_ML:undefined;
   return table?.[String((rule?.codes||[]).join(','))];
 };
 export const tajweedName=(rule:any,lang?:string|boolean)=>langCode(lang)==='ar'?(rule as any).nameAr:tajweedOwn(rule,lang)?.name||rule.name;
