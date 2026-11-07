@@ -17,6 +17,7 @@ import { vietnameseReference, WORSHIP_GUIDES_VI } from './worshipGuidesVi';
 import { azerbaijaniReference, WORSHIP_GUIDES_AZ } from './worshipGuidesAz';
 import { bosnianReference, WORSHIP_GUIDES_BS } from './worshipGuidesBs';
 import { bulgarianReference, WORSHIP_GUIDES_BG } from './worshipGuidesBg';
+import { sinhalaReference, WORSHIP_GUIDES_SI } from './worshipGuidesSi';
 
 export type WorshipGuide = {
   id: string;
@@ -134,6 +135,7 @@ const GUIDE_TABLES: Record<string, {
   az: { guides: WORSHIP_GUIDES_AZ, reference: azerbaijaniReference },
   bs: { guides: WORSHIP_GUIDES_BS, reference: bosnianReference },
   bg: { guides: WORSHIP_GUIDES_BG, reference: bulgarianReference },
+  si: { guides: WORSHIP_GUIDES_SI, reference: sinhalaReference },
 };
 
 /**

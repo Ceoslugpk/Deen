@@ -123,7 +123,7 @@ import {
   useQada, type QadaPrayer,
 } from './src/services/qadaService';
 import { loadNameLanguage, loadNameOfDay, loadNames, saveNameLanguage } from './src/services/namesService';
-import { ARABIC_UI, ARABIC_UI_SEMIBOLD, ensureQuranFont, ensureVietnameseFont, quranFontFamily as quranFont, QURAN_FONTS, useQuranFont, VIETNAMESE_FACE_MAP } from './src/services/fonts';
+import { ARABIC_UI, ARABIC_UI_SEMIBOLD, ensureLatinFace, ensureQuranFont, quranFontFamily as quranFont, QURAN_FONTS, useQuranFont } from './src/services/fonts';
 import { shareVerseCard } from './src/services/verseCard';
 import { shareHadithCard } from './src/services/hadithCard';
 import { shareCard, type CardTheme, type ShareCardData } from './src/services/shareCard';
@@ -517,8 +517,10 @@ function remapStyles(created: Record<string, any>): Record<string, any> {
       /* Second, and independent of the Arabic face: the Latin face is swapped
          weight for weight, so Vietnamese keeps the hierarchy the design gives
          it instead of collapsing every weight onto one. Newsreader is left
-         alone — it already carries Vietnamese, so a heading set in it needs
-         no substitute. */
+         alone there — it already carries Vietnamese, so a heading set in it
+         needs no substitute. Sinhala is the opposite case: Newsreader has no
+         Sinhala at all, so the same table carries the heading weights too and
+         they change with it. See SINHALA_HEADING_FACE_MAP. */
       if (prop === 'fontFamily' && latinFontMap && typeof value === 'string' && latinFontMap[value]) {
         next[prop] = latinFontMap[value];
       }
@@ -1083,22 +1085,23 @@ function LanguageProvider({children}:{children:React.ReactNode}){
       try{if(await applyDirection(isRtl(code)))void restartForDirection()}catch{/* a device that refuses the reload still gets the right layout from the direction style */}
     })();
   },[]);
-  /* Vietnamese is set in Be Vietnam Pro because DM Sans has no Vietnamese —
-     see `ensureVietnameseFont`. The face is fetched the first time the
-     language is chosen, and the sheet is rebuilt once it is in memory, the
-     same way the Quran faces are: the override alone would reach only the
-     next screen that happened to re-render. Loading takes a moment, so until
-     it lands Vietnamese wears DM Sans and the system fallback rather than
-     nothing at all. */
+  /* Two languages are set in a face that is not DM Sans, because DM Sans does
+     not carry them — Vietnamese in Be Vietnam Pro, Sinhala in DM Sans with the
+     Sinhala block grafted on. See `ensureLatinFace`. The face is fetched the
+     first time the language is chosen, and the sheet is rebuilt once it is in
+     memory, the same way the Quran faces are: the override alone would reach
+     only the next screen that happened to re-render. Loading takes a moment,
+     so until it lands the language wears DM Sans and the system fallback
+     rather than nothing at all. */
   useEffect(() => {
-    if (language !== 'vi') {
-      if (latinFontMap) { latinFontMap = null; s = makeStyles(); setLatinFaceTick((value) => value + 1); }
-      return;
-    }
     let alive = true;
-    void ensureVietnameseFont().then((ok) => {
-      if (!alive || !ok) return;
-      latinFontMap = VIETNAMESE_FACE_MAP;
+    void ensureLatinFace(language).then((map) => {
+      if (!alive) return;
+      /* Unchanged map means nothing to rebuild: every language without its own
+         face resolves to null, and re-running the sheet on each of them would
+         rebuild it for nothing. */
+      if (map === latinFontMap) return;
+      latinFontMap = map;
       s = makeStyles();
       setLatinFaceTick((value) => value + 1);
     });
@@ -13635,8 +13638,8 @@ const ARABIC_FACES = new Set([
  * The Latin face the interface is set in, when it is not DM Sans.
  *
  * Every Latin weight the sheet asks for is remapped, so a screen wearing
- * `DMSans_700Bold` keeps its weight when the face changes. Only Vietnamese
- * needs this today — see `ensureVietnameseFont`. Cleared back to null for
+ * `DMSans_700Bold` keeps its weight when the face changes. Vietnamese and
+ * Sinhala need this today — see `ensureLatinFace`. Cleared back to null for
  * every other language, which leaves the sheet on DM Sans exactly as before.
  */
 let latinFontMap: Record<string, string> | null = null;

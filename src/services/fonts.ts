@@ -166,6 +166,121 @@ export function vietnameseFontReady(): boolean {
   return vietnameseReady;
 }
 
+/**
+ * The Sinhala face.
+ *
+ * DM Sans has no Sinhala at all — not a partial set like its Vietnamese, but
+ * nothing: zero glyphs in U+0D80–U+0DFF. That matters more here than it does
+ * for Cyrillic. Russian, Kazakh and Bulgarian fall back to a system face and
+ * look right, because every platform ships a Cyrillic face. Sinhala is on
+ * Windows (Nirmala UI) and on Android (Noto Sans Sinhala) but is not
+ * guaranteed everywhere else, and where it is missing the fallback is not a
+ * different-looking letter but an empty box. Falling back is not an option
+ * for a script that may not be there to fall back to.
+ *
+ * So Sinhala is set in DM Sans with the Sinhala block grafted on from Noto
+ * Sans Sinhala. Noto carries the block complete, but only a basic Latin set —
+ * 218 glyphs against DM Sans's 403 — so using it alone would cost the app the
+ * accented Latin and punctuation it already ships. Merged, the Latin comes
+ * from DM Sans exactly as it does in every other language and only the
+ * Sinhala comes from Noto. One face, no per-word fallback.
+ *
+ * The shaping survives the graft intact: the conjuncts, the reph and the
+ * vowel-sign reordering all resolve to the same outlines with the same
+ * advances as Noto itself, checked glyph for glyph. What does not survive is
+ * hinting, which the merge has to drop because two faces' hinting programs
+ * cannot be combined — and DM Sans has none to begin with, so the Sinhala
+ * half ends up matching the Latin half rather than standing out from it.
+ *
+ * Fetched the first time Sinhala is chosen, like the Quran faces, so nobody
+ * who never reads Sinhala pays for it.
+ */
+const SINHALA_FACE_ASSETS: Record<string, any> = {
+  DMSans_400Regular: require('../../assets/fonts/DMSansSinhala-Regular.ttf'),
+  DMSans_500Medium: require('../../assets/fonts/DMSansSinhala-Medium.ttf'),
+  DMSans_600SemiBold: require('../../assets/fonts/DMSansSinhala-SemiBold.ttf'),
+  DMSans_700Bold: require('../../assets/fonts/DMSansSinhala-Bold.ttf'),
+};
+
+/** DM Sans family name to its Sinhala-carrying counterpart, by weight. */
+export const SINHALA_FACE_MAP: Record<string, string> = {
+  DMSans_400Regular: 'DMSansSinhala_400Regular',
+  DMSans_500Medium: 'DMSansSinhala_500Medium',
+  DMSans_600SemiBold: 'DMSansSinhala_600SemiBold',
+  DMSans_700Bold: 'DMSansSinhala_700Bold',
+};
+
+/**
+ * The heading face, when the headings cannot keep theirs.
+ *
+ * Headings are set in Newsreader, which carries Vietnamese — which is why
+ * Vietnamese needs no substitute for it and only the DM Sans weights are
+ * remapped there. Newsreader carries no Sinhala at all: zero glyphs in
+ * U+0D80–U+0DFF. A Sinhala heading set in it would fall through to whatever
+ * the device happens to ship, and that is exactly the case the Sinhala face
+ * exists to avoid.
+ *
+ * So the two Newsreader weights are pointed at the matching weight of the
+ * grafted face. Nothing new is fetched for them — those families are already
+ * loaded for the body — so the only thing that changes is the name a heading
+ * resolves to, weight for weight.
+ */
+export const SINHALA_HEADING_FACE_MAP: Record<string, string> = {
+  Newsreader_600SemiBold: 'DMSansSinhala_600SemiBold',
+  Newsreader_700Bold: 'DMSansSinhala_700Bold',
+};
+
+/** Every family Sinhala substitutes, body and heading, in one table. */
+const SINHALA_ALL_FACES: Record<string, string> = {
+  ...SINHALA_FACE_MAP,
+  ...SINHALA_HEADING_FACE_MAP,
+};
+
+let sinhalaReady = false;
+let sinhalaTask: Promise<boolean> | null = null;
+
+/**
+ * Load the Sinhala face once, and report whether it can be used.
+ *
+ * Resolves false on a device that cannot read the assets, in which case the
+ * app stays on DM Sans and the system fallback rather than pointing at a
+ * family that was never registered — an unregistered family name renders as
+ * no text at all.
+ */
+export async function ensureSinhalaFont(): Promise<boolean> {
+  if (sinhalaReady) return true;
+  if (sinhalaTask) return sinhalaTask;
+  const request: Record<string, any> = {};
+  LATIN_UI_FACES.forEach((family) => {
+    request[SINHALA_FACE_MAP[family]] = SINHALA_FACE_ASSETS[family];
+  });
+  sinhalaTask = Font.loadAsync(request)
+    .then(() => {
+      sinhalaReady = true;
+      sinhalaTask = null;
+      return true;
+    })
+    .catch(() => {
+      sinhalaTask = null;
+      return false;
+    });
+  return sinhalaTask;
+}
+
+/**
+ * The weight-for-weight substitute for the current language, lazily fetched.
+ *
+ * Vietnamese and Sinhala each need a face DM Sans does not carry, for
+ * different reasons, and the rest of the app should not have to know which
+ * language is which. Ask here and get the map for the language that needs
+ * one, or null for every language that does not.
+ */
+export async function ensureLatinFace(language: string): Promise<Record<string, string> | null> {
+  if (language === 'vi') return (await ensureVietnameseFont()) ? VIETNAMESE_FACE_MAP : null;
+  if (language === 'si') return (await ensureSinhalaFont()) ? SINHALA_ALL_FACES : null;
+  return null;
+}
+
 export function useQuranFont(id?: QuranFontId | string): string {
   const resolved = (id as QuranFontId) || DEFAULT_QURAN_FONT;
   const [family, setFamily] = useState(() => (ready.has(resolved) ? quranFontFamily(resolved) : quranFontFamily(DEFAULT_QURAN_FONT)));

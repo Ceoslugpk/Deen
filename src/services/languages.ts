@@ -13,7 +13,7 @@
  */
 
 export type LanguageCode =
-  | 'en' | 'ar' | 'ur' | 'fr' | 'tr' | 'ru' | 'zh' | 'fa' | 'uz' | 'kk' | 'my' | 'vi' | 'az' | 'bs' | 'bg'
+  | 'en' | 'ar' | 'ur' | 'fr' | 'tr' | 'ru' | 'zh' | 'fa' | 'uz' | 'kk' | 'my' | 'vi' | 'az' | 'bs' | 'bg' | 'si'
   /* Below: languages the hadith corpus carries that the rest of the app does
      not offer yet — no Quran translation, no recitation voice, no interface
      copy. They exist so hadith can be read in them, not so the app can be. */
@@ -359,6 +359,30 @@ export const LANGUAGES: Language[] = [
        follows the same path rather than diverging from it. */
     code: 'bg', native: 'Български', english: 'Bulgarian', rtl: false, uiReady: true, uiPartial: false,
     text: { identifier: 'tr_bg_tzvetan_theophanov', name: 'Tzvetan Theophanov', kind: 'translation' },
+  },
+  {
+    /* Sinhala. Six editions are tagged `si` and four of them are Latin-script
+       romanisations, which is the same trap the Bosnian and Bulgarian lists
+       set — of the two written in Sinhala, this one is the one that addresses
+       God and the reader in the respectful register. The Pioneers edition says
+       `නුඹ` (the familiar "you") 1,558 times where this one says `ඔබ`, and it
+       names the Prophet bare. This one carries the salawat in full.
+
+       No voice: the reciter catalogue holds 403 reciters across seven
+       languages and Sinhala is not among them, and every plausible id 403s.
+
+       A font, though — and this is the one place Sinhala departs from
+       Cyrillic. Russian and Bulgarian fall back to a system face that every
+       platform carries; a Sinhala system face exists on Windows and Android
+       but is not guaranteed elsewhere, and where it is missing the whole
+       interface renders as empty boxes rather than a wrong-looking one. See
+       `ensureSinhalaFont`. */
+    code: 'si', native: 'සිංහල', english: 'Sinhala', rtl: false, uiReady: true, uiPartial: false,
+    text: {
+      identifier: 'tr_si_naseem_isamil_and_masoor_maulana',
+      name: 'Naseem Ismail',
+      kind: 'translation',
+    },
   },
   {
     code: 'my', native: 'မြန်မာ', english: 'Burmese', rtl: false, uiReady: false,

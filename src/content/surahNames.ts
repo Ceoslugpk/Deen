@@ -29,7 +29,7 @@
  * api.quran.com/api/v4/chapters. All 114 present for all ten languages.
  */
 
-export type SurahNameLanguage = 'en' | 'ar' | 'ur' | 'fa' | 'id' | 'hi' | 'ml' | 'tr' | 'ru' | 'fr' | 'bn' | 'ms' | 'ta' | 'uz' | 'zh' | 'kk' | 'vi' | 'az' | 'bs' | 'bg';
+export type SurahNameLanguage = 'en' | 'ar' | 'ur' | 'fa' | 'id' | 'hi' | 'ml' | 'tr' | 'ru' | 'fr' | 'bn' | 'ms' | 'ta' | 'uz' | 'zh' | 'kk' | 'vi' | 'az' | 'bs' | 'bg' | 'si';
 
 /* English */
 /* English is the source: the transliteration the app has always shown. */
@@ -2437,6 +2437,143 @@ export const SURAH_NAMES_BG: Record<number, string> = {
   114: 'Ан-Нас',
 };
 
+/*
+ * Sinhala.
+ *
+ * The Sinhala index surahquran.com publishes, cross-checked verse by verse:
+ * every one of its 114 ayah counts matches the counts this app already holds,
+ * and the names are all distinct. That is the check that matters — a list
+ * shifted by one surah would still look like a plausible list of names, but it
+ * would disagree on the counts almost immediately.
+ *
+ * These are transliterations of the Arabic, which is how Sinhala Muslims name
+ * the surahs and how every other non-Arabic table here reads them — Al-Baqarah
+ * is Ал-Бакара in Bulgarian and අල්-බකරා here. The article is kept and
+ * assimilated to the following consonant as Sinhala prints it: අර්-රහ්මාන්,
+ * අෂ්-ෂුආරා, අත්-තව්බා.
+ *
+ * The two other Sinhala sources were empty rather than wrong: Wikidata carries
+ * no `si` label on any of the 114 surah items, and Sinhala Wikipedia has no
+ * article on any of them.
+ */
+
+export const SURAH_NAMES_SI: Record<number, string> = {
+  1: 'අල්-ෆාතිහා',
+  2: 'අල්-බකරා',
+  3: 'ආල්-ඉම්රාන්',
+  4: 'අන්-නිසා',
+  5: 'අල්-මාඉදා',
+  6: 'අල්-අන්ආම්',
+  7: 'අල්-ආරාෆ්',
+  8: 'අල්-අන්ෆාල්',
+  9: 'අත්-තව්බා',
+  10: 'යූනුස්',
+  11: 'හූද්',
+  12: 'යූසුෆ්',
+  13: 'අර්-රාද්',
+  14: 'ඉබ්රාහීම්',
+  15: 'අල්-හිජ්ර්',
+  16: 'අන්-නහ්ල්',
+  17: 'අල්-ඉස්රා',
+  18: 'අල්-කහ්ෆ්',
+  19: 'මර්යම්',
+  20: 'තාහා',
+  21: 'අල්-අම්බියා',
+  22: 'අල්-හජ්',
+  23: 'අල්-මුමිනුන්',
+  24: 'අන්-නූර්',
+  25: 'අල්-ෆුර්කාන්',
+  26: 'අෂ්-ෂුආරා',
+  27: 'අන්-නම්ල්',
+  28: 'අල්-කසස්',
+  29: 'අල්-අන්කබූත්',
+  30: 'අර්-රූම්',
+  31: 'ලුක්මාන්',
+  32: 'අස්-සජ්දා',
+  33: 'අල්-අහ්සාබ්',
+  34: 'සබා',
+  35: 'ෆාතිර්',
+  36: 'යාසීන්',
+  37: 'අස්-සාෆ්ෆාත්',
+  38: 'සාද්',
+  39: 'අස්-සුමර්',
+  40: 'ඝාෆිර්',
+  41: 'ෆුස්සිලාත්',
+  42: 'අෂ්-ෂූරා',
+  43: 'අස්-සුඛ්රුෆ්',
+  44: 'අද්-දුඛාන්',
+  45: 'අල්-ජාසියා',
+  46: 'අල්-අහ්කාෆ්',
+  47: 'මුහම්මද්',
+  48: 'අල්-ෆත්හ්',
+  49: 'අල්-හුජුරාත්',
+  50: 'කාෆ්',
+  51: 'අද්-දාරියාත්',
+  52: 'අත්-තූර්',
+  53: 'අන්-නජ්ම්',
+  54: 'අල්-කමර්',
+  55: 'අර්-රහ්මාන්',
+  56: 'අල්-වාකියා',
+  57: 'අල්-හදීද්',
+  58: 'අල්-මුජාදිලා',
+  59: 'අල්-හෂ්ර්',
+  60: 'අල්-මුම්තහිනා',
+  61: 'අස්-සාෆ්',
+  62: 'අල්-ජුමුආ',
+  63: 'අල්-මුනාෆිකුන්',
+  64: 'අත්-තගාබුන්',
+  65: 'අත්-තලාක්',
+  66: 'අත්-තහ්රීම්',
+  67: 'අල්-මුල්ක්',
+  68: 'අල්-කලම්',
+  69: 'අල්-හාක්කා',
+  70: 'අල්-මආරිජ්',
+  71: 'නූහ්',
+  72: 'අල්-ජින්',
+  73: 'අල්-මුස්සම්මිල්',
+  74: 'අල්-මුද්දස්සිර්',
+  75: 'අල්-කියාමා',
+  76: 'අල්-ඉන්සාන්',
+  77: 'අල්-මුර්සලාත්',
+  78: 'අන්-නබා',
+  79: 'අන්-නාසිආත්',
+  80: 'අබස',
+  81: 'අත්-තක්වීර්',
+  82: 'අල්-ඉන්ෆිතාර්',
+  83: 'අල්-මුතෆ්ෆිෆීන්',
+  84: 'අල්-ඉන්ෂිකාක්',
+  85: 'අල්-බුරූජ්',
+  86: 'අත්-තාරික්',
+  87: 'අල්-අලා',
+  88: 'අල්-ඝාෂියා',
+  89: 'අල්-ෆජ්ර්',
+  90: 'අල්-බලද්',
+  91: 'අෂ්-ෂම්ස්',
+  92: 'අල්-ලයිල්',
+  93: 'අද්-දුහා',
+  94: 'අෂ්-ෂර්හ්',
+  95: 'අත්-තීන්',
+  96: 'අල්-අලක්',
+  97: 'අල්-කද්ර්',
+  98: 'අල්-බය්යිනා',
+  99: 'අස්-සල්සලා',
+  100: 'අල්-ආදියාත්',
+  101: 'අල්-කාරියා',
+  102: 'අත්-තකාසුර්',
+  103: 'අල්-අස්ර්',
+  104: 'අල්-හුමසා',
+  105: 'අල්-ෆීල්',
+  106: 'කුරයිෂ්',
+  107: 'අල්-මාඋන්',
+  108: 'අල්-කව්ථර්',
+  109: 'අල්-කාෆිරුන්',
+  110: 'අන්-නස්ර්',
+  111: 'අල්-මසද්',
+  112: 'අල්-ඉඛ්ලාස්',
+  113: 'අල්-ෆලක්',
+  114: 'අන්-නාස්',
+};
+
 const TABLES: Record<SurahNameLanguage, Record<number, string>> = {
   en: SURAH_NAMES_EN,
   ar: SURAH_NAMES_AR,
@@ -2458,6 +2595,7 @@ const TABLES: Record<SurahNameLanguage, Record<number, string>> = {
   az: SURAH_NAMES_AZ,
   bs: SURAH_NAMES_BS,
   bg: SURAH_NAMES_BG,
+  si: SURAH_NAMES_SI,
 };
 
 /**

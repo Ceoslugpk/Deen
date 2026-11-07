@@ -667,28 +667,64 @@ export const TAJWEED_BG: Record<string, { name: string; detail: string }> = {
   g: { name: 'Гунна', detail: 'Носов звук, задържан два такта.' },
 };
 
+
+/* Sinhala. The tajweed terms are written as the Sri Lankan madrasa writes
+   them — කල්කලා, ඝුන්නා, ඉඛ්ෆාඃ, ඉද්ගාම් — because that is the form a
+   Sinhala reader who has been taught to recite already knows them by, and
+   not the Latin transliteration the English list happens to carry. */
+export const TOPIC_SI: Record<string, { title: string; description: string }> = {
+  oneness: { title: 'අල්ලාහ්ගේ ඒකීයභාවය', description: 'අල්ලාහ් ගේ පරම ඒකත්වය, ස්වාධීනත්වය සහ අසමසමභාවය ස්ථිර කරන ආයත්.' },
+  trust: { title: 'විශ්වාසය සහ භාර ගැනීම', description: 'සිහියෙන් යුත් ක්‍රියාව සහ ස්ථිරභාවය සමඟ අල්ලාහ් මත භාර වීම.' },
+  signs: { title: 'මැවීමෙහි සලකුණු', description: 'මැවීම, පිළිවෙළ සහ අරමුණ පිළිබඳ මෙනෙහි කිරීමට ආරාධනා කරන ඡේද.' },
+  resurrection: { title: 'නැගිටීම සහ ආපසු යාම', description: 'වගවීම, අලුත් කිරීම සහ අල්ලාහ් වෙත අවසන් ආපසු හැරීමේ සිහිකැඳවීම්.' },
+  parents: { title: 'දෙමව්පියන් සහ පවුල', description: 'පවුල් ජීවිතය තුළ දයාව, කෘතඥතාව සහ විශිෂ්ට හැසිරීම.' },
+  justice: { title: 'යුක්තිය සහ අවංකකම', description: 'පෞද්ගලිකව දුෂ්කර වූ විට පවා යුක්තිය වෙනුවෙන් ස්ථිරව සිටීම.' },
+  patience: { title: 'දුෂ්කරතාවෙහි ඉවසීම', description: 'දුෂ්කරතාවේදී ඉවසීම සහ සලාතය හරහා උපකාර පැතීම.' },
+  speech: { title: 'සිහියෙන් යුත් කථාව', description: 'හොඳම දේ පැවසීම, සැකයෙන් වැළකීම සහ එකිනෙකාගේ ගෞරවය ආරක්ෂා කිරීම.' },
+  remembrance: { title: 'සිහිකිරීම සහ සන්සුන්භාවය', description: 'අල්ලාහ් සිහිකිරීම හරහා හදවතේ ස්ථිරභාවය සොයා ගැනීම.' },
+  repentance: { title: 'බලාපොරොත්තුව සහ පසුතැවීම', description: 'දයාව ගැන කිසි විටෙක බලාපොරොත්තු නොසුන් වී වරදකින් පසු අවංකව ආපසු හැරීම.' },
+  gratitude: { title: 'කෘතඥතාව', description: 'ආශීර්වාද හඳුනා ගැනීම සහ කෘතඥ නැමදුමෙන් ප්‍රතිචාර දැක්වීම.' },
+  dua: { title: 'ආයාචනය සහ සමීපත්වය', description: 'අල්ලාහ්ගේ සමීපත්වය සහ ඔහුට ආයාචනා කිරීමේ ආරාධනාව.' },
+};
+export const TOPIC_CATEGORY_SI: Record<string, string> = { Faith: 'ඊමාන්', Life: 'ජීවිතය', Spirituality: 'අධ්‍යාත්මිකත්වය' };
+export const TAJWEED_SI: Record<string, { name: string; detail: string }> = {
+  'h,s,l': { name: 'නිශ්ශබ්ද අකුරු', detail: 'හම්සතුල්-වස්ල්, නිශ්ශබ්ද සලකුණු සහ සූර්ය ලාම් ස්වාධීනව උච්චාරණය නොකෙරේ.' },
+  'm': { name: 'සාමාන්‍ය මද්', detail: 'ස්වර ගණන් දෙකක් රඳවා ගත් සම්මත දීර්ඝ කිරීම.' },
+  'p': { name: 'අවසර ලත් මද්', detail: 'ගණන් දෙක, හතර හෝ හයක අවසර ලත් දීර්ඝ කිරීමක්.' },
+  'n': { name: 'අවශ්‍ය මද්', detail: 'අනිවාර්ය දීර්ඝ ස්වරයක්.' },
+  'o': { name: 'අනිවාර්ය මද්', detail: 'අනිවාර්ය දීර්ඝ කිරීමක්, සාමාන්‍යයෙන් ගණන් හතරේ සිට පහ දක්වා.' },
+  'q': { name: 'කල්කලා', detail: 'සුකූන් දරන විට قطب جد අකුරුවලින් එකක පාලිත ප්‍රතිධ්වනියක්.' },
+  'c': { name: 'ඉඛ්ෆා ෂෆාවී', detail: 'බාඃ ට පෙර සැඟවුණු මීම් නාදයක්.' },
+  'f': { name: 'ඉඛ්ෆාඃ', detail: 'එහි අකුරුවලට පෙර සැඟවුණු නූන් සාකින් හෝ තන්වීන්.' },
+  'w': { name: 'ඉද්ගාම් ෂෆාවී', detail: 'මීම් සාකින් පසුව එන මීම් එකකට සමානීකරණය වීම.' },
+  'i': { name: 'ඉක්ලාබ්', detail: 'බාඃ ට පෙර නූන් සාකින් හෝ තන්වීන් සැඟවුණු මීම් එකක් දෙසට වෙනස් වේ.' },
+  'a': { name: 'ඝුන්නා සහිත ඉද්ගාම්', detail: 'නාසික අනුනාදය සමඟ සමානීකරණය.' },
+  'u': { name: 'ඝුන්නා රහිත ඉද්ගාම්', detail: 'නාසික අනුනාදයකින් තොරව සමානීකරණය.' },
+  'g': { name: 'ඝුන්නා', detail: 'ගණන් දෙකක් රඳවා ගත් නාසික නාදයක්.' },
+};
+
 export const topicTitle=(topic:QuranTopic,lang?:string|boolean)=>{
   const c=langCode(lang);
   if(c==='ar')return topic.titleAr;
-  const t=(c==='bg'?TOPIC_BG:c==='bs'?TOPIC_BS:c==='az'?TOPIC_AZ:c==='vi'?TOPIC_VI:c==='zh'?TOPIC_ZH:c==='kk'?TOPIC_KK:c==='uz'?TOPIC_UZ:c==='ta'?TOPIC_TA:c==='ms'?TOPIC_MS:c==='bn'?TOPIC_BN:c==='fr'?TOPIC_FR:c==='fa'?TOPIC_FA:c==='ru'?TOPIC_RU:c==='tr'?TOPIC_TR:c==='ur'?TOPIC_UR:c==='id'?TOPIC_ID:c==='hi'?TOPIC_HI:c==='ml'?TOPIC_ML:undefined)?.[topic.id];
+  const t=(c==='si'?TOPIC_SI:c==='bg'?TOPIC_BG:c==='bs'?TOPIC_BS:c==='az'?TOPIC_AZ:c==='vi'?TOPIC_VI:c==='zh'?TOPIC_ZH:c==='kk'?TOPIC_KK:c==='uz'?TOPIC_UZ:c==='ta'?TOPIC_TA:c==='ms'?TOPIC_MS:c==='bn'?TOPIC_BN:c==='fr'?TOPIC_FR:c==='fa'?TOPIC_FA:c==='ru'?TOPIC_RU:c==='tr'?TOPIC_TR:c==='ur'?TOPIC_UR:c==='id'?TOPIC_ID:c==='hi'?TOPIC_HI:c==='ml'?TOPIC_ML:undefined)?.[topic.id];
   return t?.title||topic.title;
 };
 export const topicDescription=(topic:QuranTopic,lang?:string|boolean)=>{
   const c=langCode(lang);
   if(c==='ar')return topic.descriptionAr;
-  const t=(c==='bg'?TOPIC_BG:c==='bs'?TOPIC_BS:c==='az'?TOPIC_AZ:c==='vi'?TOPIC_VI:c==='zh'?TOPIC_ZH:c==='kk'?TOPIC_KK:c==='uz'?TOPIC_UZ:c==='ta'?TOPIC_TA:c==='ms'?TOPIC_MS:c==='bn'?TOPIC_BN:c==='fr'?TOPIC_FR:c==='fa'?TOPIC_FA:c==='ru'?TOPIC_RU:c==='tr'?TOPIC_TR:c==='ur'?TOPIC_UR:c==='id'?TOPIC_ID:c==='hi'?TOPIC_HI:c==='ml'?TOPIC_ML:undefined)?.[topic.id];
+  const t=(c==='si'?TOPIC_SI:c==='bg'?TOPIC_BG:c==='bs'?TOPIC_BS:c==='az'?TOPIC_AZ:c==='vi'?TOPIC_VI:c==='zh'?TOPIC_ZH:c==='kk'?TOPIC_KK:c==='uz'?TOPIC_UZ:c==='ta'?TOPIC_TA:c==='ms'?TOPIC_MS:c==='bn'?TOPIC_BN:c==='fr'?TOPIC_FR:c==='fa'?TOPIC_FA:c==='ru'?TOPIC_RU:c==='tr'?TOPIC_TR:c==='ur'?TOPIC_UR:c==='id'?TOPIC_ID:c==='hi'?TOPIC_HI:c==='ml'?TOPIC_ML:undefined)?.[topic.id];
   return t?.description||topic.description;
 };
 export const topicCategory=(topic:QuranTopic,lang?:string|boolean)=>{
   const c=langCode(lang);
   if(c==='ar')return TOPIC_CATEGORY_AR[topic.category];
-  const t=(c==='bg'?TOPIC_CATEGORY_BG:c==='bs'?TOPIC_CATEGORY_BS:c==='az'?TOPIC_CATEGORY_AZ:c==='vi'?TOPIC_CATEGORY_VI:c==='zh'?TOPIC_CATEGORY_ZH:c==='kk'?TOPIC_CATEGORY_KK:c==='uz'?TOPIC_CATEGORY_UZ:c==='ta'?TOPIC_CATEGORY_TA:c==='ms'?TOPIC_CATEGORY_MS:c==='bn'?TOPIC_CATEGORY_BN:c==='fr'?TOPIC_CATEGORY_FR:c==='fa'?TOPIC_CATEGORY_FA:c==='ru'?TOPIC_CATEGORY_RU:c==='tr'?TOPIC_CATEGORY_TR:c==='ur'?TOPIC_CATEGORY_UR:c==='id'?TOPIC_CATEGORY_ID:c==='hi'?TOPIC_CATEGORY_HI:c==='ml'?TOPIC_CATEGORY_ML:undefined)?.[topic.category];
+  const t=(c==='si'?TOPIC_CATEGORY_SI:c==='bg'?TOPIC_CATEGORY_BG:c==='bs'?TOPIC_CATEGORY_BS:c==='az'?TOPIC_CATEGORY_AZ:c==='vi'?TOPIC_CATEGORY_VI:c==='zh'?TOPIC_CATEGORY_ZH:c==='kk'?TOPIC_CATEGORY_KK:c==='uz'?TOPIC_CATEGORY_UZ:c==='ta'?TOPIC_CATEGORY_TA:c==='ms'?TOPIC_CATEGORY_MS:c==='bn'?TOPIC_CATEGORY_BN:c==='fr'?TOPIC_CATEGORY_FR:c==='fa'?TOPIC_CATEGORY_FA:c==='ru'?TOPIC_CATEGORY_RU:c==='tr'?TOPIC_CATEGORY_TR:c==='ur'?TOPIC_CATEGORY_UR:c==='id'?TOPIC_CATEGORY_ID:c==='hi'?TOPIC_CATEGORY_HI:c==='ml'?TOPIC_CATEGORY_ML:undefined)?.[topic.category];
   return t||topic.category.toUpperCase();
 };
 const tajweedOwn=(rule:any,lang?:string|boolean)=>{
   const c=langCode(lang);
   if(c==='ar')return undefined;
-  const table=c==='bg'?TAJWEED_BG:c==='bs'?TAJWEED_BS:c==='az'?TAJWEED_AZ:c==='vi'?TAJWEED_VI:c==='zh'?TAJWEED_ZH:c==='kk'?TAJWEED_KK:c==='uz'?TAJWEED_UZ:c==='ta'?TAJWEED_TA:c==='ms'?TAJWEED_MS:c==='bn'?TAJWEED_BN:c==='fr'?TAJWEED_FR:c==='fa'?TAJWEED_FA:c==='ru'?TAJWEED_RU:c==='tr'?TAJWEED_TR:c==='ur'?TAJWEED_UR:c==='id'?TAJWEED_ID:c==='hi'?TAJWEED_HI:c==='ml'?TAJWEED_ML:undefined;
+  const table=c==='si'?TAJWEED_SI:c==='bg'?TAJWEED_BG:c==='bs'?TAJWEED_BS:c==='az'?TAJWEED_AZ:c==='vi'?TAJWEED_VI:c==='zh'?TAJWEED_ZH:c==='kk'?TAJWEED_KK:c==='uz'?TAJWEED_UZ:c==='ta'?TAJWEED_TA:c==='ms'?TAJWEED_MS:c==='bn'?TAJWEED_BN:c==='fr'?TAJWEED_FR:c==='fa'?TAJWEED_FA:c==='ru'?TAJWEED_RU:c==='tr'?TAJWEED_TR:c==='ur'?TAJWEED_UR:c==='id'?TAJWEED_ID:c==='hi'?TAJWEED_HI:c==='ml'?TAJWEED_ML:undefined;
   return table?.[String((rule?.codes||[]).join(','))];
 };
 export const tajweedName=(rule:any,lang?:string|boolean)=>langCode(lang)==='ar'?(rule as any).nameAr:tajweedOwn(rule,lang)?.name||rule.name;

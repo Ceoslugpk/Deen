@@ -195,6 +195,34 @@ const BODIES: Record<string, () => React.ReactNode> = {
     </G>
   ),
 
+  /**
+   * Sri Lanka - carried by Sinhala.
+   *
+   * The lion flag is the most detailed one here, and at 18px none of the
+   * detail survives: the lion's mane, the bo leaves in the corners and the
+   * curl of the tail all turn to noise. What does survive is the arrangement,
+   * because it is unlike any other flag in the set - a gold border, a maroon
+   * field on the left, and two panels in green and saffron on the right. So
+   * the border, the field and the panels are drawn true, and the lion is
+   * reduced to a body, a head and the sword it holds.
+   */
+  lk: () => (
+    <G>
+      <Rect x={0} y={0} width={W} height={H} fill="#FFD600" />
+      <Rect x={1.3} y={1.3} width={W - 2.6} height={H - 2.6} fill="#8D153A" />
+      {/* green then saffron, stacked in the right third */}
+      <Rect x={18.1} y={1.3} width={10.6} height={(H - 2.6) / 2} fill="#00534E" />
+      <Rect x={18.1} y={1.3 + (H - 2.6) / 2} width={10.6} height={(H - 2.6) / 2} fill="#F59B24" />
+      {/* the lion: body, head, and the sword raised in its right paw */}
+      <Path
+        d="M4.8 15.8 q2.8 -1.6 5.8 -3.4 q-0.4 2.8 1.5 4.2 q-3.2 0.6 -4.7 1.5 q-2.2 0.9 -2.6 -2.3Z"
+        fill="#FFD600"
+      />
+      <Circle cx={11.6} cy={8.4} r={1.95} fill="#FFD600" />
+      <Path d="M12.9 7.1 L16.6 3.1" stroke="#FFD600" strokeWidth={0.95} strokeLinecap="round" fill="none" />
+    </G>
+  ),
+
   /** Fallback for a code we do not draw: a neutral plate with the code on it. */
   unknown: () => <Rect x={0} y={0} width={W} height={H} fill="#DDD8E8" />,
 };
@@ -212,7 +240,7 @@ const CODE_TO_FLAG: Record<string, string> = {
   ms: 'my', ps: 'pk', ku: 'iq', bn: 'bd', hi: 'in', de: 'de',
   es: 'es', nl: 'nl', it: 'it', pt: 'pt', sw: 'ke', so: 'so',
   sq: 'al', bs: 'ba', tg: 'tj', ky: 'kg', az: 'az', tt: 'ru',
-  bg: 'bg',
+  bg: 'bg', si: 'lk',
 };
 
 export function flagFor(code: string): string {
