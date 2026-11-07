@@ -48,6 +48,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import CustomIcon, { iconTheme } from './src/components/CustomIcon';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import Svg, { Circle, Defs, Ellipse, Path, Polygon, RadialGradient, Stop } from 'react-native-svg';
 import { StatusBar as ExpoStatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
@@ -226,7 +227,7 @@ function useCardShare() {
   return { share, offscreenCard };
 }
 import { CARD, CARD_GAP, RADIUS, SPACE } from './src/design/tokens';
-import { BRAND, C_DARK, C_LIGHT, C_PALESTINE, C_PALESTINE_DARK, DEPTH, FLAG, brandHex, mix, snapToBrand } from './src/design/brand';
+import { BRAND, C_DARK, C_LIGHT, C_PALESTINE, C_PALESTINE_DARK, DEPTH, FLAG, GLASS, GLASS_INTENSITY, brandHex, mix, snapToBrand } from './src/design/brand';
 import { useCalmMotion } from './src/design/useCalmMotion';
 import { EidConfetti } from './src/components/EidConfetti';
 import { AmbientField } from './src/components/AmbientField';
@@ -12289,12 +12290,30 @@ function TabButton({ route, focused, navigation, resolved, rtl, language, state,
   </Animated.View>;
 }
 
+/**
+ * The floating menu, as a capsule of glass.
+ *
+ * The bar is a BlurView, so it shows whatever is passing behind it — the
+ * page scrolling under it, the indigo hero, a surah list — blurred and
+ * brightened rather than hidden behind an opaque panel. Two layers are
+ * painted over that blur, and the order of the three matters: the wash and
+ * the sheen belong to the material, so they sit under the tabs and never
+ * dim them.
+ *
+ * Two things about BlurView are easy to get wrong and are handled here.
+ * It draws its blur out to the square edge of its own box unless the box
+ * clips it, so the capsule needs `overflow: 'hidden'` — without it the
+ * blur shows as a rectangle behind the rounded border. And it has to be
+ * rendered after the content it sits over, which it already is: the bar is
+ * a sibling drawn after the navigator, not a child of it.
+ */
 function FloatingTabBar({ state, navigation }: any) {
   const { width } = useWindowDimensions();
   const { rtl , language }=useLanguage();
-  const { resolved } = useTheme();
+  const { resolved, dark } = useTheme();
   const hidden = useChromeHidden();
   const barWidth = Math.min(Math.max(width - 32, 300), 460);
+  const glass = dark ? GLASS.dark : GLASS.light;
   const drop = useRef(new Animated.Value(1)).current;
   useEffect(() => {
     Animated.timing(drop, { toValue: hidden ? 0 : 1, duration: 200, useNativeDriver: true }).start();
@@ -12303,11 +12322,27 @@ function FloatingTabBar({ state, navigation }: any) {
     opacity: drop,
     transform: [{ translateY: drop.interpolate({ inputRange: [0, 1], outputRange: [110, 0] }) }]
   }]}>
-    <View style={[s.floatBar, { width: barWidth, flexDirection: 'row' }]}>
-      {state.routes.map((route: any, index: number) => (
-        <TabButton key={route.key} route={route} focused={state.index === index}
-          navigation={navigation} resolved={resolved} rtl={rtl} language={language} state={state} index={index} />
-      ))}
+    {/* The shadow is on this wrapper and not on the blur view. A BlurView
+        clips to its own bounds — that is how it keeps the blur inside the
+        capsule — and a shadow sitting on that same view would be clipped
+        away with it. */}
+    <View style={[s.floatBarShadow, { width: barWidth }]}>
+      <BlurView
+        intensity={dark ? GLASS_INTENSITY.dark : GLASS_INTENSITY.light}
+        tint={dark ? 'dark' : 'light'}
+        style={[s.floatBar, { width: barWidth, flexDirection: 'row' }]}
+      >
+        {/* The colour of the material. expo-blur's own tints are neutral
+            greys; this is what brings the bar back onto the brand. */}
+        <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: glass.wash }]} />
+        {/* Light falling across the top edge, gone by the middle. */}
+        <LinearGradient pointerEvents="none" colors={glass.sheen}
+          start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={StyleSheet.absoluteFill} />
+        {state.routes.map((route: any, index: number) => (
+          <TabButton key={route.key} route={route} focused={state.index === index}
+            navigation={navigation} resolved={resolved} rtl={rtl} language={language} state={state} index={index} />
+        ))}
+      </BlurView>
     </View>
   </Animated.View>;
 }
@@ -13995,10 +14030,27 @@ function makeStyles() {
   channelArabic:{color:C.green,fontSize:18,fontFamily:'KFGQPCUthmanicHafs',marginTop:SPACE.xs,writingDirection:'rtl'},
   dataSourceRow:{marginTop:8},
   floatBarWrap:{position:'absolute',left:0,right:0,bottom:0,alignItems:'center',paddingBottom:Platform.OS==='ios'?24:16,pointerEvents:'box-none'},
-  floatBar:{height:66,borderRadius:33,backgroundColor:C.white,borderWidth:1,borderColor:C.line,alignItems:'center',justifyContent:'space-between',paddingHorizontal:8,...shadow},
+  /* The shadow, split out onto its own wrapper: see FloatingTabBar. */
+  floatBarShadow:{height:66,borderRadius:33,...shadow},
+  /* The material. Its blur is clipped to this box already, and the tint
+     comes from expo-blur plus the wash painted inside it, so there is no
+     backgroundColor here — setting one would sit under the tint and
+     deaden the glass. */
+  floatBar:{height:66,borderRadius:33,overflow:'hidden',alignItems:'center',justifyContent:'space-between',paddingHorizontal:8,
+    /* Four hairlines rather than one. Bright along the top where the light
+       falls, dim along the bottom: that gradient across the edge is most of
+       what makes the capsule read as something with thickness rather than as
+       a rounded rectangle with a border. */
+    borderWidth:1,
+    borderTopColor:themeDark?GLASS.dark.rimTop:GLASS.light.rimTop,
+    borderLeftColor:themeDark?GLASS.dark.rimSide:GLASS.light.rimSide,
+    borderRightColor:themeDark?GLASS.dark.rimSide:GLASS.light.rimSide,
+    borderBottomColor:themeDark?GLASS.dark.rimBottom:GLASS.light.rimBottom},
   floatItem:{flex:1,alignItems:'center',justifyContent:'center',minHeight:54,borderRadius:28},
   floatPill:{alignItems:'center',justifyContent:'center',borderRadius:24,paddingHorizontal:12,paddingVertical:8,minWidth:58},
-  floatPillActive:{backgroundColor:C.mint},
+  /* The selected tab is lifted out of the material rather than painted on
+     top of it: a brighter piece of the same glass, with its own hairline. */
+  floatPillActive:{backgroundColor:themeDark?GLASS.dark.pill:GLASS.light.pill,borderWidth:1,borderColor:themeDark?GLASS.dark.pillRim:GLASS.light.pillRim},
   floatLabel:{color:C.muted,fontFamily:'DMSans_600SemiBold',fontSize:10,letterSpacing:.2,marginTop:4},
   floatLabelActive:{color:C.green},
  safe:{flex:1,backgroundColor:C.bg,overflow:'hidden',paddingTop:Platform.OS==='android'?StatusBar.currentHeight:0},page:{flex:1,backgroundColor:C.bg},pageWide:{width:'100%',maxWidth:1180,alignSelf:'center'},scroll:{width:'100%',maxWidth:980,alignSelf:'center',paddingHorizontal:20,paddingTop:20,paddingBottom:BOTTOM_RESERVE},row:{flexDirection:'row',alignItems:'center'},press:{opacity:.72,transform:[{scale:.98}]},loading:{padding:44,alignItems:'center',gap:12},loadingText:{color:C.muted,fontSize:12},error:{backgroundColor:C.card,padding:24,borderRadius:24,alignItems:'center',marginVertical:12},errorIcon:{width:48,height:48,borderRadius:16,backgroundColor:C.yellow,alignItems:'center',justifyContent:'center'},errorTitle:{color:C.ink,fontSize:16,fontFamily:'DMSans_600SemiBold',marginTop:12},errorText:{color:C.muted,textAlign:'center',fontSize:12,lineHeight:18,marginTop:4},retry:{backgroundColor:C.ink,paddingHorizontal:16,paddingVertical:8,borderRadius:12,marginTop:12},retryText:{color:C.onAccent,fontSize:11,fontFamily:'DMSans_600SemiBold'},

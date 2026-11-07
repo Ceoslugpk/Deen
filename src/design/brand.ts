@@ -478,3 +478,54 @@ export const DEPTH = {
     scrim:  alpha(FLAG.black, 0.72),
   },
 } as const;
+
+/**
+ * The floating menu is glass: a capsule of blurred, translucent material
+ * that takes its colour from whatever is behind it.
+ *
+ * These are the layers painted over the blur, and nothing here introduces a
+ * hue. Everything is a brand colour at an alpha, or white or black at an
+ * alpha — glass is a way of showing a colour, not a colour of its own, so
+ * giving it one would have been the wrong kind of decision.
+ *
+ * Light and dark are not simple inversions. On Pearl the material has to be
+ * lifted with white or it disappears into the page; on Midnight Ink it has
+ * to be lit from above with a pale hairline, because a dark object on a dark
+ * ground is only visible where the light catches its edge.
+ */
+export const GLASS = {
+  light: {
+    /** The wash that gives the material its colour, laid over the blur.
+        Kept light: expo-blur's own tint is already doing most of the
+        frosting, and a tab bar has to keep five labels readable over
+        whatever happens to be behind it. */
+    wash:      alpha(BRAND.pearl, 0.20),
+    /** Specular sheen across the top edge, fading out by the middle. */
+    sheen:     [alpha(WHITE, 0.50), alpha(WHITE, 0)] as [string, string],
+    /** The hairline: bright where the light falls, dim underneath. */
+    rimTop:    alpha(WHITE, 0.90),
+    rimSide:   alpha(WHITE, 0.45),
+    rimBottom: alpha(BRAND.midnightInk, 0.10),
+    /** The selected tab, lifted out of the material. */
+    pill:      alpha(WHITE, 0.62),
+    pillRim:   alpha(WHITE, 0.90),
+  },
+  dark: {
+    wash:      alpha(BRAND.midnightInk, 0.18),
+    sheen:     [alpha(WHITE, 0.13), alpha(WHITE, 0)] as [string, string],
+    rimTop:    alpha(BRAND.pearl, 0.34),
+    rimSide:   alpha(BRAND.pearl, 0.14),
+    rimBottom: alpha(BLACK, 0.30),
+    pill:      alpha(BRAND.pearl, 0.15),
+    pillRim:   alpha(BRAND.pearl, 0.26),
+  },
+} as const;
+
+/**
+ * How hard the blur works, 1 to 100.
+ *
+ * Not the same number in both themes on purpose. A dark material reads as
+ * heavier than a light one at the same intensity, because there is less
+ * light coming back through it, so dark asks for a little less.
+ */
+export const GLASS_INTENSITY = { light: 72, dark: 66 } as const;
