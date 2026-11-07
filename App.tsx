@@ -3142,7 +3142,6 @@ function ToolsHomeScreen({ navigation }: any) {
     <ScrollView keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
       <AppHeader/>
       <Text style={s.dataTitle}>{T('Tools')}</Text>
-      <Text style={s.dataArabic}>أَدَوَاتٌ لِلْعِبَادَةِ</Text>
       <Text style={s.dataBody}>{T('What you work out, look up, keep track of, or watch — apart from the flow of the day.')}</Text>
       {TOOL_GROUPS.filter((group) => group.when !== 'womens' || womens.optedIn).map((group) => <View key={group.label}>
         <Text style={s.libraryKicker}>{T(group.label)}</Text>
