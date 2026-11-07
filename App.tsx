@@ -1508,8 +1508,24 @@ const TOOL_IMAGES_PALESTINE: Record<string, any> = {
   'ritual-ihram': require('./assets/tool-icons/ritual-ihram-palestine.png'),
   'ritual-tawaf': require('./assets/tool-icons/ritual-tawaf-palestine.png'),
   'ritual-sai': require('./assets/tool-icons/ritual-sai-palestine.png'),
+  'ritual-arafat': require('./assets/tool-icons/ritual-arafat-palestine.png'),
+  'ritual-jamarat': require('./assets/tool-icons/ritual-jamarat-palestine.png'),
+  'ritual-mina': require('./assets/tool-icons/ritual-mina-palestine.png'),
   'ritual-shave-or-trim-hair': require('./assets/tool-icons/ritual-shave-or-trim-hair-palestine.png'),
   'pray-rakah': require('./assets/tool-icons/pray-rakah-palestine.png'),
+
+  /* The places the calendar, the language and the compass are reached from.
+     Hijri is asked for under three keys and all three point at one drawing:
+     'Hijri' on the tools grid, and both spellings of the calendar screen. */
+  Hijri: require('./assets/tool-icons/hijri-palestine.png'),
+  'Hijri calendar': require('./assets/tool-icons/hijri-palestine.png'),
+  'Hijri Calendar': require('./assets/tool-icons/hijri-palestine.png'),
+  Language: require('./assets/tool-icons/language-palestine.png'),
+  Location: require('./assets/tool-icons/location-palestine.png'),
+  'Prayer Reminders': require('./assets/tool-icons/prayer-reminders-palestine.png'),
+  Qibla: require('./assets/tool-icons/qibla-palestine.png'),
+  'Umrah Resources': require('./assets/tool-icons/umrah-resources-palestine.png'),
+  'Weekly Summary': require('./assets/tool-icons/weekly-summary-palestine.png'),
 
   /* Giving, dhikr, the voluntary prayers and the private journal. Zakat here
      is the calculator on the tools grid; 'Zakat al-Fitr' further up is the
@@ -1583,8 +1599,22 @@ const TOOL_IMAGES_PALESTINE_DARK: Record<string, any> = {
   'ritual-ihram': require('./assets/tool-icons/ritual-ihram-dark-palestine.png'),
   'ritual-tawaf': require('./assets/tool-icons/ritual-tawaf-dark-palestine.png'),
   'ritual-sai': require('./assets/tool-icons/ritual-sai-dark-palestine.png'),
+  'ritual-arafat': require('./assets/tool-icons/ritual-arafat-dark-palestine.png'),
+  'ritual-jamarat': require('./assets/tool-icons/ritual-jamarat-dark-palestine.png'),
+  'ritual-mina': require('./assets/tool-icons/ritual-mina-dark-palestine.png'),
   'ritual-shave-or-trim-hair': require('./assets/tool-icons/ritual-shave-or-trim-hair-dark-palestine.png'),
   'pray-rakah': require('./assets/tool-icons/pray-rakah-dark-palestine.png'),
+
+  /* The same seven, in the dark Palestine set. */
+  Hijri: require('./assets/tool-icons/hijri-dark-palestine.png'),
+  'Hijri calendar': require('./assets/tool-icons/hijri-dark-palestine.png'),
+  'Hijri Calendar': require('./assets/tool-icons/hijri-dark-palestine.png'),
+  Language: require('./assets/tool-icons/language-dark-palestine.png'),
+  Location: require('./assets/tool-icons/location-dark-palestine.png'),
+  'Prayer Reminders': require('./assets/tool-icons/prayer-reminders-dark-palestine.png'),
+  Qibla: require('./assets/tool-icons/qibla-dark-palestine.png'),
+  'Umrah Resources': require('./assets/tool-icons/umrah-resources-dark-palestine.png'),
+  'Weekly Summary': require('./assets/tool-icons/weekly-summary-dark-palestine.png'),
 
   /* The same five, in the dark Palestine set. */
   Zakat: require('./assets/tool-icons/zakat-dark-palestine.png'),
