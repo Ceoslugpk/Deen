@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from 'react';
 import { Animated, Easing, StyleSheet, View, useWindowDimensions } from 'react-native';
-import { BRAND } from '../design/brand';
 import { useCalmMotion } from '../design/useCalmMotion';
+import { paletteFor, pick, rnd } from './particles';
 
 /**
  * One burst of confetti, for the day of Eid.
@@ -31,15 +31,6 @@ import { useCalmMotion } from '../design/useCalmMotion';
 const COUNT = 26;
 const DURATION = 2600;
 
-/**
- * Two palettes, because a colour that sings on Pearl disappears on Midnight
- * Ink. Bronze is dropped from the dark set for exactly that reason: it is the
- * darkest colour in the brand and it is nearly invisible on the dark ground.
- * Everything here is a brand colour — no novelty pinks or greens.
- */
-const ON_LIGHT = [BRAND.radiantGold, BRAND.antiqueGold, BRAND.bronze, BRAND.royalIndigo, BRAND.violet, BRAND.lavender];
-const ON_DARK = [BRAND.radiantGold, BRAND.antiqueGold, BRAND.mist, BRAND.pearl, BRAND.lavender];
-
 type Piece = {
   key: number;
   /** Fraction across the width, 0–1. */
@@ -61,10 +52,6 @@ type Piece = {
   progress: Animated.Value;
 };
 
-function rnd(min: number, max: number): number {
-  return min + Math.random() * (max - min);
-}
-
 function makePieces(palette: string[]): Piece[] {
   return Array.from({ length: COUNT }, (_unused, key) => {
     /* Squares, circles and short ribbons, so the fall has some shape to it
@@ -83,7 +70,7 @@ function makePieces(palette: string[]): Piece[] {
       width,
       height,
       radius: square ? (Math.random() < 0.5 ? 0 : width / 2) : Math.min(width, height) / 2,
-      color: palette[Math.floor(Math.random() * palette.length)],
+      color: pick(palette),
       progress: new Animated.Value(0),
     };
   });
@@ -97,7 +84,7 @@ export function EidConfetti({ fire, dark }: { fire: string | null; dark: boolean
      show the identical fall. Held in a memo rather than state because the
      pieces carry their own animated values and must not be recreated on
      every re-render of the screen behind them. */
-  const pieces = useMemo(() => makePieces(dark ? ON_DARK : ON_LIGHT), [fire, dark]);
+  const pieces = useMemo(() => makePieces(paletteFor('confetti', dark)), [fire, dark]);
 
   useEffect(() => {
     if (!fire || still) return;

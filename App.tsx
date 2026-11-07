@@ -13,7 +13,7 @@ function ToolsStack(){const subtle=useSubtleTransitions();return <Stack.Navigato
 import { Accelerometer, Magnetometer } from 'expo-sensors';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  AccessibilityInfo, ActivityIndicator, Alert, Animated, BackHandler, Easing, Image, ImageBackground, Linking, Platform,
+  AccessibilityInfo, ActivityIndicator, Alert, Animated, AppState, BackHandler, Easing, Image, ImageBackground, Linking, Platform,
   Pressable as BarePressable,
   I18nManager, RefreshControl, SafeAreaView, ScrollView, Share, StatusBar, StyleSheet, Switch, Text, TextInput,
   PanResponder, useColorScheme, useWindowDimensions, View, Modal, Dimensions, Keyboard
@@ -229,6 +229,8 @@ import { CARD, CARD_GAP, RADIUS, SPACE } from './src/design/tokens';
 import { BRAND, C_DARK, C_LIGHT, C_PALESTINE, C_PALESTINE_DARK, DEPTH, FLAG, brandHex, mix, snapToBrand } from './src/design/brand';
 import { useCalmMotion } from './src/design/useCalmMotion';
 import { EidConfetti } from './src/components/EidConfetti';
+import { SeasonalField } from './src/components/SeasonalField';
+import { ambienceFor, type Ambience } from './src/services/ambience';
 import { eidToday } from './src/services/eid';
 import { Tactile } from './src/components/Tactile';
 import { useSubtleTransitions } from './src/design/transitions';
@@ -2360,6 +2362,31 @@ const onRefresh=async()=>{setRefreshing(true);await Promise.all([data.load(),hyd
     setEidBurst(eid.id);
     void updateWorship({ lastCelebratedEid: eid.id });
   }, [eid, worshipHydrated, eidBurst, worship.celebrateEid, worship.lastCelebratedEid, still, updateWorship]);
+
+  /* The quiet layer under all of that: snow, petals, summer light or leaves,
+     from the season where she actually is. Recomputed when the season or the
+     place changes and not on every render, and deliberately not tied to the
+     clock — a field that restarted at midnight would be a field that jumped
+     once a day for no reason anyone asked for. */
+  const ambience = useMemo(
+    () => (worship.ambientEffects === false ? null : ambienceFor(new Date(), data.location?.latitude)),
+    [worship.ambientEffects, data.location?.latitude],
+  );
+  /* Two reasons to stop, and both of them are about a screen nobody is
+     looking at. Losing focus covers moving to another tab; the app going to
+     the background covers locking the phone with Home still mounted. An
+     effect slow enough to be pleasant is still an animation running all day,
+     and a battery pays for that whether or not anyone can see it. */
+  const [homeFocused, setHomeFocused] = useState(true);
+  useFocusEffect(useCallback(() => {
+    setHomeFocused(true);
+    return () => setHomeFocused(false);
+  }, []));
+  const [appActive, setAppActive] = useState(true);
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => setAppActive(state === 'active'));
+    return () => subscription.remove();
+  }, []);
   /* The sheet has two faces: the four slots it holds now, and, once one of
      them is picked, everything that could go there instead. `null` shows the
      first face, a number shows the second for that slot. */
@@ -2626,6 +2653,14 @@ const onRefresh=async()=>{setRefreshing(true);await Promise.all([data.load(),hyd
       theme={cardTheme}
     />
   </View>}
+  {/* The season and the burst never run together: on an Eid the ambience
+      resolves to confetti, and the field stands down so the two are not
+      competing over the same screen. */}
+  <SeasonalField
+    kind={ambience === null || ambience === 'confetti' ? null : ambience}
+    dark={dark}
+    active={homeFocused && appActive}
+  />
   <EidConfetti fire={eidBurst} dark={dark} />
 </Page>;
 }
@@ -11204,6 +11239,20 @@ function LegalScreen({ route, navigation }: any) {
     </ScrollView></Page>;
 }
 
+/**
+ * What the quiet layer is showing today, for the settings row that has to
+ * describe it. Plain sentences rather than a name, because most people will
+ * never know this exists and the row is the only place that tells them.
+ */
+const AMBIENCE_NOTE: Record<Ambience, string> = {
+  confetti: 'Confetti — today is one of the Eids',
+  ramadan: 'Warm light — Ramadan',
+  snow: 'Snow — winter where you are',
+  petals: 'Petals — spring where you are',
+  motes: 'Rising light — summer where you are',
+  leaves: 'Leaves — autumn where you are',
+};
+
 function SettingsScreen({navigation}:any){
   const { language, rtl, setLanguage } = useLanguage();
   const T = (text: string) => tx(language, text);
@@ -11234,11 +11283,23 @@ function SettingsScreen({navigation}:any){
   const { theme: themeName, mode: themeMode, setTheme, setMode, dark } = useTheme();
   const { settings, update } = useWorshipSettings();
   const still = useCalmMotion();
-  /* The celebration is two mornings a year, so most people would never see
-     it and could not say whether they want it. This fires it on request.
-     It counts up rather than toggling, so every tap is a new value and the
-     burst runs again instead of sitting still. */
-  const [eidPreview, setEidPreview] = useState(0);
+  /* Both of these are easy to switch on and then never notice: the burst is
+     two mornings a year, and the field is quiet enough to fade into the
+     background. So both can be played here on request. The tick counts up
+     rather than toggling, so every tap is a new value and the burst runs
+     again instead of sitting still. */
+  const [previewTick, setPreviewTick] = useState(0);
+  const [previewing, setPreviewing] = useState(false);
+  useEffect(() => {
+    if (!previewing) return;
+    /* Long enough to watch a piece cross the screen once. The field is
+       built to be lived with, not looked at, so ten seconds says more
+       than three would. */
+    const timer = setTimeout(() => setPreviewing(false), 10000);
+    return () => clearTimeout(timer);
+  }, [previewing, previewTick]);
+  const { location: here } = useAppLocation();
+  const ambience = useMemo(() => ambienceFor(new Date(), here?.latitude), [here?.latitude]);
   const { preferences } = useQuranPreferences();
   const womens = useWomens();
   const lock = useLockConfig();
@@ -11342,13 +11403,35 @@ function SettingsScreen({navigation}:any){
         </View>
       </View>
 
-      {/* A greeting rather than a decoration, and the one setting in here
-          that exists purely so it can be turned off. Somebody who opens a
-          prayer app and gets confetti will either be delighted or will want
-          it gone, and that should be her call rather than the app's. */}
-      <Section title={T('Eid')} />
+      {/* Two things in here that are easy to love and easy to resent, so
+          both get a switch. Somebody who opens a prayer app and gets snow
+          will either be delighted or will want it gone, and that should be
+          her call rather than the app's. */}
+      <Section title={T('Ambience')} />
       <View style={s.preferencePanel}>
-        <PanelHead glyph="sparkles-outline" title={T('Celebration')} note={T('One burst of confetti, on the morning of Eid')} />
+        <PanelHead glyph="sparkles-outline" title={T('On the Home screen')} note={T('Something quiet drifting, and a greeting on Eid')} />
+        <View style={s.setting}>
+          <View style={{ flex: 1 }}>
+            <Text style={s.settingName}>{T('Seasonal effects')}</Text>
+            <Text style={s.meta}>{still
+              ? T('Your device is set to reduce motion, so nothing will drift')
+              : ambience === null || ambience === 'confetti'
+                ? T('Nothing for this time of year where you are')
+                : T(AMBIENCE_NOTE[ambience])}</Text>
+          </View>
+          <View style={{ direction: 'ltr' } as any}>
+            <Switch
+              accessibilityLabel={T('Seasonal effects')}
+              disabled={still}
+              value={settings.ambientEffects !== false && !still}
+              trackColor={{ true: C.green }}
+              onValueChange={(value) => {
+                if (value) haptic('toggle');
+                void update({ ambientEffects: value });
+              }}
+            />
+          </View>
+        </View>
         <View style={s.setting}>
           <View style={{ flex: 1 }}>
             <Text style={s.settingName}>{T('Celebrate on Eid')}</Text>
@@ -11375,15 +11458,15 @@ function SettingsScreen({navigation}:any){
         </View>
         <Tactile
           accessibilityRole="button"
-          accessibilityLabel={T('Show me the celebration')}
-          onPress={() => { haptic('toggle'); setEidPreview((n) => n + 1); }}
+          accessibilityLabel={T('Show me')}
+          onPress={() => { haptic('toggle'); setPreviewTick((n) => n + 1); setPreviewing(true); }}
           style={s.setting}
         >
           <View style={{ flex: 1 }}>
             <Text style={s.settingName}>{T('Show me')}</Text>
             <Text style={s.meta}>{still
               ? T('Nothing to show while your device is set to reduce motion')
-              : T('Play it now, so you know what to expect')}</Text>
+              : previewing ? T('Playing now') : T('Play what the Home screen is showing today')}</Text>
           </View>
           {ico('play-circle', 22, C.green)}
         </Tactile>
@@ -11487,9 +11570,13 @@ function SettingsScreen({navigation}:any){
         <Text style={s.madeWithText}>{T('Made with')} ❤️ {T('for Ummah')}</Text>
       </View>
     </ScrollView>
-    {/* Outside the ScrollView and after it: the burst belongs to the whole
-        screen, and it must not scroll away with the page underneath. */}
-    <EidConfetti fire={eidPreview ? `preview-${eidPreview}` : null} dark={dark} />
+    {/* Outside the ScrollView and after it: both of these belong to the whole
+        screen, and neither should scroll away with the page underneath. Only
+        one is ever live — on an Eid the ambience resolves to confetti and the
+        field stands down, so the two are never competing. */}
+    {ambience === 'confetti'
+      ? <EidConfetti fire={previewing ? `preview-${previewTick}` : null} dark={dark} />
+      : <SeasonalField kind={ambience} dark={dark} active={previewing} />}
   </Page>}
 import { DEFAULT_RECITER, editionsForLanguage, LANGUAGES, Language, LanguageCode, languageByCode, isRtl, pickEdition, HADITH_LANGUAGES, hadithLanguage } from './src/services/languages';
 

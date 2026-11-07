@@ -74,6 +74,17 @@ export type WorshipSettings = {
    */
   celebrateEid?: boolean;
   /**
+   * Something quiet drifting across the Home screen: snow in winter,
+   * petals in spring, rising light in summer, leaves in autumn, and warm
+   * light through Ramadan. Nothing during Muharram.
+   *
+   * On by default and deliberately faint — a handful of pieces, slow
+   * enough to read as weather rather than as activity. This one is the
+   * most likely of anything here to divide people, so it has a switch,
+   * and it stops entirely for anyone who has asked for reduced motion.
+   */
+  ambientEffects?: boolean;
+  /**
    * Which Eid has already been greeted, so the burst happens once rather
    * than on every visit to Home. Named after the Eid and not the day, so
    * the next one starts it again on its own — there is nothing to expire
@@ -119,6 +130,7 @@ export const DEFAULT_WORSHIP_SETTINGS: WorshipSettings = {
   hapticsEnabled: true,
   dayTools: DEFAULT_DAY_TOOLS,
   celebrateEid: true,
+  ambientEffects: true,
 };
 
 const KEYS = {
