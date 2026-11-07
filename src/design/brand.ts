@@ -542,8 +542,26 @@ export const GLASS = {
  */
 export const GLASS_INTENSITY = {
   /** The floating menu: five labels that have to stay readable. */
-  bar:  { light: 54, dark: 50 },
+  bar:  { light: 46, dark: 42 },
   /** A card. It sits on the flat page rather than over scrolling content,
       so it can be a touch more open than the bar for the same legibility. */
-  card: { light: 50, dark: 46 },
+  card: { light: 42, dark: 38 },
 } as const;
+
+/**
+ * How much of the page shows through an ordinary card, when glass is on.
+ *
+ * This is what carries glass across the whole app, and it works from one
+ * place because of a fact about the codebase rather than a clever trick:
+ * every card in it paints `C.card` or `C.white`, and nothing anywhere uses
+ * either key as a foreground colour. So making those two translucent turns
+ * every card translucent at once, with no risk to text.
+ *
+ * It is an alpha and not a blur, and that is a deliberate choice. Cards sit
+ * on the flat page, where a blur has nothing to work on — blurring a flat
+ * colour returns that colour — so a real blur there would cost a
+ * UIVisualEffectView per card on iOS and buy nothing visible. What makes a
+ * card read as glass on a flat ground is the edge: this, plus the brightened
+ * rim, plus the shadow it already had.
+ */
+export const GLASS_FILL = { light: 0.70, dark: 0.66 } as const;

@@ -227,7 +227,7 @@ function useCardShare() {
   return { share, offscreenCard };
 }
 import { CARD, CARD_GAP, RADIUS, SPACE } from './src/design/tokens';
-import { BRAND, C_DARK, C_LIGHT, C_PALESTINE, C_PALESTINE_DARK, DEPTH, FLAG, GLASS, GLASS_INTENSITY, brandHex, mix, snapToBrand } from './src/design/brand';
+import { BRAND, C_DARK, C_LIGHT, C_PALESTINE, C_PALESTINE_DARK, DEPTH, FLAG, GLASS, GLASS_FILL, GLASS_INTENSITY, alpha, brandHex, mix, snapToBrand } from './src/design/brand';
 import { useCalmMotion } from './src/design/useCalmMotion';
 import { EidConfetti } from './src/components/EidConfetti';
 import { AmbientField } from './src/components/AmbientField';
@@ -386,6 +386,15 @@ let themeApplied: ResolvedTheme = 'islamicLight';
 /** Whether that palette is the dark one. A few colours are chosen on this
  *  rather than on the palette itself. */
 let themeDark = false;
+/**
+ * Whether the app is glass. Read by `applyPalette`, which is the only place
+ * that needs it: it turns `C.card` and `C.white` translucent and brightens
+ * the lit top edge, and every card in the app is built from those.
+ *
+ * Mirrored into the theme context as `glass` so the two surfaces that use a
+ * real BlurView can fall back to a plain fill when it is off.
+ */
+let glassOn = true;
 let shadow: any = { shadowColor: DEPTH.light.shadow, shadowOffset: { width: 0, height: 10 }, shadowOpacity: .11, shadowRadius: 24, elevation: 5 };
 let soft: any = { shadowColor: DEPTH.light.soft, shadowOffset: { width: 0, height: 4 }, shadowOpacity: .07, shadowRadius: 14, elevation: 2 };
 
@@ -570,13 +579,22 @@ export type ResolvedTheme = 'islamicLight' | 'islamicDark' | 'palestineLight' | 
 type ThemeState = { theme: ThemeName; mode: ThemeMode; dark: boolean; resolved: ResolvedTheme; tick: number;
   setTheme: (theme: ThemeName) => void; setMode: (mode: ThemeMode) => void;
   /**
+   * Whether the app is glass. Lives here rather than with the setting that
+   * drives it because changing it has the same consequence as changing
+   * theme: the palette is rebuilt and the sheet with it, so it belongs
+   * beside the code that does that.
+   */
+  glass: boolean;
+  /** Turns glass on or off, rebuilds the palette, and remounts the tree. */
+  setGlass: (on: boolean) => void;
+  /**
    * Drives the change-over. It falls to 0 while the palette is swapped and
    * comes back to 1, so the swap itself is never seen.
    */
   swap: Animated.Value };
 const THEME_KEY = 'deen-theme-v1';
 const THEME_NAME_KEY = 'deen-theme-name-v1';
-const ThemeContext = createContext<ThemeState>({ theme: 'islamic', mode: 'system', dark: false, resolved: 'islamicLight', tick: 0, setTheme: () => {}, setMode: () => {}, swap: new Animated.Value(1) });
+const ThemeContext = createContext<ThemeState>({ theme: 'islamic', mode: 'system', dark: false, resolved: 'islamicLight', tick: 0, setTheme: () => {}, setMode: () => {}, swap: new Animated.Value(1), glass: true, setGlass: () => {} });
 
 async function loadThemeMode(): Promise<ThemeMode> {
   try {
@@ -612,6 +630,16 @@ function applyPalette(theme: ResolvedTheme) {
     DEPTH.light;
   const dark = theme === 'islamicDark' || theme === 'palestineDark';
   themeDark = dark;
+  /* Glass, for the whole app, in two lines.
+     Every card paints `C.card` or `C.white` and nothing paints either as a
+     foreground colour, so making those two translucent turns every card in
+     the app translucent at once. See GLASS_FILL for why this is an alpha
+     rather than a blur. */
+  const g = dark ? GLASS.dark : GLASS.light;
+  if (glassOn) {
+    C.card = alpha(C.card, GLASS_FILL[dark ? 'dark' : 'light']);
+    C.white = alpha(C.white, GLASS_FILL[dark ? 'dark' : 'light']);
+  }
   shadow = { ...shadow, shadowColor: d.shadow, shadowOpacity: dark ? 0.5 : 0.11 };
   surface = { ...surface, borderTopColor: depth.edge, ...depth.ambient };
   soft = { ...soft, shadowColor: d.soft, shadowOpacity: dark ? 0.4 : 0.07 };
@@ -624,6 +652,14 @@ function applyPalette(theme: ResolvedTheme) {
     edge: d.edge,
     veil: d.veil
   };
+  /* On glass the top edge carries more of the work. With the fill letting
+     the page through, the thing that says where a card stops is its lit
+     lip far more than its fill, so it is stronger here than the flat
+     palette makes it. */
+  if (glassOn) {
+    depth = { ...depth, edge: g.rimTop };
+    surface = { ...surface, borderTopColor: g.rimTop };
+  }
   CARD_GREEN.backgroundColor = C.mint;
   CARD_GOLD.backgroundColor = C.peach;
   s = makeStyles();
@@ -706,7 +742,16 @@ function ThemeProvider({ children }: { children: React.ReactNode }) {
     setThemeState(next);
     AsyncStorage.setItem(THEME_NAME_KEY, next).catch(() => undefined);
   };
-  const value = useMemo(() => ({ theme, mode, dark, resolved, setTheme, setMode, tick, swap }), [theme, mode, dark, resolved, setTheme, tick, swap]);
+  /* Glass is not a colour, so it cannot be repainted by a re-render alone:
+     the palette has to be rebuilt and the sheet remade, exactly as a theme
+     change does. Hence the same two steps and the same tick. */
+  const setGlass = useCallback((on: boolean) => {
+    if (on === glassOn) return;
+    glassOn = on;
+    if (themeApplied) applyPalette(themeApplied);
+    setTick((value) => value + 1);
+  }, []);
+  const value = useMemo(() => ({ theme, mode, dark, resolved, setTheme, setMode, tick, swap, glass: glassOn, setGlass }), [theme, mode, dark, resolved, setTheme, tick, swap, setGlass]);
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
 
@@ -899,7 +944,14 @@ function QuranPreferencesProvider({children}:{children:React.ReactNode}){const[p
 function useQuranPreferences(){return useContext(QuranPreferencesContext)}
 type WorshipSettingsState={settings:WorshipSettings;hydrated:boolean;update:(patch:Partial<WorshipSettings>)=>Promise<void>};
 const WorshipSettingsContext=createContext<WorshipSettingsState>({settings:DEFAULT_WORSHIP_SETTINGS,hydrated:false,update:async()=>{}});
-function WorshipSettingsProvider({children}:{children:React.ReactNode}){const[settings,setSettings]=useState(DEFAULT_WORSHIP_SETTINGS);const[hydrated,setHydrated]=useState(false);useEffect(()=>{loadWorshipSettings().then(value=>{setSettings(value);setHydrated(true)})},[]);const update=async(patch:Partial<WorshipSettings>)=>{const next={...settings,...patch};setSettings(next);await saveWorshipSettings(next)};useEffect(()=>{setHapticsEnabled(settings.hapticsEnabled)},[settings.hapticsEnabled]);return <WorshipSettingsContext.Provider value={{settings,hydrated,update}}>{children}</WorshipSettingsContext.Provider>}
+function WorshipSettingsProvider({children}:{children:React.ReactNode}){const[settings,setSettings]=useState(DEFAULT_WORSHIP_SETTINGS);const[hydrated,setHydrated]=useState(false);useEffect(()=>{loadWorshipSettings().then(value=>{setSettings(value);setHydrated(true)})},[]);const update=async(patch:Partial<WorshipSettings>)=>{const next={...settings,...patch};setSettings(next);await saveWorshipSettings(next)};useEffect(()=>{setHapticsEnabled(settings.hapticsEnabled)},[settings.hapticsEnabled]);
+  /* Glass is stored with the rest of the settings but applied by the theme,
+     because putting it on is a palette rebuild rather than a re-render.
+     This runs on load as well as on change, so a saved choice is honoured
+     from the first paint and not reconstructed a moment later. */
+  const { setGlass } = useTheme();
+  useEffect(()=>{setGlass(settings.glassEffects !== false)},[settings.glassEffects, setGlass]);
+  return <WorshipSettingsContext.Provider value={{settings,hydrated,update}}>{children}</WorshipSettingsContext.Provider>}
 function useWorshipSettings(){return useContext(WorshipSettingsContext)}
 async function managedPrayerSnapshot(location:AppLocation,settings:WorshipSettings){try{const snapshot=await getPrayerSnapshot(location.latitude,location.longitude,{method:settings.calculationMethod,school:settings.madhab,timezone:location.timezone,timeFormat:settings.timeFormat});await savePrayerCache(location.latitude,location.longitude,settings.calculationMethod,settings.madhab,snapshot);return{snapshot,cached:false}}catch(error){const cached=await loadPrayerCache(location.latitude,location.longitude,settings.calculationMethod,settings.madhab);if(cached)return{snapshot:cached.snapshot,cached:true};throw error}}
 /** The IANA zone, when we know it, so times are read on the city's own clock. */
@@ -5980,14 +6032,16 @@ const libraryGroups: { label: string; title: string; items: LibraryItem[] }[] = 
  */
 function ExploreHome({navigation}:any){
   const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);
-  const {dark}=useTheme();const glass=dark?GLASS.dark:GLASS.light;
+  const {dark,glass}=useTheme();const tone=dark?GLASS.dark:GLASS.light;
   const journeys=useJourneys();
   const open=(item:LibraryItem)=>{
     const kind=item.params?.kind as JourneyKind|undefined;
     if(kind&&!journeys.active[kind])startJourney(kind,journeyMeta(kind,language).title);
     navigation.navigate(item.route,item.params);
   };
-  return <Page><ScrollView keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}><AppHeader/><Text style={s.intro}>{T('Remembrance, trusted learning and step-by-step guidance—organized by purpose rather than hidden in a feature grid.')}</Text>{libraryGroups.map(group=><View key={group.label}><Text style={s.libraryKicker}>{T(group.label)}</Text><Text style={s.libraryHeading}>{T(group.title)}</Text><View style={s.exploreGrid}>{group.items.map((item)=>{return <MotionPress key={item.title} onPress={()=>open(item)} style={s.exploreCard}><View style={s.libraryCardShadow}><BlurView intensity={dark?GLASS_INTENSITY.card.dark:GLASS_INTENSITY.card.light} tint={dark?'dark':'light'} style={s.libraryCardGlass}><View pointerEvents="none" style={[StyleSheet.absoluteFill,{backgroundColor:glass.wash}]}/><LinearGradient pointerEvents="none" colors={glass.sheen} start={{x:0,y:0}} end={{x:0,y:1}} style={StyleSheet.absoluteFill}/><View style={s.libraryCardPad}><ToolGraphic tool={item.title} size={72}/><Text style={s.exploreTitle}>{T(item.title)}</Text><Text style={s.exploreBody}>{T(item.caption)}</Text><View style={s.exploreArrow}>{ico(rtl ? 'arrow-back' : 'arrow-forward',15,C.green)}</View></View></BlurView></View></MotionPress>})}</View></View>)}</ScrollView></Page>;}
+  return <Page><ScrollView keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}><AppHeader/><Text style={s.intro}>{T('Remembrance, trusted learning and step-by-step guidance—organized by purpose rather than hidden in a feature grid.')}</Text>{libraryGroups.map(group=><View key={group.label}><Text style={s.libraryKicker}>{T(group.label)}</Text><Text style={s.libraryHeading}>{T(group.title)}</Text><View style={s.exploreGrid}>{group.items.map((item)=>{return <MotionPress key={item.title} onPress={()=>open(item)} style={s.exploreCard}><View style={[s.libraryCardShadow, glass ? null : s.libraryCardPlain]}>{glass
+  ? <BlurView intensity={dark?GLASS_INTENSITY.card.dark:GLASS_INTENSITY.card.light} tint={dark?'dark':'light'} style={s.libraryCardGlass}><View pointerEvents="none" style={[StyleSheet.absoluteFill,{backgroundColor:tone.wash}]}/><LinearGradient pointerEvents="none" colors={tone.sheen} start={{x:0,y:0}} end={{x:0,y:1}} style={StyleSheet.absoluteFill}/><View style={s.libraryCardPad}><ToolGraphic tool={item.title} size={72}/><Text style={s.exploreTitle}>{T(item.title)}</Text><Text style={s.exploreBody}>{T(item.caption)}</Text><View style={s.exploreArrow}>{ico(rtl ? 'arrow-back' : 'arrow-forward',15,C.green)}</View></View></BlurView>
+  : <View style={s.libraryCardPad}><ToolGraphic tool={item.title} size={72}/><Text style={s.exploreTitle}>{T(item.title)}</Text><Text style={s.exploreBody}>{T(item.caption)}</Text><View style={s.exploreArrow}>{ico(rtl ? 'arrow-back' : 'arrow-forward',15,C.green)}</View></View>}</View></MotionPress>})}</View></View>)}</ScrollView></Page>;}
 /* The back control every secondary screen wears. It goes through
    `goBackOrHome` rather than calling `goBack()` itself: a screen that passes
    no navigator — or one sitting at the bottom of its stack — used to leave
@@ -11308,7 +11362,7 @@ function SettingsScreen({navigation}:any){
     currentApp && !currentApp.uiReady && currentApp.uiPartial
       ? T('Partly translated')
       : undefined;
-  const { theme: themeName, mode: themeMode, setTheme, setMode, dark } = useTheme();
+  const { theme: themeName, mode: themeMode, setTheme, setMode, dark, glass: glassOn, setGlass } = useTheme();
   const { settings, update } = useWorshipSettings();
   const still = useCalmMotion();
   /* Both of these are easy to switch on and then never notice: the burst is
@@ -11401,6 +11455,38 @@ function SettingsScreen({navigation}:any){
           <ChoicePill label={T('System')} selected={themeMode === 'system'} onPress={() => setMode('system')} />
           <ChoicePill label={T('Light')} selected={themeMode === 'light'} onPress={() => setMode('light')} />
           <ChoicePill label={T('Dark')} selected={themeMode === 'dark'} onPress={() => setMode('dark')} />
+        </View>
+      </View>
+
+      {/* Glass is on by default because it is how the app looks, but it is
+          the kind of thing you either never notice or notice every day, so
+          it gets a way out that lands on a plain, solid app rather than on
+          something half-translucent. */}
+      <View style={s.preferencePanel}>
+        <PanelHead glyph="sparkles-outline" title={T('Glass')} note={T('Cards and the menu let the page show through them')} />
+        <View style={s.setting}>
+          <View style={{ flex: 1 }}>
+            <Text style={s.settingName}>{T('Frosted surfaces')}</Text>
+            <Text style={s.meta}>{glassOn
+              ? T('Cards are translucent, with a lit edge where the light catches them')
+              : T('Cards are solid and flat')}</Text>
+          </View>
+          <View style={{ direction: 'ltr' } as any}>
+            <Switch
+              accessibilityLabel={T('Frosted surfaces')}
+              value={glassOn}
+              trackColor={{ true: C.green }}
+              onValueChange={(value) => {
+                if (value) haptic('toggle');
+                /* Two writes, on purpose. The setting is what is remembered;
+                   `setGlass` is what rebuilds the palette and the style
+                   sheet, because a translucent card cannot be reached by a
+                   re-render alone. */
+                void update({ glassEffects: value });
+                setGlass(value);
+              }}
+            />
+          </View>
         </View>
       </View>
 
@@ -12311,14 +12397,18 @@ function TabButton({ route, focused, navigation, resolved, rtl, language, state,
 function FloatingTabBar({ state, navigation }: any) {
   const { width } = useWindowDimensions();
   const { rtl , language }=useLanguage();
-  const { resolved, dark } = useTheme();
+  const { resolved, dark, glass } = useTheme();
   const hidden = useChromeHidden();
   const barWidth = Math.min(Math.max(width - 32, 300), 460);
-  const glass = dark ? GLASS.dark : GLASS.light;
+  const tone = dark ? GLASS.dark : GLASS.light;
   const drop = useRef(new Animated.Value(1)).current;
   useEffect(() => {
     Animated.timing(drop, { toValue: hidden ? 0 : 1, duration: 200, useNativeDriver: true }).start();
   }, [hidden, drop]);
+  const tabs = state.routes.map((route: any, index: number) => (
+    <TabButton key={route.key} route={route} focused={state.index === index}
+      navigation={navigation} resolved={resolved} rtl={rtl} language={language} state={state} index={index} />
+  ));
   return <Animated.View pointerEvents="box-none" style={[s.floatBarWrap, {
     opacity: drop,
     transform: [{ translateY: drop.interpolate({ inputRange: [0, 1], outputRange: [110, 0] }) }]
@@ -12326,24 +12416,23 @@ function FloatingTabBar({ state, navigation }: any) {
     {/* The shadow is on this wrapper and not on the blur view. A BlurView
         clips to its own bounds — that is how it keeps the blur inside the
         capsule — and a shadow sitting on that same view would be clipped
-        away with it. */}
-    <View style={[s.floatBarShadow, { width: barWidth }]}>
-      <BlurView
+        away with it. With glass off there is nothing to clip, so the same
+        wrapper simply carries the bar itself. */}
+    <View style={[s.floatBarShadow, glass ? null : s.floatBarPlain,
+      { width: barWidth, flexDirection: 'row' }]}>
+      {glass ? <BlurView
         intensity={dark ? GLASS_INTENSITY.bar.dark : GLASS_INTENSITY.bar.light}
         tint={dark ? 'dark' : 'light'}
         style={[s.floatBar, { width: barWidth, flexDirection: 'row' }]}
       >
         {/* The colour of the material. expo-blur's own tints are neutral
             greys; this is what brings the bar back onto the brand. */}
-        <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: glass.wash }]} />
+        <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: tone.wash }]} />
         {/* Light falling across the top edge, gone by the middle. */}
-        <LinearGradient pointerEvents="none" colors={glass.sheen}
+        <LinearGradient pointerEvents="none" colors={tone.sheen}
           start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={StyleSheet.absoluteFill} />
-        {state.routes.map((route: any, index: number) => (
-          <TabButton key={route.key} route={route} focused={state.index === index}
-            navigation={navigation} resolved={resolved} rtl={rtl} language={language} state={state} index={index} />
-        ))}
-      </BlurView>
+        {tabs}
+      </BlurView> : tabs}
     </View>
   </Animated.View>;
 }
@@ -14277,7 +14366,12 @@ mushafPageNoText:{color:C.green,fontFamily:'Newsreader_700Bold',fontSize:16},mus
    borderBottomColor:themeDark?GLASS.dark.rimBottom:GLASS.light.rimBottom},
  /* Padding lives here and not on the glass, so the wash and the sheen fill
     the whole card edge to edge. */
- libraryCardPad:{flex:1,padding:16},exploreTitle:{color:C.ink,fontSize:16,fontFamily:'DMSans_700Bold',marginTop:12},exploreBody:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:11,lineHeight:15,marginTop:4,flex:1},exploreArrow:{width:29,height:29,borderRadius:16,backgroundColor:C.mint,alignItems:'center',justifyContent:'center',alignSelf:'flex-end'},apiPanel:{backgroundColor:C.deep,borderRadius:24,padding:20,marginTop:12},apiTitle:{color:C.onAccent,fontSize:14,fontFamily:'DMSans_700Bold',marginTop:16},apiText:{color:C.onAccent,fontSize:10,marginTop:4},dataProvider:{color:C.onAccent,fontSize:10.5,fontFamily:'DMSans_600SemiBold',marginTop:3,opacity:.72,letterSpacing:.2},
+ libraryCardPad:{flex:1,padding:16},
+ /* With glass off these two go back to being exactly what they were before
+    any of this: a solid capsule and a solid card. `C.card` and `C.white` are
+    opaque again by then, because the palette was rebuilt with glass off. */
+ floatBarPlain:{backgroundColor:C.white,borderWidth:1,borderColor:C.line},
+ libraryCardPlain:{backgroundColor:C.card,borderWidth:1,borderColor:C.line},exploreTitle:{color:C.ink,fontSize:16,fontFamily:'DMSans_700Bold',marginTop:12},exploreBody:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:11,lineHeight:15,marginTop:4,flex:1},exploreArrow:{width:29,height:29,borderRadius:16,backgroundColor:C.mint,alignItems:'center',justifyContent:'center',alignSelf:'flex-end'},apiPanel:{backgroundColor:C.deep,borderRadius:24,padding:20,marginTop:12},apiTitle:{color:C.onAccent,fontSize:14,fontFamily:'DMSans_700Bold',marginTop:16},apiText:{color:C.onAccent,fontSize:10,marginTop:4},dataProvider:{color:C.onAccent,fontSize:10.5,fontFamily:'DMSans_600SemiBold',marginTop:3,opacity:.72,letterSpacing:.2},
  toolPage:{width:'100%',maxWidth:780,alignSelf:'center',alignItems:'center',padding:24,paddingTop:24,paddingBottom:BOTTOM_RESERVE},toolPageScroll:{flexGrow:1},toolEyebrow:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.2,marginTop:20},compass:{width:260,height:260,borderRadius:130,backgroundColor:C.white,borderWidth:12,borderColor:C.line,alignItems:'center',justifyContent:'center',marginTop:32,...shadow},compassRose:{position:'absolute',width:'100%',height:'100%',alignItems:'center',justifyContent:'center'},compassLive:{fontFamily:'DMSans_600SemiBold',fontSize:11,color:C.green,marginTop:8},compassHint:{color:C.muted,fontSize:11,marginTop:4,textAlign:'center'},north:{position:'absolute',top:12,color:C.coral,fontSize:10,fontFamily:'DMSans_700Bold'},compassArrow:{alignItems:'center',justifyContent:'center'},kaaba:{position:'absolute',right:43,bottom:47,width:31,height:31,backgroundColor:C.deep,borderRadius:4},kaabaGold:{height:5,backgroundColor:C.gold,marginTop:8},direction:{color:C.ink,fontSize:31,fontFamily:'DMSans_700Bold',marginTop:24},directionText:{color:C.muted,fontSize:11,marginTop:4},primary:{backgroundColor:C.accent,paddingHorizontal:20,paddingVertical:12,minHeight:48,alignItems:'center',justifyContent:'center',borderRadius:16,marginTop:20},primaryText:{color:C.onAccentInk,fontSize:11,fontFamily:'DMSans_700Bold'},tasbihAr:{color:C.ink,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:32,marginTop:16,writingDirection:'rtl'},counter:{width:205,height:205,borderRadius:103,backgroundColor:C.accent,alignItems:'center',justifyContent:'center',borderWidth:12,borderColor:C.line,marginVertical:32,...shadow},counterNo:{color:C.onAccent,fontSize:58,fontFamily:'DMSans_700Bold'},counterGoal:{color:C.onAccent,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.3},secondary:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:8,minHeight:44,backgroundColor:C.white,paddingHorizontal:16,paddingVertical:12,borderRadius:16,borderWidth:1,borderColor:C.line,marginHorizontal:4},secondaryText:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold'},
  summaryScore:{backgroundColor:C.deep,borderRadius:24,padding:20,flexDirection:'row',justifyContent:'space-between',...shadow,borderTopColor:depth.edge},summaryDay:{minHeight:66,flexDirection:'row',alignItems:'center',gap:12,paddingHorizontal:16,borderBottomWidth:1,borderColor:C.line},summaryDots:{flexDirection:'row',gap:4},summaryDot:{width:8,height:8,borderRadius:4,backgroundColor:C.mint},summaryDotDone:{backgroundColor:C.green},cityGrid:{flexDirection:'row',flexWrap:'wrap',gap:8},cityCard:{width:'48.5%',minHeight:76,backgroundColor:C.card,borderRadius:16,padding:12,borderWidth:1,borderColor:C.line,...surface},cityCardActive:{backgroundColor:C.mint,borderColor:C.line},cityName:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:12},formCard:{backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},
   rsEyebrow:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.2,marginBottom:10},

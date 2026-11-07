@@ -74,16 +74,28 @@ export type WorshipSettings = {
    */
   celebrateEid?: boolean;
   /**
-   * Something quiet drifting across the Home screen: snow in winter,
-   * petals in spring, rising light in summer, leaves in autumn, and warm
-   * light through Ramadan. Nothing during Muharram.
+   * A little warm light settling across the Home screen through Ramadan.
    *
    * On by default and deliberately faint — a handful of pieces, slow
-   * enough to read as weather rather than as activity. This one is the
+   * enough to read as stillness rather than as activity. This one is the
    * most likely of anything here to divide people, so it has a switch,
    * and it stops entirely for anyone who has asked for reduced motion.
    */
   ambientEffects?: boolean;
+  /**
+   * Glass: cards and the floating menu let the page show through them
+   * instead of sitting on it as solid panels.
+   *
+   * On by default, because it is the look of the app. Off is a real and
+   * equal second choice rather than a degraded one — with this false the
+   * app goes back to flat, opaque cards everywhere, including the places
+   * that use a true blur, so nothing is left half-glassed.
+   *
+   * This one is worth a switch because translucency is the sort of thing
+   * people either never notice or notice every single day, and because it
+   * costs more to draw than a flat fill.
+   */
+  glassEffects?: boolean;
   /**
    * Which Eid has already been greeted, so the burst happens once rather
    * than on every visit to Home. Named after the Eid and not the day, so
@@ -131,6 +143,7 @@ export const DEFAULT_WORSHIP_SETTINGS: WorshipSettings = {
   dayTools: DEFAULT_DAY_TOOLS,
   celebrateEid: true,
   ambientEffects: true,
+  glassEffects: true,
 };
 
 const KEYS = {
