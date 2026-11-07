@@ -499,7 +499,7 @@ export const GLASS = {
         Kept light: expo-blur's own tint is already doing most of the
         frosting, and a tab bar has to keep five labels readable over
         whatever happens to be behind it. */
-    wash:      alpha(BRAND.pearl, 0.20),
+    wash:      alpha(BRAND.pearl, 0.12),
     /** Specular sheen across the top edge, fading out by the middle. */
     sheen:     [alpha(WHITE, 0.50), alpha(WHITE, 0)] as [string, string],
     /** The hairline: bright where the light falls, dim underneath. */
@@ -511,7 +511,7 @@ export const GLASS = {
     pillRim:   alpha(WHITE, 0.90),
   },
   dark: {
-    wash:      alpha(BRAND.midnightInk, 0.16),
+    wash:      alpha(BRAND.midnightInk, 0.10),
     sheen:     [alpha(WHITE, 0.13), alpha(WHITE, 0)] as [string, string],
     rimTop:    alpha(BRAND.pearl, 0.34),
     rimSide:   alpha(BRAND.pearl, 0.14),
@@ -541,27 +541,7 @@ export const GLASS = {
  * end the glass stops being glass and becomes a panel.
  */
 export const GLASS_INTENSITY = {
-  /** The floating menu: five labels that have to stay readable. */
-  bar:  { light: 46, dark: 42 },
-  /** A card. It sits on the flat page rather than over scrolling content,
-      so it can be a touch more open than the bar for the same legibility. */
-  card: { light: 72, dark: 66 },
+  /** The floating menu: five labels that have to stay readable. It is the
+      only glass surface in the app, so this is the whole dial. */
+  bar: { light: 54, dark: 50 },
 } as const;
-
-/**
- * How much of the page shows through an ordinary card, when glass is on.
- *
- * This is what carries glass across the whole app, and it works from one
- * place because of a fact about the codebase rather than a clever trick:
- * every card in it paints `C.card` or `C.white`, and nothing anywhere uses
- * either key as a foreground colour. So making those two translucent turns
- * every card translucent at once, with no risk to text.
- *
- * It is an alpha and not a blur, and that is a deliberate choice. Cards sit
- * on the flat page, where a blur has nothing to work on — blurring a flat
- * colour returns that colour — so a real blur there would cost a
- * UIVisualEffectView per card on iOS and buy nothing visible. What makes a
- * card read as glass on a flat ground is the edge: this, plus the brightened
- * rim, plus the shadow it already had.
- */
-export const GLASS_FILL = { light: 0.66, dark: 0.62 } as const;
