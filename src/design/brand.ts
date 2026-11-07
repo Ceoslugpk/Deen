@@ -499,7 +499,7 @@ export const GLASS = {
         Kept light: expo-blur's own tint is already doing most of the
         frosting, and a tab bar has to keep five labels readable over
         whatever happens to be behind it. */
-    wash:      alpha(BRAND.pearl, 0.20),
+    wash:      alpha(BRAND.pearl, 0.12),
     /** Specular sheen across the top edge, fading out by the middle. */
     sheen:     [alpha(WHITE, 0.50), alpha(WHITE, 0)] as [string, string],
     /** The hairline: bright where the light falls, dim underneath. */
@@ -511,7 +511,7 @@ export const GLASS = {
     pillRim:   alpha(WHITE, 0.90),
   },
   dark: {
-    wash:      alpha(BRAND.midnightInk, 0.18),
+    wash:      alpha(BRAND.midnightInk, 0.10),
     sheen:     [alpha(WHITE, 0.13), alpha(WHITE, 0)] as [string, string],
     rimTop:    alpha(BRAND.pearl, 0.34),
     rimSide:   alpha(BRAND.pearl, 0.14),
@@ -524,8 +524,26 @@ export const GLASS = {
 /**
  * How hard the blur works, 1 to 100.
  *
+ * This is the one knob that moves both platforms, and it moves them for the
+ * same reason. On iOS it is the fraction of the whole effect that is
+ * applied — blur and the material's own tint together — so a lower number
+ * is a more open material, not just a softer blur. On the web it drives the
+ * blur radius and the tint alpha off the same value. Turning it down is
+ * therefore the only way to make the glass more transparent, and turning it
+ * up is the only way to make it blurrier; the two cannot be set apart.
+ *
  * Not the same number in both themes on purpose. A dark material reads as
  * heavier than a light one at the same intensity, because there is less
  * light coming back through it, so dark asks for a little less.
+ *
+ * These sit close to expo-blur's own default of 50, which is the middle of
+ * the range and a fairly open material. Nothing here is near 100: at that
+ * end the glass stops being glass and becomes a panel.
  */
-export const GLASS_INTENSITY = { light: 72, dark: 66 } as const;
+export const GLASS_INTENSITY = {
+  /** The floating menu: five labels that have to stay readable. */
+  bar:  { light: 54, dark: 50 },
+  /** A card. It sits on the flat page rather than over scrolling content,
+      so it can be a touch more open than the bar for the same legibility. */
+  card: { light: 50, dark: 46 },
+} as const;
