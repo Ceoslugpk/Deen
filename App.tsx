@@ -1684,9 +1684,26 @@ function DepthCard({ children, onPress, style, cardStyle, bodyStyle, radius = RA
    happy with that. A caller whose children should be centred — rather than
    stretched to the width of whichever child happens to be widest — asks for
    it here. */
-function MotionPress({ children, onPress, onLongPress, style, contentStyle, testID, accessibilityLabel }: { children: React.ReactNode; onPress?: () => void; onLongPress?: () => void; style?: any; contentStyle?: any; testID?: string; accessibilityLabel?: string }) {
+/**
+ * A pressable surface that also arrives.
+ *
+ * Press depth was already here; the entrance is new. Passing `index` staggers
+ * a row or a grid, so a screen assembles itself from the top down instead of
+ * appearing all at once. Leaving it off gives the plain entrance, which is
+ * right for a card that is on its own.
+ *
+ * The stagger is capped inside `useEntrance`, so a list of forty arrives as a
+ * wave across the first few and then all together, rather than taking two
+ * seconds to finish crossing the screen.
+ */
+function MotionPress({ children, onPress, onLongPress, style, contentStyle, testID, accessibilityLabel, index, delay = 0 }: { children: React.ReactNode; onPress?: () => void; onLongPress?: () => void; style?: any; contentStyle?: any; testID?: string; accessibilityLabel?: string; index?: number; delay?: number }) {
   const press = usePressDepth();
-  return <Animated.View style={[style, { transform: [{ scale: press.scale }] }]}><Pressable testID={testID} accessibilityLabel={accessibilityLabel} accessibilityRole={accessibilityLabel?'button':undefined} onPress={onPress} onLongPress={onLongPress} onPressIn={press.onPressIn} onPressOut={press.onPressOut} style={contentStyle}>{children}</Pressable></Animated.View>;
+  const enter = useEntrance(index ?? 0, delay);
+  /* Opt in by passing `index`. A card in a grid wants to arrive; a button
+     that stays put while you page through onboarding does not, and animating
+     it would mean it re-arrived on every step. */
+  const reveal = index === undefined ? null : { opacity: enter.opacity, transform: [{ scale: press.scale }, { translateY: enter.translateY }] };
+  return <Animated.View style={[style, reveal ?? { transform: [{ scale: press.scale }] }]}><Pressable testID={testID} accessibilityLabel={accessibilityLabel} accessibilityRole={accessibilityLabel?'button':undefined} onPress={onPress} onLongPress={onLongPress} onPressIn={press.onPressIn} onPressOut={press.onPressOut} style={contentStyle}>{children}</Pressable></Animated.View>;
 }
 
 /**
@@ -2593,7 +2610,7 @@ const onRefresh=async()=>{setRefreshing(true);await Promise.all([data.load(),hyd
     </>}
     <Section title={T('For your day')} action={T('Edit')} onPress={()=>{setDayToolSlot(null);setDayToolOpen(true)}} />
     <View style={s.roundRow}>{dayTools.map((tool,index)=>(
-      <MotionPress key={tool.id}
+      <MotionPress key={tool.id} index={index}
         accessibilityLabel={tool.id==='quick-tasbih'?`${T('Quick Tasbih')} ${todayTotal(tasbih)}. ${T('Tap to count')}`:T(tool.label)}
         onPress={()=>{ if(tool.id==='quick-tasbih'){ void addQuick(); return; } tool.open?.(nav); }}
         onLongPress={()=>{setDayToolSlot(index);setDayToolOpen(true)}}
@@ -3130,7 +3147,7 @@ function ToolsHomeScreen({ navigation }: any) {
       {TOOL_GROUPS.filter((group) => group.when !== 'womens' || womens.optedIn).map((group) => <View key={group.label}>
         <Text style={s.libraryKicker}>{T(group.label)}</Text>
         <Text style={s.libraryHeading}>{T(group.title)}</Text>
-        <View style={s.exploreGrid}>{shown(group).map((item) => <MotionPress key={item.title} onPress={() => navigation.navigate(item.route, item.params)} style={s.exploreCard}>
+        <View style={s.exploreGrid}>{shown(group).map((item, i) => <MotionPress key={item.title} index={i} onPress={() => navigation.navigate(item.route, item.params)} style={s.exploreCard}>
           <View style={s.exploreCardInner}>
             <ToolGraphic tool={item.title} size={72} />
             <Text style={s.exploreTitle}>{T(item.title)}</Text>
@@ -3513,9 +3530,9 @@ const compactStats=[{label:'Bookmarks',title:T('Bookmarks'),value:String(bookmar
  {position&&<Pressable onPress={()=>{const chapter=chapters.find(c=>c.id===position.surahId);if(chapter)open(chapter,'both',position.verseKey)}} style={s.continueBar}><ToolGraphic tool="Quran Arabic" size={54}/><View style={{flex:1}}><Text style={s.dailyKicker}>{T('CONTINUE READING')}</Text><Text style={s.settingName}>{position.surahName} · {position.verseKey}</Text><Text style={s.meta}>{tf(language,'Page {p} · saved locally',{p:position.page || '—'})}</Text></View>{ico(rtl ? 'arrow-back' : 'arrow-forward',18,C.green)}</Pressable>}
  <View style={[s.quranHero,{height:qHeroH}]}><View style={StyleSheet.absoluteFill}><Image source={pickScene(SCENE_QURAN, resolved)} resizeMode="cover" style={s.heroBg}/></View><LinearGradient colors={isPal(resolved)?SCRIM.quranPalestine:SCRIM.quranIslamic} start={{x:0,y:.5}} end={{x:1,y:.5}} style={StyleSheet.absoluteFill}/><Text style={s.quranArabic}>الرَّحْمَٰن</Text><Text style={s.quranHeroTitle}>{T('Read. Listen. Reflect.')}</Text><Text style={s.quranHeroMeta}>{T(preferences.scriptName)} · {T(rtl ? preferences.translationLanguage : preferences.translationName)}</Text><View style={s.heroActions}><Tactile style={s.whiteButton} onPress={()=>open(featured)}><Text style={s.whiteButtonText}>{T('Start reading')}</Text>{ico('play',13,C.green)}</Tactile><Pressable style={s.ghostHeroButton} onPress={()=>navigation.navigate('Quran Audio')}><Text style={s.ghostHeroText}>{T('Listen')}</Text>{ico('headset-outline',13,C.white)}</Pressable></View></View>
  <Section title={T('Explore')}/>
- <View style={s.qTileGrid} onLayout={e=>setGridW(e.nativeEvent.layout.width)}>{exploreTools.map(item=><MotionPress key={item.label} testID={`qtile-${item.label}`} onPress={()=>item.tab?navigation.navigate(item.tab,{screen:item.screen,params:item.params||{}}):navigation.navigate(item.screen,item.params||{})} style={[s.qTile,tileW?{width:tileW}:{flex:1,minWidth:60}]} contentStyle={s.qTileInner}><ToolGraphic tool={item.tool||item.label} size={40}/><Text numberOfLines={2} style={s.qTileLabel}>{item.title}</Text></MotionPress>)}</View>
+ <View style={s.qTileGrid} onLayout={e=>setGridW(e.nativeEvent.layout.width)}>{exploreTools.map((item,i)=><MotionPress key={item.label} index={i} testID={`qtile-${item.label}`} onPress={()=>item.tab?navigation.navigate(item.tab,{screen:item.screen,params:item.params||{}}):navigation.navigate(item.screen,item.params||{})} style={[s.qTile,tileW?{width:tileW}:{flex:1,minWidth:60}]} contentStyle={s.qTileInner}><ToolGraphic tool={item.tool||item.label} size={40}/><Text numberOfLines={2} style={s.qTileLabel}>{item.title}</Text></MotionPress>)}</View>
  <Section title={T('Your Quran')}/>
- <View style={s.qStatRow}>{compactStats.map(item=><MotionPress key={item.label} testID={`qstat-${item.label}`} onPress={()=>navigation.navigate(item.screen)} style={s.qStat}><View style={s.qStatIcon}>{item.tool?<Image source={toolImage(item.tool,dark,resolved)} resizeMode="contain" style={{width:24,height:24}}/>:ico(item.icon,17,C.green)}</View><Text style={s.qStatValue}>{item.value}</Text><Text numberOfLines={1} style={s.qStatLabel}>{item.title}</Text></MotionPress>)}</View>
+ <View style={s.qStatRow}>{compactStats.map((item,i)=><MotionPress key={item.label} index={i} testID={`qstat-${item.label}`} onPress={()=>navigation.navigate(item.screen)} style={s.qStat}><View style={s.qStatIcon}>{item.tool?<Image source={toolImage(item.tool,dark,resolved)} resizeMode="contain" style={{width:24,height:24}}/>:ico(item.icon,17,C.green)}</View><Text style={s.qStatValue}>{item.value}</Text><Text numberOfLines={1} style={s.qStatLabel}>{item.title}</Text></MotionPress>)}</View>
  <Section title={T('Reading preferences')}/>
  <View style={s.quranPreferenceRow}><Pressable onPress={()=>navigation.navigate('Reader Settings')} style={s.quranPreferenceCard}><ToolGraphic tool="Reader Settings" size={56}/><View style={{flex:1}}><Text style={s.settingName}>{T('Script & display')}</Text><Text numberOfLines={1} style={s.meta}>{T(preferences.scriptName)} · {T(QURAN_FONTS.find(font=>font.id===preferences.arabicFont)?.short || '')} · {preferences.fontSize}px</Text></View>{ico(rtl ? 'arrow-back' : 'arrow-forward',17,C.green)}</Pressable><Pressable onPress={()=>navigation.navigate('Translations')} style={s.quranPreferenceCard}><ToolGraphic tool="Translations" size={56}/><View style={{flex:1}}><Text style={s.settingName}>{T('Translation')}</Text><View style={s.metaRow}><Flag code={languageOf(preferences.translationEdition, preferences.translationLanguage)} size={12} /><Text numberOfLines={1} style={s.meta}>{T(rtl ? preferences.translationLanguage : preferences.translationName)}</Text></View></View>{ico(rtl ? 'arrow-back' : 'arrow-forward',17,C.green)}</Pressable></View>
  
@@ -5309,7 +5326,7 @@ function TafsirCompareScreen({route,navigation}:any){const {rtl,language}=useLan
       </View>}
     </ScrollView></Page>}
 
-function QuranTopicsScreen({navigation}:any){const[category,setCategory]=useState('All');const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);const[query,setQuery]=useState('');const shown=QURAN_TOPICS.filter(topic=>(category==='All'||topic.category===category)&&`${topic.title} ${topic.description} ${topic.titleAr} ${topic.descriptionAr}`.toLowerCase().includes(query.toLowerCase()));return <Page><ToolBar title={T('Quran topics')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><ToolGraphic tool="Quran Topics" size={83}/><Text style={s.dataTitle}>{T('Explore the Quran by theme')}</Text><Text style={s.intro}>{T('Curated references open the Arabic text alongside your selected translation.')}</Text><View style={s.search}>{ico('search-outline',18,C.muted)}<TextInput value={query} onChangeText={setQuery} placeholder={T('Search faith, family, patience…')} style={s.searchInput}/></View><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap: 8,marginVertical: 12}}>{['All','Faith','Life','Spirituality'].map(item=><ChoicePill key={item} label={T(item)} selected={category===item} onPress={()=>setCategory(item)}/>)}</ScrollView><View style={s.topicGrid}>{shown.map(topic=><MotionPress key={topic.id} onPress={()=>navigation.navigate('Topic Detail',{topic})} style={s.topicWrap}><View style={s.topicCard}><Text style={s.libraryKicker}>{topicCategory(topic,language)}</Text><Text style={s.exploreTitle}>{topicTitle(topic,language)}</Text><Text style={s.exploreBody}>{topicDescription(topic,language)}</Text><Text style={s.dataMeta}>{tf(language,'{n} VERSES',{n:topic.references.length})}</Text></View></MotionPress>)}</View></ScrollView></Page>}
+function QuranTopicsScreen({navigation}:any){const[category,setCategory]=useState('All');const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);const[query,setQuery]=useState('');const shown=QURAN_TOPICS.filter(topic=>(category==='All'||topic.category===category)&&`${topic.title} ${topic.description} ${topic.titleAr} ${topic.descriptionAr}`.toLowerCase().includes(query.toLowerCase()));return <Page><ToolBar title={T('Quran topics')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><ToolGraphic tool="Quran Topics" size={83}/><Text style={s.dataTitle}>{T('Explore the Quran by theme')}</Text><Text style={s.intro}>{T('Curated references open the Arabic text alongside your selected translation.')}</Text><View style={s.search}>{ico('search-outline',18,C.muted)}<TextInput value={query} onChangeText={setQuery} placeholder={T('Search faith, family, patience…')} style={s.searchInput}/></View><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap: 8,marginVertical: 12}}>{['All','Faith','Life','Spirituality'].map(item=><ChoicePill key={item} label={T(item)} selected={category===item} onPress={()=>setCategory(item)}/>)}</ScrollView><View style={s.topicGrid}>{shown.map((topic,i)=><MotionPress key={topic.id} index={i} onPress={()=>navigation.navigate('Topic Detail',{topic})} style={s.topicWrap}><View style={s.topicCard}><Text style={s.libraryKicker}>{topicCategory(topic,language)}</Text><Text style={s.exploreTitle}>{topicTitle(topic,language)}</Text><Text style={s.exploreBody}>{topicDescription(topic,language)}</Text><Text style={s.dataMeta}>{tf(language,'{n} VERSES',{n:topic.references.length})}</Text></View></MotionPress>)}</View></ScrollView></Page>}
 
 
 function TopicDetailScreen({route,navigation}:any){const topic=route.params.topic;const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);const{preferences}=useQuranPreferences();const[rows,setRows]=useState<any[]>([]);const[error,setError]=useState('');const load=()=>{setError('');return Promise.all(topic.references.map((ref:string)=>getAyahEditions(ref,[preferences.scriptEdition==='quran-indopak'?'quran-uthmani':preferences.scriptEdition,preferences.translationEdition]))).then(groups=>setRows(groups.map((items,i)=>({reference:topic.references[i],arabic:items[0],translation:items[1]})))).catch(e=>setError(T(e.message)))};useEffect(()=>{load()},[topic.id,preferences.scriptEdition,preferences.translationEdition]);return <Page><ToolBar title={topicTitle(topic,language)} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><Text style={s.libraryKicker}>{topicCategory(topic,language)}</Text><Text style={s.dataTitle}>{topicTitle(topic,language)}</Text><Text style={s.intro}>{topicDescription(topic,language)}</Text>{error?<ErrorState message={error} retry={load}/>:!rows.length?<SkeletonList rows={6} />:rows.map(row=><Tactile key={row.reference} onPress={()=>{const[surah]=row.reference.split(':').map(Number);navigation.navigate('Reader',{chapter:{id:surah,name_simple:row.arabic?.name||`Surah ${surah}`,name_arabic:'',verses_count:0},focusVerse:row.reference})}} style={s.dataCard}><Text style={s.dataMeta}>{T('QURAN')} {row.reference}</Text>{preferences.scriptEdition==='quran-tajweed'?<TajweedText text={row.arabic.text} style={s.dataArabic}/>:<Text style={s.dataArabic}>{row.arabic.text}</Text>}<Text style={s.dataBody}>{row.translation.text}</Text><Text style={s.meta}>{row.translation.name}</Text></Tactile>)}</ScrollView></Page>}
@@ -5986,7 +6003,7 @@ function ExploreHome({navigation}:any){
     if(kind&&!journeys.active[kind])startJourney(kind,journeyMeta(kind,language).title);
     navigation.navigate(item.route,item.params);
   };
-  return <Page><ScrollView keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}><AppHeader/><Text style={s.intro}>{T('Remembrance, trusted learning and step-by-step guidance—organized by purpose rather than hidden in a feature grid.')}</Text>{libraryGroups.map(group=><View key={group.label}><Text style={s.libraryKicker}>{T(group.label)}</Text><Text style={s.libraryHeading}>{T(group.title)}</Text><View style={s.exploreGrid}>{group.items.map((item)=>{return <MotionPress key={item.title} onPress={()=>open(item)} style={s.exploreCard}><View style={s.exploreCardInner}><ToolGraphic tool={item.title} size={72}/><Text style={s.exploreTitle}>{T(item.title)}</Text><Text style={s.exploreBody}>{T(item.caption)}</Text><View style={s.exploreArrow}>{ico(rtl ? 'arrow-back' : 'arrow-forward',15,C.green)}</View></View></MotionPress>})}</View></View>)}</ScrollView></Page>;}
+  return <Page><ScrollView keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}><AppHeader/><Text style={s.intro}>{T('Remembrance, trusted learning and step-by-step guidance—organized by purpose rather than hidden in a feature grid.')}</Text>{libraryGroups.map(group=><View key={group.label}><Text style={s.libraryKicker}>{T(group.label)}</Text><Text style={s.libraryHeading}>{T(group.title)}</Text><View style={s.exploreGrid}>{group.items.map((item,i)=>{return <MotionPress key={item.title} index={i} onPress={()=>open(item)} style={s.exploreCard}><View style={s.exploreCardInner}><ToolGraphic tool={item.title} size={72}/><Text style={s.exploreTitle}>{T(item.title)}</Text><Text style={s.exploreBody}>{T(item.caption)}</Text><View style={s.exploreArrow}>{ico(rtl ? 'arrow-back' : 'arrow-forward',15,C.green)}</View></View></MotionPress>})}</View></View>)}</ScrollView></Page>;}
 /* The back control every secondary screen wears. It goes through
    `goBackOrHome` rather than calling `goBack()` itself: a screen that passes
    no navigator — or one sitting at the bottom of its stack — used to leave
@@ -8234,7 +8251,7 @@ function GuideDirectory({route,navigation}:any){const {rtl,language}=useLanguage
      screen, beside the timetable they belong with, and having them in both
      places made two tiles that look like different features show the same
      six things. */
-  const guides=WORSHIP_GUIDES.filter((guide)=>!RAMADAN_GUIDE_IDS.includes(guide.id));return <Page><ToolBar title={T('Worship guides')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><ToolGraphic tool="Worship guides" size={87}/><Text style={s.dataTitle}>{T('Learn with references')}</Text><Text style={s.intro}>{T('Concise educational overviews with transparent Qur’an and Hadith references. Detailed rulings should be learned from a qualified local scholar.')}</Text><View style={s.guideGrid}>{guides.map(guide=>{const g=localizeGuide(guide,language);return <MotionPress key={guide.id} onPress={()=>navigation.navigate('Guide Detail',{guide})} style={s.guideCard}><View style={s.guideCardInner}><ToolGraphic tool={guide.id} size={69}/><Text style={s.exploreTitle}>{g.title}</Text><Text style={s.exploreBody}>{g.subtitle}</Text><View style={s.exploreArrow}>{ico(rtl ? 'arrow-back' : 'arrow-forward',15,C.green)}</View></View></MotionPress>})}</View></ScrollView></Page>}
+  const guides=WORSHIP_GUIDES.filter((guide)=>!RAMADAN_GUIDE_IDS.includes(guide.id));return <Page><ToolBar title={T('Worship guides')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><ToolGraphic tool="Worship guides" size={87}/><Text style={s.dataTitle}>{T('Learn with references')}</Text><Text style={s.intro}>{T('Concise educational overviews with transparent Qur’an and Hadith references. Detailed rulings should be learned from a qualified local scholar.')}</Text><View style={s.guideGrid}>{guides.map((guide,i)=>{const g=localizeGuide(guide,language);return <MotionPress key={guide.id} index={i} onPress={()=>navigation.navigate('Guide Detail',{guide})} style={s.guideCard}><View style={s.guideCardInner}><ToolGraphic tool={guide.id} size={69}/><Text style={s.exploreTitle}>{g.title}</Text><Text style={s.exploreBody}>{g.subtitle}</Text><View style={s.exploreArrow}>{ico(rtl ? 'arrow-back' : 'arrow-forward',15,C.green)}</View></View></MotionPress>})}</View></ScrollView></Page>}
 /**
  * The evidence for a guide, shown in full on the page rather than as a link
  * out. Both kinds are held on the device in guideSources, so a guide reads
@@ -8245,12 +8262,12 @@ function GuideReferences({ guide, navigation }: { guide: WorshipGuide; navigatio
   const { rtl , language }=useLanguage(); const T = (text: string) => tx(language, text);
   return (<>
     <Section title={T('References')} />
-    {guide.references.map((ref) => {
+    {guide.references.map((ref, i) => {
       if (ref.kind === 'hadith') {
         const h = GUIDE_HADITH[ref.ref];
         if (!h) return null;
         return (
-          <MotionPress key={ref.ref} onPress={() => navigation.navigate('Hadith Detail', { slug: h.collection, number: h.number })} style={s.evidenceCard}>
+          <MotionPress key={ref.ref} index={i} onPress={() => navigation.navigate('Hadith Detail', { slug: h.collection, number: h.number })} style={s.evidenceCard}>
             <Text style={s.evidenceLabel}>{h.label}</Text>
             <Text style={s.evidenceArabic}>{h.arabic}</Text>
             <Text style={s.evidenceBody}>{h.english}</Text>
@@ -8266,6 +8283,7 @@ function GuideReferences({ guide, navigation }: { guide: WorshipGuide; navigatio
       return (
         <MotionPress
           key={ref.ref}
+          index={i}
           onPress={() => navigation.navigate('Quran', { screen: 'Reader', params: {
             chapter: { id: v.surah, name_simple: v.name, name_arabic: v.nameArabic, verses_count: v.versesCount },
             focusVerse: `${v.surah}:${v.verses[0].n}`
@@ -8700,9 +8718,9 @@ function RamadanScreen({ navigation }: any) {
     {/* The guides live here rather than in the worship directory, so the
         six of them are not listed twice under two different names. */}
     <Section title={T('Guides')} action={String(RAMADAN_GUIDES.length)}/>
-    <View style={s.ramGuideGrid}>{RAMADAN_GUIDES.map((guide) => {
+    <View style={s.ramGuideGrid}>{RAMADAN_GUIDES.map((guide, i) => {
       const g = localizeGuide(guide, language);
-      return <MotionPress key={guide.id} onPress={() => navigation.navigate('Guide Detail', { guide })} style={s.ramGuideCard}>
+      return <MotionPress key={guide.id} index={i} onPress={() => navigation.navigate('Guide Detail', { guide })} style={s.ramGuideCard}>
         <View style={s.ramGuideIcon}><ToolGraphic tool={guide.id} size={44}/></View>
         <Text style={s.ramGuideTitle} numberOfLines={2}>{g.title}</Text>
         <Text style={s.ramGuideBody} numberOfLines={3}>{g.subtitle}</Text>
