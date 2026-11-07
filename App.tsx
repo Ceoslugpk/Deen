@@ -640,6 +640,12 @@ function applyPalette(theme: ResolvedTheme) {
     C.card = alpha(C.card, GLASS_FILL[dark ? 'dark' : 'light']);
     C.white = alpha(C.white, GLASS_FILL[dark ? 'dark' : 'light']);
   }
+  /* The fill for a card that carries its own GlassFill. Such a card has to
+     paint nothing, or the blur behind its material has nothing to look at —
+     see GlassFill. When glass is off these are simply the solid colours, so
+     a glass card and a plain card are the same card either way. */
+  C.cardGlass = glassOn ? 'transparent' : C.card;
+  C.whiteGlass = glassOn ? 'transparent' : C.white;
   shadow = { ...shadow, shadowColor: d.shadow, shadowOpacity: dark ? 0.5 : 0.11 };
   surface = { ...surface, borderTopColor: depth.edge, ...depth.ambient };
   soft = { ...soft, shadowColor: d.soft, shadowOpacity: dark ? 0.4 : 0.07 };
@@ -1718,7 +1724,7 @@ function DepthCard({ children, onPress, style, cardStyle, bodyStyle, radius = RA
   const press = usePressDepth();
   const enter = useEntrance(index, delay);
   return <Animated.View style={[style, { opacity: enter.opacity, transform: [{ translateY: enter.translateY }] }]}>
-    <Animated.View style={[s.depthCard, cardStyle, { borderRadius: radius, transform: [{ scale: press.scale }, { translateY: press.lift }] }]}>
+    <Animated.View style={[s.depthCard, cardStyle, { borderRadius: radius, transform: [{ scale: press.scale }, { translateY: press.lift }] }]}><GlassFill radius={20}/>
       {!!gradient && <LinearGradient colors={gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
         style={[s.depthGradient, { borderRadius: radius }]} />}
       <Pressable testID={testID} onPress={onPress} onPressIn={press.onPressIn} onPressOut={press.onPressOut}
@@ -1964,7 +1970,7 @@ function SkeletonScreen({ rows = 6 }: { rows?: number }) {
   );
 }
 
-function ErrorState({ message, retry }: { message: string; retry?: () => void }) { const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);return <View style={s.error}><View style={s.errorIcon}>{ico('cloud-offline-outline', 24, C.coral)}</View><Text style={s.errorTitle}>{T('Couldn’t load live data')}</Text><Text style={s.errorText}>{message}</Text>{retry && <Tactile onPress={retry} style={s.retry}><Text style={s.retryText}>{T('Try again')}</Text></Tactile>}</View>; }
+function ErrorState({ message, retry }: { message: string; retry?: () => void }) { const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);return <View style={s.error}><GlassFill radius={24}/><View style={s.errorIcon}>{ico('cloud-offline-outline', 24, C.coral)}</View><Text style={s.errorTitle}>{T('Couldn’t load live data')}</Text><Text style={s.errorText}>{message}</Text>{retry && <Tactile onPress={retry} style={s.retry}><Text style={s.retryText}>{T('Try again')}</Text></Tactile>}</View>; }
 function TopBar({ overline, title, right }: { overline?: string; title: string; right?: React.ReactNode }) { return <View style={s.topbar}><View><Text style={s.overline}>{overline}</Text><Text style={s.h1}>{title}</Text></View>{right}</View>; }
 /**
  * The header shared by the five tab roots: the mark, the name, and the two
@@ -2143,7 +2149,7 @@ if(asked)return <Pressable accessibilityRole="button" accessibilityLabel={T('Cho
     <Text style={s.locationBannerBody}>{T('Prayer times, Qibla and fasting times read from one place. Tap to choose a city or enter coordinates.')}</Text>
   </View>
   {ico(rtl ? 'arrow-back' : 'arrow-forward',17,C.muted)}
-</Pressable>;return <View style={[s.locationGate,width<370&&s.locationGateNarrow,compact&&{marginVertical: 12}]}><ToolGraphic tool="Location" size={60}/><View style={{flex:1,width:width<370?'100%':undefined}}><Text style={s.locationGateTitle}>{T('Choose your prayer location')}</Text><Text style={s.locationGateBody}>{T('Makkah is shown until you choose. Search for your city, or enter coordinates by hand.')}</Text><View style={[s.locationActions,width<370&&s.locationActionsNarrow]}><Tactile accessibilityLabel={T('Choose prayer location manually')} onPress={manual} style={s.primarySmall}><Text style={s.primaryText}>{T('Choose a city')}</Text></Tactile></View></View></View>}
+</Pressable>;return <View style={[s.locationGate,width<370&&s.locationGateNarrow,compact&&{marginVertical: 12}]}><GlassFill radius={24}/><ToolGraphic tool="Location" size={60}/><View style={{flex:1,width:width<370?'100%':undefined}}><Text style={s.locationGateTitle}>{T('Choose your prayer location')}</Text><Text style={s.locationGateBody}>{T('Makkah is shown until you choose. Search for your city, or enter coordinates by hand.')}</Text><View style={[s.locationActions,width<370&&s.locationActionsNarrow]}><Tactile accessibilityLabel={T('Choose prayer location manually')} onPress={manual} style={s.primarySmall}><Text style={s.primaryText}>{T('Choose a city')}</Text></Tactile></View></View></View>}
 
 type DailyContentCache={ayah:DailyAyah;hadith:DailyHadith;name:DivineName;dua:any};
 /**
@@ -2644,7 +2650,7 @@ const onRefresh=async()=>{setRefreshing(true);await Promise.all([data.load(),hyd
       </View>
     </>}
     <Section title={T('For your day')} action={T('Edit')} onPress={()=>{setDayToolSlot(null);setDayToolOpen(true)}} />
-    <View style={s.roundRow}>{dayTools.map((tool,index)=>(
+    <View style={s.roundRow}><GlassFill radius={24}/>{dayTools.map((tool,index)=>(
       <MotionPress key={tool.id}
         accessibilityLabel={tool.id==='quick-tasbih'?`${T('Quick Tasbih')} ${todayTotal(tasbih)}. ${T('Tap to count')}`:T(tool.label)}
         onPress={()=>{ if(tool.id==='quick-tasbih'){ void addQuick(); return; } tool.open?.(nav); }}
@@ -2717,7 +2723,7 @@ const onRefresh=async()=>{setRefreshing(true);await Promise.all([data.load(),hyd
       <Text style={s.readKicker}>{T(quranPosition ? 'CONTINUE READING' : 'FEATURED READING')}</Text><Text style={s.readArabic}>{quranPosition?'۝':'يس'}</Text><Text style={s.readTitle}>{quranPosition ? quranPosition.surahName : T('Surah Ya-Sin')}</Text><Text style={s.readMeta}>{quranPosition ? `${quranPosition.verseKey} · ${tx(language, 'Page')} ${quranPosition.page || '—'}` : (tx(language, '83 verses · Makkan'))}</Text><Tactile onPress={()=>nav.navigate('Quran',{screen:'Reader',params:{chapter:quranPosition?{id:quranPosition.surahId,name_simple:quranPosition.surahName,name_arabic:'',verses_count:0}:{id:36,name_simple:'Ya-Sin',name_arabic:'يس',verses_count:83},focusVerse:quranPosition?.verseKey},initial:false})} style={s.whiteButton}><Text style={s.whiteButtonText}>{T(quranPosition ? 'Continue' : 'Read now')}</Text>{ico(rtl ? 'arrow-back' : 'arrow-forward',14,C.green)}</Tactile>
     </DepthCard>
     <Section title={T('Hadith of the day')} />
-    <View style={[s.depthCard,s.hadithSurface,{borderRadius:RADIUS.xl}]}><Text style={s.quote}>“</Text><Text numberOfLines={6} style={s.hadithText}>{data.hadith ? (rtl && data.hadith.arabic ? stripTags(data.hadith.arabic) : data.hadith.text) : T('Loading today’s authenticated hadith…')}</Text><View style={s.hadithFoot}><Text style={s.meta}>{data.hadith ? `${hadithSourceLabel(rtl, data.hadith.collection)} · ${data.hadith.number}` : ''}</Text><View style={s.hadithActions}>{!!data.hadith&&<Pressable accessibilityRole="button" accessibilityLabel={T('Share as image card')} onPress={shareHadithAsImage} disabled={sharingHadith} hitSlop={10} style={{opacity:sharingHadith?.5:1}}>{ico('image-outline',18,C.muted)}</Pressable>}{!!data.hadith&&<Pressable accessibilityRole="button" accessibilityLabel={T('Report a correction in this hadith')} onPress={()=>{const h=data.hadith;if(h)setReportHadith({collection:h.collection,number:h.number,arabic:h.arabic,text:h.text})}} hitSlop={10}>{ico('flag-outline',18,C.muted)}</Pressable>}</View></View></View>
+    <View style={[s.depthCard,s.hadithSurface,{borderRadius:RADIUS.xl}]}><GlassFill radius={20}/><Text style={s.quote}>“</Text><Text numberOfLines={6} style={s.hadithText}>{data.hadith ? (rtl && data.hadith.arabic ? stripTags(data.hadith.arabic) : data.hadith.text) : T('Loading today’s authenticated hadith…')}</Text><View style={s.hadithFoot}><Text style={s.meta}>{data.hadith ? `${hadithSourceLabel(rtl, data.hadith.collection)} · ${data.hadith.number}` : ''}</Text><View style={s.hadithActions}>{!!data.hadith&&<Pressable accessibilityRole="button" accessibilityLabel={T('Share as image card')} onPress={shareHadithAsImage} disabled={sharingHadith} hitSlop={10} style={{opacity:sharingHadith?.5:1}}>{ico('image-outline',18,C.muted)}</Pressable>}{!!data.hadith&&<Pressable accessibilityRole="button" accessibilityLabel={T('Report a correction in this hadith')} onPress={()=>{const h=data.hadith;if(h)setReportHadith({collection:h.collection,number:h.number,arabic:h.arabic,text:h.text})}} hitSlop={10}>{ico('flag-outline',18,C.muted)}</Pressable>}</View></View></View>
   </Animated.ScrollView>
   {/* Outside the scroller, so it stays put while the page moves under it.
       Only Home mounts it: `scrollY` here is Home's own offset. */}
@@ -3488,14 +3494,14 @@ function PrayerScreen({navigation}:any) {
   const listedPrayers:Prayer[]=(dayIndex===0?snap?.prayers:(chosenDay?.prayers||snap?.prayers))||[];
   const listingToday=dayIndex===0;
   return <Page><ScrollView keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}><AppHeader/><View style={s.prayerHeader}><View><Text style={s.prayerOverline}>{cached?T('SAVED ON DEVICE'):T('TODAY')}</Text><Text style={s.prayerTitle}>{T('Prayer times')}</Text></View><ToolGraphic tool="Qibla" size={52}/></View>
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.dayStripScroll}><View style={s.dayStrip}>{days.map((d,i)=><Pressable key={i} accessibilityRole="button" accessibilityState={{selected:i===dayIndex}} accessibilityLabel={`${d.toLocaleDateString(rtl?'ar-u-nu-latn':'en',{weekday:'long'})} ${d.getDate()}`} onPress={()=>setDayIndex(i)} style={[s.day,i===dayIndex&&s.dayActive]}><Text style={[s.dayName,i===dayIndex&&s.dayText]}>{d.toLocaleDateString(rtl?'ar-u-nu-latn':'en',{weekday:'short'})}</Text><Text style={[s.dayNum,i===dayIndex&&s.dayText]}>{d.getDate()}</Text>{!calendar.length&&i>0&&<View style={s.dayDot}/>}</Pressable>)}</View></ScrollView>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.dayStripScroll}><View style={s.dayStrip}><GlassFill radius={24}/>{days.map((d,i)=><Pressable key={i} accessibilityRole="button" accessibilityState={{selected:i===dayIndex}} accessibilityLabel={`${d.toLocaleDateString(rtl?'ar-u-nu-latn':'en',{weekday:'long'})} ${d.getDate()}`} onPress={()=>setDayIndex(i)} style={[s.day,i===dayIndex&&s.dayActive]}><Text style={[s.dayName,i===dayIndex&&s.dayText]}>{d.toLocaleDateString(rtl?'ar-u-nu-latn':'en',{weekday:'short'})}</Text><Text style={[s.dayNum,i===dayIndex&&s.dayText]}>{d.getDate()}</Text>{!calendar.length&&i>0&&<View style={s.dayDot}/>}</Pressable>)}</View></ScrollView>
     {!!chosenDay && dayIndex>0 && <Text style={s.dayChosen}>{ar?`${chosenDay.hijriDay} ${chosenDay.hijriMonthAr||chosenDay.hijriMonth} ${chosenDay.hijriYear} هـ`:tf(language,'{w} {g} · {d} {m} {y} AH',{w:chosenDay.weekday,g:chosenDay.gregorian,d:chosenDay.hijriDay,m:chosenDay.hijriMonth,y:chosenDay.hijriYear})}</Text>}
     {!location?<LocationPrompt compact/>:error?<ErrorState message={error} retry={load}/>:!snap?<SkeletonScreen rows={6} />:<><View style={[s.nextCard,{height:nextH}]}><Animated.View style={[StyleSheet.absoluteFill,{transform:[{scale:prayerZoom}]}]}><Image source={pickScene(SCENE_PRAYER, resolved)} resizeMode="cover" style={s.heroBg}/></Animated.View>{/* A scrim rather than a flat fill: the artwork shows through on the right and settles to near-solid behind the text on the left. */}<LinearGradient colors={isPal(resolved)?SCRIM.prayerPalestine:SCRIM.prayerIslamic} start={{x:0,y:.5}} end={{x:1,y:.5}} style={StyleSheet.absoluteFill}/><HeroAura still={still} palestine={isPal(resolved)} /><Animated.View pointerEvents="none" style={[s.heroSheen,{transform:[{translateX:Animated.multiply(prayerSheen,prayerW)},{skewX:'-16deg'}]}]}><LinearGradient colors={['rgba(255,255,255,0)','rgba(255,255,255,.16)','rgba(255,255,255,0)']} start={{x:0,y:0}} end={{x:1,y:0}} style={StyleSheet.absoluteFill}/></Animated.View><View style={s.nextCardBody}>{!!cached && <LiveBadge source="SAVED ON DEVICE"/>}<Text style={s.nextCardLabel}>{T('NEXT PRAYER')}</Text><Text style={s.nextCardName}>{next ? prayerName(language, next.name) : ''}</Text><Text style={s.nextCardTime}>{clockTime(language, next?.time || '')}</Text><View style={s.countPill}><Text style={s.countText}>{T('Begins in')} {next ? <PrayerCountdown raw={next.raw}/> : ''}</Text></View></View></View>
-      <View style={s.prayerProgress}><View style={{flex:1}}><Text style={s.sourceTitle}>{T('Today’s Salah')}</Text><Text style={s.sourceBody}>{tf(language,'{d} of 5 prayers marked complete',{d:done})}</Text></View><View style={s.progressTrack}><View style={[s.progressFill,{width:`${done*20}%`} as any]}/></View><Text style={s.progressCount}>{done}/5</Text></View>
+      <View style={s.prayerProgress}><GlassFill radius={20}/><View style={{flex:1}}><Text style={s.sourceTitle}>{T('Today’s Salah')}</Text><Text style={s.sourceBody}>{tf(language,'{d} of 5 prayers marked complete',{d:done})}</Text></View><View style={s.progressTrack}><View style={[s.progressFill,{width:`${done*20}%`} as any]}/></View><Text style={s.progressCount}>{done}/5</Text></View>
       <Section title={T('Your consistency')}/>
       <PrayerConsistency history={history} T={T}/>
       <Section title={T('Today’s schedule')}/>
-      <View style={s.prayerList}>{listedPrayers.map((p,i)=>{const checked=listingToday&&completed.includes(p.name);return <Pressable accessibilityRole={!listingToday||p.name==='Sunrise'?undefined:'checkbox'} accessibilityState={!listingToday||p.name==='Sunrise'?undefined:{checked}} onPress={()=>listingToday&&togglePrayer(p.name)} key={p.name} style={[s.prayerRow,p.name===next?.name&&s.prayerRowLive]}><View style={[s.prayerSymbol,checked&&s.prayerSymbolDone]}>{checked ? ico('checkmark',21,C.white) : <Image source={prayerIconFor(p.name, resolved)} resizeMode="contain" style={{width:32,height:32}}/>}</View><View style={{flex:1}}><Text style={s.prayerName}>{prayerName(language, p.name)}</Text><Text style={s.meta}>{T(p.name==='Sunrise'?'Solar event':checked?'Completed':!listingToday?'':p.name===next?.name?'Up next':'Tap to mark complete')}</Text></View><Text style={s.prayerValue}>{clockTime(language, p.time)}</Text>{p.name!=='Sunrise'&&ico(checked?'checkmark-circle':'ellipse-outline',18,checked?C.green:C.muted)}</Pressable>})}</View>
+      <View style={s.prayerList}><GlassFill radius={24}/>{listedPrayers.map((p,i)=>{const checked=listingToday&&completed.includes(p.name);return <Pressable accessibilityRole={!listingToday||p.name==='Sunrise'?undefined:'checkbox'} accessibilityState={!listingToday||p.name==='Sunrise'?undefined:{checked}} onPress={()=>listingToday&&togglePrayer(p.name)} key={p.name} style={[s.prayerRow,p.name===next?.name&&s.prayerRowLive]}><View style={[s.prayerSymbol,checked&&s.prayerSymbolDone]}>{checked ? ico('checkmark',21,C.white) : <Image source={prayerIconFor(p.name, resolved)} resizeMode="contain" style={{width:32,height:32}}/>}</View><View style={{flex:1}}><Text style={s.prayerName}>{prayerName(language, p.name)}</Text><Text style={s.meta}>{T(p.name==='Sunrise'?'Solar event':checked?'Completed':!listingToday?'':p.name===next?.name?'Up next':'Tap to mark complete')}</Text></View><Text style={s.prayerValue}>{clockTime(language, p.time)}</Text>{p.name!=='Sunrise'&&ico(checked?'checkmark-circle':'ellipse-outline',18,checked?C.green:C.muted)}</Pressable>})}</View>
           </>}
   </ScrollView></Page>;
 }
@@ -4406,7 +4412,7 @@ function MushafVerseMenu({
     { key: 'note', icon: 'create-outline', label: T('Note'), active: false, onPress: onNote },
   ];
   return <View style={s.mushafMenu}>
-    <View style={[s.mushafMenuBar, { flexDirection: 'row' }]}>
+    <View style={[s.mushafMenuBar, { flexDirection: 'row' }]}><GlassFill radius={18}/>
       {items.map((item) => (
         <Pressable key={item.key} accessibilityRole="button"
           accessibilityLabel={`${item.label} - ${T('verse actions')}`}
@@ -4971,8 +4977,8 @@ function TranslationScreen({navigation}:any){const{preferences,update}=useQuranP
 
 function QuranSearchScreen({route,navigation}:any){const{preferences}=useQuranPreferences();const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);const[query,setQuery]=useState(route.params?.initialQuery||'');const[results,setResults]=useState<QuranSearchResult[]>([]);const[history,setHistory]=useState<string[]>([]);const[error,setError]=useState('');const[loading,setLoading]=useState(false);useEffect(()=>{loadSearchHistory().then(setHistory);if(route.params?.initialQuery)run(route.params.initialQuery)},[]);const run=async(value=query)=>{const q=value.trim();if(q.length<2)return;setLoading(true);setError('');try{const edition=/[\u0600-\u06ff]/.test(q)?preferences.scriptEdition:preferences.translationEdition;setResults((await searchQuran(q,edition)).slice(0,100));setHistory(await addSearchHistory(q))}catch(e:any){setError(T(e.message))}finally{setLoading(false)}};const open=(r:QuranSearchResult)=>navigation.navigate('Reader',{chapter:{id:r.surahId,name_simple:r.surahName,name_arabic:'',verses_count:0},focusVerse:r.verseKey});return <Page><ToolBar title={T('Quran search')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage} keyboardShouldPersistTaps="handled"><ToolGraphic tool="Quran Search" size={81}/><Text style={s.dataTitle}>{T('Search Arabic or translation')}</Text><View style={s.search}>{ico('search-outline',19,C.muted)}<TextInput autoFocus value={query} onChangeText={setQuery} onSubmitEditing={()=>run()} returnKeyType="search" style={s.searchInput} placeholder={T('Mercy, الصبر, or 2:255')}/><Pressable onPress={()=>run()}>{ico('arrow-forward-circle',22,C.green)}</Pressable></View>{history.length>0&&<><View style={s.historyHead}><Text style={s.preferenceLabel}>{T('RECENT SEARCHES')}</Text><Pressable onPress={async()=>{await clearSearchHistory();setHistory([])}}><Text style={s.sectionAction}>{T('Clear')}</Text></Pressable></View><View style={s.historyWrap}>{history.map(item=><Pressable key={item} onPress={()=>{setQuery(item);run(item)}} onLongPress={async()=>setHistory(await removeSearchHistory(item))} style={s.historyChip}><Text style={s.meta}>{item}</Text></Pressable>)}</View></>}{error?<ErrorState message={error} retry={()=>run()}/>:loading?<SkeletonList rows={6} />:<View>{results.map(r=><Pressable key={`${r.verseKey}-${r.edition}`} onPress={()=>open(r)} style={s.searchResult}><Text style={s.dataMeta}>{r.surahName} · {r.verseKey}</Text><Text numberOfLines={4} style={/[\u0600-\u06ff]/.test(r.text)?s.dataArabic:s.dataBody}>{r.text}</Text><Text style={s.meta}>{r.edition}</Text></Pressable>)}</View>}</ScrollView></Page>}
 
-function BookmarkScreen({navigation}:any){const[items,setItems]=useState<QuranBookmark[]>([]);const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);useEffect(()=>{const unsub=navigation.addListener('focus',()=>loadBookmarks().then(setItems));loadBookmarks().then(setItems);return unsub},[navigation]);const[chapters,setChapters]=useState<Chapter[]>([]);useEffect(()=>{getChapters().then(setChapters)},[]);const openBookmark=(item:QuranBookmark)=>{const full=chapters.find(c=>c.id===item.surahId);navigation.navigate('Reader',{chapter:full||{id:item.surahId,name_simple:item.surahName,name_arabic:'',verses_count:0},focusVerse:item.verseKey})};return <Page><ToolBar title={T('Bookmarks')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><ToolGraphic tool="Bookmarks" size={81}/><Text style={s.dataTitle}>{tf(language,'{n} saved verses',{n:items.length})}</Text>{!items.length?<View style={s.empty}><Text style={s.errorTitle}>{T('No bookmarks yet')}</Text><Text style={s.errorText}>{T('Use the bookmark action beside any verse.')}</Text></View>:items.map(item=><View key={item.verseKey} style={s.dataCard}><Pressable onPress={()=>openBookmark(item)} style={s.bookmarkMain}><Text style={s.dataMeta}>{item.surahName} · {item.verseKey}</Text><Text numberOfLines={3} style={s.dataArabic}>{item.arabic}</Text><Text numberOfLines={3} style={s.dataBody}>{item.translation}</Text></Pressable><Pressable accessibilityLabel={`${T('Remove bookmark')} ${item.verseKey}`} onPress={async()=>setItems(await toggleBookmark(item))} style={s.bookmarkRemove}>{ico('trash-outline',18,C.muted)}</Pressable></View>)}</ScrollView></Page>}
-function NotesScreen({navigation}:any){const[items,setItems]=useState<QuranNote[]>([]);const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);useEffect(()=>{const unsub=navigation.addListener('focus',()=>loadNotes().then(setItems));loadNotes().then(setItems);return unsub},[navigation]);return <Page><ToolBar title={T('Quran notes')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><ToolGraphic tool="Notes" size={81}/><Text style={s.dataTitle}>{tf(language,'{n} private notes',{n:items.length})}</Text><Text style={s.intro}>{T('Notes remain on this device and are never added to diagnostics.')}</Text>{!items.length?<View style={s.empty}><Text style={s.errorTitle}>{T('No notes yet')}</Text><Text style={s.errorText}>{T('Open verse actions to add a reflection.')}</Text></View>:items.map(item=><Tactile key={item.verseKey} onPress={()=>navigation.navigate('Note Editor',{verse:item,chapter:{id:item.surahId,name_simple:item.surahName}})} style={s.dataCard}><Text style={s.dataMeta}>{item.surahName} · {item.verseKey}</Text><Text style={s.noteText}>{item.note}</Text><Text style={s.meta}>{new Date(item.updatedAt).toLocaleDateString()}</Text></Tactile>)}</ScrollView></Page>}
+function BookmarkScreen({navigation}:any){const[items,setItems]=useState<QuranBookmark[]>([]);const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);useEffect(()=>{const unsub=navigation.addListener('focus',()=>loadBookmarks().then(setItems));loadBookmarks().then(setItems);return unsub},[navigation]);const[chapters,setChapters]=useState<Chapter[]>([]);useEffect(()=>{getChapters().then(setChapters)},[]);const openBookmark=(item:QuranBookmark)=>{const full=chapters.find(c=>c.id===item.surahId);navigation.navigate('Reader',{chapter:full||{id:item.surahId,name_simple:item.surahName,name_arabic:'',verses_count:0},focusVerse:item.verseKey})};return <Page><ToolBar title={T('Bookmarks')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><ToolGraphic tool="Bookmarks" size={81}/><Text style={s.dataTitle}>{tf(language,'{n} saved verses',{n:items.length})}</Text>{!items.length?<View style={s.empty}><GlassFill radius={24}/><Text style={s.errorTitle}>{T('No bookmarks yet')}</Text><Text style={s.errorText}>{T('Use the bookmark action beside any verse.')}</Text></View>:items.map(item=><View key={item.verseKey} style={s.dataCard}><GlassFill radius={20}/><Pressable onPress={()=>openBookmark(item)} style={s.bookmarkMain}><Text style={s.dataMeta}>{item.surahName} · {item.verseKey}</Text><Text numberOfLines={3} style={s.dataArabic}>{item.arabic}</Text><Text numberOfLines={3} style={s.dataBody}>{item.translation}</Text></Pressable><Pressable accessibilityLabel={`${T('Remove bookmark')} ${item.verseKey}`} onPress={async()=>setItems(await toggleBookmark(item))} style={s.bookmarkRemove}>{ico('trash-outline',18,C.muted)}</Pressable></View>)}</ScrollView></Page>}
+function NotesScreen({navigation}:any){const[items,setItems]=useState<QuranNote[]>([]);const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);useEffect(()=>{const unsub=navigation.addListener('focus',()=>loadNotes().then(setItems));loadNotes().then(setItems);return unsub},[navigation]);return <Page><ToolBar title={T('Quran notes')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><ToolGraphic tool="Notes" size={81}/><Text style={s.dataTitle}>{tf(language,'{n} private notes',{n:items.length})}</Text><Text style={s.intro}>{T('Notes remain on this device and are never added to diagnostics.')}</Text>{!items.length?<View style={s.empty}><GlassFill radius={24}/><Text style={s.errorTitle}>{T('No notes yet')}</Text><Text style={s.errorText}>{T('Open verse actions to add a reflection.')}</Text></View>:items.map(item=><Tactile key={item.verseKey} onPress={()=>navigation.navigate('Note Editor',{verse:item,chapter:{id:item.surahId,name_simple:item.surahName}})} style={s.dataCard}><GlassFill radius={20}/><Text style={s.dataMeta}>{item.surahName} · {item.verseKey}</Text><Text style={s.noteText}>{item.note}</Text><Text style={s.meta}>{new Date(item.updatedAt).toLocaleDateString()}</Text></Tactile>)}</ScrollView></Page>}
 /**
  * Three screens read their payload straight off `route.params`. In normal use
  * they are always opened with one, but a deep link, a restored stack or a
@@ -5102,14 +5108,14 @@ function ReaderSettingsScreen({navigation}:any){
 
         <ScrollView overScrollMode={SCROLL.overScrollMode} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{paddingBottom:12}}>
           <Text style={s.rsEyebrow}>{T('HOW IT WILL READ')}</Text>
-          <View style={s.rsPreview}>
+          <View style={s.rsPreview}><GlassFill radius={24}/>
             <Text style={[s.rsPreviewArabic,{fontFamily:quranFont(preferences.arabicFont),fontSize:previewSize,lineHeight:Math.round(previewSize*preferences.lineHeight)}]}>بِسْمِ ٱللَّٰهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ</Text>
             {!!preferences.showTranslation && <Text style={[s.rsPreviewMeaning,{fontSize:Math.min(preferences.translationFontSize,20)}]}>{T('In the name of Allah, the Most Gracious, the Most Merciful.')}</Text>}
             {!!preferences.showTransliteration && <Text style={[s.rsPreviewTranslit,{fontSize:Math.min(preferences.translationFontSize,18)}]}>bismi llāhi r-raḥmāni r-raḥīm</Text>}
             <View style={s.rsPreviewFoot}><Text style={s.rsPreviewMeta}>{T(preferences.scriptName)}</Text><Text style={s.rsPreviewMeta}>{preferences.fontSize}px · {preferences.lineHeight.toFixed(1)}×</Text></View>
           </View>
 
-          <View style={s.rsGroup}>
+          <View style={s.rsGroup}><GlassFill radius={24}/>
             <Text style={s.rsGroupTitle}>{T('ARABIC SCRIPT')}</Text>
             <View style={s.choiceGrid}>{scripts.map(([id,name])=><ChoicePill key={id} label={T(name)} selected={preferences.scriptEdition===id} onPress={()=>update({scriptEdition:id,scriptName:name})}/>)}</View>
             <Text style={[s.meta,{marginTop: 8}]}>{T('Mushaf page lays the Quran out as printed pages, fifteen lines to a page, with no translation or verse numbers. Choose it here and the reader becomes a mushaf.')}</Text>
@@ -5119,7 +5125,7 @@ function ReaderSettingsScreen({navigation}:any){
             <Text style={[s.meta,{marginTop: 8}]}>{T(QURAN_FONTS.find(font=>font.id===preferences.arabicFont)?.detail || '')}</Text>
           </View>
 
-          <View style={s.rsGroup}>
+          <View style={s.rsGroup}><GlassFill radius={24}/>
             <Text style={s.rsGroupTitle}>{T('SIZE & SPACING')}</Text>
             <Text style={s.preferenceLabel}>{T('ARABIC')}</Text>
             <View style={s.stepper}><Tactile accessibilityLabel={T('Smaller Arabic')} onPress={()=>update({fontSize:Math.max(18,preferences.fontSize-2)})} style={s.stepButton}>{ico('remove',20,C.green)}</Tactile><Text style={[s.previewArabic,{fontSize:preferences.fontSize}]}>ٱلْقُرْآنُ</Text><Tactile accessibilityLabel={T('Larger Arabic')} onPress={()=>update({fontSize:Math.min(40,preferences.fontSize+2)})} style={s.stepButton}>{ico('add',20,C.green)}</Tactile></View>
@@ -5127,7 +5133,7 @@ function ReaderSettingsScreen({navigation}:any){
             <View style={s.stepper}><Tactile accessibilityLabel={T('Tighter lines')} onPress={()=>update({lineHeight:Math.max(1.4,+(preferences.lineHeight-.1).toFixed(1))})} style={s.stepButton}>{ico('remove',20,C.green)}</Tactile><Text style={s.settingName}>{preferences.lineHeight.toFixed(1)}×</Text><Tactile accessibilityLabel={T('Looser lines')} onPress={()=>update({lineHeight:Math.min(3,+(preferences.lineHeight+.1).toFixed(1))})} style={s.stepButton}>{ico('add',20,C.green)}</Tactile></View>
           </View>
 
-          <View style={s.rsGroup}>
+          <View style={s.rsGroup}><GlassFill radius={24}/>
             <Text style={s.rsGroupTitle}>{T('THE MEANING')}</Text>
             {/* Showing the meaning is a reading choice, so it belongs with the
                 rest of the reading choices rather than out on the reader. */}
@@ -5161,13 +5167,13 @@ function ReaderSettingsScreen({navigation}:any){
             </>}
           </View>
 
-          <View style={s.rsGroup}>
+          <View style={s.rsGroup}><GlassFill radius={24}/>
             <Text style={s.rsGroupTitle}>{T('READING MODE')}</Text>
             <View style={s.settings}><Tactile accessibilityRole="switch" accessibilityState={{checked:preferences.focusMode}} onPress={()=>update({focusMode:!preferences.focusMode})} style={s.setting}><MotionGlyph name={preferences.focusMode?'eye':'eye-outline'} size={19}/><View style={{flex:1}}><Text style={s.settingName}>{T('Focus mode')}</Text><Text style={s.meta}>{T('Hide the top bar and the tab menu as you scroll. Tap a verse to bring them back.')}</Text></View>{ico(preferences.focusMode?'toggle':'toggle-outline',22,preferences.focusMode?C.green:C.muted)}</Tactile></View>
             <View style={s.choiceGrid}><ChoicePill label={T('Ayah cards')} selected={preferences.readingMode==='cards'} onPress={()=>update({readingMode:'cards'})}/><ChoicePill label={T('Continuous')} selected={preferences.readingMode==='continuous'} onPress={()=>update({readingMode:'continuous'})}/></View>
           </View>
 
-          {preferences.scriptEdition==='quran-mushaf'&&<View style={s.rsGroup}>
+          {preferences.scriptEdition==='quran-mushaf'&&<View style={s.rsGroup}><GlassFill radius={24}/>
             <Text style={s.rsGroupTitle}>{T('MUSHAF PAGE')}</Text>
             <Text style={s.rsGroupTitle}>{T('ON THE PAGE')}</Text>
             <View style={s.settings}>
@@ -5332,7 +5338,7 @@ function stripTafsirMarkup(input:string):string{
     .trim();
 }
 
-function TafsirScreen({navigation}:any){const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);const[editions,setEditions]=useState<IslamicEdition[]>([]);const[chapters,setChapters]=useState<IslamicChapter[]>([]);const[picked,setPicked]=useState<IslamicEdition|null>(null);const[surah,setSurah]=useState(1);const[result,setResult]=useState<CachedSurah|null>(null);const[busy,setBusy]=useState(false);const[error,setError]=useState('');const load=()=>{  getEditions('tafsir').then(setEditions).catch(e=>setError(T(e.message)));  getWorkerChapters().then(setChapters).catch(()=>undefined);};useEffect(()=>{load()},[]);useEffect(()=>{  if(!picked)return;  let live=true;  setBusy(true);setError('');  getSurah('tafsir',picked.id,surah)    .then(r=>{if(live)setResult(r)})    .catch(e=>{if(live)setError(T(e.message))})    .finally(()=>{if(live)setBusy(false)});  return()=>{live=false};},[picked,surah]);const chapter=chapters.find(c=>c.number===surah);const title=chapter?(rtl?chapter.nameArabic:chapter.nameSimple):(tf(language,'Surah {n}',{n:surah}));if(!picked)return <Page><ToolBar title={T('Tafsir')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage} keyboardShouldPersistTaps="handled"><ToolGraphic tool="Tafsir" size={85}/><Text style={s.dataTitle}>{T('Choose a Tafsir')}</Text><Text style={s.intro}>{T('Commentary on the Quran, in the language you read it in. Tafsir is one scholar’s reading, not the text itself.')}</Text>{error&&!editions.length?<ErrorState message={error} retry={load}/>:!editions.length?<SkeletonList rows={6} />:<EditionPicker C={C} editions={editions} category="tafsir" searchPlaceholder={T('Search commentary')}  onPick={e=>setPicked(e)}/>}</ScrollView></Page>;return <Page><ToolBar title={T('Tafsir')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><Pressable onPress={()=>setPicked(null)} style={s.editionChip}><Text style={{fontSize:20}}>{languageFlag(picked.language||'ar')}</Text><View style={{flex:1}}><Text style={s.settingName}>{editionDisplayName(picked)}</Text><Text style={s.meta}>{editionSubtitle(picked)}</Text></View><Text style={s.sectionAction}>{T('Change')}</Text></Pressable><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap:8,marginTop:12}}>{chapters.map(c=><ChoicePill key={c.number} label={rtl?c.nameArabic:c.nameSimple} selected={c.number===surah} onPress={()=>setSurah(c.number)}/>)}</ScrollView>{busy&&!result?<Spinner/>:error?<ErrorState message={error}/>:result&&<View style={{marginTop:12}}>{result.rows.map(row=><View key={row.verseKey} style={s.dataCard}><Text style={s.dataMeta}>{title} · {T('AYAH')} {row.numberInSurah}</Text><Text style={s.dataBody}>{stripTafsirMarkup(row.text)}</Text></View>)}</View>}</ScrollView></Page>}
+function TafsirScreen({navigation}:any){const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);const[editions,setEditions]=useState<IslamicEdition[]>([]);const[chapters,setChapters]=useState<IslamicChapter[]>([]);const[picked,setPicked]=useState<IslamicEdition|null>(null);const[surah,setSurah]=useState(1);const[result,setResult]=useState<CachedSurah|null>(null);const[busy,setBusy]=useState(false);const[error,setError]=useState('');const load=()=>{  getEditions('tafsir').then(setEditions).catch(e=>setError(T(e.message)));  getWorkerChapters().then(setChapters).catch(()=>undefined);};useEffect(()=>{load()},[]);useEffect(()=>{  if(!picked)return;  let live=true;  setBusy(true);setError('');  getSurah('tafsir',picked.id,surah)    .then(r=>{if(live)setResult(r)})    .catch(e=>{if(live)setError(T(e.message))})    .finally(()=>{if(live)setBusy(false)});  return()=>{live=false};},[picked,surah]);const chapter=chapters.find(c=>c.number===surah);const title=chapter?(rtl?chapter.nameArabic:chapter.nameSimple):(tf(language,'Surah {n}',{n:surah}));if(!picked)return <Page><ToolBar title={T('Tafsir')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage} keyboardShouldPersistTaps="handled"><ToolGraphic tool="Tafsir" size={85}/><Text style={s.dataTitle}>{T('Choose a Tafsir')}</Text><Text style={s.intro}>{T('Commentary on the Quran, in the language you read it in. Tafsir is one scholar’s reading, not the text itself.')}</Text>{error&&!editions.length?<ErrorState message={error} retry={load}/>:!editions.length?<SkeletonList rows={6} />:<EditionPicker C={C} editions={editions} category="tafsir" searchPlaceholder={T('Search commentary')}  onPick={e=>setPicked(e)}/>}</ScrollView></Page>;return <Page><ToolBar title={T('Tafsir')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><Pressable onPress={()=>setPicked(null)} style={s.editionChip}><Text style={{fontSize:20}}>{languageFlag(picked.language||'ar')}</Text><View style={{flex:1}}><Text style={s.settingName}>{editionDisplayName(picked)}</Text><Text style={s.meta}>{editionSubtitle(picked)}</Text></View><Text style={s.sectionAction}>{T('Change')}</Text></Pressable><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap:8,marginTop:12}}>{chapters.map(c=><ChoicePill key={c.number} label={rtl?c.nameArabic:c.nameSimple} selected={c.number===surah} onPress={()=>setSurah(c.number)}/>)}</ScrollView>{busy&&!result?<Spinner/>:error?<ErrorState message={error}/>:result&&<View style={{marginTop:12}}>{result.rows.map(row=><View key={row.verseKey} style={s.dataCard}><GlassFill radius={20}/><Text style={s.dataMeta}>{title} · {T('AYAH')} {row.numberInSurah}</Text><Text style={s.dataBody}>{stripTafsirMarkup(row.text)}</Text></View>)}</View>}</ScrollView></Page>}
 function TafsirCompareScreen({route,navigation}:any){const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);const verse:Verse=route.params?.verse||{verse_key:'2:255',text_uthmani:''};const[reference,setReference]=useState(verse.verse_key);const{preferences}=useQuranPreferences();const{width}=useWindowDimensions();const[mode,setMode]=useState<'translation'|'tafsir'>('translation');const[editions,setEditions]=useState<QuranEdition[]>([]);const[selected,setSelected]=useState<string[]>([preferences.translationEdition,'en.pickthall'].filter((x,i,a)=>a.indexOf(x)===i));const[rows,setRows]=useState<any[]>([]);const[query,setQuery]=useState('');const[error,setError]=useState('');const loadEditions=()=>getQuranEditions(mode).then(setEditions).catch(e=>setError(T(e.message)));const load=async()=>{setError('');const ids=[preferences.scriptEdition==='quran-indopak'?'quran-uthmani':preferences.scriptEdition,...selected];const cacheKey=`${reference}:${ids.join(',')}`;const cached=mode==='tafsir'?await getCachedJson<any[]>('tafsir',cacheKey):null;if(cached)setRows(cached);try{const fresh=await getAyahEditions(reference,ids);setRows(fresh);if(mode==='tafsir')await setCachedJson('tafsir',cacheKey,fresh)}catch(e:any){if(!cached)setError(T(e.message))}};useEffect(()=>{loadEditions()},[mode]);useEffect(()=>{load()},[reference,selected.join('|'),preferences.scriptEdition]);useEffect(()=>{if(mode==='tafsir')setSelected(['ar.jalalayn']);else setSelected([preferences.translationEdition,'en.pickthall'].filter((x,i,a)=>a.indexOf(x)===i))},[mode]);const toggle=(id:string)=>setSelected(current=>current.includes(id)?current.length>1?current.filter(x=>x!==id):current:current.length<(mode==='translation'?3:1)?[...current,id]:current);const results=query.trim().length<2?[]:editions.filter(e=>`${e.englishName} ${e.name} ${e.language}`.toLowerCase().includes(query.toLowerCase())).slice(0,30);const arabic=rows[0];const compared=rows.slice(1);const wide=width>=760;const columnWidth=wide?Math.max(260,(Math.min(width-40,900)-12*(compared.length-1))/Math.max(1,compared.length)):0;return <Page><ToolBar title={T('Tafsir & comparison')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}>
       {/* Where you are. The stepper moves one verse; the field takes a typed one. */}
       <View style={s.tcRefBar}>
@@ -5361,10 +5367,10 @@ function TafsirCompareScreen({route,navigation}:any){const {rtl,language}=useLan
       </View>}
     </ScrollView></Page>}
 
-function QuranTopicsScreen({navigation}:any){const[category,setCategory]=useState('All');const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);const[query,setQuery]=useState('');const shown=QURAN_TOPICS.filter(topic=>(category==='All'||topic.category===category)&&`${topic.title} ${topic.description} ${topic.titleAr} ${topic.descriptionAr}`.toLowerCase().includes(query.toLowerCase()));return <Page><ToolBar title={T('Quran topics')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><ToolGraphic tool="Quran Topics" size={83}/><Text style={s.dataTitle}>{T('Explore the Quran by theme')}</Text><Text style={s.intro}>{T('Curated references open the Arabic text alongside your selected translation.')}</Text><View style={s.search}>{ico('search-outline',18,C.muted)}<TextInput value={query} onChangeText={setQuery} placeholder={T('Search faith, family, patience…')} style={s.searchInput}/></View><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap: 8,marginVertical: 12}}>{['All','Faith','Life','Spirituality'].map(item=><ChoicePill key={item} label={T(item)} selected={category===item} onPress={()=>setCategory(item)}/>)}</ScrollView><View style={s.topicGrid}>{shown.map(topic=><MotionPress key={topic.id} onPress={()=>navigation.navigate('Topic Detail',{topic})} style={s.topicWrap}><View style={s.topicCard}><Text style={s.libraryKicker}>{topicCategory(topic,language)}</Text><Text style={s.exploreTitle}>{topicTitle(topic,language)}</Text><Text style={s.exploreBody}>{topicDescription(topic,language)}</Text><Text style={s.dataMeta}>{tf(language,'{n} VERSES',{n:topic.references.length})}</Text></View></MotionPress>)}</View></ScrollView></Page>}
+function QuranTopicsScreen({navigation}:any){const[category,setCategory]=useState('All');const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);const[query,setQuery]=useState('');const shown=QURAN_TOPICS.filter(topic=>(category==='All'||topic.category===category)&&`${topic.title} ${topic.description} ${topic.titleAr} ${topic.descriptionAr}`.toLowerCase().includes(query.toLowerCase()));return <Page><ToolBar title={T('Quran topics')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><ToolGraphic tool="Quran Topics" size={83}/><Text style={s.dataTitle}>{T('Explore the Quran by theme')}</Text><Text style={s.intro}>{T('Curated references open the Arabic text alongside your selected translation.')}</Text><View style={s.search}>{ico('search-outline',18,C.muted)}<TextInput value={query} onChangeText={setQuery} placeholder={T('Search faith, family, patience…')} style={s.searchInput}/></View><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap: 8,marginVertical: 12}}>{['All','Faith','Life','Spirituality'].map(item=><ChoicePill key={item} label={T(item)} selected={category===item} onPress={()=>setCategory(item)}/>)}</ScrollView><View style={s.topicGrid}>{shown.map(topic=><MotionPress key={topic.id} onPress={()=>navigation.navigate('Topic Detail',{topic})} style={s.topicWrap}><View style={s.topicCard}><GlassFill radius={20}/><Text style={s.libraryKicker}>{topicCategory(topic,language)}</Text><Text style={s.exploreTitle}>{topicTitle(topic,language)}</Text><Text style={s.exploreBody}>{topicDescription(topic,language)}</Text><Text style={s.dataMeta}>{tf(language,'{n} VERSES',{n:topic.references.length})}</Text></View></MotionPress>)}</View></ScrollView></Page>}
 
 
-function TopicDetailScreen({route,navigation}:any){const topic=route.params.topic;const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);const{preferences}=useQuranPreferences();const[rows,setRows]=useState<any[]>([]);const[error,setError]=useState('');const load=()=>{setError('');return Promise.all(topic.references.map((ref:string)=>getAyahEditions(ref,[preferences.scriptEdition==='quran-indopak'?'quran-uthmani':preferences.scriptEdition,preferences.translationEdition]))).then(groups=>setRows(groups.map((items,i)=>({reference:topic.references[i],arabic:items[0],translation:items[1]})))).catch(e=>setError(T(e.message)))};useEffect(()=>{load()},[topic.id,preferences.scriptEdition,preferences.translationEdition]);return <Page><ToolBar title={topicTitle(topic,language)} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><Text style={s.libraryKicker}>{topicCategory(topic,language)}</Text><Text style={s.dataTitle}>{topicTitle(topic,language)}</Text><Text style={s.intro}>{topicDescription(topic,language)}</Text>{error?<ErrorState message={error} retry={load}/>:!rows.length?<SkeletonList rows={6} />:rows.map(row=><Tactile key={row.reference} onPress={()=>{const[surah]=row.reference.split(':').map(Number);navigation.navigate('Reader',{chapter:{id:surah,name_simple:row.arabic?.name||`Surah ${surah}`,name_arabic:'',verses_count:0},focusVerse:row.reference})}} style={s.dataCard}><Text style={s.dataMeta}>{T('QURAN')} {row.reference}</Text>{preferences.scriptEdition==='quran-tajweed'?<TajweedText text={row.arabic.text} style={s.dataArabic}/>:<Text style={s.dataArabic}>{row.arabic.text}</Text>}<Text style={s.dataBody}>{row.translation.text}</Text><Text style={s.meta}>{row.translation.name}</Text></Tactile>)}</ScrollView></Page>}
+function TopicDetailScreen({route,navigation}:any){const topic=route.params.topic;const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);const{preferences}=useQuranPreferences();const[rows,setRows]=useState<any[]>([]);const[error,setError]=useState('');const load=()=>{setError('');return Promise.all(topic.references.map((ref:string)=>getAyahEditions(ref,[preferences.scriptEdition==='quran-indopak'?'quran-uthmani':preferences.scriptEdition,preferences.translationEdition]))).then(groups=>setRows(groups.map((items,i)=>({reference:topic.references[i],arabic:items[0],translation:items[1]})))).catch(e=>setError(T(e.message)))};useEffect(()=>{load()},[topic.id,preferences.scriptEdition,preferences.translationEdition]);return <Page><ToolBar title={topicTitle(topic,language)} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><Text style={s.libraryKicker}>{topicCategory(topic,language)}</Text><Text style={s.dataTitle}>{topicTitle(topic,language)}</Text><Text style={s.intro}>{topicDescription(topic,language)}</Text>{error?<ErrorState message={error} retry={load}/>:!rows.length?<SkeletonList rows={6} />:rows.map(row=><Tactile key={row.reference} onPress={()=>{const[surah]=row.reference.split(':').map(Number);navigation.navigate('Reader',{chapter:{id:surah,name_simple:row.arabic?.name||`Surah ${surah}`,name_arabic:'',verses_count:0},focusVerse:row.reference})}} style={s.dataCard}><GlassFill radius={20}/><Text style={s.dataMeta}>{T('QURAN')} {row.reference}</Text>{preferences.scriptEdition==='quran-tajweed'?<TajweedText text={row.arabic.text} style={s.dataArabic}/>:<Text style={s.dataArabic}>{row.arabic.text}</Text>}<Text style={s.dataBody}>{row.translation.text}</Text><Text style={s.meta}>{row.translation.name}</Text></Tactile>)}</ScrollView></Page>}
 
 /** The four ways into the word list. */
 type VocabGroup = 'all' | 'saved' | 'known' | 'review';
@@ -5401,7 +5407,7 @@ function VocabularyScreen({navigation}:any){const[index,setIndex]=useState(0);co
   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap:8,marginTop:12}}>
     {VOCAB_GROUPS.map((item)=><ChoicePill key={item.key} label={T(item.label)} selected={group===item.key} onPress={()=>setGroup(item.key)}/>)}
   </ScrollView>
-  {!listed.length&&<View style={s.empty}><Text style={s.dataBody}>{T('No words match. Try another search, or another group.')}</Text></View>}
+  {!listed.length&&<View style={s.empty}><GlassFill radius={24}/><Text style={s.dataBody}>{T('No words match. Try another search, or another group.')}</Text></View>}
   {!!listed.length&&<View style={s.settings}>{listed.map((entry)=>{
     const isSaved=progress.saved.includes(entry.id);
     return <View key={entry.id} style={s.vocabRow}>
@@ -5421,11 +5427,11 @@ function VocabularyScreen({navigation}:any){const[index,setIndex]=useState(0);co
 </>:<>
 <Pressable accessibilityLabel={`${word.arabic}. ${revealed?`${word.transliteration}, ${word.meaning}`:T('Tap to reveal meaning')}`} onPress={()=>setRevealed(value=>!value)} style={[s.flashcard,{marginTop:20}]}><Text style={s.flashIndex}>{index+1} / {QURAN_VOCABULARY.length}</Text><Text style={s.flashArabic}>{word.arabic}</Text>{revealed?<><Text style={s.flashTransliteration}>{word.transliteration}</Text><Text style={s.flashMeaning}>{word.meaning}</Text>{word.root&&<Text style={s.meta}>{T('Root')} · {word.root}</Text>}</>:<Text style={s.flashHint}>{T('Tap to reveal')}</Text>}</Pressable>{revealed&&<View style={s.actionRow}><Tactile onPress={()=>mark(false)} style={s.secondary}><Text style={s.secondaryText}>{T('Review again')}</Text></Tactile><Tactile onPress={()=>mark(true)} style={s.primary}><Text style={s.primaryText}>{T('I know this')}</Text></Tactile></View>}<View style={s.mushafNav}><Tactile onPress={()=>{setRevealed(false);setIndex((index-1+QURAN_VOCABULARY.length)%QURAN_VOCABULARY.length)}} style={s.stepButton}>{ico(rtl ? 'arrow-forward' : 'arrow-back',19,C.green)}</Tactile><Tactile onPress={()=>Linking.openURL('https://corpus.quran.com/lemmas.jsp')} style={s.sectionLink}><Text style={s.sectionAction}>{T('Frequency source')}</Text></Tactile><Tactile onPress={()=>{setRevealed(false);setIndex((index+1)%QURAN_VOCABULARY.length)}} style={s.stepButton}>{ico(rtl ? 'arrow-back' : 'arrow-forward',19,C.green)}</Tactile></View></>}</ScrollView></Page>}
 
-function TajweedStudyScreen({navigation}:any){const[reference,setReference]=useState('2:255');const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);const[rows,setRows]=useState<any[]>([]);const[error,setError]=useState('');const[showNormal,setShowNormal]=useState(false);const load=()=>{if(!/^([1-9]|[1-9]\d|1(?:0\d|1[0-4])):([1-9]\d*)$/.test(reference.trim())){setError(T('Enter a verse reference such as 2:255.'));return}setError('');setRows([]);getAyahEditions(reference.trim(),['quran-tajweed','quran-uthmani','en.sahih']).then(setRows).catch(e=>setError(T(e.message)))};useEffect(load,[]);return <Page><ToolBar title={T('Tajweed study')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><ToolGraphic tool="Tajweed" size={83}/><Text style={s.dataTitle}>{T('Read the rules in colour')}</Text><Text style={s.intro}>{T('Each Tajweed rule is coloured where it applies. Colours are a learning aid and do not replace study with a qualified teacher.')}</Text><View style={s.search}><TextInput value={reference} onChangeText={setReference} onSubmitEditing={load} placeholder="2:255" style={s.searchInput}/><Pressable accessibilityLabel={T('Load this verse')} onPress={load} style={s.searchGo}>{ico('arrow-forward-circle',23,C.green)}</Pressable></View><View style={s.choiceRow}><ChoicePill label={T('Tajweed colour')} selected={!showNormal} onPress={()=>setShowNormal(false)}/><ChoicePill label={T('Normal text')} selected={showNormal} onPress={()=>setShowNormal(true)}/></View>{error?<ErrorState message={error} retry={load}/>:!rows.length?<SkeletonList rows={5} />:<View style={s.tajweedPractice}><Text style={s.dataMeta}>{T('QURAN')} {reference}</Text>{showNormal?<Text style={s.dataArabic}>{rows[1]?.text}</Text>:<TajweedText text={rows[0]?.text||''} style={s.dataArabic}/>}<Text style={s.dataBody}>{rows[2]?.text}</Text></View>}<Section title={T('Colour legend')}/><View style={s.settings}>{TAJWEED_RULES.map(rule=><View key={rule.name} style={s.tajweedRule}><View style={[s.tajweedSwatch,{backgroundColor:rule.color}]}/><View style={{flex:1}}><Text style={s.settingName}>{tajweedName(rule,language)}</Text><Text style={s.meta}>{tajweedDetail(rule,language)}</Text></View></View>)}</View></ScrollView></Page>}
+function TajweedStudyScreen({navigation}:any){const[reference,setReference]=useState('2:255');const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);const[rows,setRows]=useState<any[]>([]);const[error,setError]=useState('');const[showNormal,setShowNormal]=useState(false);const load=()=>{if(!/^([1-9]|[1-9]\d|1(?:0\d|1[0-4])):([1-9]\d*)$/.test(reference.trim())){setError(T('Enter a verse reference such as 2:255.'));return}setError('');setRows([]);getAyahEditions(reference.trim(),['quran-tajweed','quran-uthmani','en.sahih']).then(setRows).catch(e=>setError(T(e.message)))};useEffect(load,[]);return <Page><ToolBar title={T('Tajweed study')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><ToolGraphic tool="Tajweed" size={83}/><Text style={s.dataTitle}>{T('Read the rules in colour')}</Text><Text style={s.intro}>{T('Each Tajweed rule is coloured where it applies. Colours are a learning aid and do not replace study with a qualified teacher.')}</Text><View style={s.search}><TextInput value={reference} onChangeText={setReference} onSubmitEditing={load} placeholder="2:255" style={s.searchInput}/><Pressable accessibilityLabel={T('Load this verse')} onPress={load} style={s.searchGo}>{ico('arrow-forward-circle',23,C.green)}</Pressable></View><View style={s.choiceRow}><ChoicePill label={T('Tajweed colour')} selected={!showNormal} onPress={()=>setShowNormal(false)}/><ChoicePill label={T('Normal text')} selected={showNormal} onPress={()=>setShowNormal(true)}/></View>{error?<ErrorState message={error} retry={load}/>:!rows.length?<SkeletonList rows={5} />:<View style={s.tajweedPractice}><GlassFill radius={24}/><Text style={s.dataMeta}>{T('QURAN')} {reference}</Text>{showNormal?<Text style={s.dataArabic}>{rows[1]?.text}</Text>:<TajweedText text={rows[0]?.text||''} style={s.dataArabic}/>}<Text style={s.dataBody}>{rows[2]?.text}</Text></View>}<Section title={T('Colour legend')}/><View style={s.settings}>{TAJWEED_RULES.map(rule=><View key={rule.name} style={s.tajweedRule}><View style={[s.tajweedSwatch,{backgroundColor:rule.color}]}/><View style={{flex:1}}><Text style={s.settingName}>{tajweedName(rule,language)}</Text><Text style={s.meta}>{tajweedDetail(rule,language)}</Text></View></View>)}</View></ScrollView></Page>}
 
 function JuzDirectoryScreen({navigation}:any){const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);return <Page><ToolBar title={T('30 Juz')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><ToolGraphic tool="30 Juz" size={81}/><Text style={s.dataTitle}>{T('Read by Juz')}</Text><View style={s.juzGrid}>{Array.from({length:30},(_,i)=>i+1).map(juz=><Tactile key={juz} onPress={()=>navigation.navigate('Reader',{section:'juz',juz})} style={s.juzCard}><Text style={s.juzNo}>{juz}</Text><Text style={s.meta}>{T('JUZ')}</Text></Tactile>)}</View></ScrollView></Page>}
 function HizbDirectoryScreen({navigation}:any){const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);return <Page><ToolBar title={T('60 Hizb')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><ToolGraphic tool="60 Hizb" size={81}/><Text style={s.dataTitle}>{T('Read by Hizb')}</Text><Text style={s.intro}>{T('Each Hizb contains four quarter-Hizb sections.')}</Text><View style={s.juzGrid}>{Array.from({length:60},(_,i)=>i+1).map(hizb=><Tactile key={hizb} onPress={()=>navigation.navigate('Reader',{section:'hizb',hizb})} style={s.juzCard}><Text style={s.juzNo}>{hizb}</Text><Text style={s.meta}>{T('HIZB')}</Text></Tactile>)}</View></ScrollView></Page>}
-function QuranPreloadScreen({navigation}:any){const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);const{preferences}=useQuranPreferences();const[state,setState]=useState(getPreloadState());useEffect(()=>{const unsubscribe=subscribePreload(setState);refreshPreload({script:preferences.scriptEdition,translation:preferences.translationEdition});return unsubscribe},[preferences.scriptEdition,preferences.translationEdition]);const start=()=>startQuranPreload({script:preferences.scriptEdition,translation:preferences.translationEdition});return <Page><ToolBar title={T('Offline Quran')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><ToolGraphic tool="Offline Quran" size={85}/><Text style={s.dataTitle}>{T('Prepare for offline reading')}</Text><Text style={s.intro}>{T('Downloads the Arabic script and translation you have selected, one Surah at a time. Preparation continues while you use other screens and prioritizes your current reading Surah.')}</Text><View style={s.preloadScore}><Text style={s.planDays}>{state.cached}</Text><Text style={s.settingName}>{T('of 114 Surahs cached')}</Text><View style={s.preloadTrack}><View style={[s.preloadFill,{width:`${state.cached/114*100}%`} as any]}/></View><Text style={s.meta}>{T(preferences.scriptName)} · {T(rtl ? preferences.translationLanguage : preferences.translationName)}{state.current?(tf(language,' · Preparing Surah {n}',{n:state.current})):''}</Text>{state.usage&&<Text style={s.cacheUsage}>{tf(language,'Quran cache {u} MB · limit {l} MB · total limit {t} MB',{u:(state.usage.byNamespace.quran/1048576).toFixed(1),l:(state.usage.limits.quran/1000000).toFixed(0),t:(state.usage.limits.total/1000000).toFixed(0)})}</Text>}</View>{state.error&&<ErrorState message={state.error} retry={start}/>}<View style={s.actionRow}>{!state.running?<Tactile onPress={start} style={s.primary}><Text style={s.primaryText}>{T(state.cached ? 'Resume preparation' : 'Preload all')}</Text></Tactile>:<Tactile onPress={pauseQuranPreload} style={s.secondary}><Text style={s.secondaryText}>{T('Pause')}</Text></Tactile>}<Tactile onPress={clearPreparedQuran} style={s.dangerButton}><Text style={s.dangerText}>{T('Clear Quran cache')}</Text></Tactile></View><View style={s.sourceCard}>{ico('shield-checkmark-outline',21,C.green)}<View style={{flex:1}}><Text style={s.sourceTitle}>{T('Managed low-priority preparation')}</Text><Text style={s.sourceBody}>{T('Cached Surahs open first, already-saved content is skipped, and bounded LRU storage prevents unlimited growth.')}</Text></View></View></ScrollView></Page>}
+function QuranPreloadScreen({navigation}:any){const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);const{preferences}=useQuranPreferences();const[state,setState]=useState(getPreloadState());useEffect(()=>{const unsubscribe=subscribePreload(setState);refreshPreload({script:preferences.scriptEdition,translation:preferences.translationEdition});return unsubscribe},[preferences.scriptEdition,preferences.translationEdition]);const start=()=>startQuranPreload({script:preferences.scriptEdition,translation:preferences.translationEdition});return <Page><ToolBar title={T('Offline Quran')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><ToolGraphic tool="Offline Quran" size={85}/><Text style={s.dataTitle}>{T('Prepare for offline reading')}</Text><Text style={s.intro}>{T('Downloads the Arabic script and translation you have selected, one Surah at a time. Preparation continues while you use other screens and prioritizes your current reading Surah.')}</Text><View style={s.preloadScore}><GlassFill radius={24}/><Text style={s.planDays}>{state.cached}</Text><Text style={s.settingName}>{T('of 114 Surahs cached')}</Text><View style={s.preloadTrack}><View style={[s.preloadFill,{width:`${state.cached/114*100}%`} as any]}/></View><Text style={s.meta}>{T(preferences.scriptName)} · {T(rtl ? preferences.translationLanguage : preferences.translationName)}{state.current?(tf(language,' · Preparing Surah {n}',{n:state.current})):''}</Text>{state.usage&&<Text style={s.cacheUsage}>{tf(language,'Quran cache {u} MB · limit {l} MB · total limit {t} MB',{u:(state.usage.byNamespace.quran/1048576).toFixed(1),l:(state.usage.limits.quran/1000000).toFixed(0),t:(state.usage.limits.total/1000000).toFixed(0)})}</Text>}</View>{state.error&&<ErrorState message={state.error} retry={start}/>}<View style={s.actionRow}>{!state.running?<Tactile onPress={start} style={s.primary}><Text style={s.primaryText}>{T(state.cached ? 'Resume preparation' : 'Preload all')}</Text></Tactile>:<Tactile onPress={pauseQuranPreload} style={s.secondary}><Text style={s.secondaryText}>{T('Pause')}</Text></Tactile>}<Tactile onPress={clearPreparedQuran} style={s.dangerButton}><Text style={s.dangerText}>{T('Clear Quran cache')}</Text></Tactile></View><View style={s.sourceCard}>{ico('shield-checkmark-outline',21,C.green)}<View style={{flex:1}}><Text style={s.sourceTitle}>{T('Managed low-priority preparation')}</Text><Text style={s.sourceBody}>{T('Cached Surahs open first, already-saved content is skipped, and bounded LRU storage prevents unlimited growth.')}</Text></View></View></ScrollView></Page>}
 function ReadingPlansScreen({navigation}:any){const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);const[plan,setPlan]=useState<any>(null);useEffect(()=>{loadPlan().then(setPlan)},[]);const start=async(days:number)=>{const next={days,startedAt:Date.now(),completed:[]};await savePlan(next);setPlan(next)};const today=plan?Math.min(plan.days,Math.floor((Date.now()-plan.startedAt)/86400000)+1):0;const toggle=async()=>{const completed=plan.completed.includes(today)?plan.completed.filter((x:number)=>x!==today):[...plan.completed,today];const next={...plan,completed};await savePlan(next);setPlan(next)};return <Page><ToolBar title={T('Reading plans')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><ToolGraphic tool="Reading Plans" size={81}/><Text style={s.dataTitle}>{T('Complete the Quran')}</Text>{!plan?<><Text style={s.intro}>{T('Choose a private local plan. Progress stays on this device.')}</Text><View style={s.planGrid}>{[30,60,90,120].map(days=><Pressable key={days} onPress={()=>start(days)} style={s.planCard}><Text style={s.planDays}>{days}</Text><Text style={s.settingName}>{T('day plan')}</Text><Text style={s.meta}>{tf(language,'{n} pages daily',{n:(604/days).toFixed(1)})}</Text></Pressable>)}</View></>:<><View style={s.summaryScore}><View><Text style={s.nextCardLabel}>{T('CURRENT DAY')}</Text><Text style={s.zakatNo}>{today} / {plan.days}</Text></View><View><Text style={s.nextCardLabel}>{T('COMPLETED')}</Text><Text style={s.zakatNo}>{plan.completed.length}</Text></View></View><Pressable onPress={toggle} style={s.planToday}><Text style={s.settingName}>{tf(language,'Day {d} reading',{d:today})}</Text>{ico(plan.completed.includes(today)?'checkmark-circle':'ellipse-outline',28,C.green)}</Pressable><Tactile onPress={async()=>{await savePlan(null);setPlan(null)}} style={s.dangerButton}><Text style={s.dangerText}>{T('End current plan')}</Text></Tactile></>}</ScrollView></Page>}
 function HifzScreen({navigation}:any){const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);const[chapters,setChapters]=useState<Chapter[]>([]);const[status,setStatus]=useState<Record<number,HifzStatus>>({});const[filter,setFilter]=useState<'all'|HifzStatus>('all');useEffect(()=>{getChapters().then(setChapters);loadHifz().then(setStatus)},[]);const cycle=async(id:number)=>{const current=status[id]||'not-started';const next:HifzStatus=current==='not-started'?'revising':current==='revising'?'memorized':'not-started';const value={...status,[id]:next};setStatus(value);await saveHifz(value)};const shown=chapters.filter(c=>filter==='all'||(status[c.id]||'not-started')===filter);const memorized=Object.values(status).filter(x=>x==='memorized').length;return <Page><ToolBar title={T('Hifz tracker')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><ToolGraphic tool="Hifz" size={81}/><Text style={s.dataTitle}>{tf(language,'{n} of 114 memorized',{n:memorized})}</Text><Tactile onPress={()=>navigation.navigate('Memorize')} style={s.practiceLaunch}><View><Text style={s.settingName}>{T('Hide-and-peek recall')}</Text><Text style={s.meta}>{T('Test a verse from your revising or memorized Surahs')}</Text></View>{ico('play-circle',28,C.green)}</Tactile><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap: 8}}>{(['all','not-started','revising','memorized'] as const).map(value=><ChoicePill key={value} label={T(value.replace('-',' '))} selected={filter===value} onPress={()=>setFilter(value)}/>)}</ScrollView><View style={{height:13}}/><View style={s.settings}>{shown.map(c=><Pressable key={c.id} onPress={()=>cycle(c.id)} style={s.translationRow}><View style={s.surahNum}><Text style={s.surahNumText}>{c.id}</Text></View><View style={{flex:1}}><View style={s.surahNameRow}>{rtl && <Text style={s.surahArInline}>{c.name_arabic}</Text>}<Text style={[s.settingName,{flexShrink:1}]} numberOfLines={1}>{c.name_simple}</Text>{!rtl && <Text style={s.surahArInline}>{c.name_arabic}</Text>}</View><Text style={s.meta}>{tf(language,'{n} verses',{n:c.verses_count})}</Text></View><Text style={s.hifzStatus}>{T((status[c.id]||'not-started').replace('-',' '))}</Text></Pressable>)}</View></ScrollView></Page>}
 
@@ -5478,9 +5484,9 @@ function MemorizeHubScreen({ navigation }: any) {
       </View>
       <View style={s.memBar}><View style={[s.memBarFill, { width: `${score}%` }]} /></View>
       <View style={s.memStats}>
-        <View style={s.memStat}><Text style={s.memStatValue}>{practised}</Text><Text style={s.memStatLabel}>{T('Practised')}</Text></View>
-        <View style={s.memStat}><Text style={s.memStatValue}>{bank.length}</Text><Text style={s.memStatLabel}>{T('Weak')}</Text></View>
-        <View style={s.memStat}><Text style={s.memStatValue}>{logged}</Text><Text style={s.memStatLabel}>{T('Attempts')}</Text></View>
+        <View style={s.memStat}><GlassFill radius={16}/><Text style={s.memStatValue}>{practised}</Text><Text style={s.memStatLabel}>{T('Practised')}</Text></View>
+        <View style={s.memStat}><GlassFill radius={16}/><Text style={s.memStatValue}>{bank.length}</Text><Text style={s.memStatLabel}>{T('Weak')}</Text></View>
+        <View style={s.memStat}><GlassFill radius={16}/><Text style={s.memStatValue}>{logged}</Text><Text style={s.memStatLabel}>{T('Attempts')}</Text></View>
       </View>
 
       <Section title={T('How you are tested')} />
@@ -5493,7 +5499,7 @@ function MemorizeHubScreen({ navigation }: any) {
       <Text style={[s.meta, { marginTop: 8 }]}>{T(rtl ? MODE_LABELS[settings.mode].noteAr : MODE_LABELS[settings.mode].note)}</Text>
 
       <Section title={T('How it behaves')} />
-      <View style={s.playerCard}>
+      <View style={s.playerCard}><GlassFill radius={20}/>
         {settings.mode === 'hide-words' && <>
           <Text style={s.preferenceLabel}>{T('HOW MUCH TO BLANK')}</Text>
           <View style={s.levelRow}>
@@ -5713,7 +5719,7 @@ function MemorizeTestScreen({ navigation, route }: any) {
         ? tf(language, 'Asked {n} times · {p}% remembered', { n: current.attempts, p: percent })
         : T('Not tested yet')}</Text>
 
-      <View style={s.memVerseBox}>
+      <View style={s.memVerseBox}><GlassFill radius={24}/>
         {useTajweed
           ? <TajweedText text={verse.text_uthmani} style={s.memVerseText} />
           : <Text style={s.memVerseText}>{parts.map((part, index) => {
@@ -6267,7 +6273,7 @@ function TasbihScreen({ navigation }: any) {const {rtl,language}=useLanguage();c
         {DHIKR_PHRASES.map((item) => <ChoicePill key={item.id} label={rtl ? item.arabic : item.transliteration} selected={item.id === state.phraseId} onPress={() => { void setTasbihPhrase(item.id); }} />)}
       </ScrollView>
 
-      <View style={s.tasbihCard}>
+      <View style={s.tasbihCard}><GlassFill radius={20}/>
         <Text style={s.tasbihAr}>{phrase.arabic}</Text>
         <Text style={s.directionText}>{dhikrMeaning(phrase, language)}</Text>
         <View style={{ alignItems: 'center' }}>
@@ -6293,14 +6299,14 @@ function TasbihScreen({ navigation }: any) {const {rtl,language}=useLanguage();c
       </View>
 
       <Section title={T('Today')} />
-      <View style={s.dataCard}>
+      <View style={s.dataCard}><GlassFill radius={20}/>
         <View style={s.hadithProgressHead}><Text style={s.hadithProgressName}>{T('Counted today')}</Text><Text style={s.hadithProgressName}>{total}</Text></View>
         <Text style={s.meta}>{tf(language,'Rounds completed on this phrase: {n}',{n:state.rounds})}</Text>
       </View>
 
       <Section title={T('History')} />
-      {!state.sessions.length && <View style={s.empty}><Text style={s.dataBody}>{T('Saved rounds will appear here.')}</Text></View>}
-      {state.sessions.slice(0, 12).map((session) => <View key={session.id} style={s.dataCard}>
+      {!state.sessions.length && <View style={s.empty}><GlassFill radius={24}/><Text style={s.dataBody}>{T('Saved rounds will appear here.')}</Text></View>}
+      {state.sessions.slice(0, 12).map((session) => <View key={session.id} style={s.dataCard}><GlassFill radius={20}/>
         <View style={s.hadithProgressHead}>
           <Text style={s.hadithProgressName}>{session.phrase}</Text>
           <Text style={s.meta}>{new Date(session.completedAt).toLocaleDateString()}</Text>
@@ -6353,7 +6359,7 @@ function DuaCard({ dua, read, onRead }: { dua: Dua; read?: boolean; onRead?: () 
       fallbackText: `${text}${dua.reference ? `\n\n${dua.reference}` : ''}`,
     });
   };
-  return <View style={s.dataCard}>
+  return <View style={s.dataCard}><GlassFill radius={20}/>
     <Text style={s.dataArabic}>{dua.arabic}</Text>
     {!!dua.transliteration && <>
       <Text style={s.duaKicker}>{T('TRANSLITERATION')}</Text>
@@ -6438,12 +6444,12 @@ function DownloadsScreen({ route, navigation }: any) {
     <ScrollView keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
       <ToolGraphic tool="Offline Quran" size={76} />
       <Text style={s.dataTitle}>{T('Kept on this device')}</Text>
-      <View style={s.dataCard}>
+      <View style={s.dataCard}><GlassFill radius={20}/>
         <View style={s.hadithProgressHead}><Text style={s.hadithProgressName}>{T('Stored')}</Text><Text style={s.hadithProgressName}>{formatBytes(used)}</Text></View>
         <Text style={s.meta}>{T('Free space: ')}{free === Number.POSITIVE_INFINITY ? T('unknown on this browser') : formatBytes(free)}</Text>
       </View>
 
-      {!!focusId && <View style={s.dataCard}>
+      {!!focusId && <View style={s.dataCard}><GlassFill radius={20}/>
         <Text style={s.dataMeta}>{T('KEEP THIS SURAH')}</Text>
         <Text style={s.dataName}>{focusName}</Text>
         <Text style={s.meta}>{T('Audio')}: {editionLabel}{T(settings.reciterMode === 'surah' ? ' (file per Surah)' : ' (full-Surah file)')}</Text>
@@ -6458,8 +6464,8 @@ function DownloadsScreen({ route, navigation }: any) {
       {!!message && <View style={s.offlineNote}><Text style={s.offlineNoteText}>{message}</Text></View>}
 
       <Section title={tf(language,'Saved ({n})',{n:downloads.length})} />
-      {!downloads.length && <View style={s.empty}><Text style={s.dataBody}>{T('Nothing saved yet. Open a Surah and choose what to keep.')}</Text></View>}
-      {downloads.map((item) => <View key={item.id} style={s.dataCard}>
+      {!downloads.length && <View style={s.empty}><GlassFill radius={24}/><Text style={s.dataBody}>{T('Nothing saved yet. Open a Surah and choose what to keep.')}</Text></View>}
+      {downloads.map((item) => <View key={item.id} style={s.dataCard}><GlassFill radius={20}/>
         <View style={s.hadithProgressHead}>
           <Text style={s.hadithProgressName}>{item.chapterName}</Text>
           <Text style={s.meta}>{T(item.kind === 'audio' ? 'Audio' : 'Text')} · {item.status === 'done' ? formatBytes(item.bytes) : T(item.status)}</Text>
@@ -6675,7 +6681,7 @@ function MuslimNamesScreen({ navigation }: any) {
         onPress={() => setLimit((value) => value + 60)} style={[s.secondary, { marginTop: 12 }]}>
         <Text style={s.secondaryText}>{T('Show more')}</Text>
       </Tactile>}
-      {ready && !results.length && <View style={s.empty}><Text style={s.dataBody}>{T('No name matches. Try another spelling.')}</Text></View>}
+      {ready && !results.length && <View style={s.empty}><GlassFill radius={24}/><Text style={s.dataBody}>{T('No name matches. Try another spelling.')}</Text></View>}
     </ScrollView>
     {offscreenCard}
   </Page>;
@@ -6704,7 +6710,7 @@ function ProphetNamesScreen({ navigation }: any) {const {rtl,language}=useLangua
       <Text style={s.intro}>{T("Twenty-five prophets are named in the Qur'an. Open one to read the verse the reference points to.")}</Text>
       {PROPHETS.map((prophet) => {
         const isOpen = open === prophet.id;
-        return <View key={prophet.id} style={s.dataCard}>
+        return <View key={prophet.id} style={s.dataCard}><GlassFill radius={20}/>
           <Pressable accessibilityLabel={`${T('Open')} ${prophet.english}`} onPress={() => setOpen(isOpen ? null : prophet.id)}>
             <View style={s.nameRow}>
               <View style={s.nameNumber}><Text style={s.namesArabic}>{prophet.arabic}</Text></View>
@@ -6765,7 +6771,7 @@ function DuasScreen({ navigation }: any) {const {rtl,language}=useLanguage();con
         <Text style={s.duaCategoryName}>{rtl ? category.ar : category.en}</Text>
         <Text style={s.meta}>{category.count} {T(category.count === 1 ? 'dua' : 'duas')}</Text>
       </Pressable>)}</View>
-      {!categories.length && <View style={s.empty}><Text style={s.dataBody}>{T('No occasion matches that word.')}</Text></View>}
+      {!categories.length && <View style={s.empty}><GlassFill radius={24}/><Text style={s.dataBody}>{T('No occasion matches that word.')}</Text></View>}
       <View style={s.apiPanel}><Text style={s.apiTitle}>{T('Kept on this device')}</Text><Text style={s.apiText}>{T('Every occasion you open is stored locally, so it can be read again without a connection.')}</Text></View>
     </>}
   </ScrollView></Page>}
@@ -6842,7 +6848,7 @@ function DataTool({route,navigation}:any){const {rtl,language}=useLanguage();con
  const {location}=useAppLocation(); const title=route.name; const[items,setItems]=useState<any[]>([]); const[error,setError]=useState(''); const[loaded,setLoaded]=useState(false);
  const load=async()=>{setError('');setLoaded(false);try{if(title==='Duas')setItems(await getDuas('morning'));else if(title==='99 Names')setItems(await getNames());else if(title==='Hadith')setItems([await getDailyHadith()]);}catch(e:any){setError(T(e.message))}finally{setLoaded(true)}};
  useEffect(()=>{load()},[title,location?.latitude,location?.longitude]);
- return <Page><ToolBar title={T(title)} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><Text style={s.dataTitle}>{title==='Duas'?T('Morning remembrance'):title==='99 Names'?'The Beautiful Names':title==='Hadith'?T('Hadith of the day'):T(title)}</Text>{error?<ErrorState message={error} retry={load}/>:!loaded?<SkeletonList rows={6} />:!items.length?<View style={s.empty}><View style={s.errorIcon}>{ico('location-outline',24,C.green)}</View><Text style={s.errorTitle}>{T('No live records nearby')}</Text><Text style={s.errorText}>{T('The directory does not currently list a public mosque within 50 km of this location.')}</Text></View>:items.map((item:any,i)=><View key={item.number||item.slug||i} style={s.dataCard}>{title==='99 Names'?<><Text style={s.dataArabic}>{item.name}</Text><Text style={s.dataName}>{item.transliteration}</Text><Text style={s.dataBody}>{item.meaning}</Text></>:title==='Hadith'?<><Text style={s.dataBody}>{item.text}</Text><Text style={s.dataMeta}>{item.collection?.toUpperCase()} · {item.number}</Text></>:<><Text style={s.dataArabic}>{item.arabic}</Text><Text style={s.dataBody}>{item.translation}</Text><Text style={s.dataMeta}>{item.category}</Text></>}</View>)}</ScrollView></Page>
+ return <Page><ToolBar title={T(title)} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><Text style={s.dataTitle}>{title==='Duas'?T('Morning remembrance'):title==='99 Names'?'The Beautiful Names':title==='Hadith'?T('Hadith of the day'):T(title)}</Text>{error?<ErrorState message={error} retry={load}/>:!loaded?<SkeletonList rows={6} />:!items.length?<View style={s.empty}><GlassFill radius={24}/><View style={s.errorIcon}>{ico('location-outline',24,C.green)}</View><Text style={s.errorTitle}>{T('No live records nearby')}</Text><Text style={s.errorText}>{T('The directory does not currently list a public mosque within 50 km of this location.')}</Text></View>:items.map((item:any,i)=><View key={item.number||item.slug||i} style={s.dataCard}><GlassFill radius={20}/>{title==='99 Names'?<><Text style={s.dataArabic}>{item.name}</Text><Text style={s.dataName}>{item.transliteration}</Text><Text style={s.dataBody}>{item.meaning}</Text></>:title==='Hadith'?<><Text style={s.dataBody}>{item.text}</Text><Text style={s.dataMeta}>{item.collection?.toUpperCase()} · {item.number}</Text></>:<><Text style={s.dataArabic}>{item.arabic}</Text><Text style={s.dataBody}>{item.translation}</Text><Text style={s.dataMeta}>{item.category}</Text></>}</View>)}</ScrollView></Page>
 }
 
 const formatJourneyDay = (iso: string) => {
@@ -6974,7 +6980,7 @@ function JourneyScreenInner({ route, navigation }: any) {
       })}
 
       <Section title={T('This journey')} />
-      <View style={s.dataCard}>
+      <View style={s.dataCard}><GlassFill radius={20}/>
         <Text style={s.dataBody}>{T(progress.done === progress.total ? 'Every rite is marked. You can keep the journey in your history, or start a fresh one the next time you go.' : 'Mark each rite as you complete it. Counts and notes are saved as you go.')}</Text>
         <View style={s.actionRow}>
           {progress.done === progress.total && <Tactile accessibilityLabel={T('Complete this journey')} onPress={() => { completeJourney(kind); goBackOrHome(navigation); }} style={s.primary}><Text style={s.primaryText}>{T('Complete journey')}</Text></Tactile>}
@@ -7157,7 +7163,7 @@ function FastingScreen({navigation}:any){const {rtl,language}=useLanguage();cons
     <Text style={s.intro}>{T('A private record of the days you fasted, the days you could not, and the make-up days that remain. Nothing leaves this device.')}</Text>
     <View style={s.summaryScore}><View><Text style={s.nextCardLabel}>{T('DAYS FASTED')}</Text><Text style={s.zakatNo}>{summary.completed}</Text><Text style={s.weekScoreBody}>{tf(language,'{r} Ramadan · {v} voluntary',{r:summary.ramadan,v:summary.voluntary})}</Text></View><View style={{alignItems:'flex-end'}}><Text style={s.nextCardLabel}>{T('CURRENT STREAK')}</Text><Text style={s.zakatNo}>{summary.streak} {T(summary.streak===1?'day':'days')}</Text><Text style={s.weekScoreBody}>{tf(language,'{n} in the last 7 days',{n:summary.thisWeek})}</Text></View></View>
     <Section title={T('Today')} action={readableDate(todayKey)} />
-    <View style={s.dataCard}>
+    <View style={s.dataCard}><GlassFill radius={20}/>
       <Text style={s.dataMeta}>{summary.today?`${T('RECORDED')} · ${labelForEntry(summary.today, language)}`:T('NOT RECORDED YET')}</Text>
       <View style={s.actionRow}>
         <Tactile accessibilityLabel={T('Record today as a Ramadan fast')} onPress={()=>mark('ramadan')} style={s.secondary}><Text style={s.secondaryText}>{T('Ramadan fast')}</Text></Tactile>
@@ -7167,14 +7173,14 @@ function FastingScreen({navigation}:any){const {rtl,language}=useLanguage();cons
       {!!summary.today && <Tactile accessibilityLabel={T('Clear today’s fasting record')} onPress={undo} style={s.dangerButton}><Text style={s.dangerText}>{T('Clear today')}</Text></Tactile>}
     </View>
     <Section title={T('If today was not fasted')} />
-    <View style={s.dataCard}>
+    <View style={s.dataCard}><GlassFill radius={20}/>
       <Text style={s.dataBody}>{T('Recording a missed day adds one day to the make-up ledger below.')}</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap: 8,marginTop: 12}}>{missedReasons(language).map(item=><ChoicePill key={item.id} label={item.label} selected={reason===item.id} onPress={()=>setReason(item.id)}/>)}</ScrollView>
       <Text style={s.meta}>{missedReasons(language).find(item=>item.id===reason)?.detail}</Text>
       <Tactile accessibilityLabel={T('Record today as not fasted')} onPress={()=>mark('missed',{reason})} style={s.primary}><Text style={s.primaryText}>{T('Record as not fasted')}</Text></Tactile>
     </View>
     <Section title={T('Make-up ledger')} action={tf(language,'{n} settled',{n:summary.qada})} />
-    <View style={s.dataCard}>
+    <View style={s.dataCard}><GlassFill radius={20}/>
       <View style={s.hadithProgressHead}><Text style={s.hadithProgressName}>{T('Days owed')}</Text><Text style={s.hadithProgressName}>{summary.owed}</Text></View>
       <Text style={s.meta}>{tf(language,'{q} make-up days recorded · {m} missed days recorded',{q:summary.qada,m:summary.missed})}</Text>
       <View style={s.actionRow}>
@@ -7183,7 +7189,7 @@ function FastingScreen({navigation}:any){const {rtl,language}=useLanguage();cons
       </View>
     </View>
     <Section title={T('The last six months')} />
-    <View style={s.dataCard}>
+    <View style={s.dataCard}><GlassFill radius={20}/>
       <View style={s.fastMonths}>
         {summary.months.map((month) => {
           const total = month.fasted + month.missed;
@@ -7200,7 +7206,7 @@ function FastingScreen({navigation}:any){const {rtl,language}=useLanguage();cons
       <Text style={s.meta}>{tx(language, 'Days fasted in each month, oldest first.')}</Text>
     </View>
     <Section title={T('Recent record')} action={ar?`${fasting.entries.length} ${arNoun(fasting.entries.length,'يوم مسجَّل','يومان مسجَّلان','أيام مسجَّلة','يومًا مسجَّلًا')}`:tf(language,'{n} entries',{n:fasting.entries.length})} />
-    {!fasting.entries.length && <View style={s.empty}><Text style={s.dataBody}>{T('Nothing recorded yet. Mark today above and your record starts here.')}</Text></View>}
+    {!fasting.entries.length && <View style={s.empty}><GlassFill radius={24}/><Text style={s.dataBody}>{T('Nothing recorded yet. Mark today above and your record starts here.')}</Text></View>}
     {!!fasting.entries.length && <View style={s.settings}>{summary.recent.map(entry=><View key={entry.date} style={s.summaryDay}><View style={{flex:1}}><Text style={s.settingName}>{readableDate(entry.date)}</Text><Text style={s.meta}>{labelForEntry(entry, language)}</Text></View><Pressable accessibilityLabel={`${T('Remove the fasting record for')} ${readableDate(entry.date)}`} onPress={()=>{void clearFastDay(entry.date)}}>{ico('trash-outline',17,C.coral)}</Pressable></View>)}</View>}
     {!!message && <View style={s.offlineNote}><Text style={s.offlineNoteText}>{message}</Text></View>}
     <View style={s.apiPanel}><Text style={s.apiTitle}>{T('A note on rulings')}</Text><Text style={s.apiText}>{T('This is a private record, not a ruling. What obliges a make-up fast, and what excuses a day, depends on your situation: travel, illness, pregnancy, the monthly cycle and post-natal bleeding each have their own rules. Please confirm your own case with a scholar or a trusted, sourced guide. Everything here stays on this device, and nothing is uploaded.')}</Text></View>
@@ -7221,15 +7227,15 @@ function WeeklySummaryScreen({navigation}:any){const {rtl,language}=useLanguage(
     <Text style={s.intro}>{T('Seven days of salah, reading, dhikr and memorisation, counted only from what you did in the app. Everything stays on this device.')}</Text>
     <View style={s.summaryScore}><View><Text style={s.nextCardLabel}>{T('LAST 7 DAYS')}</Text><Text style={s.zakatNo}>{total.prayers} / 35</Text><Text style={s.weekScoreBody}>{T('prayers marked')}</Text></View><View style={{alignItems:'flex-end'}}><Text style={s.nextCardLabel}>{T('STREAKS')}</Text><Text style={s.zakatNo}>{week.prayerStreak} {T(week.prayerStreak===1?'day':'days')}</Text><Text style={s.weekScoreBody}>{ar?`${week.activeStreak} ${arNoun(week.activeStreak,'يوم نشط','يومان نشطان','أيام نشطة','يومًا نشطًا')}`:tf(language,week.activeStreak===1?'{n} active day':'{n} active days',{n:week.activeStreak})}</Text></View></View>
     <View style={s.twoCol}>
-      <View style={[s.dataCard,{flex:1,marginBottom:0}]}><Text style={s.dataMeta}>{T('VERSES MARKED')}</Text><Text style={s.weekStatValue}>{total.verses}</Text><Text style={s.meta}>{ar?`${total.surahs} ${arNoun(total.surahs,'سورة','سورتان','سور','سورة')} · ${total.pages} ${arNoun(total.pages,'صفحة','صفحتان','صفحات','صفحة')}`:tf(language,'{s} Surahs · {p} pages',{s:total.surahs,p:total.pages})}</Text></View>
-      <View style={[s.dataCard,{flex:1,marginBottom:0}]}><Text style={s.dataMeta}>{T('DHIKR COUNTED')}</Text><Text style={s.weekStatValue}>{total.dhikr}</Text><Text style={s.meta}>{ar?`${total.adhkar} ${arNoun(total.adhkar,'ذكر مقروء','ذكران مقروءان','أذكار مقروءة','ذكرًا مقروءًا')} · ${total.hifz} مراجعة حفظ`:tf(language,'{d} remembrances · {h} hifz reviews',{d:total.adhkar,h:total.hifz})}</Text></View>
+      <View style={[s.dataCard,{flex:1,marginBottom:0}]}><GlassFill radius={20}/><Text style={s.dataMeta}>{T('VERSES MARKED')}</Text><Text style={s.weekStatValue}>{total.verses}</Text><Text style={s.meta}>{ar?`${total.surahs} ${arNoun(total.surahs,'سورة','سورتان','سور','سورة')} · ${total.pages} ${arNoun(total.pages,'صفحة','صفحتان','صفحات','صفحة')}`:tf(language,'{s} Surahs · {p} pages',{s:total.surahs,p:total.pages})}</Text></View>
+      <View style={[s.dataCard,{flex:1,marginBottom:0}]}><GlassFill radius={20}/><Text style={s.dataMeta}>{T('DHIKR COUNTED')}</Text><Text style={s.weekStatValue}>{total.dhikr}</Text><Text style={s.meta}>{ar?`${total.adhkar} ${arNoun(total.adhkar,'ذكر مقروء','ذكران مقروءان','أذكار مقروءة','ذكرًا مقروءًا')} · ${total.hifz} مراجعة حفظ`:tf(language,'{d} remembrances · {h} hifz reviews',{d:total.adhkar,h:total.hifz})}</Text></View>
     </View>
-    {!active && <View style={[s.empty,{marginTop:12}]}><Text style={s.dataBody}>{T('Nothing recorded in the last seven days yet. Mark a prayer, read a Surah, count dhikr or practise a verse and this page fills in.')}</Text></View>}
+    {!active && <View style={[s.empty,{marginTop:12}]}><GlassFill radius={24}/><Text style={s.dataBody}>{T('Nothing recorded in the last seven days yet. Mark a prayer, read a Surah, count dhikr or practise a verse and this page fills in.')}</Text></View>}
     <Section title={T('Daily salah')} action={week.bestDay && week.bestDay.prayers ? `${T('Best')}: ${week.bestDay.label}` : ''} />
     <View style={s.settings}>{week.rows.map(day=><View key={day.key} style={s.summaryDay}><View style={{flex:1}}><Text style={s.settingName}>{day.label}</Text><Text style={s.meta}>{day.short}</Text></View><View style={s.summaryDots}>{Array.from({length:5}).map((_,i)=><View key={i} style={[s.summaryDot,i<day.prayers&&s.summaryDotDone]}/>)}</View><Text style={s.progressCount}>{day.prayers}/5</Text></View>)}</View>
     <Section title={T('Quran reading')} action={ar?`${total.verses} ${arNoun(total.verses,'آية','آيتان','آيات','آية')}`:tf(language,'{n} verses',{n:total.verses})} />
     <View style={s.settings}>{week.rows.map(day=><View key={`read-${day.key}`} style={s.summaryDay}><View style={{flex:1}}><Text style={s.settingName}>{day.label}</Text><Text style={s.meta}>{ar?`${day.surahs} ${arNoun(day.surahs,'سورة','سورتان','سور','سورة')} · ${day.pages} ${arNoun(day.pages,'صفحة','صفحتان','صفحات','صفحة')}`:tf(language,'{s} Surahs · {p} pages',{s:day.surahs,p:day.pages})}</Text></View><View style={s.weekBar}><View style={[s.weekBarFill,{width:`${Math.round(day.verses/maxVerses*100)}%`} as any]}/></View><Text style={s.progressCount}>{day.verses}</Text></View>)}</View>
-    {!!opened.length && <View style={s.dataCard}><Text style={s.dataMeta}>{T('SURAHS OPENED THIS WEEK')}</Text><Text style={s.dataBody}>{opened.slice(0,8).map(id=>names[id]||(ar?`سورة ${id}`:tf(language,'Surah {n}',{n:id}))).join(' · ')}</Text></View>}
+    {!!opened.length && <View style={s.dataCard}><GlassFill radius={20}/><Text style={s.dataMeta}>{T('SURAHS OPENED THIS WEEK')}</Text><Text style={s.dataBody}>{opened.slice(0,8).map(id=>names[id]||(ar?`سورة ${id}`:tf(language,'Surah {n}',{n:id}))).join(' · ')}</Text></View>}
     <Section title={T('Hifz')} action={ar?`${memorized} محفوظة · ${revising} قيد المراجعة`:tf(language,'{m} memorized · {r} revising',{m:memorized,r:revising})} />
     <View style={s.settings}>{week.rows.map(day=><View key={`hifz-${day.key}`} style={s.summaryDay}><View style={{flex:1}}><Text style={s.settingName}>{day.label}</Text><Text style={s.meta}>{day.short}</Text></View><View style={s.weekBar}><View style={[s.weekBarFill,{width:`${Math.round(day.hifz/maxHifz*100)}%`} as any]}/></View><Text style={s.progressCount}>{day.hifz}</Text></View>)}</View>
     <Section title={T('Dhikr')} action={ar?`${total.dhikr} معدودة`:tf(language,'{n} counted',{n:total.dhikr})} />
@@ -7306,7 +7312,7 @@ function LocationSetupScreen({navigation}:any){const {rtl,language}=useLanguage(
 
       {searching&&<SkeletonList rows={4} />}
 
-      {!searching&&query.trim().length>=2&&results.length===0&&<View style={s.empty}>
+      {!searching&&query.trim().length>=2&&results.length===0&&<View style={s.empty}><GlassFill radius={24}/>
         <Text style={s.errorTitle}>{lookedOnline?T('Nothing found for that name'):T('No match in the offline list')}</Text>
         <Text style={s.errorText}>{lookedOnline
           ? T('Check the spelling, or add the place by its coordinates below.')
@@ -7337,7 +7343,7 @@ function LocationSetupScreen({navigation}:any){const {rtl,language}=useLanguage(
         ? <Tactile accessibilityRole="button" accessibilityLabel={T('Add coordinates manually')} onPress={()=>setManual(true)} style={s.secondary}>
             <Text style={s.secondaryText}>{T('Add a place by latitude and longitude')}</Text>
           </Tactile>
-        : <View style={s.formCard}>
+        : <View style={s.formCard}><GlassFill radius={20}/>
             <Text style={s.inputLabel}>{T('NAME')}</Text>
             <TextInput accessibilityLabel={T('Location name')} value={label} onChangeText={setLabel}
               placeholder={T('e.g. Home, Abu Dhabi')} style={s.textField}/>
@@ -7567,7 +7573,7 @@ function SalahTrackerScreen({ navigation }: any) {
           </View>
 
           {openDay ? (
-            <View style={s.dataCard}>
+            <View style={s.dataCard}><GlassFill radius={20}/>
               <Text style={s.preferenceLabel}>{openDay}</Text>
               <View style={s.memChipWrap}>
                 {PRAYER_FIVE.map((prayer) => {
@@ -7634,7 +7640,7 @@ function SunnahScreen({ navigation }: any) {
         </LinearGradient>
 
         <Section title={T('Today')} />
-        <View style={s.sunnahList}>
+        <View style={s.sunnahList}><GlassFill radius={20}/>
           {SUNNAH_PRAYERS.map((prayer) => {
             const done = todays.includes(prayer);
             const stat = summary.per[prayer];
@@ -7965,7 +7971,7 @@ function NotificationScreen({navigation}:any){const {rtl,language}=useLanguage()
       <Text style={s.dataTitle}>{T('Gentle, local reminders')}</Text>
       <Text style={s.intro}>{T('Permission and scheduling happen on your device. No notification profile is sent to us.')}</Text>
 
-      <View style={[s.healthCard,{marginBottom:4}]}>
+      <View style={[s.healthCard,{marginBottom:4}]}><GlassFill radius={20}/>
         <View style={[s.healthDot,{backgroundColor:health==='granted'?C.success:!canAsk&&health==='denied'?C.coral:C.gold}]}/>
         <View style={{flex:1}}>
           <Text style={s.sourceTitle}>{T('Permission')}: {T(health)}</Text>
@@ -7989,7 +7995,7 @@ function NotificationScreen({navigation}:any){const {rtl,language}=useLanguage()
           difference between a setting that is switched on and one that
           works: without it, a phone that will not honour exact alarms looks
           exactly like a phone that will, right up to the prayer time. */}
-      {!!audioBlocked && <View style={[s.healthCard,{marginBottom:4,borderColor:C.coral,borderWidth:1}]}>
+      {!!audioBlocked && <View style={[s.healthCard,{marginBottom:4,borderColor:C.coral,borderWidth:1}]}><GlassFill radius={20}/>
         <View style={[s.healthDot,{backgroundColor:C.coral}]}/>
         <View style={{flex:1}}>
           <Text style={s.sourceTitle}>{T('The adhan cannot sound on this device')}</Text>
@@ -8289,7 +8295,7 @@ function GuideDirectory({route,navigation}:any){const {rtl,language}=useLanguage
      screen, beside the timetable they belong with, and having them in both
      places made two tiles that look like different features show the same
      six things. */
-  const guides=WORSHIP_GUIDES.filter((guide)=>!RAMADAN_GUIDE_IDS.includes(guide.id));return <Page><ToolBar title={T('Worship guides')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><ToolGraphic tool="Worship guides" size={87}/><Text style={s.dataTitle}>{T('Learn with references')}</Text><Text style={s.intro}>{T('Concise educational overviews with transparent Qur’an and Hadith references. Detailed rulings should be learned from a qualified local scholar.')}</Text><View style={s.guideGrid}>{guides.map(guide=>{const g=localizeGuide(guide,language);return <MotionPress key={guide.id} onPress={()=>navigation.navigate('Guide Detail',{guide})} style={s.guideCard}><View style={s.guideCardInner}><ToolGraphic tool={guide.id} size={69}/><Text style={s.exploreTitle}>{g.title}</Text><Text style={s.exploreBody}>{g.subtitle}</Text><View style={s.exploreArrow}>{ico(rtl ? 'arrow-back' : 'arrow-forward',15,C.green)}</View></View></MotionPress>})}</View></ScrollView></Page>}
+  const guides=WORSHIP_GUIDES.filter((guide)=>!RAMADAN_GUIDE_IDS.includes(guide.id));return <Page><ToolBar title={T('Worship guides')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><ToolGraphic tool="Worship guides" size={87}/><Text style={s.dataTitle}>{T('Learn with references')}</Text><Text style={s.intro}>{T('Concise educational overviews with transparent Qur’an and Hadith references. Detailed rulings should be learned from a qualified local scholar.')}</Text><View style={s.guideGrid}>{guides.map(guide=>{const g=localizeGuide(guide,language);return <MotionPress key={guide.id} onPress={()=>navigation.navigate('Guide Detail',{guide})} style={s.guideCard}><View style={s.guideCardInner}><GlassFill radius={20}/><ToolGraphic tool={guide.id} size={69}/><Text style={s.exploreTitle}>{g.title}</Text><Text style={s.exploreBody}>{g.subtitle}</Text><View style={s.exploreArrow}>{ico(rtl ? 'arrow-back' : 'arrow-forward',15,C.green)}</View></View></MotionPress>})}</View></ScrollView></Page>}
 /**
  * The evidence for a guide, shown in full on the page rather than as a link
  * out. Both kinds are held on the device in guideSources, so a guide reads
@@ -8516,7 +8522,7 @@ function HijriCalendarScreen({navigation}:any){
       {error?<ErrorState message={error} retry={load}/>:!days.length?<SkeletonList rows={6} />:<>
         <Section title={T('This month')}/>
         <View style={s.weekHead}>{['ح','ن','ث','ر','خ','ج','س'].map((d,i)=><Text key={i} style={s.weekLabel}>{rtl?d:['S','M','T','W','T','F','S'][i]}</Text>)}</View>
-        <View style={s.calendarGrid}>
+        <View style={s.calendarGrid}><GlassFill radius={24}/>
           {Array.from({length:offset}).map((_,i)=><View key={`e${i}`} style={s.calendarCell}/>)}
           {days.map((d,i)=>{
             const hits=eventOn(d.hijriMonthNumber,d.hijriDay);
@@ -8541,7 +8547,7 @@ function HijriCalendarScreen({navigation}:any){
 
       {!!selected&&<>
         <Section title={T('Selected day')}/>
-        <View style={s.dayDetail}>
+        <View style={s.dayDetail}><GlassFill radius={20}/>
           <Text style={s.dayDetailHijri}>{rtl
             ? `${selected.hijriDay} ${selected.hijriMonthAr||selected.hijriMonth} ${selected.hijriYear} هـ`
             : `${selected.hijriDay} ${selected.hijriMonth} ${selected.hijriYear} AH`}</Text>
@@ -8725,7 +8731,7 @@ function RamadanScreen({ navigation }: any) {
 
     {error ? <ErrorState message={error} retry={load}/> : !days.length ? <SkeletonList rows={6} /> : <>
       <Section title={T('Fasting timetable')} action={tf(language,'{n} days',{n:days.length})}/>
-      <View style={s.ramMonth}>
+      <View style={s.ramMonth}><GlassFill radius={24}/>
         <View style={s.ramWeekRow}>{initials.map((initial, i) => <View key={i} style={s.ramWeekCell}><Text style={s.ramWeekText}>{initial}</Text></View>)}</View>
         <View style={s.ramGrid}>
           {Array.from({ length: lead }).map((_, i) => <View key={`pad${i}`} style={s.ramCellSpacer}/>)}
@@ -8777,7 +8783,7 @@ function PrivateRow({ title, caption, graphic, onPress, rtl, label }: { title: s
 }
 
 function StatBox({ label, value, hint }: { label: string; value: string; hint?: string }) {
-  return <View style={s.statBox}><Text style={s.statLabel}>{label}</Text><Text style={s.statValue}>{value}</Text>{!!hint && <Text style={s.meta}>{hint}</Text>}</View>;
+  return <View style={s.statBox}><GlassFill radius={20}/><Text style={s.statLabel}>{label}</Text><Text style={s.statValue}>{value}</Text>{!!hint && <Text style={s.meta}>{hint}</Text>}</View>;
 }
 
 function PinDots({ filled, error }: { filled: number; error?: boolean }) {
@@ -8917,13 +8923,13 @@ function IstihadaScreen({ navigation }: any) {
       <Text style={s.dataTitle}>{T('Is this bleeding a period?')}</Text>
       <Text style={s.intro}>{T('Bleeding is not always hayd, and the difference decides whether the prayer and the fast are due. Answer the two questions below and the app will hold them against your own pattern and against the limits commonly cited.')}</Text>
 
-      <View style={s.dataCard}>
+      <View style={s.dataCard}><GlassFill radius={20}/>
         <Text style={s.preferenceLabel}>{T('HOW LONG IT HAS RUN')}</Text>
         {stepper(days, () => setDays(Math.max(1, days - 1)), () => setDays(Math.min(45, days + 1)), 'days')}
         {!!openDays && <Text style={s.meta}>{T('Started from the cycle you have open.')}</Text>}
       </View>
 
-      <View style={s.dataCard}>
+      <View style={s.dataCard}><GlassFill radius={20}/>
         <Text style={s.preferenceLabel}>{T('CLEAR DAYS BEFORE IT BEGAN')}</Text>
         {stepper(
           purity,
@@ -8934,20 +8940,20 @@ function IstihadaScreen({ navigation }: any) {
         <Text style={s.meta}>{T('If you are not sure, leave it. The answer is firmer with it, but it is not required.')}</Text>
       </View>
 
-      <View style={s.dataCard}>
+      <View style={s.dataCard}><GlassFill radius={20}/>
         <Text style={[s.dataMeta, { color: verdictColour }]}>{T(guidance.title)}</Text>
         <Text style={s.dataTitle}>{headline}</Text>
         <Text style={s.dataBody}>{T(guidance.body)}</Text>
       </View>
 
       <Section title={T('How it was worked out')} />
-      <View style={s.dataCard}>
+      <View style={s.dataCard}><GlassFill radius={20}/>
         {assessment.reasons.map((reason: string, index: number) => <Text key={index} style={[s.dataBody, index > 0 && { marginTop: 8 }]}>{language === 'ar' ? assessment.reasonsAr?.[index] || T(reason) : T(reason)}</Text>)}
         {assessment.adah !== null && <Text style={[s.meta, { marginTop: 10 }]}>{tf(language, 'Your recorded pattern: about {n} days.', { n: assessment.adah })}</Text>}
       </View>
 
       <Section title={T('What to do')} />
-      <View style={s.dataCard}>
+      <View style={s.dataCard}><GlassFill radius={20}/>
         {guidance.steps.map((step: string, index: number) => (
           <View key={index} style={[s.packingRow, index === guidance.steps.length - 1 && { borderBottomWidth: 0 }]}>
             <Text style={[s.dataMeta, { minWidth: 22 }]}>{index + 1}</Text>
@@ -8969,9 +8975,9 @@ function IstihadaScreen({ navigation }: any) {
       </View>
 
       <Section title={T('Which position this uses')} />
-      <View style={s.dataCard}><Text style={s.dataBody}>{T(SCHOOL_NOTE)}</Text></View>
+      <View style={s.dataCard}><GlassFill radius={20}/><Text style={s.dataBody}>{T(SCHOOL_NOTE)}</Text></View>
 
-      <View style={s.dataCard}><Text style={s.dataBody}>{T(ADVISORY)}</Text></View>
+      <View style={s.dataCard}><GlassFill radius={20}/><Text style={s.dataBody}>{T(ADVISORY)}</Text></View>
     </ScrollView>
   </Page></PrivateArea>;
 }
@@ -9068,7 +9074,7 @@ function RamadanPlannerScreen({ navigation }: any) {
       <Text style={s.dataTitle}>{T('Ramadan through your cycle')}</Text>
       <Text style={s.intro}>{T('Thirty days, and the handful your cycle is likely to claim from them. The app counts forward from your own recorded pattern and marks the days it lands on, so the number you owe is known before the month begins rather than counted up at the end of it.')}</Text>
 
-      <View style={s.dataCard}>
+      <View style={s.dataCard}><GlassFill radius={20}/>
         <Text style={s.dataMeta}>{tf(language, 'Ramadan {year}', { year: plan.hijriYear })}</Text>
         <Text style={s.dataName}>{formatLongDay(plan.start, language)}{T(' — ')}{formatLongDay(plan.end, language)}</Text>
         <Text style={s.meta}>{whenText}</Text>
@@ -9088,7 +9094,7 @@ function RamadanPlannerScreen({ navigation }: any) {
       </View>
 
       {!plan.hasPattern && (
-        <View style={s.dataCard}>
+        <View style={s.dataCard}><GlassFill radius={20}/>
           <Text style={s.dataName}>{T('What it needs from you')}</Text>
           <Text style={s.dataBody}>{T('This is counted from your own cycles, not from an average. Record two complete cycles — a start and an end for each — and the projection appears here. Until then the honest answer is no answer, and a number invented from someone else’s pattern would be worse than a blank.')}</Text>
           <Pressable onPress={() => navigation.navigate('Cycle')} style={[s.setting, { marginTop: 8, borderBottomWidth: 0 }]}>
@@ -9099,7 +9105,7 @@ function RamadanPlannerScreen({ navigation }: any) {
       )}
 
       {plan.hasPattern && (
-        <View style={s.dataCard}>
+        <View style={s.dataCard}><GlassFill radius={20}/>
           <Text style={s.preferenceLabel}>{T('THE THIRTY DAYS')}</Text>
           <View style={RAMADAN_CELL.grid}>{plan.days.map(cell)}</View>
 
@@ -9119,7 +9125,7 @@ function RamadanPlannerScreen({ navigation }: any) {
       )}
 
       {plan.hasPattern && (
-        <View style={s.dataCard}>
+        <View style={s.dataCard}><GlassFill radius={20}/>
           <View style={RAMADAN_CELL.statRow}>
             <View style={RAMADAN_CELL.stat}>
               <Text style={RAMADAN_CELL.statLabel}>{T('YOUR CYCLE')}</Text>
@@ -9140,7 +9146,7 @@ function RamadanPlannerScreen({ navigation }: any) {
       )}
 
       <Section title={T('What is worth knowing')} />
-      <View style={s.dataCard}>
+      <View style={s.dataCard}><GlassFill radius={20}/>
         {RAMADAN_NOTES.map((note, index) => (
           <View key={index} style={[s.packingRow, { alignItems: 'flex-start' }, index === RAMADAN_NOTES.length - 1 && { borderBottomWidth: 0 }]}>
             <Text style={[s.dataMeta, { minWidth: 22, marginTop: 0 }]}>{index + 1}</Text>
@@ -9168,8 +9174,8 @@ function RamadanPlannerScreen({ navigation }: any) {
         </Pressable>
       </View>
 
-      <View style={s.dataCard}><Text style={s.dataBody}>{T(RAMADAN_ADVISORY)}</Text></View>
-      <View style={s.dataCard}><Text style={s.dataBody}>{T(ADVISORY)}</Text></View>
+      <View style={s.dataCard}><GlassFill radius={20}/><Text style={s.dataBody}>{T(RAMADAN_ADVISORY)}</Text></View>
+      <View style={s.dataCard}><GlassFill radius={20}/><Text style={s.dataBody}>{T(ADVISORY)}</Text></View>
     </ScrollView>
   </Page></PrivateArea>;
 }
@@ -9218,14 +9224,14 @@ function TheseDaysScreen({ navigation }: any) {
       <Text style={s.intro}>{T('Two worships are lifted in these days — the prayer and the fast — and they are lifted as a mercy, not held back as a loss. Nearly everything else you do is untouched by them: the remembrance, the listening, the study, the asking. All of it is still yours, and all of it is already here.')}</Text>
 
       {onFlow && (
-        <View style={s.dataCard}>
+        <View style={s.dataCard}><GlassFill radius={20}/>
           <Text style={s.dataMeta}>{T('WHERE YOU ARE')}</Text>
           <Text style={s.dataName}>{dayLine}</Text>
           <Text style={s.meta}>{T('Everything below is open to you today.')}</Text>
         </View>
       )}
 
-      <View style={s.dataCard}>
+      <View style={s.dataCard}><GlassFill radius={20}/>
         <Text style={s.dataBody}>{T(THESE_DAYS_ANCHOR)}</Text>
       </View>
 
@@ -9248,7 +9254,7 @@ function TheseDaysScreen({ navigation }: any) {
       </View>
 
       <Section title={T('Where the scholars differ')} />
-      <View style={s.dataCard}>
+      <View style={s.dataCard}><GlassFill radius={20}/>
         {THESE_DAYS_DISPUTED.map((note, index) => (
           <View key={index} style={[s.packingRow, { alignItems: 'flex-start' }, index === THESE_DAYS_DISPUTED.length - 1 && { borderBottomWidth: 0 }]}>
             <Text style={[s.dataMeta, { minWidth: 22, marginTop: 0 }]}>{index + 1}</Text>
@@ -9261,14 +9267,14 @@ function TheseDaysScreen({ navigation }: any) {
       </View>
 
       <Section title={T('On the streak')} />
-      <View style={s.dataCard}>
+      <View style={s.dataCard}><GlassFill radius={20}/>
         <Text style={s.dataBody}>{T('The streak on the Home tab counts days on which all five prayers were marked. In these days it rests, because the prayer itself is lifted — and a counter that measures a worship you have been excused from is measuring the wrong thing. Nothing is lost by it. These are not blank days. They are simply counted a different way.')}</Text>
       </View>
 
       <Section title={T('Which position this uses')} />
-      <View style={s.dataCard}><Text style={s.dataBody}>{T(SCHOOL_NOTE)}</Text></View>
+      <View style={s.dataCard}><GlassFill radius={20}/><Text style={s.dataBody}>{T(SCHOOL_NOTE)}</Text></View>
 
-      <View style={s.dataCard}><Text style={s.dataBody}>{T(THESE_DAYS_ADVISORY)}</Text></View>
+      <View style={s.dataCard}><GlassFill radius={20}/><Text style={s.dataBody}>{T(THESE_DAYS_ADVISORY)}</Text></View>
     </ScrollView>
   </Page></PrivateArea>;
 }
@@ -9288,7 +9294,7 @@ function WomenHubScreen({ navigation }: any) {
       <ToolGraphic tool="Women’s worship" size={90} />
       <Text style={s.dataTitle}>{T('A private area')}</Text>
       <Text style={s.intro}>{T('Cycle and purity records, the days after childbirth, and the fasts owed because of them — kept only on this device. Nothing is uploaded and no account is involved.')}</Text>
-      <View style={s.dataCard}>
+      <View style={s.dataCard}><GlassFill radius={20}/>
         <Text style={s.dataMeta}>{T('WHAT IT HOLDS')}</Text>
         <Text style={s.dataBody}>{T('Your own cycle lengths and averages, a prediction worked out from your history rather than an assumption, purity and ghusl guidance, the post-natal days, and a running scorecard of make-up fasts.')}</Text>
         <Text style={s.dataBody}>{T('You can put a PIN in front of it, or use the face or fingerprint unlock your phone already has.')}</Text>
@@ -9328,7 +9334,7 @@ function WomenHubScreen({ navigation }: any) {
       <View style={s.settings}>
         <PrivateRow rtl={rtl} graphic="Privacy lock" title={config.pinSet ? T('Lock and PIN') : T('Add a PIN')} label={config.pinSet ? 'Lock and PIN' : 'Add a PIN'} caption={config.pinSet ? (config.required ? (tf(language,'Locked · {m}PIN',{m:config.biometric && info.available ? `${info.label} or ` : ''})) : T('PIN saved, lock is off')) : info.available ? T('Face and fingerprint unlock are ready on this device') : T('This device has no biometric unlock, so a PIN is used')} onPress={() => navigation.navigate('Privacy Lock')} />
       </View>
-      <View style={s.dataCard}>
+      <View style={s.dataCard}><GlassFill radius={20}/>
         <Text style={s.dataMeta}>{T('KEPT ON THIS DEVICE')}</Text>
         <Text style={s.dataBody}>{T('Nothing here is uploaded, backed up to an account, or used for anything else. Clearing the app data removes these records for good.')}</Text>
       </View>
@@ -9351,7 +9357,7 @@ function CycleScreen({ navigation }: any) {
       <ToolGraphic tool="Cycle" size={87} />
       <Text style={s.dataTitle}>{T('Your cycle')}</Text>
       <Text style={s.intro}>{T('Record the days as they come. The averages and the prediction are worked out from your own history — nothing is assumed about what your cycle should look like.')}</Text>
-      <View style={s.dataCard}>
+      <View style={s.dataCard}><GlassFill radius={20}/>
         <Text style={s.dataMeta}>{stats.active ? (tf(language,'IN PROGRESS · DAY {n}',{n:stats.dayOfCycle})) : T('NO CYCLE IN PROGRESS')}</Text>
         <Text style={s.dataBody}>{stats.active ? (tf(language,'Started {d}. {n} so far.',{d:formatDay(stats.active.start, language),n:`${stats.dayOfCycle} ${stats.dayOfCycle === 1 ? T('day') : T('days')}`})) : T('When bleeding begins, start a cycle here and the count begins from that day.')}</Text>
         {stats.active ? <>
@@ -9371,12 +9377,12 @@ function CycleScreen({ navigation }: any) {
         <StatBox label={T('FERTILE WINDOW')} value={stats.fertileStart ? `${formatDay(stats.fertileStart, language)} – ${formatDay(stats.fertileEnd as string, language)}` : '—'} hint={T('An estimate, not a certainty')} />
       </View>
       <Section title={T('Day by day')} action={T('Tap to change')} />
-      <View style={s.dataCard}>
+      <View style={s.dataCard}><GlassFill radius={20}/>
         <View style={s.purityRow}>{chips.map((chip) => <Pressable key={chip.date} accessibilityLabel={`${formatDay(chip.date, language)}: ${chip.status ? statusWord[chip.status] : T('not recorded')}`} onPress={() => void logPurity(chip.date, chip.status ? cycle(chip.status) : 'flow')} style={[s.purityChip, chip.status === 'flow' && s.purityFlow, chip.status === 'spotting' && s.puritySpotting, chip.status === 'pure' && s.purityPure, chip.date === today && s.purityToday]}><Text style={s.purityDay}>{Number(chip.date.slice(8, 10))}</Text><Text style={s.purityLabel}>{chip.status ? statusWord[chip.status].slice(0, 3) : '—'}</Text></Pressable>)}</View>
         <Text style={s.meta}>{T('The last fourteen days. Nothing is recorded until you tap a day.')}</Text>
       </View>
       <Section title={T('History')} />
-      {!womens.cycles.length ? <View style={s.dataCard}><Text style={s.dataBody}>{T('No cycles recorded yet.')}</Text></View> : <View style={s.settings}>{womens.cycles.slice(0, 12).map((entry) => <View key={entry.id} style={[s.setting, ]}>
+      {!womens.cycles.length ? <View style={s.dataCard}><GlassFill radius={20}/><Text style={s.dataBody}>{T('No cycles recorded yet.')}</Text></View> : <View style={s.settings}>{womens.cycles.slice(0, 12).map((entry) => <View key={entry.id} style={[s.setting, ]}>
         <View style={{ flex: 1 }}><Text style={s.settingName}>{formatDay(entry.start, language)}{entry.end ? ` – ${formatDay(entry.end, language)}` : (tx(language, ' · ongoing'))}</Text><Text style={s.meta}>{entry.end ? (tf(language,'{n} days',{n:daysBetween(entry.start, entry.end) + 1})) : (tf(language,'Day {n}',{n:Math.max(1, daysBetween(entry.start, today) + 1)}))} · {T(FLOW_LEVELS.find((level) => level.id === entry.flow)?.label || 'Flow')}</Text></View>
         <Tactile accessibilityLabel={T('Delete this cycle')} onPress={() => void deleteCycle(entry.id)} style={s.stepButton}>{ico('trash-outline', 18, C.coral)}</Tactile>
       </View>)}</View>}
@@ -9398,7 +9404,7 @@ function GhuslScreen({ navigation }: any) {
       <Text style={s.dataTitle}>{T('The full washing')}</Text>
       <Text style={s.intro}>{T('How to perform ghusl, with what is required of it and how the Prophet ﷺ performed it.')}</Text>
 
-      <View style={[s.dataCard,{marginBottom:0}]}>
+      <View style={[s.dataCard,{marginBottom:0}]}><GlassFill radius={20}/>
         <Text style={s.dataArabic}>{BISMILLAH_ARABIC}</Text>
         <Text style={s.dataMeta}>{T('THE INTENTION, IN THE HEART AND ON THE TONGUE')}</Text>
         <Text style={s.dataArabic}>{NIYYAH_ARABIC}</Text>
@@ -9421,7 +9427,7 @@ function GhuslScreen({ navigation }: any) {
         </View>))}
       </View>
 
-      <View style={[s.dataCard,{marginTop:20}]}>
+      <View style={[s.dataCard,{marginTop:20}]}><GlassFill radius={20}/>
         <Text style={s.dataMeta}>{T('BEFORE YOU RELY ON ANY OF THIS')}</Text>
         <Text style={s.dataBody}>{T(ADVISORY)}</Text>
       </View>
@@ -9454,7 +9460,7 @@ function PurityScreen({ navigation }: any) {
           <Text style={s.weekScoreBody}>{nifas.active ? (nifas.pastLimit ? T('Past forty days — speak to a scholar and a doctor') : tf(language,'{n} days remain inside the forty',{n:nifas.remaining})) : (tf(language,'Bleeding after childbirth is commonly counted up to {n} days.',{n:LIMITS.nifasMaxDays}))}</Text>
         </View>
       </LinearGradient>
-      <View style={s.dataCard}>
+      <View style={s.dataCard}><GlassFill radius={20}/>
         {nifas.active ? <>
           <Text style={s.dataMeta}>{tx(language, 'STARTED')} {formatDay(nifas.active.start, language)}</Text>
           <View style={s.actionRow}>
@@ -9470,21 +9476,21 @@ function PurityScreen({ navigation }: any) {
         <Tactile accessibilityLabel={T('Delete this record')} onPress={() => void deleteNifas(entry.id)} style={s.stepButton}>{ico('trash-outline', 18, C.coral)}</Tactile>
       </View>)}</View></>}
       <Section title={T('The verse on menstruation')} action={T('Quran 2:222')} />
-      {verseError ? <ErrorState message={verseError} retry={load} /> : !verse ? <SkeletonParagraph lines={3} /> : <View style={s.dataCard}>
+      {verseError ? <ErrorState message={verseError} retry={load} /> : !verse ? <SkeletonParagraph lines={3} /> : <View style={s.dataCard}><GlassFill radius={20}/>
         <Text style={s.dataArabic}>{verse.arabic}</Text>
         <Text style={s.dataBody}>{verse.english}</Text>
       </View>}
       <Section title={T('Signs that bleeding has ended')} />
       <View style={s.settings}>{TUHR_SIGNS.map((block) => <View key={block.title} style={s.guideBlock}><Text style={s.guideTitle}>{T(block.title)}</Text><Text style={s.dataBody}>{T(block.body)}</Text></View>)}</View>
       <Section title={T('The ghusl')} />
-      <Tactile accessibilityRole="button" onPress={() => navigation.navigate('Ghusl')} style={s.dataCard}>
+      <Tactile accessibilityRole="button" onPress={() => navigation.navigate('Ghusl')} style={s.dataCard}><GlassFill radius={20}/>
         <Text style={s.settingName}>{T('How to perform ghusl')}</Text>
         <Text style={s.dataBody}>{T('What is required of the washing, and how the Prophet ﷺ performed it.')}</Text>
       </Tactile>
 
       <Section title={T('Hayd, nifas and istihadha')} />
       <View style={s.settings}>{EXPLANATIONS.map((block) => <View key={block.title} style={s.guideBlock}><Text style={s.guideTitle}>{T(block.title)}</Text><Text style={s.dataBody}>{T(block.body)}</Text></View>)}</View>
-      <View style={s.dataCard}><Text style={s.dataMeta}>{T('BEFORE YOU RELY ON ANY OF THIS')}</Text><Text style={s.dataBody}>{T(ADVISORY)}</Text></View>
+      <View style={s.dataCard}><GlassFill radius={20}/><Text style={s.dataMeta}>{T('BEFORE YOU RELY ON ANY OF THIS')}</Text><Text style={s.dataBody}>{T(ADVISORY)}</Text></View>
     </ScrollView>
   </Page></PrivateArea>;
 }
@@ -9510,7 +9516,7 @@ function QadaScreen({ navigation }: any) {
       </LinearGradient>
       <View style={s.progressTrack}><View style={[s.progressFill, { width: `${qada.percent}%` } as any]} /></View>
       <Section title={T('Add a missed day')} />
-      <View style={s.dataCard}>
+      <View style={s.dataCard}><GlassFill radius={20}/>
         <Text style={s.preferenceLabel}>{T('THE DAY THAT WAS MISSED')}</Text>
         <View style={s.dayStepper}>
           <Tactile accessibilityLabel={T('One day earlier')} onPress={() => setDate((value) => addDays(value, -1))} style={s.stepButton}>{ico(rtl ? 'arrow-forward' : 'arrow-back', 19, C.green)}</Tactile>
@@ -9522,7 +9528,7 @@ function QadaScreen({ navigation }: any) {
         <Tactile accessibilityLabel={T('Add this day to the ledger')} onPress={() => void addQada(date, reason)} style={s.primary}><Text style={s.primaryText}>{T('Add this day')}</Text></Tactile>
       </View>
       <Section title={T('Still owed')} action={`${owed.length}`} />
-      {!owed.length ? <View style={s.dataCard}><Text style={s.dataBody}>{T('Nothing outstanding. Every recorded day has been settled.')}</Text></View> : <View style={s.settings}>{owed.map((entry) => <View key={entry.id} style={[s.setting, ]}>
+      {!owed.length ? <View style={s.dataCard}><GlassFill radius={20}/><Text style={s.dataBody}>{T('Nothing outstanding. Every recorded day has been settled.')}</Text></View> : <View style={s.settings}>{owed.map((entry) => <View key={entry.id} style={[s.setting, ]}>
         <Pressable accessibilityLabel={`${T('Mark as settled')} ${formatDay(entry.date, language)}`} onPress={() => void toggleQada(entry.id)} style={s.stepCheck}>{entry.done ? ico('checkmark', 22, C.green) : null}</Pressable>
         <View style={{ flex: 1 }}><Text style={s.settingName}>{formatDay(entry.date, language)}</Text><Text style={s.meta}>{T(QADA_REASONS.find((item) => item.id === entry.reason)?.label ?? '')}</Text></View>
         <Tactile accessibilityLabel={T('Delete this entry')} onPress={() => void deleteQada(entry.id)} style={s.stepButton}>{ico('trash-outline', 18, C.coral)}</Tactile>
@@ -9591,7 +9597,7 @@ function KhatamScreen({ navigation }: any) {
         <View style={s.progressTrack}><View style={[s.progressFill, { width: `${summary.percent}%` } as any]} /></View>
 
         <Section title={T('Mark pages read')} />
-        <View style={s.dataCard}>
+        <View style={s.dataCard}><GlassFill radius={20}/>
           <Text style={s.preferenceLabel}>{T('A PAGE YOU HAVE REACHED')}</Text>
           <TextInput
             style={s.searchInput}
@@ -9613,7 +9619,7 @@ function KhatamScreen({ navigation }: any) {
         {summary.read > 0 && (
           <>
             <Section title={T('Pages reached')} />
-            <View style={s.dataCard}>
+            <View style={s.dataCard}><GlassFill radius={20}/>
               <Text style={s.preferenceLabel}>{`${summary.read} ${T('OF')} ${summary.total} ${T('PAGES')}`}</Text>
               <View style={s.memChipWrap}>
                 {khatam.readPages.slice().sort((a, b) => a - b).slice(-40).map((page) => (
@@ -9628,7 +9634,7 @@ function KhatamScreen({ navigation }: any) {
         )}
 
         <Section title={T('This reading')} />
-        <View style={s.dataCard}>
+        <View style={s.dataCard}><GlassFill radius={20}/>
           <Text style={s.preferenceLabel}>{T('BEGAN')}</Text>
           <Text style={s.settingName}>{new Date(summary.startedAt).toLocaleDateString()}</Text>
           <Text style={s.meta}>{summary.daysElapsed} {T('days so far')}</Text>
@@ -9704,7 +9710,7 @@ function QadaPrayerScreen({ navigation }: any) {
         </LinearGradient>
 
         <Section title={T('Log a missed prayer')} />
-        <View style={s.dataCard}>
+        <View style={s.dataCard}><GlassFill radius={20}/>
           <Text style={s.preferenceLabel}>{T('WHICH PRAYER')}</Text>
           <View style={s.memChipWrap}>
             {QADA_PRAYERS.map((prayer) => (
@@ -9717,7 +9723,7 @@ function QadaPrayerScreen({ navigation }: any) {
         </View>
 
         <Section title={T('Daily pace')} />
-        <View style={s.dataCard}>
+        <View style={s.dataCard}><GlassFill radius={20}/>
           <Text style={s.preferenceLabel}>{T('MADE UP PER DAY')}</Text>
           <View style={s.memChipWrap}>
             {[1, 2, 3, 5].map((goal) => (
@@ -9729,7 +9735,7 @@ function QadaPrayerScreen({ navigation }: any) {
 
         <Section title={T('Outstanding')} />
         {!outstanding.length ? (
-          <View style={s.dataCard}>
+          <View style={s.dataCard}><GlassFill radius={20}/>
             <Text style={s.emptyTitle}>{T('Nothing outstanding')}</Text>
             <Text style={s.meta}>{T('Every prayer you logged here has been made up.')}</Text>
           </View>
@@ -9830,7 +9836,7 @@ function SadaqahScreen({ navigation }: any) {
         </LinearGradient>
 
         <Section title={T('Record a gift')} />
-        <View style={s.dataCard}>
+        <View style={s.dataCard}><GlassFill radius={20}/>
           <Text style={s.preferenceLabel}>{T('AMOUNT')}</Text>
           <TextInput
             style={s.searchInput}
@@ -9857,7 +9863,7 @@ function SadaqahScreen({ navigation }: any) {
         </View>
 
         <Section title={T('Currency')} />
-        <View style={s.dataCard}>
+        <View style={s.dataCard}><GlassFill radius={20}/>
           <Text style={s.preferenceLabel}>{T('RECORDED IN')}</Text>
           <View style={s.memChipWrap}>
             {['USD', 'EUR', 'GBP', 'AED', 'SAR', 'PKR', 'INR', 'TRY', 'MYR', 'IDR'].map((code) => (
@@ -9941,7 +9947,7 @@ function JournalScreen({ navigation }: any) {
         </LinearGradient>
 
         <Section title={editing ? T('Edit the entry') : T('Write')} />
-        <View style={s.dataCard}>
+        <View style={s.dataCard}><GlassFill radius={20}/>
           <TextInput
             style={s.noteInput}
             value={text}
@@ -9963,7 +9969,7 @@ function JournalScreen({ navigation }: any) {
             <Section title={T('Entries')} />
             <View style={s.settings}>
               {journal.entries.map((entry) => (
-                <View key={entry.id} style={s.dataCard}>
+                <View key={entry.id} style={s.dataCard}><GlassFill radius={20}/>
                   <Text style={s.meta}>{new Date(entry.dateKey).toLocaleDateString()}</Text>
                   <Text style={s.noteText}>{entry.text}</Text>
                   <View style={s.actionRow}>
@@ -9997,7 +10003,7 @@ function WomenGuidesScreen({ navigation }: any) {
       <View style={s.settings}>{EXPLANATIONS.map((block) => <View key={block.title} style={s.guideBlock}><Text style={s.guideTitle}>{T(block.title)}</Text><Text style={s.dataBody}>{T(block.body)}</Text></View>)}</View>
       <Section title={T('References')} />
       <View style={s.settings}>{REFERENCES.map((reference) => <View key={reference} style={s.setting}><ToolGraphic tool="Quran" size={31} /><Text style={[s.settingName, { flex: 1, marginHorizontal: 12 }]}>{T(reference)}</Text></View>)}</View>
-      <View style={s.dataCard}><Text style={s.dataMeta}>{T('AND SEE A DOCTOR')}</Text><Text style={s.dataBody}>{T(ADVISORY)}</Text></View>
+      <View style={s.dataCard}><GlassFill radius={20}/><Text style={s.dataMeta}>{T('AND SEE A DOCTOR')}</Text><Text style={s.dataBody}>{T(ADVISORY)}</Text></View>
     </ScrollView>
   </Page></PrivateArea>;
 }
@@ -10051,7 +10057,7 @@ function PrivacyLockScreen({ navigation }: any) {
       <ToolGraphic tool="Privacy lock" size={87} />
       <Text style={s.dataTitle}>{T('Private by default')}</Text>
       <Text style={s.intro}>{T('The women’s screens can be put behind a gate. The PIN is stored as a salted digest, never as the digits themselves, and the face or fingerprint scan is handled entirely by your phone — this app is only told yes or no.')}</Text>
-      <View style={s.dataCard}>
+      <View style={s.dataCard}><GlassFill radius={20}/>
         <Text style={s.dataMeta}>{T('THE PIN')}</Text>
         <Text style={s.dataBody}>{config.pinSet ? T('A PIN is saved on this device.') : T('No PIN yet. Choose one to switch the lock on.')}</Text>
         <View style={s.actionRow}>
@@ -10075,13 +10081,13 @@ function PrivacyLockScreen({ navigation }: any) {
           </View>
         </View>
         <Section title={T('Lock again')} />
-        <View style={s.dataCard}>
+        <View style={s.dataCard}><GlassFill radius={20}/>
           <Text style={s.preferenceLabel}>{T('WHEN THE APP IS PUT AWAY')}</Text>
           <View style={s.choiceGrid}>{RELOCK_OPTIONS.map((option) => <ChoicePill key={option.minutes} label={T(option.label)} selected={config.relockMinutes === option.minutes} onPress={() => void updateLockSettings({ relockMinutes: option.minutes })} />)}</View>
           <Text style={s.meta}>{T('Choosing “Immediately” closes the gate the moment the app moves to the background.')}</Text>
         </View>
       </>}
-      <View style={s.dataCard}><Text style={s.dataMeta}>{T('IF THE PIN IS FORGOTTEN')}</Text><Text style={s.dataBody}>{T('There is no recovery by design — no email, no account, no server that could hand it over. Removing the app clears the records along with the code, which is the only way back in.')}</Text></View>
+      <View style={s.dataCard}><GlassFill radius={20}/><Text style={s.dataMeta}>{T('IF THE PIN IS FORGOTTEN')}</Text><Text style={s.dataBody}>{T('There is no recovery by design — no email, no account, no server that could hand it over. Removing the app clears the records along with the code, which is the only way back in.')}</Text></View>
     </ScrollView>
   </Page>;
 }
@@ -10146,7 +10152,7 @@ function ZakatScreen({ navigation }: any) {
       <Text style={s.intro}>{T('List what you own, subtract what falls due, and compare what is left with the nisab. Prices and exchange rates are fetched live where they are reachable and kept on this device when they are not. This is arithmetic, not a ruling — take the details to a scholar.')}</Text>
 
       <ZakatSection title={T('Currency')} action={zakat.currency} open={zOpen.currency === true} onToggle={() => setZOpen((prev) => ({ ...prev, currency: prev.currency !== true }))}>
-      <View style={s.preferencePanel}>
+      <View style={s.preferencePanel}><GlassFill radius={24}/>
         <View style={s.choiceGrid}>{CURRENCIES.map((currency) => <ChoicePill key={currency.code} label={currency.code} selected={zakat.currency === currency.code} onPress={() => void setCurrency(currency.code)} />)}</View>
         <Text style={s.meta}>{T(CURRENCIES.find((item) => item.code === zakat.currency)?.name ?? zakat.currency)} · {T('every figure below is shown in it.')}</Text>
       </View>
@@ -10174,7 +10180,7 @@ function ZakatScreen({ navigation }: any) {
 
      
       </ZakatSection> <ZakatSection title={T('Gold and silver prices')} open={zOpen.metals === true} onToggle={() => setZOpen((prev) => ({ ...prev, metals: prev.metals !== true }))}>
-      <View style={s.dataCard}>
+      <View style={s.dataCard}><GlassFill radius={20}/>
         <Text style={s.preferenceLabel}>{tx(language, 'PER GRAM, IN ')}{zakat.currency}</Text>
         <View style={[s.metalRow, ]}>
           <View style={{ flex: 1 }}><Text style={s.settingName}>{T('Gold')}</Text><Text style={s.meta}>{tf(language,'Nisab is {n} grams',{n:NISAB_GOLD_GRAMS})}</Text></View>
@@ -10193,7 +10199,7 @@ function ZakatScreen({ navigation }: any) {
 
      
       </ZakatSection> <ZakatSection title={T('The nisab')} open={zOpen.nisab === true} onToggle={() => setZOpen((prev) => ({ ...prev, nisab: prev.nisab !== true }))}>
-      <View style={s.dataCard}>
+      <View style={s.dataCard}><GlassFill radius={20}/>
         <View style={s.choiceRow}><ChoicePill label={`${T('Gold')} · ${NISAB_GOLD_GRAMS}${tx(language, 'g')}`} selected={zakat.basis === 'gold'} onPress={() => void setBasis('gold')} /><ChoicePill label={`${T('Silver')} · ${NISAB_SILVER_GRAMS}${tx(language, 'g')}`} selected={zakat.basis === 'silver'} onPress={() => void setBasis('silver')} /></View>
         <View style={s.statGrid}>
           <StatBox label={T('GOLD NISAB')} value={formatMoney(NISAB_GOLD_GRAMS * result.goldPerGram, zakat.currency, 0)} hint={`${NISAB_GOLD_GRAMS} ${tx(language, 'grams')}`} />
@@ -10203,7 +10209,7 @@ function ZakatScreen({ navigation }: any) {
       {/* Said here rather than only at the result: the threshold is the number
           a ruling is measured against, and a threshold of zero would be
           believed before anybody scrolled far enough to be told otherwise. */}
-      {!havePrices && <View style={[s.healthCard, { marginTop: 8, borderColor: C.coral, borderWidth: 1 }]}>
+      {!havePrices && <View style={[s.healthCard, { marginTop: 8, borderColor: C.coral, borderWidth: 1 }]}><GlassFill radius={20}/>
         <View style={[s.healthDot, { backgroundColor: C.coral }]} />
         <View style={{ flex: 1 }}>
           <Text style={s.sourceTitle}>{T('Prices are not available')}</Text>
@@ -10229,11 +10235,11 @@ function ZakatScreen({ navigation }: any) {
       </ZakatSection>
 
       <Section title={T('History')} action={zakat.history.length ? `${zakat.history.length} ${tx(language, 'saved')}` : undefined} onPress={zakat.history.length ? () => void clearHistory() : undefined} />
-      {!zakat.history.length ? <View style={s.dataCard}><Text style={s.dataBody}>{T('No saved calculations yet. Save one and it stays here on this device.')}</Text></View> : <View style={s.settings}>{zakat.history.map((entry) => <View key={entry.id} style={[s.setting, ]}>
+      {!zakat.history.length ? <View style={s.dataCard}><GlassFill radius={20}/><Text style={s.dataBody}>{T('No saved calculations yet. Save one and it stays here on this device.')}</Text></View> : <View style={s.settings}>{zakat.history.map((entry) => <View key={entry.id} style={[s.setting, ]}>
         <View style={{ flex: 1 }}><Text style={s.settingName}>{formatMoney(entry.zakat, entry.currency)}</Text><Text style={s.meta}>{new Date(entry.at).toLocaleDateString(language === 'ar' ? 'ar-u-nu-latn' : language)} · {tx(language, 'net')} {formatMoney(entry.net, entry.currency, 0)} · {tf(language, '{pos} the {metal} nisab', { pos: entry.above ? tx(language, 'above') : tx(language, 'below'), metal: entry.basis === 'gold' ? T('Gold') : T('Silver') })}</Text></View>
         <Tactile accessibilityLabel={T('Delete this calculation')} onPress={() => void deleteCalculation(entry.id)} style={s.stepButton}>{ico('trash-outline', 18, C.coral)}</Tactile>
       </View>)}</View>}
-      <View style={s.dataCard}><Text style={s.dataMeta}>{T('BEFORE YOU PAY')}</Text><Text style={s.dataBody}>{T('What counts as zakatable, how business stock is valued and which debts may be deducted differ between schools and situations. This figure is a careful estimate to take to a scholar, and your Zakat year matters as much as the total.')}</Text></View>
+      <View style={s.dataCard}><GlassFill radius={20}/><Text style={s.dataMeta}>{T('BEFORE YOU PAY')}</Text><Text style={s.dataBody}>{T('What counts as zakatable, how business stock is valued and which debts may be deducted differ between schools and situations. This figure is a careful estimate to take to a scholar, and your Zakat year matters as much as the total.')}</Text></View>
     </ScrollView>
   </Page>;
 }
@@ -10249,7 +10255,7 @@ function HadithProgressBars(){
   if(!rows.length)return null;
   const readTotal=rows.reduce((sum,row)=>sum+row.read,0);
   const hadithTotal=rows.reduce((sum,row)=>sum+row.total,0);
-  return <View style={s.dataCard}>
+  return <View style={s.dataCard}><GlassFill radius={20}/>
     <Text style={s.dataMeta}>{T('READING PROGRESS')}</Text>
     <Text style={s.dataTitle}>{tf(language,'{r} of {t} opened',{r:readTotal,t:hadithTotal.toLocaleString()})}</Text>
     <View style={{marginTop:12,gap:10}}>{rows.map(row=><View key={row.collection.slug}>
@@ -10320,11 +10326,11 @@ function HadithScreen({navigation}:any){const {rtl,language:appLanguage}=useLang
 
     {searching3?(searching?<SkeletonList rows={6} />:results.length?<>
       <Text style={[s.meta,s.hadithResults]}>{ar?`${results.length} ${arNoun(results.length, 'نتيجة', 'نتيجتان', 'نتائج', 'نتيجة')}`:tf(appLanguage,'{n} results',{n:results.length})}</Text>
-      {results.map(hadith=>{const collection=HADITH_COLLECTIONS.find(item=>item.slug===hadith.slug);return <Tactile key={hadith.id} onPress={()=>open(hadith.slug,hadith.number)} style={s.dataCard}>
+      {results.map(hadith=>{const collection=HADITH_COLLECTIONS.find(item=>item.slug===hadith.slug);return <Tactile key={hadith.id} onPress={()=>open(hadith.slug,hadith.number)} style={s.dataCard}><GlassFill radius={20}/>
         <Text style={s.dataMeta}>{rtl ? collection?.arabicName || collection?.name : collection?.name} · {T('Hadith')} {hadith.number}</Text>
         <Text style={s.dataBody} numberOfLines={3}>{hadith.english||hadith.arabic}</Text>
       </Tactile>})}
-    </>:<View style={s.empty}>
+    </>:<View style={s.empty}><GlassFill radius={24}/>
       <Text style={s.dataBody}>{booksOnDevice
         ? T('No match in what is on this device. Search only covers books you have opened or downloaded.')
         : T('Search covers books you have opened or downloaded. Open a collection, or download one to search it all.')}</Text>
@@ -10332,7 +10338,7 @@ function HadithScreen({navigation}:any){const {rtl,language:appLanguage}=useLang
       {state.recent.length>0&&<>
         <Section title={T('Continue reading')}/>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap:10,paddingRight:20}}>
-          {state.recent.slice(0,8).map(item=>{const collection=HADITH_COLLECTIONS.find(entry=>entry.slug===item.slug);return <Tactile key={`${item.slug}-${item.number}`} onPress={()=>open(item.slug,item.number)} style={s.dataCard}>
+          {state.recent.slice(0,8).map(item=>{const collection=HADITH_COLLECTIONS.find(entry=>entry.slug===item.slug);return <Tactile key={`${item.slug}-${item.number}`} onPress={()=>open(item.slug,item.number)} style={s.dataCard}><GlassFill radius={20}/>
             <Text style={s.dataMeta}>{rtl ? collection?.arabicName || collection?.name : collection?.name}</Text>
             <Text style={s.recentChipTitle}>{T('Hadith')} {item.number}</Text>
           </Tactile>})}
@@ -10340,7 +10346,7 @@ function HadithScreen({navigation}:any){const {rtl,language:appLanguage}=useLang
       </>}
       {state.saved.length>0&&<>
         <Section title={T('Saved hadith')} action={T('See all')} onPress={()=>navigation.navigate('Hadith Saved')}/>
-        {state.saved.slice(0,3).map(item=><Tactile key={item.id} onPress={()=>open(item.slug,item.number)} style={s.dataCard}>
+        {state.saved.slice(0,3).map(item=><Tactile key={item.id} onPress={()=>open(item.slug,item.number)} style={s.dataCard}><GlassFill radius={20}/>
           <Text style={s.dataMeta}>{item.collection} · {T('Hadith')} {item.number}</Text>
           <Text style={s.dataBody} numberOfLines={2}>{item.preview}</Text>
         </Tactile>)}
@@ -10470,7 +10476,7 @@ function HadithCollectionScreen({route,navigation}:any){const {rtl,language:appL
         {outline.books.map(entry=>{
           const readInBook=rows.length?0:0;
           return <Tactile key={entry.number} accessibilityLabel={`${T('Open book')} ${entry.number}`}
-            onPress={()=>setBook(entry.number)} style={s.dataCard}>
+            onPress={()=>setBook(entry.number)} style={s.dataCard}><GlassFill radius={20}/>
             <View style={s.hadithRowTop}>
               <View style={s.hadithNumber}><Text style={s.hadithNumberText}>{entry.number}</Text></View>
               <View style={{flex:1}}>
@@ -10490,7 +10496,7 @@ function HadithCollectionScreen({route,navigation}:any){const {rtl,language:appL
           {loadingBook&&<SkeletonList rows={6} />}
           {!!error&&<ErrorState message={error} retry={()=>setBook(book)}/>}
           {!loadingBook&&<Text style={s.meta}>{filtered.length.toLocaleString()} {T('hadith')}{query.trim().length>=2?` · ${T('matching your search')}`:''}</Text>}
-          {shown.map((hadith,position)=><Tactile key={hadith.id} accessibilityLabel={`${T('Hadith')} ${position+1}`} onPress={()=>navigation.navigate('Hadith Detail',{slug,number:hadith.number})} style={s.dataCard}>
+          {shown.map((hadith,position)=><Tactile key={hadith.id} accessibilityLabel={`${T('Hadith')} ${position+1}`} onPress={()=>navigation.navigate('Hadith Detail',{slug,number:hadith.number})} style={s.dataCard}><GlassFill radius={20}/>
             <View style={s.hadithRowTop}>
               {/* Numbered by position, not by the source's own number.
                   That number is a row index across the whole collection,
@@ -10510,7 +10516,7 @@ function HadithCollectionScreen({route,navigation}:any){const {rtl,language:appL
               {ico('chevron-forward',16,C.muted)}
             </View>
           </Tactile>)}
-          {!loadingBook&&!shown.length&&<View style={s.empty}><Text style={s.dataBody}>{query.trim().length>=2?T('No hadith matches this search.'):T('This book is empty.')}</Text></View>}
+          {!loadingBook&&!shown.length&&<View style={s.empty}><GlassFill radius={24}/><Text style={s.dataBody}>{query.trim().length>=2?T('No hadith matches this search.'):T('This book is empty.')}</Text></View>}
           {limit<filtered.length&&<Tactile accessibilityLabel={T('Load more hadith')} onPress={()=>setLimit(value=>value+20)} style={s.secondary}><Text style={s.secondaryText}>{T('Load more')}</Text></Tactile>}
         </ScrollView>
       </>}
@@ -10620,8 +10626,8 @@ function HadithDetailScreen({route,navigation}:any){const {rtl,language:appLangu
 function HadithSavedScreen({navigation}:any){const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);
   const state=useHadithState();
   return <Page><ToolBar title={T('Saved hadith')} navigation={navigation}/>
-    {!state.saved.length&&<View style={s.empty}><ToolGraphic tool="Hadith" size={60}/><Text style={s.dataTitle}>{T('Nothing saved yet')}</Text><Text style={s.dataBody}>{T('Save a hadith from any collection and it will appear here on this device only.')}</Text></View>}
-    {state.saved.map(item=><View key={item.id} style={s.dataCard}>
+    {!state.saved.length&&<View style={s.empty}><GlassFill radius={24}/><ToolGraphic tool="Hadith" size={60}/><Text style={s.dataTitle}>{T('Nothing saved yet')}</Text><Text style={s.dataBody}>{T('Save a hadith from any collection and it will appear here on this device only.')}</Text></View>}
+    {state.saved.map(item=><View key={item.id} style={s.dataCard}><GlassFill radius={20}/>
       <Pressable onPress={()=>navigation.navigate('Hadith Detail',{slug:item.slug,number:item.number})}>
         <Text style={s.dataMeta}>{item.collection} · {T('Hadith')} {item.number}</Text>
         <Text style={s.dataBody} numberOfLines={4}>{item.preview}</Text>
@@ -11022,14 +11028,14 @@ function BackupScreen({ navigation }: any) {
       {!!error && <View style={s.backupNotice}><Text style={s.backupNoticeText}>{error}</Text></View>}
       {busy && <View style={s.backupBusy}><ActivityIndicator color={C.green} /><Text style={s.meta}>{busy}</Text></View>}
 
-      {!backup.passwordSet && <View style={s.formCard}>
+      {!backup.passwordSet && <View style={s.formCard}><GlassFill radius={20}/>
         <Text style={s.inputLabel}>{T('CHOOSE A PASSWORD')}</Text>
         {secretField(password, setPassword, 'At least 8 characters')}
         {secretField(confirm, setConfirm, 'The same password again')}
         <Tactile onPress={() => { void onSetPassword(); }} style={s.primary}><Text style={s.primaryText}>{T('Set password')}</Text></Tactile>
       </View>}
 
-      {backup.passwordSet && !unlocked && <View style={s.formCard}>
+      {backup.passwordSet && !unlocked && <View style={s.formCard}><GlassFill radius={20}/>
         <Text style={s.inputLabel}>{T('YOUR PASSWORD')}</Text>
         {secretField(password, setPassword, 'Password')}
         <Tactile onPress={() => { void onUnlock(); }} style={s.primary}><Text style={s.primaryText}>{T('Unlock')}</Text></Tactile>
@@ -11065,7 +11071,7 @@ function BackupScreen({ navigation }: any) {
           </>}
         </>}
 
-        {pending && <View style={s.formCard}>
+        {pending && <View style={s.formCard}><GlassFill radius={20}/>
           <Text style={s.inputLabel}>{T('OPENING THIS BACKUP')}</Text>
           <Text style={s.meta}>{tf(language, 'Made {date}', { date: new Date(pending.summary.exportedAt).toLocaleDateString() })}</Text>
           {secretField(restorePassword, setRestorePassword, 'The password for this backup')}
@@ -11076,7 +11082,7 @@ function BackupScreen({ navigation }: any) {
         </View>}
 
         <Section title={T('Password')} />
-        <View style={s.formCard}>
+        <View style={s.formCard}><GlassFill radius={20}/>
           <Text style={s.inputLabel}>{T('ASK AGAIN')}</Text>
           <View style={s.choiceGrid}>{BACKUP_RELOCK_OPTIONS.map((option) =>
             <ChoicePill key={option.minutes} label={T(option.label)}
@@ -11092,7 +11098,7 @@ function BackupScreen({ navigation }: any) {
       </>}
 
       <Section title={T('What travels, and what does not')} />
-      <View style={s.preferencePanel}>
+      <View style={s.preferencePanel}><GlassFill radius={24}/>
         <Text style={s.meta}>{T('Included: prayer and fasting records, Qada, Zakat, memorisation, Quran bookmarks and notes, journeys, dhikr counts, and your settings — including this device’s cycle records, if you keep them.')}</Text>
         <Text style={[s.meta, { marginTop: 8 }]}>{T('Left out: downloaded recitation audio, which lives as files on this device and can be downloaded again, and the backup password itself.')}</Text>
       </View>
@@ -11418,13 +11424,13 @@ function SettingsScreen({navigation}:any){
         </View>
       </LinearGradient>
       <View style={s.privacyPoints}>
-        <View style={s.privacyPoint}>{ico('person-remove-outline', 19, C.green)}<Text style={s.privacyPointText}>{tx(language, 'No sign-up')}</Text></View>
-        <View style={s.privacyPoint}>{ico('cloud-offline-outline', 19, C.green)}<Text style={s.privacyPointText}>{tx(language, 'No cloud profile')}</Text></View>
-        <View style={s.privacyPoint}>{ico('analytics-outline', 19, C.green)}<Text style={s.privacyPointText}>{tx(language, 'No ad tracking')}</Text></View>
+        <View style={s.privacyPoint}><GlassFill radius={16}/>{ico('person-remove-outline', 19, C.green)}<Text style={s.privacyPointText}>{tx(language, 'No sign-up')}</Text></View>
+        <View style={s.privacyPoint}><GlassFill radius={16}/>{ico('cloud-offline-outline', 19, C.green)}<Text style={s.privacyPointText}>{tx(language, 'No cloud profile')}</Text></View>
+        <View style={s.privacyPoint}><GlassFill radius={16}/>{ico('analytics-outline', 19, C.green)}<Text style={s.privacyPointText}>{tx(language, 'No ad tracking')}</Text></View>
       </View>
 
       <Section title={tx(language, 'Prayer times')} />
-      <View style={s.preferencePanel}>
+      <View style={s.preferencePanel}><GlassFill radius={24}/>
         <PanelHead tool="Prayer" title={tx(language, 'Calculation method')} note={tx(language, 'Saved on this device and applied to every prayer time.')} />
         <View style={s.choiceGrid}>{PRAYER_METHODS.map(method => <ChoicePill key={method.id} label={rtl ? method.ar : method.name} selected={settings.calculationMethod === method.id} onPress={() => update({ calculationMethod: method.id, calculationMethodName: method.name })} />)}</View>
         <Text style={s.preferenceLabel}>{tx(language, 'ASR MADHAB')}</Text>
@@ -11440,7 +11446,7 @@ function SettingsScreen({navigation}:any){
       </View>
 
       <Section title={T('Theme')} />
-      <View style={s.preferencePanel}>
+      <View style={s.preferencePanel}><GlassFill radius={24}/>
         <PanelHead image={dark ? require('./assets/tool-icons/theme-dark.png') : require('./assets/tool-icons/theme.png')} title={T('Theme')} note={T('Which colours the app wears. Each theme has its own light and dark.')} />
         <View style={s.choiceGrid}>
           <ChoicePill label={T('Islamic')} selected={themeName === 'islamic'} onPress={() => setTheme('islamic')} swatch={<ThemeMark theme="islamic" height={11} />} />
@@ -11449,7 +11455,7 @@ function SettingsScreen({navigation}:any){
       </View>
 
       <Section title={T('Appearance')} />
-      <View style={s.preferencePanel}>
+      <View style={s.preferencePanel}><GlassFill radius={24}/>
         <PanelHead glyph={themeMode === 'dark' ? 'moon-outline' : themeMode === 'light' ? 'sunny-outline' : 'contrast-outline'} title={T('Appearance')} note={T('Light, dark, or whatever the device is set to')} />
         <View style={s.choiceGrid}>
           <ChoicePill label={T('System')} selected={themeMode === 'system'} onPress={() => setMode('system')} />
@@ -11462,7 +11468,7 @@ function SettingsScreen({navigation}:any){
           the kind of thing you either never notice or notice every day, so
           it gets a way out that lands on a plain, solid app rather than on
           something half-translucent. */}
-      <View style={s.preferencePanel}>
+      <View style={s.preferencePanel}><GlassFill radius={24}/>
         <PanelHead glyph="sparkles-outline" title={T('Glass')} note={T('Cards and the menu let the page show through them')} />
         <View style={s.setting}>
           <View style={{ flex: 1 }}>
@@ -11491,7 +11497,7 @@ function SettingsScreen({navigation}:any){
       </View>
 
       <Section title={T('Touch')} />
-      <View style={s.preferencePanel}>
+      <View style={s.preferencePanel}><GlassFill radius={24}/>
         <PanelHead glyph="pulse-outline" title={T('Haptics')} note={T('Whether the app is felt as well as seen')} />
         <View style={s.setting}>
           <View style={{ flex: 1 }}>
@@ -11521,7 +11527,7 @@ function SettingsScreen({navigation}:any){
           drifting over it will either be delighted or will want it gone, and
           that should be her call rather than the app's. */}
       <Section title={T('Ambience')} />
-      <View style={s.preferencePanel}>
+      <View style={s.preferencePanel}><GlassFill radius={24}/>
         <PanelHead glyph="sparkles-outline" title={T('On the Home screen')} note={T('Something quiet drifting, and a greeting on Eid')} />
         <View style={s.setting}>
           <View style={{ flex: 1 }}>
@@ -11816,7 +11822,7 @@ function MiniPlayer() {
   if (!audio.track) return null;
   const bottom = MINI_PLAYER_BOTTOM;
   const open = () => { if (navigationRef.isReady()) (navigationRef as any).navigate('Quran', { screen: 'Audio Player' }); };
-  return <View style={[s.miniPlayer, { bottom, flexDirection: 'row' }]}>
+  return <View style={[s.miniPlayer, { bottom, flexDirection: 'row' }]}><GlassFill radius={20}/>
     <Pressable accessibilityRole="button" accessibilityLabel={tx(language,'Open the audio player')} onPress={open} style={s.miniBody}>
       <View style={s.miniArt}>{audio.buffering ? <ActivityIndicator color={C.green} /> : <ToolGraphic tool="Recitations" size={38} />}</View>
       <View style={{ flex: 1 }}>
@@ -12048,7 +12054,7 @@ function AudioCenterScreen({ navigation }: any) {
           </Pressable>
           <Pressable accessibilityLabel={`${T('Delete')} ${playlist.name}`} onPress={() => { void deletePlaylist(playlist.id).then(setPlaylists); }} style={s.audioRowAction}>{ico('trash', 19, C.coral)}</Pressable>
         </View>)}
-        {!!audio.queue.length && <View style={s.formCard}>
+        {!!audio.queue.length && <View style={s.formCard}><GlassFill radius={20}/>
           <Text style={s.preferenceLabel}>{T('SAVE CURRENT QUEUE')}</Text>
           <View style={s.fieldRow}>
             <TextInput accessibilityLabel={T('Playlist name')} value={playlistName} onChangeText={setPlaylistName} placeholder={audio.track ? audio.track.chapterName : 'Playlist name'} placeholderTextColor={C.muted} style={[s.textField, { flex: 1, marginTop: 0 }]} />
@@ -12123,7 +12129,7 @@ function AudioPlayerScreen({ navigation }: any) {
       </View>
       {ico(pickingTranslation ? 'chevron-up' : 'chevron-down', 18, C.green)}
     </Pressable>
-    {!!pickingTranslation && <View style={s.playerTranslationList}>
+    {!!pickingTranslation && <View style={s.playerTranslationList}><GlassFill radius={16}/>
       {shownEditions.map((e) => <Pressable key={e.identifier}
         accessibilityRole="radio" accessibilityState={{ checked: settings.translationEdition === e.identifier }}
         onPress={() => { void saveAudioSettings({ translationEdition: e.identifier, translationName: e.englishName, translationAudioEnabled: true }).then(setSettingsState); setPickingTranslation(false); }}
@@ -12186,7 +12192,7 @@ function AudioPlayerScreen({ navigation }: any) {
       <Text style={s.meta}>{T('Without end is the default: you stop when you know it, not when a counter runs out.')}</Text>
     </>}
 
-    {audio.repeat === 'range' && <View style={s.playerCard}>
+    {audio.repeat === 'range' && <View style={s.playerCard}><GlassFill radius={20}/>
       <Text style={s.preferenceLabel}>{T('WHICH VERSES')}</Text>
       <View style={s.rangeRow}>
         <View style={s.rangeEnd}><Text style={s.meta}>{T('From')}</Text>
@@ -12232,7 +12238,7 @@ function AudioPlayerScreen({ navigation }: any) {
     </View>
 
     <Section title={T('Volume')} />
-    <View style={s.playerCard}>
+    <View style={s.playerCard}><GlassFill radius={20}/>
       <Text style={s.preferenceLabel}>{T('RECITATION')}</Text>
       <View style={s.levelRow}>
         {ico('volume-high', 17, C.green)}
@@ -12259,7 +12265,7 @@ function AudioPlayerScreen({ navigation }: any) {
       <Pressable accessibilityLabel={`${T('Remove from the queue')} ${item.title}`} onPress={() => removeFromQueue(index)} style={s.audioRowAction}>{ico('close', 16, C.muted)}</Pressable>
     </Pressable>)}
 
-    <View style={s.playerCard}>
+    <View style={s.playerCard}><GlassFill radius={20}/>
       <Text style={s.preferenceLabel}>{T('SAVE QUEUE AS PLAYLIST')}</Text>
       <View style={s.fieldRow}>
         <TextInput accessibilityLabel={T('Playlist name')} value={name} onChangeText={setName} placeholder={track.chapterName} placeholderTextColor={C.muted} style={[s.textField, { flex: 1, marginTop: 0 }]} />
@@ -12375,6 +12381,59 @@ function TabButton({ route, focused, navigation, resolved, rtl, language, state,
       </Animated.View>
     </Pressable>
   </Animated.View>;
+}
+
+/**
+ * The material, for anything that wants to be glass.
+ *
+ * Drop this inside a card and the card becomes glass: it fills the card
+ * edge to edge and sits under its contents, so it can be added to an
+ * existing card without disturbing anything the card was already doing.
+ *
+ * The card's own fill has to give way for it to work, and that is the one
+ * thing to understand about this component. A BlurView blurs what is
+ * painted *behind* it, so a card that still paints an opaque background of
+ * its own gives the blur nothing to see — the page never reaches it, and
+ * the material just stacks another layer of tint on top. Cards that take
+ * this paint `C.cardGlass` or `C.whiteGlass`, which is transparent while
+ * glass is on and the ordinary solid fill when it is off.
+ *
+ * Corners are worth a note. A BlurView draws to the square edge of its box,
+ * so the radius has to be given here as well as on the card, and given the
+ * same. Sheets only round their top two corners, so all four can be set
+ * separately.
+ */
+function GlassFill({ radius = 20, tl, tr, br, bl }:
+  { radius?: number; tl?: number; tr?: number; br?: number; bl?: number }) {
+  const { dark, glass } = useTheme();
+  if (!glass) return null;
+  const tone = dark ? GLASS.dark : GLASS.light;
+  const corner = {
+    borderTopLeftRadius: tl ?? radius,
+    borderTopRightRadius: tr ?? radius,
+    borderBottomRightRadius: br ?? radius,
+    borderBottomLeftRadius: bl ?? radius,
+  };
+  return <View pointerEvents="none" style={[StyleSheet.absoluteFill, corner, { overflow: 'hidden' }]}>
+    <BlurView
+      intensity={dark ? GLASS_INTENSITY.card.dark : GLASS_INTENSITY.card.light}
+      tint={dark ? 'dark' : 'light'}
+      style={[StyleSheet.absoluteFill, corner]}
+    >
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: tone.wash }]} />
+      <LinearGradient colors={tone.sheen} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
+        style={StyleSheet.absoluteFill} />
+    </BlurView>
+    {/* The hairline, bright along the top and dim along the bottom, drawn
+        over the blur rather than under it so the edge stays crisp. */}
+    <View style={[StyleSheet.absoluteFill, corner, {
+      borderWidth: 1,
+      borderTopColor: tone.rimTop,
+      borderLeftColor: tone.rimSide,
+      borderRightColor: tone.rimSide,
+      borderBottomColor: tone.rimBottom,
+    }]} />
+  </View>;
 }
 
 /**
@@ -12954,21 +13013,21 @@ function OnboardingNotifications() {
   };
 
   return <View style={s.onbList}>
-    <View style={s.onbPromise}>
+    <View style={s.onbPromise}><GlassFill radius={16}/>
       {ico('notifications-outline', 22, C.green)}
       <View style={{ flex: 1 }}>
         <Text style={s.onbPromiseTitle}>{T('Adhan at its time')}</Text>
         <Text style={s.onbPromiseBody}>{T('The adhan you choose, with a button to silence it or to mark the prayer as prayed.')}</Text>
       </View>
     </View>
-    <View style={s.onbPromise}>
+    <View style={s.onbPromise}><GlassFill radius={16}/>
       {ico('time-outline', 22, C.green)}
       <View style={{ flex: 1 }}>
         <Text style={s.onbPromiseTitle}>{T('A few minutes before')}</Text>
         <Text style={s.onbPromiseBody}>{T('A quiet heads-up before each prayer, so you are not caught out.')}</Text>
       </View>
     </View>
-    <View style={s.onbPromise}>
+    <View style={s.onbPromise}><GlassFill radius={16}/>
       {ico('sunny-outline', 22, C.green)}
       <View style={{ flex: 1 }}>
         <Text style={s.onbPromiseTitle}>{T('A verse or hadith each day')}</Text>
@@ -13059,7 +13118,7 @@ function OnboardingSleep() {
       <Text style={s.sleepHadithRef}>{language === 'ar' ? SLEEP_SURAH.hadithAr : SLEEP_SURAH.hadith}</Text>
     </View>
 
-    <View style={s.onbPromise}>
+    <View style={s.onbPromise}><GlassFill radius={16}/>
       {ico('moon-outline', 22, C.green)}
       <View style={{ flex: 1 }}>
         <Text style={s.onbPromiseTitle}>{T('Recited before sleeping')}</Text>
@@ -13376,7 +13435,7 @@ function Onboarding({ onFinish }: { onFinish: () => void }) {
         {/* Offline is a separate question from "which meaning will you read",
             so it stays folded until it is asked for. Opening it is what puts
             the download controls on the rows below. */}
-        <View style={s.onbOffline}>
+        <View style={s.onbOffline}><GlassFill radius={16}/>
           <MotionPress
             accessibilityLabel={T('Keep translations for offline')}
             onPress={() => setShowOffline(!offlineOpen)}
@@ -13411,7 +13470,7 @@ function Onboarding({ onFinish }: { onFinish: () => void }) {
           const saved = hasLanguage(entry.code);
           const downloading = dl?.code === entry.code;
           return <RiseIn key={entry.code} delay={Math.min(index, 14) * 26}>
-            <MotionPress style={[s.onbCard, selected && s.onbCardOn]} onPress={() => pick(entry.code)}>
+            <MotionPress style={[s.onbCard, selected && s.onbCardOn]} onPress={() => pick(entry.code)}><GlassFill radius={16}/>
               <View style={s.onbCardTop}>
                 <Text style={s.onbFlag}>{languageFlag(entry.code)}</Text>
                 <View style={s.onbCardText}>
@@ -13467,7 +13526,7 @@ function Onboarding({ onFinish }: { onFinish: () => void }) {
           const selected = chosen === entry.code;
           const note = hint(entry);
           return <RiseIn key={entry.code} delay={index * 40}>
-            <MotionPress style={[s.onbCard, selected && s.onbCardOn]} onPress={() => pick(entry.code)}>
+            <MotionPress style={[s.onbCard, selected && s.onbCardOn]} onPress={() => pick(entry.code)}><GlassFill radius={16}/>
               <View style={s.onbCardTop}>
                 <View style={s.onbCardText}>
                   <Text style={[s.onbCardName, entry.rtl && s.onbCardNameRtl]}>{entry.native}</Text>
@@ -13595,7 +13654,7 @@ class ScreenBoundary extends React.Component<
     const body = tx(language, 'Something went wrong while drawing it. The rest of the app is fine, and you can try again.');
     const action = tx(language, 'Try again');
     return <View style={s.crashScreen}>
-      <View style={s.crashCard}>
+      <View style={s.crashCard}><GlassFill radius={24}/>
         <Text style={s.crashTitle}>{heading}</Text>
         <Text style={s.crashBody}>{body}</Text>
         {!!this.state.error?.message && <Text style={s.crashDetail}>{String(this.state.error.message).slice(0, 200)}</Text>}
@@ -14055,7 +14114,7 @@ function makeStyles() {
  onbHead:{marginBottom:12},
  onbCaption:{color:C.muted,fontSize:13,fontFamily:'DMSans_400Regular',lineHeight:19,marginTop:5},
  onbList:{gap:8},
- onbCard:{backgroundColor:C.card,borderRadius:16,padding:11,borderWidth:1,borderColor:C.line},
+ onbCard:{backgroundColor:C.cardGlass,borderRadius:16,padding:11,borderWidth:1,borderColor:C.line},
  onbCardOn:{borderColor:C.green,backgroundColor:C.mint},
  onbCardTop:{flexDirection:'row',alignItems:'center',gap:10},
  onbCardText:{flex:1,gap:2},
@@ -14081,7 +14140,7 @@ function makeStyles() {
  onbSearch:{flexDirection:'row',alignItems:'center',gap:8,backgroundColor:C.card,borderRadius:14,paddingHorizontal:12,paddingVertical:8,borderWidth:1,borderColor:C.line,marginBottom:8},
  onbSearchInput:{flex:1,color:C.ink,fontSize:14,fontFamily:'DMSans_400Regular',padding:0},
  onbSavedRow:{flexDirection:'row',alignItems:'center',gap:6,marginTop:6},
- onbOffline:{backgroundColor:C.card,borderRadius:16,borderWidth:1,borderColor:C.line,overflow:'hidden',marginBottom:8},
+ onbOffline:{backgroundColor:C.cardGlass,borderRadius:16,borderWidth:1,borderColor:C.line,overflow:'hidden',marginBottom:8},
  onbOfflineHead:{flexDirection:'row',alignItems:'center',gap:10,padding:12},
  onbOfflineTitle:{color:C.ink,fontSize:14,fontFamily:'DMSans_600SemiBold'},
  onbAllBarFlat:{margin:12,marginTop:0},
@@ -14143,7 +14202,7 @@ function makeStyles() {
   floatPillActive:{backgroundColor:themeDark?GLASS.dark.pill:GLASS.light.pill,borderWidth:1,borderColor:themeDark?GLASS.dark.pillRim:GLASS.light.pillRim},
   floatLabel:{color:C.muted,fontFamily:'DMSans_600SemiBold',fontSize:10,letterSpacing:.2,marginTop:4},
   floatLabelActive:{color:C.green},
- safe:{flex:1,backgroundColor:C.bg,overflow:'hidden',paddingTop:Platform.OS==='android'?StatusBar.currentHeight:0},page:{flex:1,backgroundColor:C.bg},pageWide:{width:'100%',maxWidth:1180,alignSelf:'center'},scroll:{width:'100%',maxWidth:980,alignSelf:'center',paddingHorizontal:20,paddingTop:20,paddingBottom:BOTTOM_RESERVE},row:{flexDirection:'row',alignItems:'center'},press:{opacity:.72,transform:[{scale:.98}]},loading:{padding:44,alignItems:'center',gap:12},loadingText:{color:C.muted,fontSize:12},error:{backgroundColor:C.card,padding:24,borderRadius:24,alignItems:'center',marginVertical:12},errorIcon:{width:48,height:48,borderRadius:16,backgroundColor:C.yellow,alignItems:'center',justifyContent:'center'},errorTitle:{color:C.ink,fontSize:16,fontFamily:'DMSans_600SemiBold',marginTop:12},errorText:{color:C.muted,textAlign:'center',fontSize:12,lineHeight:18,marginTop:4},retry:{backgroundColor:C.ink,paddingHorizontal:16,paddingVertical:8,borderRadius:12,marginTop:12},retryText:{color:C.onAccent,fontSize:11,fontFamily:'DMSans_600SemiBold'},
+ safe:{flex:1,backgroundColor:C.bg,overflow:'hidden',paddingTop:Platform.OS==='android'?StatusBar.currentHeight:0},page:{flex:1,backgroundColor:C.bg},pageWide:{width:'100%',maxWidth:1180,alignSelf:'center'},scroll:{width:'100%',maxWidth:980,alignSelf:'center',paddingHorizontal:20,paddingTop:20,paddingBottom:BOTTOM_RESERVE},row:{flexDirection:'row',alignItems:'center'},press:{opacity:.72,transform:[{scale:.98}]},loading:{padding:44,alignItems:'center',gap:12},loadingText:{color:C.muted,fontSize:12},error:{backgroundColor:C.cardGlass,padding:24,borderRadius:24,alignItems:'center',marginVertical:12},errorIcon:{width:48,height:48,borderRadius:16,backgroundColor:C.yellow,alignItems:'center',justifyContent:'center'},errorTitle:{color:C.ink,fontSize:16,fontFamily:'DMSans_600SemiBold',marginTop:12},errorText:{color:C.muted,textAlign:'center',fontSize:12,lineHeight:18,marginTop:4},retry:{backgroundColor:C.ink,paddingHorizontal:16,paddingVertical:8,borderRadius:12,marginTop:12},retryText:{color:C.onAccent,fontSize:11,fontFamily:'DMSans_600SemiBold'},
  topbar:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginBottom:20},
  appHeader:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginBottom:20},
  /* The next-prayer pill. It floats over the page, so it carries its own
@@ -14191,12 +14250,12 @@ adhkarFoot:{color:C.muted,fontFamily:'DMSans_600SemiBold',fontSize:10.5,marginTo
 adhkarKicker:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:9,textTransform:'uppercase',letterSpacing:.6,marginTop:10},
 adhkarTitle:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:14,marginTop:4},
 
-roundRow:{flexDirection:'row',marginHorizontal:8,backgroundColor:C.card,borderRadius:24,paddingVertical:16,borderWidth:1,borderColor:C.line,borderTopColor:depth.edge,...depth.ambient},
+roundRow:{flexDirection:'row',marginHorizontal:8,backgroundColor:C.cardGlass,borderRadius:24,paddingVertical:16,borderWidth:1,borderColor:C.line,borderTopColor:depth.edge,...depth.ambient},
 roundItem:{flex:1,alignItems:'center',paddingHorizontal:4},
 roundIcon:{width:58,height:58,borderRadius:29,backgroundColor:C.mint,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line},
 roundLabel:{color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:11,lineHeight:14,marginTop:8,textAlign:'center'},
 depthGradient:{position:'absolute',top:0,left:0,right:0,bottom:0},
-  depthCard:{backgroundColor:C.card,borderWidth:1,borderColor:C.line,borderTopColor:depth.edge,...depth.ambient},
+  depthCard:{backgroundColor:C.cardGlass,borderWidth:1,borderColor:C.line,borderTopColor:depth.edge,...depth.ambient},
 depthBody:{overflow:'hidden'},
 depthVeil:{position:'absolute',top:0,left:0,right:0,bottom:0,backgroundColor:depth.veil},railCheck:{position:'absolute',top:-2,right:-2,width:16,height:16,borderRadius:8,backgroundColor:C.accent,alignItems:'center',justifyContent:'center',borderWidth:1.5,borderColor:C.white},railName:{color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:10},railTime:{color:C.ink,textAlign:'center',fontFamily:'DMSans_600SemiBold',fontSize:10,lineHeight:11,marginTop:2},essentialSlide:{height:174,backgroundColor:C.card,borderRadius:24,padding:16,borderWidth:1,borderColor:C.line,...surface},essentialTop:{flexDirection:'row',alignItems:'flex-start',justifyContent:'space-between'},essentialArrow:{width:34,height:34,borderRadius:17,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},essentialTitle:{color:C.ink,fontFamily:'Newsreader_600SemiBold',fontSize:21,marginTop:4},essentialBody:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:12,lineHeight:18,marginTop:4},tool:{width:'33.33%',paddingVertical:12},
  homeProgress:{marginHorizontal:8,backgroundColor:C.card,borderBottomLeftRadius:20,borderBottomRightRadius:20,padding:12,flexDirection:'row',alignItems:'center',justifyContent:'space-between',borderWidth:1,borderTopWidth:0,borderColor:C.line},homeProgressRing:{width:43,height:43,borderRadius:24,backgroundColor:C.mint,alignItems:'center',justifyContent:'center',borderWidth:3,borderColor:C.line},dailyKicker:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10,letterSpacing:1.1,marginTop:4},dailyArabic:{color:C.ink,fontFamily:'KFGQPCUthmanicHafs',fontSize:22,lineHeight:36,textAlign:'right',marginTop:8,writingDirection:'rtl'},weekWrap:{marginTop:12},
@@ -14211,7 +14270,7 @@ homeWeekDay:{color:mix(BRAND.lavender,BRAND.pearl,.42),fontSize:9.5,fontFamily:'
 homeWeekDayOn:{color:C.onAccentInk},weekStatValue:{color:C.green,fontSize:29,fontFamily:'DMSans_700Bold',marginTop:8},weekBar:{flex:1,height:8,borderRadius:4,backgroundColor:C.mint,overflow:'hidden',marginHorizontal:8},weekBarFill:{height:'100%',borderRadius:4,backgroundColor:C.green},weekScoreBody:{color:C.onAccent,fontSize:10,marginTop:4},readWrap:{height:205},
 readSurface:{borderColor:'transparent'},
 readPad:{padding:20,overflow:'hidden',borderRadius:28},readKicker:{color:C.onAccent,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.5},readArabic:{color:C.onAccent,fontSize:29,marginTop:8},readTitle:{color:C.onAccent,fontSize:20,fontFamily:'DMSans_700Bold'},readMeta:{color:C.onAccent,fontSize:10,marginTop:4},whiteButton:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:8,minHeight:44,alignSelf:'flex-start',backgroundColor:C.white,paddingHorizontal:12,paddingVertical:8,borderRadius:16,marginTop:12},whiteButtonText:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold'},twoCol:{flexDirection:'row',gap:12,marginTop:12},liveBadge:{flexDirection:'row',alignItems:'center',gap:4,alignSelf:'flex-start',backgroundColor:'rgba(75,56,145,.90)',paddingHorizontal:8,paddingVertical:4,borderRadius:8} as any,liveDot:{width:5,height:5,borderRadius:4,backgroundColor:C.gold},liveText:{color:C.onAccent,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:.5},hadithSurface:{padding:16},quote:{position:'absolute',right:18,top:2,color:C.onAccent,fontSize:72,fontFamily:'DMSans_700Bold'},hadithText:{color:C.ink,fontFamily:'DMSans_400Regular',fontSize:14,lineHeight:22,marginTop:16},hadithFoot:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginTop:16,paddingTop:12,borderTopWidth:1,borderColor:C.line},hadithActions:{flexDirection:'row',alignItems:'center',gap:14},metaRow:{flexDirection:'row',alignItems:'center',gap:6,marginTop:2},meta:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:11,lineHeight:16},
- dayStripScroll:{paddingHorizontal:20,marginHorizontal:-20},dayStrip:{flexDirection:'row',gap:4,backgroundColor:C.card,padding:8,borderRadius:24,borderWidth:1,borderColor:C.line,...soft},dayChosen:{color:C.muted,fontSize:11,fontFamily:'DMSans_600SemiBold',textAlign:'center',marginTop:10},dayDot:{width:4,height:4,borderRadius:2,backgroundColor:C.line,marginTop:3},day:{width:47,alignItems:'center',paddingVertical:8,borderRadius:16},dayActive:{backgroundColor:C.accent},dayName:{color:C.muted,fontSize:10,fontFamily:'DMSans_600SemiBold'},dayNum:{color:C.ink,fontSize:14,fontFamily:'DMSans_700Bold',marginTop:4},dayText:{color:C.onAccentInk},nextCard:{height:190,borderRadius:28,padding:20,marginTop:16,overflow:'hidden',...shadow},nextCardBody:{flex:1},nextCardLabel:{color:C.onAccent,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.5,marginTop:20},nextCardName:{color:C.onAccent,fontSize:29,fontFamily:'DMSans_700Bold',marginTop:4},nextCardTime:{color:C.onAccent,fontSize:17,fontFamily:'DMSans_600SemiBold',marginBottom:12},moonOrb:{position:'absolute',right:24,top:43,width:96,height:96,borderRadius:48,backgroundColor:'rgba(255,255,255,.13)',alignItems:'center',justifyContent:'center'},prayerList:{backgroundColor:C.card,borderRadius:24,overflow:'hidden',borderWidth:1,borderColor:C.line,...surface},prayerRow:{flexDirection:'row',alignItems:'center',gap:12,paddingHorizontal:12,minHeight:68,borderBottomWidth:1,borderColor:C.line},prayerRowLive:{backgroundColor:C.card},prayerSymbol:{width:41,height:41,borderRadius:16,backgroundColor:C.mint,borderWidth:1,borderColor:C.line,alignItems:'center',justifyContent:'center'},prayerName:{color:C.ink,fontSize:13,fontFamily:'DMSans_700Bold'},prayerValue:{color:C.ink,fontSize:13,fontFamily:'DMSans_700Bold',marginRight:8},prayerProgress:{flexDirection:'row',alignItems:'center',gap:12,backgroundColor:C.card,borderRadius:20,padding:16,marginTop:12,borderWidth:1,borderColor:C.line,...surface},progressTrack:{width:86,height:7,borderRadius:4,backgroundColor:C.mint,overflow:'hidden'},progressFill:{height:'100%',borderRadius:4,backgroundColor:C.green},progressCount:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:12},prayerSymbolDone:{backgroundColor:C.accent,borderColor:C.green},sourceCard:{flexDirection:'row',gap:12,alignItems:'center',backgroundColor:C.mint,borderRadius:20,padding:16,marginTop:16},sourceTitle:{color:C.ink,fontSize:13,fontFamily:'DMSans_700Bold'},sourceBody:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:11,marginTop:2},
+ dayStripScroll:{paddingHorizontal:20,marginHorizontal:-20},dayStrip:{flexDirection:'row',gap:4,backgroundColor:C.cardGlass,padding:8,borderRadius:24,borderWidth:1,borderColor:C.line,...soft},dayChosen:{color:C.muted,fontSize:11,fontFamily:'DMSans_600SemiBold',textAlign:'center',marginTop:10},dayDot:{width:4,height:4,borderRadius:2,backgroundColor:C.line,marginTop:3},day:{width:47,alignItems:'center',paddingVertical:8,borderRadius:16},dayActive:{backgroundColor:C.accent},dayName:{color:C.muted,fontSize:10,fontFamily:'DMSans_600SemiBold'},dayNum:{color:C.ink,fontSize:14,fontFamily:'DMSans_700Bold',marginTop:4},dayText:{color:C.onAccentInk},nextCard:{height:190,borderRadius:28,padding:20,marginTop:16,overflow:'hidden',...shadow},nextCardBody:{flex:1},nextCardLabel:{color:C.onAccent,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.5,marginTop:20},nextCardName:{color:C.onAccent,fontSize:29,fontFamily:'DMSans_700Bold',marginTop:4},nextCardTime:{color:C.onAccent,fontSize:17,fontFamily:'DMSans_600SemiBold',marginBottom:12},moonOrb:{position:'absolute',right:24,top:43,width:96,height:96,borderRadius:48,backgroundColor:'rgba(255,255,255,.13)',alignItems:'center',justifyContent:'center'},prayerList:{backgroundColor:C.cardGlass,borderRadius:24,overflow:'hidden',borderWidth:1,borderColor:C.line,...surface},prayerRow:{flexDirection:'row',alignItems:'center',gap:12,paddingHorizontal:12,minHeight:68,borderBottomWidth:1,borderColor:C.line},prayerRowLive:{backgroundColor:C.card},prayerSymbol:{width:41,height:41,borderRadius:16,backgroundColor:C.mint,borderWidth:1,borderColor:C.line,alignItems:'center',justifyContent:'center'},prayerName:{color:C.ink,fontSize:13,fontFamily:'DMSans_700Bold'},prayerValue:{color:C.ink,fontSize:13,fontFamily:'DMSans_700Bold',marginRight:8},prayerProgress:{flexDirection:'row',alignItems:'center',gap:12,backgroundColor:C.cardGlass,borderRadius:20,padding:16,marginTop:12,borderWidth:1,borderColor:C.line,...surface},progressTrack:{width:86,height:7,borderRadius:4,backgroundColor:C.mint,overflow:'hidden'},progressFill:{height:'100%',borderRadius:4,backgroundColor:C.green},progressCount:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:12},prayerSymbolDone:{backgroundColor:C.accent,borderColor:C.green},sourceCard:{flexDirection:'row',gap:12,alignItems:'center',backgroundColor:C.mint,borderRadius:20,padding:16,marginTop:16},sourceTitle:{color:C.ink,fontSize:13,fontFamily:'DMSans_700Bold'},sourceBody:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:11,marginTop:2},
  search:{height:48,flexDirection:'row',alignItems:'center',gap:8,backgroundColor:C.white,borderRadius:16,paddingHorizontal:16,borderWidth:1,borderColor:C.line,marginBottom:12,...soft},searchInput:{flex:1,color:C.ink,fontSize:12,outlineStyle:'none'} as any,quranHero:{height:225,borderRadius:28,overflow:'hidden',padding:20,...shadow},quranArabic:{color:C.onAccent,fontSize:28,marginTop:16},quranHeroTitle:{color:C.onAccent,fontSize:21,fontFamily:'DMSans_700Bold'},quranHeroMeta:{color:C.onAccent,fontFamily:'DMSans_400Regular',fontSize:11,marginTop:4},continueBar:{backgroundColor:C.card,borderRadius:20,padding:12,flexDirection:'row',alignItems:'center',gap:12,marginBottom:12,borderWidth:1,borderColor:C.line,...surface},quranActionGrid:{flexDirection:'row',flexWrap:'wrap',gap:12},quranPrimaryWrap:{flexGrow:1,flexBasis:'40%',minWidth:280},quranPrimaryAction:{height:142,borderRadius:24,padding:16,flexDirection:'row',alignItems:'center',overflow:'hidden',...soft},quranPrimaryTitle:{color:C.onAccent,fontFamily:'Newsreader_600SemiBold',fontSize:24,marginTop:8},quranPrimaryBody:{color:C.onAccent,fontFamily:'DMSans_400Regular',fontSize:10,lineHeight:15,marginTop:4},quranNavWrap:{flexGrow:1,flexBasis:'14%',minWidth:98},quranNavCard:{height:142,backgroundColor:C.card,borderRadius:20,padding:12,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,...surface},quranNavTitle:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:11,marginTop:4},quranNavCaption:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:10,lineHeight:14,marginTop:2,textAlign:'center'},quranStudyCard:{height:190,backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},quranStudyTop:{flexDirection:'row',alignItems:'flex-start',justifyContent:'space-between'},studyNumber:{width:34,height:34,borderRadius:17,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},quranStudyTitle:{color:C.ink,fontFamily:'Newsreader_600SemiBold',fontSize:20,marginTop:8},quranStudyCaption:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:11,lineHeight:16,marginTop:4},quranPreferenceRow:{flexDirection:'row',flexWrap:'wrap',gap:12},qTileGrid:{flexDirection:'row',flexWrap:'wrap',gap:8},qTile:{alignItems:'center',justifyContent:'center',backgroundColor:C.card,borderRadius:16,borderWidth:1,borderColor:C.line,paddingVertical:12,paddingHorizontal:4,...soft},qTileLabel:{marginTop:6,fontSize:11,fontFamily:'DMSans_600SemiBold',color:C.ink,textAlign:'center',lineHeight:14},
   /* The tile centres its children, but MotionPress's inner view does not: it
      is a plain column, so it grows to the width of its widest child and lets
@@ -14247,7 +14306,7 @@ surahCard:{width:'100%',minHeight:64,backgroundColor:C.card,borderRadius:16,bord
   /* long-press verse menu: sits entirely above the verse it belongs to, so it
      never covers the line you are reading */
   mushafMenu:{position:'absolute',left:0,right:0,bottom:'100%',zIndex:20,alignItems:'center',paddingBottom:6},
-  mushafMenuBar:{backgroundColor:C.card,borderRadius:18,paddingHorizontal:5,paddingVertical:4,borderWidth:1,borderColor:C.gold,...shadow},
+  mushafMenuBar:{backgroundColor:C.cardGlass,borderRadius:18,paddingHorizontal:5,paddingVertical:4,borderWidth:1,borderColor:C.gold,...shadow},
   mushafMenuItem:{flexDirection:'row',alignItems:'center',gap:5,paddingHorizontal:10,paddingVertical:7,borderRadius:14},
   mushafMenuItemOn:{backgroundColor:mix(BRAND.pearl,BRAND.radiantGold,.14)},
   mushafMenuLabel:{color:C.ink,fontSize:11,fontFamily:'DMSans_600SemiBold'},
@@ -14342,7 +14401,7 @@ mushafOrnamentRow:{flexDirection:'row',alignItems:'center',justifyContent:'cente
 mushafOrnamentRule:{height:1,flex:1,maxWidth:96},
 mushafPageNoRow:{alignItems:'center',marginTop:6},
 mushafPageNo:{width:30,height:30,borderRadius:15,borderWidth:1.2,borderColor:C.gold,alignItems:'center',justifyContent:'center',backgroundColor:C.mint},
-mushafPageNoText:{color:C.green,fontFamily:'Newsreader_700Bold',fontSize:16},mushafAyah:{paddingVertical:12,borderBottomWidth:1,borderColor:C.line},mushafSurah:{textAlign:'center',color:C.green,fontFamily:'Newsreader_600SemiBold',fontSize:20,backgroundColor:C.mint,borderRadius:16,paddingVertical:8,marginBottom:12},verseMarker:{color:C.gold,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:17,writingDirection:'rtl'},mushafTranslation:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:12,lineHeight:18,marginTop:8},sectionMarker:{flexDirection:'row',alignItems:'center',gap:10,marginTop:18,marginBottom:6},sectionRule:{flex:1,height:1,backgroundColor:C.line},sectionMarkerText:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10,textTransform:'uppercase',letterSpacing:1},mushafPageLine:{color:C.ink,textAlign:'center',writingDirection:'rtl'},topicGrid:{flexDirection:'row',flexWrap:'wrap',gap:12},topicWrap:{width:'48%'},topicCard:{minHeight:190,backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},vocabStats:{backgroundColor:C.mint,borderRadius:20,padding:16,marginBottom:12,flexDirection:'row',justifyContent:'space-between',alignItems:'center'},flashcard:{minHeight:330,backgroundColor:C.white,borderRadius:28,padding:24,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,...shadow},flashIndex:{position:'absolute',top:18,right:18,color:C.muted,fontFamily:'DMSans_600SemiBold',fontSize:10},flashArabic:{color:C.ink,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:58,lineHeight:86,textAlign:'center',writingDirection:'rtl'},flashTransliteration:{color:C.green,fontFamily:'Newsreader_600SemiBold',fontSize:28,marginTop:12},flashMeaning:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:18,marginVertical:8,textAlign:'center'},flashHint:{color:C.muted,fontFamily:'DMSans_600SemiBold',fontSize:11,marginTop:16},tajweedPractice:{backgroundColor:C.card,borderRadius:24,padding:20,marginTop:16,borderWidth:1,borderColor:C.line,...surface},tajweedRule:{minHeight:72,flexDirection:'row',alignItems:'center',gap:12,padding:12,borderBottomWidth:1,borderColor:C.line},tajweedSwatch:{width:18,height:44,borderRadius:9},compareCard:{backgroundColor:C.card,borderRadius:20,padding:16,marginBottom:12,borderWidth:1,borderColor:C.line,...surface},
+mushafPageNoText:{color:C.green,fontFamily:'Newsreader_700Bold',fontSize:16},mushafAyah:{paddingVertical:12,borderBottomWidth:1,borderColor:C.line},mushafSurah:{textAlign:'center',color:C.green,fontFamily:'Newsreader_600SemiBold',fontSize:20,backgroundColor:C.mint,borderRadius:16,paddingVertical:8,marginBottom:12},verseMarker:{color:C.gold,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:17,writingDirection:'rtl'},mushafTranslation:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:12,lineHeight:18,marginTop:8},sectionMarker:{flexDirection:'row',alignItems:'center',gap:10,marginTop:18,marginBottom:6},sectionRule:{flex:1,height:1,backgroundColor:C.line},sectionMarkerText:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10,textTransform:'uppercase',letterSpacing:1},mushafPageLine:{color:C.ink,textAlign:'center',writingDirection:'rtl'},topicGrid:{flexDirection:'row',flexWrap:'wrap',gap:12},topicWrap:{width:'48%'},topicCard:{minHeight:190,backgroundColor:C.cardGlass,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},vocabStats:{backgroundColor:C.mint,borderRadius:20,padding:16,marginBottom:12,flexDirection:'row',justifyContent:'space-between',alignItems:'center'},flashcard:{minHeight:330,backgroundColor:C.white,borderRadius:28,padding:24,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,...shadow},flashIndex:{position:'absolute',top:18,right:18,color:C.muted,fontFamily:'DMSans_600SemiBold',fontSize:10},flashArabic:{color:C.ink,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:58,lineHeight:86,textAlign:'center',writingDirection:'rtl'},flashTransliteration:{color:C.green,fontFamily:'Newsreader_600SemiBold',fontSize:28,marginTop:12},flashMeaning:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:18,marginVertical:8,textAlign:'center'},flashHint:{color:C.muted,fontFamily:'DMSans_600SemiBold',fontSize:11,marginTop:16},tajweedPractice:{backgroundColor:C.cardGlass,borderRadius:24,padding:20,marginTop:16,borderWidth:1,borderColor:C.line,...surface},tajweedRule:{minHeight:72,flexDirection:'row',alignItems:'center',gap:12,padding:12,borderBottomWidth:1,borderColor:C.line},tajweedSwatch:{width:18,height:44,borderRadius:9},compareCard:{backgroundColor:C.card,borderRadius:20,padding:16,marginBottom:12,borderWidth:1,borderColor:C.line,...surface},
   tcRefBar:{flexDirection:'row',alignItems:'center',gap:10,marginBottom:14},
   tcVerse:{backgroundColor:C.mint,borderRadius:20,padding:16,marginTop:14,borderWidth:1,borderColor:C.line},
   tcSectionLabel:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.2,marginTop:20,marginBottom:8},
@@ -14353,7 +14412,7 @@ mushafPageNoText:{color:C.green,fontFamily:'Newsreader_700Bold',fontSize:16},mus
   tcCard:{backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},
   tcCardHead:{flexDirection:'row',alignItems:'center',gap:8,paddingBottom:10,marginBottom:10,borderBottomWidth:1,borderColor:C.line},
   tcCardName:{flex:1,color:C.ink,fontSize:13,fontFamily:'DMSans_700Bold'},
-  tcCardLang:{color:C.muted,fontSize:10,fontFamily:'DMSans_700Bold'},juzGrid:{flexDirection:'row',flexWrap:'wrap',gap:8},juzCard:{width:'22.8%',aspectRatio:1,backgroundColor:C.card,borderRadius:16,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,...surface},juzNo:{color:C.green,fontFamily:'Newsreader_600SemiBold',fontSize:23},preloadScore:{backgroundColor:C.white,borderRadius:24,padding:20,borderWidth:1,borderColor:C.line},cacheUsage:{color:C.green,fontFamily:'DMSans_600SemiBold',fontSize:10,marginTop:8},preloadTrack:{height:9,borderRadius:4,backgroundColor:C.mint,overflow:'hidden',marginVertical:12},preloadFill:{height:'100%',backgroundColor:C.green,borderRadius:4},planGrid:{flexDirection:'row',flexWrap:'wrap',gap:12},planCard:{width:'48%',minHeight:130,backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},planDays:{color:C.green,fontFamily:'Newsreader_600SemiBold',fontSize:36},planToday:{backgroundColor:C.white,borderRadius:20,padding:16,marginTop:16,flexDirection:'row',alignItems:'center',justifyContent:'space-between',borderWidth:1,borderColor:C.line},practiceLaunch:{backgroundColor:C.mint,borderRadius:20,padding:16,marginBottom:16,flexDirection:'row',alignItems:'center',justifyContent:'space-between',borderWidth:1,borderColor:C.line},recallCard:{minHeight:340,backgroundColor:C.white,borderRadius:28,padding:20,borderWidth:1,borderColor:C.line,...shadow},recallPrompt:{color:C.ink,fontFamily:'Newsreader_600SemiBold',fontSize:21,lineHeight:29,marginTop:28,textAlign:'center'},recallArabic:{color:C.green,fontFamily:'KFGQPCUthmanicHafs',fontSize:32,lineHeight:58,textAlign:'right',marginTop:24,paddingTop:20,borderTopWidth:1,borderColor:C.line,writingDirection:'rtl'},revealArea:{flex:1,minHeight:110,alignItems:'center',justifyContent:'center',gap:8,marginTop:20,borderTopWidth:1,borderColor:C.line},hifzStatus:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10,textTransform:'uppercase'},intro:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:14,lineHeight:19,marginTop:0,marginBottom:20},exploreGrid:{flexDirection:'row',flexWrap:'wrap',gap:12},exploreCard:{flexGrow:1,flexBasis:'31%',minWidth:150},exploreCardInner:{minHeight:164,backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},
+  tcCardLang:{color:C.muted,fontSize:10,fontFamily:'DMSans_700Bold'},juzGrid:{flexDirection:'row',flexWrap:'wrap',gap:8},juzCard:{width:'22.8%',aspectRatio:1,backgroundColor:C.card,borderRadius:16,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,...surface},juzNo:{color:C.green,fontFamily:'Newsreader_600SemiBold',fontSize:23},preloadScore:{backgroundColor:C.whiteGlass,borderRadius:24,padding:20,borderWidth:1,borderColor:C.line},cacheUsage:{color:C.green,fontFamily:'DMSans_600SemiBold',fontSize:10,marginTop:8},preloadTrack:{height:9,borderRadius:4,backgroundColor:C.mint,overflow:'hidden',marginVertical:12},preloadFill:{height:'100%',backgroundColor:C.green,borderRadius:4},planGrid:{flexDirection:'row',flexWrap:'wrap',gap:12},planCard:{width:'48%',minHeight:130,backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},planDays:{color:C.green,fontFamily:'Newsreader_600SemiBold',fontSize:36},planToday:{backgroundColor:C.white,borderRadius:20,padding:16,marginTop:16,flexDirection:'row',alignItems:'center',justifyContent:'space-between',borderWidth:1,borderColor:C.line},practiceLaunch:{backgroundColor:C.mint,borderRadius:20,padding:16,marginBottom:16,flexDirection:'row',alignItems:'center',justifyContent:'space-between',borderWidth:1,borderColor:C.line},recallCard:{minHeight:340,backgroundColor:C.white,borderRadius:28,padding:20,borderWidth:1,borderColor:C.line,...shadow},recallPrompt:{color:C.ink,fontFamily:'Newsreader_600SemiBold',fontSize:21,lineHeight:29,marginTop:28,textAlign:'center'},recallArabic:{color:C.green,fontFamily:'KFGQPCUthmanicHafs',fontSize:32,lineHeight:58,textAlign:'right',marginTop:24,paddingTop:20,borderTopWidth:1,borderColor:C.line,writingDirection:'rtl'},revealArea:{flex:1,minHeight:110,alignItems:'center',justifyContent:'center',gap:8,marginTop:20,borderTopWidth:1,borderColor:C.line},hifzStatus:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10,textTransform:'uppercase'},intro:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:14,lineHeight:19,marginTop:0,marginBottom:20},exploreGrid:{flexDirection:'row',flexWrap:'wrap',gap:12},exploreCard:{flexGrow:1,flexBasis:'31%',minWidth:150},exploreCardInner:{minHeight:164,backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},
  /* The Library cards are glass; the Tools grid keeps the opaque card above.
     They share `exploreCard` and the type styles but not this, because the
     two tabs are not the same surface and were only ever sharing a name. */
@@ -14373,21 +14432,21 @@ mushafPageNoText:{color:C.green,fontFamily:'Newsreader_700Bold',fontSize:16},mus
  floatBarPlain:{backgroundColor:C.white,borderWidth:1,borderColor:C.line},
  libraryCardPlain:{backgroundColor:C.card,borderWidth:1,borderColor:C.line},exploreTitle:{color:C.ink,fontSize:16,fontFamily:'DMSans_700Bold',marginTop:12},exploreBody:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:11,lineHeight:15,marginTop:4,flex:1},exploreArrow:{width:29,height:29,borderRadius:16,backgroundColor:C.mint,alignItems:'center',justifyContent:'center',alignSelf:'flex-end'},apiPanel:{backgroundColor:C.deep,borderRadius:24,padding:20,marginTop:12},apiTitle:{color:C.onAccent,fontSize:14,fontFamily:'DMSans_700Bold',marginTop:16},apiText:{color:C.onAccent,fontSize:10,marginTop:4},dataProvider:{color:C.onAccent,fontSize:10.5,fontFamily:'DMSans_600SemiBold',marginTop:3,opacity:.72,letterSpacing:.2},
  toolPage:{width:'100%',maxWidth:780,alignSelf:'center',alignItems:'center',padding:24,paddingTop:24,paddingBottom:BOTTOM_RESERVE},toolPageScroll:{flexGrow:1},toolEyebrow:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.2,marginTop:20},compass:{width:260,height:260,borderRadius:130,backgroundColor:C.white,borderWidth:12,borderColor:C.line,alignItems:'center',justifyContent:'center',marginTop:32,...shadow},compassRose:{position:'absolute',width:'100%',height:'100%',alignItems:'center',justifyContent:'center'},compassLive:{fontFamily:'DMSans_600SemiBold',fontSize:11,color:C.green,marginTop:8},compassHint:{color:C.muted,fontSize:11,marginTop:4,textAlign:'center'},north:{position:'absolute',top:12,color:C.coral,fontSize:10,fontFamily:'DMSans_700Bold'},compassArrow:{alignItems:'center',justifyContent:'center'},kaaba:{position:'absolute',right:43,bottom:47,width:31,height:31,backgroundColor:C.deep,borderRadius:4},kaabaGold:{height:5,backgroundColor:C.gold,marginTop:8},direction:{color:C.ink,fontSize:31,fontFamily:'DMSans_700Bold',marginTop:24},directionText:{color:C.muted,fontSize:11,marginTop:4},primary:{backgroundColor:C.accent,paddingHorizontal:20,paddingVertical:12,minHeight:48,alignItems:'center',justifyContent:'center',borderRadius:16,marginTop:20},primaryText:{color:C.onAccentInk,fontSize:11,fontFamily:'DMSans_700Bold'},tasbihAr:{color:C.ink,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:32,marginTop:16,writingDirection:'rtl'},counter:{width:205,height:205,borderRadius:103,backgroundColor:C.accent,alignItems:'center',justifyContent:'center',borderWidth:12,borderColor:C.line,marginVertical:32,...shadow},counterNo:{color:C.onAccent,fontSize:58,fontFamily:'DMSans_700Bold'},counterGoal:{color:C.onAccent,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.3},secondary:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:8,minHeight:44,backgroundColor:C.white,paddingHorizontal:16,paddingVertical:12,borderRadius:16,borderWidth:1,borderColor:C.line,marginHorizontal:4},secondaryText:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold'},
- summaryScore:{backgroundColor:C.deep,borderRadius:24,padding:20,flexDirection:'row',justifyContent:'space-between',...shadow,borderTopColor:depth.edge},summaryDay:{minHeight:66,flexDirection:'row',alignItems:'center',gap:12,paddingHorizontal:16,borderBottomWidth:1,borderColor:C.line},summaryDots:{flexDirection:'row',gap:4},summaryDot:{width:8,height:8,borderRadius:4,backgroundColor:C.mint},summaryDotDone:{backgroundColor:C.green},cityGrid:{flexDirection:'row',flexWrap:'wrap',gap:8},cityCard:{width:'48.5%',minHeight:76,backgroundColor:C.card,borderRadius:16,padding:12,borderWidth:1,borderColor:C.line,...surface},cityCardActive:{backgroundColor:C.mint,borderColor:C.line},cityName:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:12},formCard:{backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},
+ summaryScore:{backgroundColor:C.deep,borderRadius:24,padding:20,flexDirection:'row',justifyContent:'space-between',...shadow,borderTopColor:depth.edge},summaryDay:{minHeight:66,flexDirection:'row',alignItems:'center',gap:12,paddingHorizontal:16,borderBottomWidth:1,borderColor:C.line},summaryDots:{flexDirection:'row',gap:4},summaryDot:{width:8,height:8,borderRadius:4,backgroundColor:C.mint},summaryDotDone:{backgroundColor:C.green},cityGrid:{flexDirection:'row',flexWrap:'wrap',gap:8},cityCard:{width:'48.5%',minHeight:76,backgroundColor:C.card,borderRadius:16,padding:12,borderWidth:1,borderColor:C.line,...surface},cityCardActive:{backgroundColor:C.mint,borderColor:C.line},cityName:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:12},formCard:{backgroundColor:C.cardGlass,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},
   rsEyebrow:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.2,marginBottom:10},
-  rsPreview:{backgroundColor:C.card,borderRadius:24,padding:20,borderWidth:1,borderColor:C.line,...surface},
+  rsPreview:{backgroundColor:C.cardGlass,borderRadius:24,padding:20,borderWidth:1,borderColor:C.line,...surface},
   rsPreviewArabic:{color:C.ink,textAlign:'right',writingDirection:'rtl'} as any,
   rsPreviewTranslit:{color:C.muted,fontFamily:'DMSans_400Regular',fontStyle:'italic',marginTop:8,textAlign:'right'},
   rsPreviewMeaning:{color:C.muted,fontFamily:'DMSans_400Regular',lineHeight:22,marginTop:14},
   rsPreviewFoot:{flexDirection:'row',justifyContent:'space-between',marginTop:16,paddingTop:12,borderTopWidth:1,borderColor:C.line},
   rsPreviewMeta:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold'},
-  rsGroup:{backgroundColor:C.card,borderRadius:24,padding:16,marginTop:16,borderWidth:1,borderColor:C.line,...surface},
+  rsGroup:{backgroundColor:C.cardGlass,borderRadius:24,padding:16,marginTop:16,borderWidth:1,borderColor:C.line,...surface},
   rsGroupTitle:{color:C.ink,fontSize:12,fontFamily:'DMSans_700Bold',letterSpacing:1.1,marginBottom:12},
-  rsDivider:{height:1,backgroundColor:C.line,marginVertical:16},fieldRow:{flexDirection:'row',gap:12},textField:{backgroundColor:C.bg,borderWidth:1,borderColor:C.line,borderRadius:16,padding:12,fontSize:13,color:C.ink,marginTop:8,outlineStyle:'none'} as any,dangerButton:{padding:16,alignItems:'center',marginTop:12},dangerText:{color:C.coral,fontFamily:'DMSans_700Bold',fontSize:11},healthCard:{flexDirection:'row',alignItems:'center',gap:12,backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,marginBottom:16,...surface},healthDot:{width:10,height:10,borderRadius:5},actionRow:{flexDirection:'row',alignItems:'center',flexWrap:'wrap',gap:8,marginTop:4},audioPreview:{backgroundColor:C.deep,borderRadius:24,padding:16,flexDirection:'row',alignItems:'center',gap:12},audioPlay:{width:48,height:48,borderRadius:24,backgroundColor:C.accent,alignItems:'center',justifyContent:'center'},guideGrid:{flexDirection:'row',flexWrap:'wrap',gap:12},guideCard:{flexGrow:1,flexBasis:'30%',minWidth:150},guideCardInner:{minHeight:180,backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},guideHero:{borderRadius:24,padding:22,marginTop:16,alignItems:'center'},guideHeroKicker:{color:C.onHero,fontFamily:'DMSans_700Bold',fontSize:10,letterSpacing:1.4,textTransform:'uppercase',marginBottom:14},guideHeroArabic:{color:C.onAccent,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:26,lineHeight:46,textAlign:'center',writingDirection:'rtl'},guideStep:{flexDirection:'row',gap:14,paddingVertical:16,paddingHorizontal:16,borderBottomWidth:1,borderColor:C.line,alignItems:'flex-start'},guideStepLast:{borderBottomWidth:0},stepNo:{width:28,height:28,borderRadius:14,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},stepNoText:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10},guideStepText:{flex:1,color:C.ink,fontFamily:'DMSans_400Regular',fontSize:13.5,lineHeight:21},guideNote:{backgroundColor:C.yellow,borderRadius:20,padding:16,marginTop:20},referenceRow:{minHeight:54,backgroundColor:C.white,borderRadius:16,paddingHorizontal:16,marginBottom:8,flexDirection:'row',alignItems:'center',justifyContent:'space-between',borderWidth:1,borderColor:C.line},evidenceCard:{backgroundColor:C.card,borderRadius:18,padding:15,marginBottom:11,borderWidth:1,borderColor:C.line},evidenceLabel:{color:C.green,fontSize:11,fontFamily:'DMSans_700Bold',letterSpacing:.4,marginBottom:9},evidenceArabic:{color:C.ink,fontSize:17,fontFamily:'NotoNaskhArabic_400Regular',lineHeight:31,marginBottom:8,writingDirection:'rtl',textAlign:'right'},evidenceBody:{color:C.body,fontSize:13,fontFamily:'DMSans_400Regular',lineHeight:20},evidenceVerse:{marginBottom:11},evidenceFoot:{flexDirection:'row',alignItems:'center',marginTop:10,paddingTop:10,borderTopWidth:1,borderTopColor:C.line},evidenceLink:{flex:1,color:C.green,fontSize:12,fontFamily:'DMSans_600SemiBold'},emptyWrap:{alignItems:'center',justifyContent:'center',paddingVertical:60,gap:10,paddingHorizontal:24},emptyTitle:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:16,textAlign:'center'},emptyBody:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:13,lineHeight:20,textAlign:'center'},
+  rsDivider:{height:1,backgroundColor:C.line,marginVertical:16},fieldRow:{flexDirection:'row',gap:12},textField:{backgroundColor:C.bg,borderWidth:1,borderColor:C.line,borderRadius:16,padding:12,fontSize:13,color:C.ink,marginTop:8,outlineStyle:'none'} as any,dangerButton:{padding:16,alignItems:'center',marginTop:12},dangerText:{color:C.coral,fontFamily:'DMSans_700Bold',fontSize:11},healthCard:{flexDirection:'row',alignItems:'center',gap:12,backgroundColor:C.cardGlass,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,marginBottom:16,...surface},healthDot:{width:10,height:10,borderRadius:5},actionRow:{flexDirection:'row',alignItems:'center',flexWrap:'wrap',gap:8,marginTop:4},audioPreview:{backgroundColor:C.deep,borderRadius:24,padding:16,flexDirection:'row',alignItems:'center',gap:12},audioPlay:{width:48,height:48,borderRadius:24,backgroundColor:C.accent,alignItems:'center',justifyContent:'center'},guideGrid:{flexDirection:'row',flexWrap:'wrap',gap:12},guideCard:{flexGrow:1,flexBasis:'30%',minWidth:150},guideCardInner:{minHeight:180,backgroundColor:C.cardGlass,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},guideHero:{borderRadius:24,padding:22,marginTop:16,alignItems:'center'},guideHeroKicker:{color:C.onHero,fontFamily:'DMSans_700Bold',fontSize:10,letterSpacing:1.4,textTransform:'uppercase',marginBottom:14},guideHeroArabic:{color:C.onAccent,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:26,lineHeight:46,textAlign:'center',writingDirection:'rtl'},guideStep:{flexDirection:'row',gap:14,paddingVertical:16,paddingHorizontal:16,borderBottomWidth:1,borderColor:C.line,alignItems:'flex-start'},guideStepLast:{borderBottomWidth:0},stepNo:{width:28,height:28,borderRadius:14,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},stepNoText:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10},guideStepText:{flex:1,color:C.ink,fontFamily:'DMSans_400Regular',fontSize:13.5,lineHeight:21},guideNote:{backgroundColor:C.yellow,borderRadius:20,padding:16,marginTop:20},referenceRow:{minHeight:54,backgroundColor:C.white,borderRadius:16,paddingHorizontal:16,marginBottom:8,flexDirection:'row',alignItems:'center',justifyContent:'space-between',borderWidth:1,borderColor:C.line},evidenceCard:{backgroundColor:C.card,borderRadius:18,padding:15,marginBottom:11,borderWidth:1,borderColor:C.line},evidenceLabel:{color:C.green,fontSize:11,fontFamily:'DMSans_700Bold',letterSpacing:.4,marginBottom:9},evidenceArabic:{color:C.ink,fontSize:17,fontFamily:'NotoNaskhArabic_400Regular',lineHeight:31,marginBottom:8,writingDirection:'rtl',textAlign:'right'},evidenceBody:{color:C.body,fontSize:13,fontFamily:'DMSans_400Regular',lineHeight:20},evidenceVerse:{marginBottom:11},evidenceFoot:{flexDirection:'row',alignItems:'center',marginTop:10,paddingTop:10,borderTopWidth:1,borderTopColor:C.line},evidenceLink:{flex:1,color:C.green,fontSize:12,fontFamily:'DMSans_600SemiBold'},emptyWrap:{alignItems:'center',justifyContent:'center',paddingVertical:60,gap:10,paddingHorizontal:24},emptyTitle:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:16,textAlign:'center'},emptyBody:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:13,lineHeight:20,textAlign:'center'},
   inboxEmpty:{alignItems:'center',paddingVertical:40,gap:8},inboxHead:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginBottom:10},
   inboxRow:{flexDirection:'row',gap:12,padding:14,borderBottomWidth:1,borderColor:C.line,alignItems:'flex-start'},inboxDot:{width:8,height:8,borderRadius:4,marginTop:6},
-  inboxKind:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:9,letterSpacing:.8},inboxTime:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:11,marginTop:2},dataPage:{width:'100%',maxWidth:860,alignSelf:'center',padding:20,paddingBottom:BOTTOM_RESERVE},empty:{backgroundColor:C.white,borderRadius:24,padding:24,alignItems:'center',borderWidth:1,borderColor:C.line},dataTitle:{color:C.ink,fontSize:29,fontFamily:'Newsreader_600SemiBold',letterSpacing:-.5,marginTop:16,marginBottom:8},dataCard:{backgroundColor:C.card,borderRadius:20,padding:16,marginBottom:12,borderWidth:1,borderColor:C.line,...surface},bookmarkMain:{flex:1},bookmarkRemove:{paddingStart:10,paddingVertical:4,justifyContent:'center'},dataArabic:{color:C.green,fontFamily:'KFGQPCUthmanicHafs',fontSize:27,lineHeight:48,textAlign:'right',writingDirection:'rtl'},dataName:{color:C.ink,fontSize:14,fontFamily:'DMSans_700Bold',marginTop:4},dataBody:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:13,lineHeight:18,marginTop:4},dataMeta:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold',marginTop:12,textTransform:'uppercase'},inputLabel:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.2,marginTop:12},moneyInput:{backgroundColor:C.white,borderWidth:1,borderColor:C.line,borderRadius:20,padding:16,fontSize:24,fontFamily:'DMSans_700Bold',color:C.ink,marginTop:8,outlineStyle:'none'} as any,zakatResult:{borderRadius:24,padding:20,marginTop:12},zakatNo:{color:C.onAccent,fontSize:34,fontFamily:'DMSans_700Bold',marginTop:8},
- profileName:{color:C.onAccent,fontSize:18,fontFamily:'DMSans_700Bold'},profileSub:{color:C.onHero,fontSize:10,marginTop:4},privacyHero:{borderRadius:24,padding:20,flexDirection:'row',alignItems:'center',gap:12,...shadow},privacyPoints:{flexDirection:'row',gap:8,marginTop:12},privacyPoint:{flex:1,backgroundColor:C.card,borderRadius:16,paddingVertical:12,alignItems:'center',gap:4,borderWidth:1,borderColor:C.line},privacyPointText:{color:C.ink,fontSize:10,fontFamily:'DMSans_700Bold',textAlign:'center'},preferencePanel:{backgroundColor:C.card,borderRadius:24,padding:16,borderWidth:1,borderColor:C.line,...surface},preferenceHead:{flexDirection:'row',alignItems:'center',gap:12,marginBottom:16},prefIconTile:{width:54,height:54,borderRadius:18,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},choiceGrid:{flexDirection:'row',flexWrap:'wrap',gap:8},choiceRow:{flexDirection:'row',gap:8},
+  inboxKind:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:9,letterSpacing:.8},inboxTime:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:11,marginTop:2},dataPage:{width:'100%',maxWidth:860,alignSelf:'center',padding:20,paddingBottom:BOTTOM_RESERVE},empty:{backgroundColor:C.whiteGlass,borderRadius:24,padding:24,alignItems:'center',borderWidth:1,borderColor:C.line},dataTitle:{color:C.ink,fontSize:29,fontFamily:'Newsreader_600SemiBold',letterSpacing:-.5,marginTop:16,marginBottom:8},dataCard:{backgroundColor:C.cardGlass,borderRadius:20,padding:16,marginBottom:12,borderWidth:1,borderColor:C.line,...surface},bookmarkMain:{flex:1},bookmarkRemove:{paddingStart:10,paddingVertical:4,justifyContent:'center'},dataArabic:{color:C.green,fontFamily:'KFGQPCUthmanicHafs',fontSize:27,lineHeight:48,textAlign:'right',writingDirection:'rtl'},dataName:{color:C.ink,fontSize:14,fontFamily:'DMSans_700Bold',marginTop:4},dataBody:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:13,lineHeight:18,marginTop:4},dataMeta:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold',marginTop:12,textTransform:'uppercase'},inputLabel:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.2,marginTop:12},moneyInput:{backgroundColor:C.white,borderWidth:1,borderColor:C.line,borderRadius:20,padding:16,fontSize:24,fontFamily:'DMSans_700Bold',color:C.ink,marginTop:8,outlineStyle:'none'} as any,zakatResult:{borderRadius:24,padding:20,marginTop:12},zakatNo:{color:C.onAccent,fontSize:34,fontFamily:'DMSans_700Bold',marginTop:8},
+ profileName:{color:C.onAccent,fontSize:18,fontFamily:'DMSans_700Bold'},profileSub:{color:C.onHero,fontSize:10,marginTop:4},privacyHero:{borderRadius:24,padding:20,flexDirection:'row',alignItems:'center',gap:12,...shadow},privacyPoints:{flexDirection:'row',gap:8,marginTop:12},privacyPoint:{flex:1,backgroundColor:C.cardGlass,borderRadius:16,paddingVertical:12,alignItems:'center',gap:4,borderWidth:1,borderColor:C.line},privacyPointText:{color:C.ink,fontSize:10,fontFamily:'DMSans_700Bold',textAlign:'center'},preferencePanel:{backgroundColor:C.cardGlass,borderRadius:24,padding:16,borderWidth:1,borderColor:C.line,...surface},preferenceHead:{flexDirection:'row',alignItems:'center',gap:12,marginBottom:16},prefIconTile:{width:54,height:54,borderRadius:18,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},choiceGrid:{flexDirection:'row',flexWrap:'wrap',gap:8},choiceRow:{flexDirection:'row',gap:8},
   hadithPick:{marginTop:4,marginBottom:20},hadithSearch:{marginBottom:0},hadithResults:{marginBottom:10},
   nameShare:{width:40,height:40,borderRadius:20,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,flexShrink:0},
   trackGrid:{flexDirection:'row',gap:3,alignItems:'flex-start'},trackWeek:{gap:3},trackCell:{width:13,height:13,borderRadius:3},trackCellOpen:{borderWidth:2,borderColor:C.ink},
@@ -14410,7 +14469,7 @@ mushafPageNoText:{color:C.green,fontFamily:'Newsreader_700Bold',fontSize:16},mus
   zHeadAction:{color:C.gold,fontFamily:'DMSans_600SemiBold',fontSize:11,flexShrink:1,textAlign:'right'},
   zBody:{paddingTop:16},
   crashScreen:{flex:1,backgroundColor:C.bg,alignItems:'center',justifyContent:'center',padding:24},
-  crashCard:{backgroundColor:C.card,borderRadius:24,padding:22,borderWidth:1,borderColor:C.line,gap:10,maxWidth:420,width:'100%'},
+  crashCard:{backgroundColor:C.cardGlass,borderRadius:24,padding:22,borderWidth:1,borderColor:C.line,gap:10,maxWidth:420,width:'100%'},
   crashTitle:{color:C.ink,fontFamily:'Newsreader_600SemiBold',fontSize:20},
   crashBody:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:13.5,lineHeight:20},
   crashDetail:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:11,lineHeight:16,marginTop:2},
@@ -14434,10 +14493,10 @@ mushafPageNoText:{color:C.green,fontFamily:'Newsreader_700Bold',fontSize:16},mus
   vocabKnown:{backgroundColor:C.mint,borderRadius:10,paddingHorizontal:8,paddingVertical:3},
   vocabKnownText:{color:C.green,fontFamily:'DMSans_600SemiBold',fontSize:10},
   letterGrid:{flexDirection:'row',flexWrap:'wrap',gap:10},letterCell:{width:42,height:42,borderRadius:12,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,backgroundColor:C.white},letterCellWide:{width:58},letterCellActive:{backgroundColor:C.accent,borderColor:C.green},letterCellEmpty:{opacity:.4},letterText:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:13},letterTextActive:{color:C.onAccent},letterTextDim:{color:C.muted},  settingsRow:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingHorizontal:16,paddingVertical:14,borderBottomWidth:1,borderColor:C.line},choicePill:{minHeight:44,justifyContent:'center',minWidth:44,alignItems:'center',paddingHorizontal:12,paddingVertical:8,borderRadius:12,backgroundColor:C.bg,borderWidth:1,borderColor:C.line},choicePillActive:{backgroundColor:C.accent,borderColor:C.green},choiceText:{color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:10},choiceTextActive:{color:C.onAccent},preferenceLabel:{color:C.muted,fontFamily:'DMSans_700Bold',fontSize:10,letterSpacing:1.1,marginTop:16,marginBottom:8},settings:{backgroundColor:C.card,borderRadius:24,overflow:'hidden',borderWidth:1,borderColor:C.line,...surface},setting:{minHeight:69,flexDirection:'row',alignItems:'center',gap:12,paddingHorizontal:12,borderBottomWidth:1,borderColor:C.line},settingName:{color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:13},
- locationGate:{flexDirection:'row',gap:16,alignItems:'flex-start',backgroundColor:C.card,borderRadius:24,padding:20,borderWidth:1,borderColor:C.line,...soft},locationGateNarrow:{flexDirection:'column',alignItems:'stretch'},locationGateTitle:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:16},locationGateBody:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:12,lineHeight:18,marginTop:4},locationActions:{flexDirection:'row',flexWrap:'wrap',gap:8,marginTop:16},locationActionsNarrow:{flexDirection:'column',alignItems:'stretch'},primarySmall:{backgroundColor:C.accent,paddingHorizontal:16,paddingVertical:12,borderRadius:12,minHeight:44,justifyContent:'center'},ghostSmall:{backgroundColor:C.mint,paddingHorizontal:16,paddingVertical:12,borderRadius:12,minHeight:44,justifyContent:'center'},ghostText:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:11},
+ locationGate:{flexDirection:'row',gap:16,alignItems:'flex-start',backgroundColor:C.cardGlass,borderRadius:24,padding:20,borderWidth:1,borderColor:C.line,...soft},locationGateNarrow:{flexDirection:'column',alignItems:'stretch'},locationGateTitle:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:16},locationGateBody:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:12,lineHeight:18,marginTop:4},locationActions:{flexDirection:'row',flexWrap:'wrap',gap:8,marginTop:16},locationActionsNarrow:{flexDirection:'column',alignItems:'stretch'},primarySmall:{backgroundColor:C.accent,paddingHorizontal:16,paddingVertical:12,borderRadius:12,minHeight:44,justifyContent:'center'},ghostSmall:{backgroundColor:C.mint,paddingHorizontal:16,paddingVertical:12,borderRadius:12,minHeight:44,justifyContent:'center'},ghostText:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:11},
  prayerTools:{flexDirection:'row',flexWrap:'wrap',gap:8},prayerToolsTwo:{flexDirection:'row',gap:12,marginBottom:8},prayerToolTwo:{flex:1},prayerTool:{flexGrow:1,flexBasis:'30%',minWidth:220},prayerToolInner:{minHeight:86,flexDirection:'row',alignItems:'center',gap:12,backgroundColor:C.white,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line},prayerToolText:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:12,flex:1},
  libraryKicker:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10,letterSpacing:1.7,marginTop:24},libraryHeading:{color:C.ink,fontFamily:'Newsreader_600SemiBold',fontSize:23,marginTop:4,marginBottom:12},
- calendarIntro:{backgroundColor:C.deep,borderRadius:24,padding:20},calendarMonth:{color:C.onAccent,fontFamily:'Newsreader_600SemiBold',fontSize:29,marginTop:16},calendarHijri:{color:C.onAccent,fontFamily:'DMSans_400Regular',fontSize:12,marginTop:4},weekHead:{flexDirection:'row',marginTop:16},weekLabel:{width:'14.285%',textAlign:'center',color:C.muted,fontFamily:'DMSans_700Bold',fontSize:11},calendarGrid:{flexDirection:'row',flexWrap:'wrap',marginTop:8,backgroundColor:C.white,borderRadius:24,padding:8,borderWidth:1,borderColor:C.line},calendarCell:{width:'14.285%',aspectRatio:1,alignItems:'center',justifyContent:'center',borderRadius:12},calendarToday:{backgroundColor:C.mint,borderWidth:1,borderColor:C.line},gregorianDay:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:15},hijriDay:{color:C.green,fontFamily:'DMSans_600SemiBold',fontSize:10,marginTop:2},calendarLegend:{flexDirection:'row',alignItems:'center',gap:8,marginTop:12},
+ calendarIntro:{backgroundColor:C.deep,borderRadius:24,padding:20},calendarMonth:{color:C.onAccent,fontFamily:'Newsreader_600SemiBold',fontSize:29,marginTop:16},calendarHijri:{color:C.onAccent,fontFamily:'DMSans_400Regular',fontSize:12,marginTop:4},weekHead:{flexDirection:'row',marginTop:16},weekLabel:{width:'14.285%',textAlign:'center',color:C.muted,fontFamily:'DMSans_700Bold',fontSize:11},calendarGrid:{flexDirection:'row',flexWrap:'wrap',marginTop:8,backgroundColor:C.whiteGlass,borderRadius:24,padding:8,borderWidth:1,borderColor:C.line},calendarCell:{width:'14.285%',aspectRatio:1,alignItems:'center',justifyContent:'center',borderRadius:12},calendarToday:{backgroundColor:C.mint,borderWidth:1,borderColor:C.line},gregorianDay:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:15},hijriDay:{color:C.green,fontFamily:'DMSans_600SemiBold',fontSize:10,marginTop:2},calendarLegend:{flexDirection:'row',alignItems:'center',gap:8,marginTop:12},
 calendarPicked:{borderColor:C.green,borderWidth:1.5},
 calendarEvent:{position:'absolute',bottom:3,width:5,height:5,borderRadius:3},
 calendarEventFast:{backgroundColor:C.success},
@@ -14454,7 +14513,7 @@ eventDotHajj:{backgroundColor:C.teal},
 eventDotNewyear:{backgroundColor:C.green},
 eventCountdown:{backgroundColor:C.mint,borderRadius:11,paddingVertical:4,paddingHorizontal:10,borderWidth:1,borderColor:C.line},
 eventCountdownText:{color:C.green,fontFamily:'DMSans_600SemiBold',fontSize:11},
-dayDetail:{backgroundColor:C.card,borderRadius:20,borderWidth:1,borderColor:C.line,padding:16,...soft},
+dayDetail:{backgroundColor:C.cardGlass,borderRadius:20,borderWidth:1,borderColor:C.line,padding:16,...soft},
 dayDetailHijri:{color:C.ink,fontFamily:'Newsreader_600SemiBold',fontSize:19,textAlign:'center'},
 dayDetailEvent:{backgroundColor:C.mint,borderRadius:14,padding:12,gap:4},
 dayDetailEventTitle:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:14},
@@ -14467,7 +14526,7 @@ legendDot:{width:8,height:8,borderRadius:4,backgroundColor:C.green},
  seekTrack:{height:26,justifyContent:'center',marginTop:8},
  seekFill:{position:'absolute',left:0,height:5,borderRadius:4,backgroundColor:C.green},
  seekKnob:{position:'absolute',top:7,width:13,height:13,borderRadius:8,backgroundColor:C.white,borderWidth:2,borderColor:C.green,marginLeft:-6},
- miniPlayer:{position:'absolute',left:12,right:12,backgroundColor:C.card,borderRadius:20,paddingHorizontal:12,paddingVertical:8,alignItems:'center',borderWidth:1,borderColor:C.line,...shadow},
+ miniPlayer:{position:'absolute',left:12,right:12,backgroundColor:C.cardGlass,borderRadius:20,paddingHorizontal:12,paddingVertical:8,alignItems:'center',borderWidth:1,borderColor:C.line,...shadow},
  miniBody:{flex:1,flexDirection:'row',alignItems:'center',gap:12},
  miniArt:{width:40,height:40,borderRadius:16,backgroundColor:C.mint,alignItems:'center',justifyContent:'center',overflow:'hidden'},
  miniTitle:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:12},
@@ -14487,13 +14546,13 @@ playerHero:{borderRadius:30,padding:26,alignItems:'center',overflow:'hidden',...
 playerAura:{position:'absolute',width:300,height:300,top:-90,borderRadius:150,opacity:.5},
 playerArtRing:{width:150,height:150,borderRadius:75,alignItems:'center',justifyContent:'center',backgroundColor:'rgba(255,255,255,.13)',borderWidth:1,borderColor:'rgba(255,255,255,.28)'},
 playerTranslationRow:{flexDirection:'row',alignItems:'center',gap:12,backgroundColor:C.card,borderRadius:16,borderWidth:1,borderColor:C.line,padding:12,marginTop:16,...soft},
-playerTranslationList:{backgroundColor:C.card,borderRadius:16,borderWidth:1,borderColor:C.line,marginTop:8,overflow:'hidden'},
+playerTranslationList:{backgroundColor:C.cardGlass,borderRadius:16,borderWidth:1,borderColor:C.line,marginTop:8,overflow:'hidden'},
 playerTranslationOption:{flexDirection:'row',alignItems:'center',gap:12,paddingVertical:14,paddingHorizontal:14,borderBottomWidth:1,borderColor:C.line},
   playerTranslationOptionLast:{flexDirection:'row',alignItems:'center',gap:12,paddingVertical:14,paddingHorizontal:14},
 playerTranslationOptionOn:{backgroundColor:C.mint},
   playerRow:{flexDirection:'row',alignItems:'center',gap:10,marginTop:20},
   playerSeek:{marginTop:10},
-  playerCard:{backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,marginTop:24,...surface},
+  playerCard:{backgroundColor:C.cardGlass,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,marginTop:24,...surface},
  playerTitle:{color:C.onAccent,fontFamily:'Newsreader_600SemiBold',fontSize:23,marginTop:14,textAlign:'center'},
  playerPerformer:{color:C.onAccent,fontSize:11,marginTop:5},
  trackBadge:{marginTop:16,backgroundColor:'rgba(255,255,255,.14)',borderRadius:12,paddingHorizontal:12,paddingVertical:8},
@@ -14568,7 +14627,7 @@ onbChosen:{flexDirection:'row',alignItems:'center',gap:9,backgroundColor:C.mint,
 onbChosenText:{color:C.ink,fontSize:13,flex:1},
 onbNote:{backgroundColor:C.bg,borderRadius:12,padding:12,marginTop:8,borderWidth:1,borderColor:C.line},
 onbNoteText:{color:C.muted,fontSize:11,lineHeight:17,marginTop:10},
-onbPromise:{flexDirection:'row',gap:12,backgroundColor:C.card,borderRadius:16,padding:14,borderWidth:1,borderColor:C.line,marginBottom:10},
+onbPromise:{flexDirection:'row',gap:12,backgroundColor:C.cardGlass,borderRadius:16,padding:14,borderWidth:1,borderColor:C.line,marginBottom:10},
 onbPromiseTitle:{color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:13.5},
 onbPromiseBody:{color:C.muted,fontSize:11.5,lineHeight:17,marginTop:3},
 locationBanner:{flexDirection:'row',alignItems:'center',gap:11,backgroundColor:C.card,borderRadius:14,padding:12,borderWidth:1,borderColor:C.line,marginVertical:8,...surface},
@@ -14620,7 +14679,7 @@ locationBannerBody:{color:C.muted,fontSize:11,lineHeight:15,marginTop:2},
   duaCategoryName:{color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:12,marginTop:4},
   offlineNote:{backgroundColor:C.mint,borderRadius:16,padding:12,marginBottom:12,borderWidth:1,borderColor:C.line},
   offlineNoteText:{color:C.green,fontSize:11,fontFamily:'DMSans_600SemiBold'},
-  tasbihCard:{backgroundColor:C.card,borderRadius:20,padding:16,alignItems:'center',marginTop:16,borderWidth:1,borderColor:C.line,...surface},sunnahList:{backgroundColor:C.card,borderRadius:20,padding:12,borderWidth:1,borderColor:C.line,gap:8,...surface},sunnahRow:{borderRadius:14,paddingVertical:13,paddingHorizontal:12,backgroundColor:C.mint,borderWidth:1,borderColor:C.line},sunnahRowOn:{backgroundColor:C.accent,borderColor:C.green},sunnahRowName:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:13},tasbihRow:{paddingVertical:4,marginTop:16},tasbihGoalRow:{marginTop:2},timeField:{marginTop:12},timeFieldLabel:{color:C.muted,fontFamily:'DMSans_700Bold',fontSize:10,letterSpacing:1.1,marginBottom:7},timeFieldButton:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',minHeight:48,backgroundColor:C.white,paddingHorizontal:16,borderRadius:16,borderWidth:1,borderColor:C.line},timeFieldValue:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:16,direction:'ltr'},clockScrim:{flex:1,backgroundColor:'rgba(11,8,20,0.55)',alignItems:'center',justifyContent:'center',padding:24},clockSheet:{width:'100%',maxWidth:360,backgroundColor:C.bg,borderRadius:24,padding:20,borderWidth:1,borderColor:C.line,...shadow},clockTitle:{color:C.ink,fontSize:18,fontFamily:'Newsreader_600SemiBold',textAlign:'center'},clockPreview:{color:C.green,fontSize:28,fontFamily:'DMSans_700Bold',textAlign:'center',marginTop:6,direction:'ltr'},clockWheels:{flexDirection:'row',justifyContent:'center',alignItems:'center',gap:4,marginTop:14,direction:'ltr'},clockBand:{position:'absolute',top:CLOCK_ROW*2,left:0,right:0,height:CLOCK_ROW,borderRadius:12,backgroundColor:C.mint,borderWidth:1,borderColor:C.line},clockItem:{height:CLOCK_ROW,alignItems:'center',justifyContent:'center'},clockItemText:{color:C.ink,fontSize:19,fontFamily:'DMSans_600SemiBold'},clockActions:{flexDirection:'row',gap:8,marginTop:18},toast:{position:'absolute',left:24,right:24,bottom:BOTTOM_RESERVE+8,flexDirection:'row',alignItems:'center',gap:10,backgroundColor:C.white,borderRadius:16,paddingHorizontal:16,paddingVertical:13,borderWidth:1,borderColor:C.line,...shadow},toastText:{flex:1,color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:12,lineHeight:17},
+  tasbihCard:{backgroundColor:C.cardGlass,borderRadius:20,padding:16,alignItems:'center',marginTop:16,borderWidth:1,borderColor:C.line,...surface},sunnahList:{backgroundColor:C.cardGlass,borderRadius:20,padding:12,borderWidth:1,borderColor:C.line,gap:8,...surface},sunnahRow:{borderRadius:14,paddingVertical:13,paddingHorizontal:12,backgroundColor:C.mint,borderWidth:1,borderColor:C.line},sunnahRowOn:{backgroundColor:C.accent,borderColor:C.green},sunnahRowName:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:13},tasbihRow:{paddingVertical:4,marginTop:16},tasbihGoalRow:{marginTop:2},timeField:{marginTop:12},timeFieldLabel:{color:C.muted,fontFamily:'DMSans_700Bold',fontSize:10,letterSpacing:1.1,marginBottom:7},timeFieldButton:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',minHeight:48,backgroundColor:C.white,paddingHorizontal:16,borderRadius:16,borderWidth:1,borderColor:C.line},timeFieldValue:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:16,direction:'ltr'},clockScrim:{flex:1,backgroundColor:'rgba(11,8,20,0.55)',alignItems:'center',justifyContent:'center',padding:24},clockSheet:{width:'100%',maxWidth:360,backgroundColor:C.bg,borderRadius:24,padding:20,borderWidth:1,borderColor:C.line,...shadow},clockTitle:{color:C.ink,fontSize:18,fontFamily:'Newsreader_600SemiBold',textAlign:'center'},clockPreview:{color:C.green,fontSize:28,fontFamily:'DMSans_700Bold',textAlign:'center',marginTop:6,direction:'ltr'},clockWheels:{flexDirection:'row',justifyContent:'center',alignItems:'center',gap:4,marginTop:14,direction:'ltr'},clockBand:{position:'absolute',top:CLOCK_ROW*2,left:0,right:0,height:CLOCK_ROW,borderRadius:12,backgroundColor:C.mint,borderWidth:1,borderColor:C.line},clockItem:{height:CLOCK_ROW,alignItems:'center',justifyContent:'center'},clockItemText:{color:C.ink,fontSize:19,fontFamily:'DMSans_600SemiBold'},clockActions:{flexDirection:'row',gap:8,marginTop:18},toast:{position:'absolute',left:24,right:24,bottom:BOTTOM_RESERVE+8,flexDirection:'row',alignItems:'center',gap:10,backgroundColor:C.white,borderRadius:16,paddingHorizontal:16,paddingVertical:13,borderWidth:1,borderColor:C.line,...shadow},toastText:{flex:1,color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:12,lineHeight:17},
   nameOfDayCard:{backgroundColor:C.deep,borderRadius:24,padding:20,alignItems:'center',marginTop:16,...shadow,borderTopColor:depth.edge},
   namesArabicLarge:{color:C.onAccent,fontFamily:'Amiri_400Regular',fontSize:38,marginTop:8,textAlign:'center',writingDirection:'rtl'},
   namesTransliteration:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:12,marginTop:8},
@@ -14642,7 +14701,7 @@ pinKeyText:{color:C.ink,fontSize:22,fontFamily:'DMSans_700Bold'},
 pinHint:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:12,marginTop: 12,textAlign:'center',minHeight:20},
 pinHintError:{color:C.coral},
 statGrid:{flexDirection:'row',flexWrap:'wrap',gap:12,marginTop:12},
-statBox:{width:'47%',backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},
+statBox:{width:'47%',backgroundColor:C.cardGlass,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},
 statLabel:{color:C.muted,fontFamily:'DMSans_700Bold',fontSize:10,letterSpacing:1.1},
 statValue:{color:C.ink,fontFamily:'Newsreader_600SemiBold',fontSize:22,marginTop:4},
 guideBlock:{padding:16,borderBottomWidth:1,borderColor:C.line},
@@ -14667,10 +14726,10 @@ memHeroNote:{color:C.onAccent,fontSize:10,marginTop:3},
 memBar:{height:6,borderRadius:3,backgroundColor:'rgba(255,255,255,.22)',overflow:'hidden',marginTop:12},
 memBarFill:{height:'100%',borderRadius:3,backgroundColor:C.gold},
 memStats:{flexDirection:'row',gap:8,marginTop:12},
-memStat:{flex:1,backgroundColor:C.card,borderRadius:16,paddingVertical:12,alignItems:'center',gap:2,borderWidth:1,borderColor:C.line},
+memStat:{flex:1,backgroundColor:C.cardGlass,borderRadius:16,paddingVertical:12,alignItems:'center',gap:2,borderWidth:1,borderColor:C.line},
 memStatValue:{color:C.ink,fontSize:19,fontFamily:'DMSans_700Bold'},
 memStatLabel:{color:C.muted,fontSize:9,fontFamily:'DMSans_700Bold',letterSpacing:.6,textTransform:'uppercase'},
-memVerseBox:{backgroundColor:C.white,borderRadius:24,padding:20,marginTop:12,borderWidth:1,borderColor:C.line,...shadow},
+memVerseBox:{backgroundColor:C.whiteGlass,borderRadius:24,padding:20,marginTop:12,borderWidth:1,borderColor:C.line,...shadow},
 memTarget:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.1,textTransform:'uppercase'},
 memVerseText:{color:C.ink,fontFamily:'KFGQPCUthmanicHafs',fontSize:29,lineHeight:58,textAlign:'right',marginTop:14,writingDirection:'rtl'} as any,
 memBlank:{color:'transparent',backgroundColor:C.mint,borderRadius:5,overflow:'hidden'},
@@ -14771,7 +14830,7 @@ dayToolIcon:{width:52,height:52,borderRadius:26,backgroundColor:C.mint,alignItem
     ramTimeValue:{color:C.onAccent,fontFamily:'DMSans_700Bold',fontSize:20,marginTop:3},
     ramCountRow:{flexDirection:'row',alignItems:'center',gap:7,marginTop:14},
     ramCountValue:{color:C.onAccent,fontFamily:'DMSans_600SemiBold',fontSize:12.5},
-    ramMonth:{backgroundColor:C.card,borderRadius:24,borderWidth:1,borderColor:C.line,padding:12,...surface},
+    ramMonth:{backgroundColor:C.cardGlass,borderRadius:24,borderWidth:1,borderColor:C.line,padding:12,...surface},
     ramWeekRow:{flexDirection:'row',gap:6},
     ramWeekCell:{flex:1,alignItems:'center',paddingVertical:5},
     ramWeekText:{color:C.muted,fontFamily:'DMSans_700Bold',fontSize:10},
