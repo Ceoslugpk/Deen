@@ -8841,7 +8841,7 @@ function PrivateLockScreen({ navigation }: any) {
     if (next.length === 4) await submit(next);
   };
   return <Page><ToolBar title={T('Private')} navigation={navigation} />
-    <View style={s.pinPage}>
+    <ScrollView {...SCROLL} contentContainerStyle={s.pinPage}>
       <ToolGraphic tool="Privacy lock" size={87} />
       <Text style={s.dataTitle}>{T('Locked')}</Text>
       <Text style={s.intro}>{tx(language, 'These records stay on this device. Unlock with ')}{info.available ? `${info.label}${tx(language, ' or ')}` : ''}{tx(language, 'your PIN to open them.')}</Text>
@@ -8849,7 +8849,7 @@ function PrivateLockScreen({ navigation }: any) {
       <Text style={[s.pinHint, !!error && s.pinHintError]}>{error || (config.pinSet ? T('Enter your 4-digit PIN') : T('No PIN has been set yet'))}</Text>
       <PinKeypad onDigit={digit} onDelete={() => { setPin((value) => value.slice(0, -1)); setError(''); }} onBiometric={config.biometric && info.available ? withBiometrics : null} biometric={info} />
       {!config.pinSet && <Tactile accessibilityLabel={T('Set a PIN')} onPress={() => navigation.navigate('Privacy Lock')} style={s.sectionLink}><Text style={s.sectionAction}>{T('Set a PIN')}{rtl ? ' ←' : ' →'}</Text></Tactile>}
-    </View>
+    </ScrollView>
   </Page>;
 }
 
@@ -10035,7 +10035,7 @@ function PrivacyLockScreen({ navigation }: any) {
   };
 
   if (stage !== 'idle') return <Page><ToolBar title={T('Private')} navigation={navigation} />
-    <View style={s.pinPage}>
+    <View style={s.pinPageBare}>
       <ToolGraphic tool="Privacy lock" size={87} />
       <Text style={s.dataTitle}>{stage === 'create' ? T('Choose a PIN') : T('Confirm it')}</Text>
       <Text style={s.intro}>{T('Four digits. There is no reset link and no recovery email — this code lives on this device only, so choose one you will remember.')}</Text>
@@ -14663,7 +14663,7 @@ locationBannerBody:{color:C.muted,fontSize:11,lineHeight:15,marginTop:2},
   nameNumber:{width:56,alignItems:'flex-end'},
 backRow:{marginBottom:4,flexDirection:'row'},
   sectionLink:{paddingVertical: 16,marginVertical:-15,paddingHorizontal:12,marginHorizontal:-12},markLink:{flexDirection:'row',alignItems:'center',gap:5,paddingVertical:16,marginVertical:-15,paddingHorizontal:12,marginHorizontal:-12},stopButton:{width:44,height:44,alignItems:'center',justifyContent:'center'},verseAction:{width:31,height:31,alignItems:'center',justifyContent:'center'},verseActionGlow:{position:'absolute',width:26,height:26,borderRadius:13,backgroundColor:C.mint},verseActionOn:{position:'absolute',width:25,height:25,borderRadius:13,backgroundColor:mix(BRAND.pearl,BRAND.radiantGold,.14),borderWidth:1,borderColor:mix(BRAND.radiantGold,BRAND.pearl,.45)},searchGo:{width:44,height:44,alignItems:'center',justifyContent:'center'},
-pinPage:{flex:1,alignItems:'center',paddingHorizontal:24,paddingTop:4,paddingBottom:24},
+pinPage:{flexGrow:1,alignItems:'center',paddingHorizontal:24,paddingTop:4,paddingBottom:BOTTOM_RESERVE},pinPageBare:{flex:1,alignItems:'center',paddingHorizontal:24,paddingTop:4,paddingBottom:24},
 pinDots:{flexDirection:'row',gap: 12,marginTop:24},
 pinDot:{width:14,height:14,borderRadius:7,borderWidth:1.5,borderColor:C.line},
 pinDotFilled:{backgroundColor:C.accent,borderColor:C.green},
