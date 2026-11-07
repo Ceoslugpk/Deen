@@ -1538,6 +1538,13 @@ const TOOL_IMAGES_PALESTINE: Record<string, any> = {
   'Sunnah Prayers': require('./assets/tool-icons/sunnah-prayers-palestine.png'),
   Journal: require('./assets/tool-icons/journal-palestine.png'),
 
+  'Data Sources': require('./assets/tool-icons/data-sources-palestine.png'),
+  'Privacy lock': require('./assets/tool-icons/privacy-lock-palestine.png'),
+  'Makkah Live': require('./assets/tool-icons/makkah-live-palestine.png'),
+  'Madinah Live': require('./assets/tool-icons/madinah-live-palestine.png'),
+  'My Reports': require('./assets/tool-icons/my-reports-palestine.png'),
+  Backup: require('./assets/tool-icons/backup-palestine.png'),
+
 };
 const TOOL_IMAGES_PALESTINE_DARK: Record<string, any> = {
   Vocab: require('./assets/tool-icons/vocab-dark-palestine.png'),
@@ -1623,6 +1630,13 @@ const TOOL_IMAGES_PALESTINE_DARK: Record<string, any> = {
   Tasbih: require('./assets/tool-icons/tasbih-dark-palestine.png'),
   'Sunnah Prayers': require('./assets/tool-icons/sunnah-prayers-dark-palestine.png'),
   Journal: require('./assets/tool-icons/journal-dark-palestine.png'),
+
+  'Data Sources': require('./assets/tool-icons/data-sources-dark-palestine.png'),
+  'Privacy lock': require('./assets/tool-icons/privacy-lock-dark-palestine.png'),
+  'Makkah Live': require('./assets/tool-icons/makkah-live-dark-palestine.png'),
+  'Madinah Live': require('./assets/tool-icons/madinah-live-dark-palestine.png'),
+  'My Reports': require('./assets/tool-icons/my-reports-dark-palestine.png'),
+  Backup: require('./assets/tool-icons/backup-dark-palestine.png'),
 
 };
 /**
@@ -6002,7 +6016,7 @@ function ExploreHome({navigation}:any){
     if(kind&&!journeys.active[kind])startJourney(kind,journeyMeta(kind,language).title);
     navigation.navigate(item.route,item.params);
   };
-  return <Page><ScrollView keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}><AppHeader/><Text style={s.intro}>{T('Remembrance, trusted learning and step-by-step guidance—organized by purpose rather than hidden in a feature grid.')}</Text>{libraryGroups.map(group=><View key={group.label}><Text style={s.libraryKicker}>{T(group.label)}</Text><Text style={s.libraryHeading}>{T(group.title)}</Text><View style={s.exploreGrid}>{group.items.map((item,i)=>{return <MotionPress key={item.title} index={i} onPress={()=>open(item)} style={s.exploreCard}><View style={s.exploreCardInner}><ToolGraphic tool={item.title} size={72}/><Text style={s.exploreTitle}>{T(item.title)}</Text><Text style={s.exploreBody}>{T(item.caption)}</Text><View style={s.exploreArrow}>{ico(rtl ? 'arrow-back' : 'arrow-forward',15,C.green)}</View></View></MotionPress>})}</View></View>)}</ScrollView></Page>;}
+  return <Page><ScrollView keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}><AppHeader/><Text style={s.dataTitle}>{T('Library')}</Text><Text style={s.intro}>{T('Remembrance, trusted learning and step-by-step guidance—organized by purpose rather than hidden in a feature grid.')}</Text>{libraryGroups.map(group=><View key={group.label}><Text style={s.libraryKicker}>{T(group.label)}</Text><Text style={s.libraryHeading}>{T(group.title)}</Text><View style={s.exploreGrid}>{group.items.map((item,i)=>{return <MotionPress key={item.title} index={i} onPress={()=>open(item)} style={s.exploreCard}><View style={s.exploreCardInner}><ToolGraphic tool={item.title} size={72}/><Text style={s.exploreTitle}>{T(item.title)}</Text><Text style={s.exploreBody}>{T(item.caption)}</Text><View style={s.exploreArrow}>{ico(rtl ? 'arrow-back' : 'arrow-forward',15,C.green)}</View></View></MotionPress>})}</View></View>)}</ScrollView></Page>;}
 /* The back control every secondary screen wears. It goes through
    `goBackOrHome` rather than calling `goBack()` itself: a screen that passes
    no navigator — or one sitting at the bottom of its stack — used to leave
