@@ -1495,6 +1495,17 @@ const TOOL_IMAGES_PALESTINE: Record<string, any> = {
   Umrah: require('./assets/tool-icons/umrah-palestine.png'),
   Hajj: require('./assets/tool-icons/hajj-palestine.png'),
 
+  /* The rite-by-rite drawings the Umrah and Hajj journeys put beside each
+     step. These are keyed by icon name rather than by screen title, which is
+     why they are quoted lowercase here while the cards above are not. Four of
+     the five have arrived; Tawaf is held back until its light drawing does,
+     so it is either fully Palestine like its neighbours or not at all, rather
+     than dark alone with the light theme falling through. */
+  'ritual-ihram': require('./assets/tool-icons/ritual-ihram-palestine.png'),
+  'ritual-sai': require('./assets/tool-icons/ritual-sai-palestine.png'),
+  'ritual-shave-or-trim-hair': require('./assets/tool-icons/ritual-shave-or-trim-hair-palestine.png'),
+  'pray-rakah': require('./assets/tool-icons/pray-rakah-palestine.png'),
+
 };
 const TOOL_IMAGES_PALESTINE_DARK: Record<string, any> = {
   Vocab: require('./assets/tool-icons/vocab-dark-palestine.png'),
@@ -1552,6 +1563,13 @@ const TOOL_IMAGES_PALESTINE_DARK: Record<string, any> = {
   'Qada Prayers': require('./assets/tool-icons/qada-prayer-dark-palestine.png'),
   Umrah: require('./assets/tool-icons/umrah-dark-palestine.png'),
   Hajj: require('./assets/tool-icons/hajj-dark-palestine.png'),
+
+  /* The same four journey steps, in the dark Palestine set. Tawaf waits for
+     its light counterpart so the two themes cannot disagree about it. */
+  'ritual-ihram': require('./assets/tool-icons/ritual-ihram-dark-palestine.png'),
+  'ritual-sai': require('./assets/tool-icons/ritual-sai-dark-palestine.png'),
+  'ritual-shave-or-trim-hair': require('./assets/tool-icons/ritual-shave-or-trim-hair-dark-palestine.png'),
+  'pray-rakah': require('./assets/tool-icons/pray-rakah-dark-palestine.png'),
 
 };
 /**
