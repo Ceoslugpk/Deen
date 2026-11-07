@@ -228,6 +228,8 @@ function useCardShare() {
 import { CARD, CARD_GAP, RADIUS, SPACE } from './src/design/tokens';
 import { BRAND, C_DARK, C_LIGHT, C_PALESTINE, C_PALESTINE_DARK, DEPTH, FLAG, brandHex, mix, snapToBrand } from './src/design/brand';
 import { useCalmMotion } from './src/design/useCalmMotion';
+import { EidConfetti } from './src/components/EidConfetti';
+import { eidToday } from './src/services/eid';
 import { Tactile } from './src/components/Tactile';
 import { useSubtleTransitions } from './src/design/transitions';
 import { MOTION, easeOut, useEntrance, usePressDepth } from './src/design/motion';
@@ -2338,8 +2340,26 @@ const onRefresh=async()=>{setRefreshing(true);await Promise.all([data.load(),hyd
   /* The adhkar sit in their own cards above, so "For your day" keeps the four
      things you reach for most, as round icons rather than a row of cards.
      Which four is hers to say — the row is chosen, not handed over fixed. */
-  const { settings: worship, update: updateWorship } = useWorshipSettings();
+  const { settings: worship, update: updateWorship, hydrated: worshipHydrated } = useWorshipSettings();
   const dayTools = resolveDayTools(worship.dayTools);
+  /* Eid. The burst is remembered in state rather than derived from the
+     settings, because recording that it has fired is what stops it firing
+     again — and if the burst were derived, recording it would pull the
+     confetti off the screen mid-fall. So: work out once whether this Eid
+     still deserves a greeting, hold that answer, and write the receipt. */
+  const eid = useMemo(() => eidToday(), []);
+  const [eidBurst, setEidBurst] = useState<string | null>(null);
+  useEffect(() => {
+    /* Waiting for the saved settings matters. Before they have loaded,
+       `lastCelebratedEid` is undefined, which reads as "never greeted" —
+       and without this guard the app would greet her again every time it
+       started, which is the one thing the receipt exists to prevent. */
+    if (!eid || !worshipHydrated || eidBurst) return;
+    if (worship.celebrateEid === false || still) return;
+    if (worship.lastCelebratedEid === eid.id) return;
+    setEidBurst(eid.id);
+    void updateWorship({ lastCelebratedEid: eid.id });
+  }, [eid, worshipHydrated, eidBurst, worship.celebrateEid, worship.lastCelebratedEid, still, updateWorship]);
   /* The sheet has two faces: the four slots it holds now, and, once one of
      them is picked, everything that could go there instead. `null` shows the
      first face, a number shows the second for that slot. */
@@ -2606,6 +2626,7 @@ const onRefresh=async()=>{setRefreshing(true);await Promise.all([data.load(),hyd
       theme={cardTheme}
     />
   </View>}
+  <EidConfetti fire={eidBurst} dark={dark} />
 </Page>;
 }
 let CARD_GREEN: any = { backgroundColor: C.mint }; let CARD_GOLD: any = { backgroundColor: C.peach };
@@ -11212,6 +11233,12 @@ function SettingsScreen({navigation}:any){
       : undefined;
   const { theme: themeName, mode: themeMode, setTheme, setMode, dark } = useTheme();
   const { settings, update } = useWorshipSettings();
+  const still = useCalmMotion();
+  /* The celebration is two mornings a year, so most people would never see
+     it and could not say whether they want it. This fires it on request.
+     It counts up rather than toggling, so every tap is a new value and the
+     burst runs again instead of sitting still. */
+  const [eidPreview, setEidPreview] = useState(0);
   const { preferences } = useQuranPreferences();
   const womens = useWomens();
   const lock = useLockConfig();
@@ -11315,6 +11342,53 @@ function SettingsScreen({navigation}:any){
         </View>
       </View>
 
+      {/* A greeting rather than a decoration, and the one setting in here
+          that exists purely so it can be turned off. Somebody who opens a
+          prayer app and gets confetti will either be delighted or will want
+          it gone, and that should be her call rather than the app's. */}
+      <Section title={T('Eid')} />
+      <View style={s.preferencePanel}>
+        <PanelHead glyph="sparkles-outline" title={T('Celebration')} note={T('One burst of confetti, on the morning of Eid')} />
+        <View style={s.setting}>
+          <View style={{ flex: 1 }}>
+            <Text style={s.settingName}>{T('Celebrate on Eid')}</Text>
+            <Text style={s.meta}>{still
+              ? T('Your device is set to reduce motion, so nothing will fall')
+              : T('Falls once on the Home screen on the day of Eid, and not again until the next one')}</Text>
+          </View>
+          <View style={{ direction: 'ltr' } as any}>
+            <Switch
+              accessibilityLabel={T('Celebrate on Eid')}
+              /* Reduced motion is read from the device rather than stored,
+                 so the switch is disabled rather than shown as off: the
+                 preference she set is still hers, and it comes back the
+                 moment the device setting does. */
+              disabled={still}
+              value={settings.celebrateEid !== false && !still}
+              trackColor={{ true: C.green }}
+              onValueChange={(value) => {
+                if (value) haptic('toggle');
+                void update({ celebrateEid: value });
+              }}
+            />
+          </View>
+        </View>
+        <Tactile
+          accessibilityRole="button"
+          accessibilityLabel={T('Show me the celebration')}
+          onPress={() => { haptic('toggle'); setEidPreview((n) => n + 1); }}
+          style={s.setting}
+        >
+          <View style={{ flex: 1 }}>
+            <Text style={s.settingName}>{T('Show me')}</Text>
+            <Text style={s.meta}>{still
+              ? T('Nothing to show while your device is set to reduce motion')
+              : T('Play it now, so you know what to expect')}</Text>
+          </View>
+          {ico('play-circle', 22, C.green)}
+        </Tactile>
+      </View>
+
       <Section title={tx(language, 'Preferences')} />
       <View style={s.settings}>
         <Tactile accessibilityRole="button" accessibilityState={{expanded:pickingApp}} accessibilityLabel={`${T('Language')}: ${appLangLabel}`}
@@ -11413,6 +11487,9 @@ function SettingsScreen({navigation}:any){
         <Text style={s.madeWithText}>{T('Made with')} ❤️ {T('for Ummah')}</Text>
       </View>
     </ScrollView>
+    {/* Outside the ScrollView and after it: the burst belongs to the whole
+        screen, and it must not scroll away with the page underneath. */}
+    <EidConfetti fire={eidPreview ? `preview-${eidPreview}` : null} dark={dark} />
   </Page>}
 import { DEFAULT_RECITER, editionsForLanguage, LANGUAGES, Language, LanguageCode, languageByCode, isRtl, pickEdition, HADITH_LANGUAGES, hadithLanguage } from './src/services/languages';
 

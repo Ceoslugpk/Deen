@@ -64,6 +64,22 @@ export type WorshipSettings = {
    * no longer matches anything must never leave a hole in the row.
    */
   dayTools?: string[];
+  /**
+   * A burst of confetti on the Home screen on the morning of Eid.
+   *
+   * On by default, because a greeting nobody receives is not one. Two things
+   * override it without touching this switch: a device set to reduce motion,
+   * which is read fresh each time rather than stored here, and the Eid
+   * having already been greeted, which `lastCelebratedEid` records.
+   */
+  celebrateEid?: boolean;
+  /**
+   * Which Eid has already been greeted, so the burst happens once rather
+   * than on every visit to Home. Named after the Eid and not the day, so
+   * the next one starts it again on its own — there is nothing to expire
+   * and nothing to clean up.
+   */
+  lastCelebratedEid?: string;
 };
 
 /** The four shortcuts a first-time opening shows. Ids, not labels. */
@@ -102,6 +118,7 @@ export const DEFAULT_WORSHIP_SETTINGS: WorshipSettings = {
   sleepReminderTime: '22:30',
   hapticsEnabled: true,
   dayTools: DEFAULT_DAY_TOOLS,
+  celebrateEid: true,
 };
 
 const KEYS = {
