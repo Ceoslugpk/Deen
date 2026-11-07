@@ -63,12 +63,13 @@
           }
         }
       ],
-      [
-      "expo-audio",
-      {
-        "enableBackgroundPlayback": true
-      }
-    ],
+  [
+    "expo-audio",
+    {
+      "enableBackgroundPlayback": true,
+      "recordAudioAndroid": false
+    }
+  ],
       [
         "expo-notifications",
         {
@@ -86,6 +87,7 @@
       ],
       "./plugins/withBatteryExemption.js",
       "./plugins/withAdhanAlarm.js",
+      "./plugins/withUnusedPermissions.js",
       "./plugins/withHaramainCleartext.js",
       "expo-sharing",
       "expo-video"

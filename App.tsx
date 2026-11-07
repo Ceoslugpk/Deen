@@ -1482,6 +1482,19 @@ const TOOL_IMAGES_PALESTINE: Record<string, any> = {
   'Taraweeh Guide': require('./assets/tool-icons/taraweeh-guide-palestine.png'),
   'Zakat al-Fitr': require('./assets/tool-icons/zakat-fitr-palestine.png'),
 
+  /* The daily-practice tools: the fasting ledger, the salah log, the prayers
+     one owes, and the two pilgrimages. These five had no Palestine art and
+     fell through to the shared drawing, so on the tools grid — where every
+     other card carried it — they were the ones that looked out of place.
+     Qada Prayer is asked for under both spellings, singular on its own screen
+     and plural on the library card, and both point at the one drawing. */
+  Fasting: require('./assets/tool-icons/fasting-tracker-palestine.png'),
+  'Salah Tracker': require('./assets/tool-icons/salah-tracker-palestine.png'),
+  'Qada Prayer': require('./assets/tool-icons/qada-prayer-palestine.png'),
+  'Qada Prayers': require('./assets/tool-icons/qada-prayer-palestine.png'),
+  Umrah: require('./assets/tool-icons/umrah-palestine.png'),
+  Hajj: require('./assets/tool-icons/hajj-palestine.png'),
+
 };
 const TOOL_IMAGES_PALESTINE_DARK: Record<string, any> = {
   Vocab: require('./assets/tool-icons/vocab-dark-palestine.png'),
@@ -1531,6 +1544,14 @@ const TOOL_IMAGES_PALESTINE_DARK: Record<string, any> = {
   'Laylatul Qadr': require('./assets/tool-icons/laylatul-qadr-dark-palestine.png'),
   'Taraweeh Guide': require('./assets/tool-icons/taraweeh-guide-dark-palestine.png'),
   'Zakat al-Fitr': require('./assets/tool-icons/zakat-fitr-dark-palestine.png'),
+
+  /* The same five daily-practice tools, in the dark Palestine set. */
+  Fasting: require('./assets/tool-icons/fasting-tracker-dark-palestine.png'),
+  'Salah Tracker': require('./assets/tool-icons/salah-tracker-dark-palestine.png'),
+  'Qada Prayer': require('./assets/tool-icons/qada-prayer-dark-palestine.png'),
+  'Qada Prayers': require('./assets/tool-icons/qada-prayer-dark-palestine.png'),
+  Umrah: require('./assets/tool-icons/umrah-dark-palestine.png'),
+  Hajj: require('./assets/tool-icons/hajj-dark-palestine.png'),
 
 };
 /**
