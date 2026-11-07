@@ -1298,6 +1298,8 @@ const TOOL_IMAGES:Record<string,any>={
      pointed at; this one now has its own. */
   'Biometric Unlock':require('./assets/tool-icons/biometric-unlock.png'),
     Language:require('./assets/tool-icons/language.png'),
+
+  Theme: require('./assets/tool-icons/theme.png'),
 };
 /** The same icons, re-toned for the dark palette. */
 const TOOL_IMAGES_DARK:Record<string,any>={
@@ -1411,6 +1413,8 @@ const TOOL_IMAGES_DARK:Record<string,any>={
   'My Reports':require('./assets/tool-icons/my-reports-dark.png'),
   'Biometric Unlock':require('./assets/tool-icons/biometric-unlock-dark.png'),
     Language:require('./assets/tool-icons/language-dark.png'),
+
+  Theme: require('./assets/tool-icons/theme-dark.png'),
 };
 /* The five drawn for the Palestine theme, so far. Chosen by theme below
    rather than swapped into the maps above: the two sets are kept apart, and
@@ -1538,6 +1542,16 @@ const TOOL_IMAGES_PALESTINE: Record<string, any> = {
   'Sunnah Prayers': require('./assets/tool-icons/sunnah-prayers-palestine.png'),
   Journal: require('./assets/tool-icons/journal-palestine.png'),
 
+  'Cycle Tracker': require('./assets/tool-icons/cycle-palestine.png'),
+  Istihada: require('./assets/tool-icons/istihada-palestine.png'),
+  'Qada Fasts': require('./assets/tool-icons/qada-fasts-palestine.png'),
+  'Quran Reading': require('./assets/tool-icons/quran-reading-palestine.png'),
+  'Ramadan Planner': require('./assets/tool-icons/ramadan-planner-palestine.png'),
+  Storage: require('./assets/tool-icons/storage-palestine.png'),
+  Theme: require('./assets/tool-icons/theme-palestine.png'),
+  'These Days': require('./assets/tool-icons/these-days-palestine.png'),
+  'Women’s worship': require('./assets/tool-icons/womens-area-palestine.png'),
+
   'Data Sources': require('./assets/tool-icons/data-sources-palestine.png'),
   'Privacy lock': require('./assets/tool-icons/privacy-lock-palestine.png'),
   'Makkah Live': require('./assets/tool-icons/makkah-live-palestine.png'),
@@ -1630,6 +1644,16 @@ const TOOL_IMAGES_PALESTINE_DARK: Record<string, any> = {
   Tasbih: require('./assets/tool-icons/tasbih-dark-palestine.png'),
   'Sunnah Prayers': require('./assets/tool-icons/sunnah-prayers-dark-palestine.png'),
   Journal: require('./assets/tool-icons/journal-dark-palestine.png'),
+
+  'Cycle Tracker': require('./assets/tool-icons/cycle-dark-palestine.png'),
+  Istihada: require('./assets/tool-icons/istihada-dark-palestine.png'),
+  'Qada Fasts': require('./assets/tool-icons/qada-fasts-dark-palestine.png'),
+  'Quran Reading': require('./assets/tool-icons/quran-reading-dark-palestine.png'),
+  'Ramadan Planner': require('./assets/tool-icons/ramadan-planner-dark-palestine.png'),
+  Storage: require('./assets/tool-icons/storage-dark-palestine.png'),
+  Theme: require('./assets/tool-icons/theme-dark-palestine.png'),
+  'These Days': require('./assets/tool-icons/these-days-dark-palestine.png'),
+  'Women’s worship': require('./assets/tool-icons/womens-area-dark-palestine.png'),
 
   'Data Sources': require('./assets/tool-icons/data-sources-dark-palestine.png'),
   'Privacy lock': require('./assets/tool-icons/privacy-lock-dark-palestine.png'),
@@ -11417,7 +11441,7 @@ function SettingsScreen({navigation}:any){
 
       <Section title={T('Theme')} />
       <View style={s.preferencePanel}>
-        <PanelHead image={dark ? require('./assets/tool-icons/theme-dark.png') : require('./assets/tool-icons/theme.png')} title={T('Theme')} note={T('Which colours the app wears. Each theme has its own light and dark.')} />
+        <PanelHead tool="Theme" title={T('Theme')} note={T('Which colours the app wears. Each theme has its own light and dark.')} />
         <View style={s.choiceGrid}>
           <ChoicePill label={T('Islamic')} selected={themeName === 'islamic'} onPress={() => setTheme('islamic')} swatch={<ThemeMark theme="islamic" height={11} />} />
           <ChoicePill label={T('Palestine')} selected={themeName === 'palestine'} onPress={() => setTheme('palestine')} swatch={<ThemeMark theme="palestine" height={11} />} />
