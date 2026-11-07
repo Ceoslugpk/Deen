@@ -229,7 +229,7 @@ import { CARD, CARD_GAP, RADIUS, SPACE } from './src/design/tokens';
 import { BRAND, C_DARK, C_LIGHT, C_PALESTINE, C_PALESTINE_DARK, DEPTH, FLAG, brandHex, mix, snapToBrand } from './src/design/brand';
 import { useCalmMotion } from './src/design/useCalmMotion';
 import { EidConfetti } from './src/components/EidConfetti';
-import { SeasonalField } from './src/components/SeasonalField';
+import { AmbientField } from './src/components/AmbientField';
 import { ambienceFor, type Ambience } from './src/services/ambience';
 import { eidToday } from './src/services/eid';
 import { Tactile } from './src/components/Tactile';
@@ -2399,8 +2399,8 @@ const onRefresh=async()=>{setRefreshing(true);await Promise.all([data.load(),hyd
      clock — a field that restarted at midnight would be a field that jumped
      once a day for no reason anyone asked for. */
   const ambience = useMemo(
-    () => (worship.ambientEffects === false ? null : ambienceFor(new Date(), data.location?.latitude)),
-    [worship.ambientEffects, data.location?.latitude],
+    () => (worship.ambientEffects === false ? null : ambienceFor(new Date())),
+    [worship.ambientEffects],
   );
   /* Two reasons to stop, and both of them are about a screen nobody is
      looking at. Losing focus covers moving to another tab; the app going to
@@ -2683,10 +2683,10 @@ const onRefresh=async()=>{setRefreshing(true);await Promise.all([data.load(),hyd
       theme={cardTheme}
     />
   </View>}
-  {/* The season and the burst never run together: on an Eid the ambience
+  {/* The light and the burst never run together: on an Eid the ambience
       resolves to confetti, and the field stands down so the two are not
       competing over the same screen. */}
-  <SeasonalField
+  <AmbientField
     kind={ambience === null || ambience === 'confetti' ? null : ambience}
     dark={dark}
     active={homeFocused && appActive}
@@ -11277,10 +11277,6 @@ function LegalScreen({ route, navigation }: any) {
 const AMBIENCE_NOTE: Record<Ambience, string> = {
   confetti: 'Confetti — today is one of the Eids',
   ramadan: 'Warm light — Ramadan',
-  snow: 'Snow — winter where you are',
-  petals: 'Petals — spring where you are',
-  motes: 'Rising light — summer where you are',
-  leaves: 'Leaves — autumn where you are',
 };
 
 function SettingsScreen({navigation}:any){
@@ -11328,8 +11324,7 @@ function SettingsScreen({navigation}:any){
     const timer = setTimeout(() => setPreviewing(false), 10000);
     return () => clearTimeout(timer);
   }, [previewing, previewTick]);
-  const { location: here } = useAppLocation();
-  const ambience = useMemo(() => ambienceFor(new Date(), here?.latitude), [here?.latitude]);
+  const ambience = useMemo(() => ambienceFor(new Date()), []);
   const { preferences } = useQuranPreferences();
   const womens = useWomens();
   const lock = useLockConfig();
@@ -11434,24 +11429,24 @@ function SettingsScreen({navigation}:any){
       </View>
 
       {/* Two things in here that are easy to love and easy to resent, so
-          both get a switch. Somebody who opens a prayer app and gets snow
-          will either be delighted or will want it gone, and that should be
-          her call rather than the app's. */}
+          both get a switch. Somebody who opens a prayer app and gets light
+          drifting over it will either be delighted or will want it gone, and
+          that should be her call rather than the app's. */}
       <Section title={T('Ambience')} />
       <View style={s.preferencePanel}>
         <PanelHead glyph="sparkles-outline" title={T('On the Home screen')} note={T('Something quiet drifting, and a greeting on Eid')} />
         <View style={s.setting}>
           <View style={{ flex: 1 }}>
-            <Text style={s.settingName}>{T('Seasonal effects')}</Text>
+            <Text style={s.settingName}>{T('Ambient light')}</Text>
             <Text style={s.meta}>{still
               ? T('Your device is set to reduce motion, so nothing will drift')
               : ambience === null || ambience === 'confetti'
-                ? T('Nothing for this time of year where you are')
+                ? T('Nothing today — a warm light falls through Ramadan')
                 : T(AMBIENCE_NOTE[ambience])}</Text>
           </View>
           <View style={{ direction: 'ltr' } as any}>
             <Switch
-              accessibilityLabel={T('Seasonal effects')}
+              accessibilityLabel={T('Ambient light')}
               disabled={still}
               value={settings.ambientEffects !== false && !still}
               trackColor={{ true: C.green }}
@@ -11606,7 +11601,7 @@ function SettingsScreen({navigation}:any){
         field stands down, so the two are never competing. */}
     {ambience === 'confetti'
       ? <EidConfetti fire={previewing ? `preview-${previewTick}` : null} dark={dark} />
-      : <SeasonalField kind={ambience} dark={dark} active={previewing} />}
+      : <AmbientField kind={ambience} dark={dark} active={previewing} />}
   </Page>}
 import { DEFAULT_RECITER, editionsForLanguage, LANGUAGES, Language, LanguageCode, languageByCode, isRtl, pickEdition, HADITH_LANGUAGES, hadithLanguage } from './src/services/languages';
 
