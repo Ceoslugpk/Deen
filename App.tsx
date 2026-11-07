@@ -12245,6 +12245,21 @@ const TAB_ITEMS = [
     iconPalestine: require('./assets/tool-icons/tab-tools-palestine.png'), iconPalestineDark: require('./assets/tool-icons/tab-tools-palestine-dark.png') },
 ];
 
+/**
+ * How the tab indicator travels.
+ *
+ * Apple's tab bars do not ease; they settle. The stiffness throws the
+ * indicator across quickly, and the damping is high enough that it arrives
+ * without wobbling — you see the motion stop rather than see it bounce.
+ * Mass is below one so it feels like a light object being placed, not a
+ * heavy one being dragged.
+ */
+const TAB_SPRING = { stiffness: 480, damping: 32, mass: 0.65, useNativeDriver: true };
+
+/** The bar's own horizontal padding. The indicator measures its slot from
+    this, so the two have to agree — change one and the other follows. */
+const FLOAT_BAR_PAD = 8;
+
 /** The menu floats above the content as a single capsule, always in reach. */
 /**
  * One tab. A component of its own so each holds its own press value instead of
@@ -12258,6 +12273,15 @@ function TabButton({ route, focused, navigation, resolved, rtl, language, state,
      reader in Urdu looking at Arabic words. Going through the table
      means every language the interface speaks gets its own word. */
   const label = item ? tx(language, item.label) : route.name;
+  /* How selected this tab is, 0 to 1. Everything below is driven off this
+     one value, so the icon and the label move together instead of each
+     running its own clock. */
+  const on = useRef(new Animated.Value(focused ? 1 : 0)).current;
+  useEffect(() => {
+    Animated.spring(on, { toValue: focused ? 1 : 0, ...TAB_SPRING }).start();
+  }, [focused, on]);
+  const iconOpacity = on.interpolate({ inputRange: [0, 1], outputRange: [0.5, 1] });
+  const iconScale = on.interpolate({ inputRange: [0, 1], outputRange: [0.9, 1] });
   return <Animated.View style={[s.floatItem, { transform: [{ scale: press.scale }] }]}>
     <Pressable accessibilityRole="button" accessibilityState={{ selected: focused }} accessibilityLabel={label}
       onPressIn={press.onPressIn} onPressOut={press.onPressOut}
@@ -12279,12 +12303,19 @@ function TabButton({ route, focused, navigation, resolved, rtl, language, state,
         }
         navigation.navigate(route.name);
       }}>
-      <Animated.View style={[s.floatPill, focused && s.floatPillActive]}>
-        {item?.icon ? <Image source={themedIcon(resolved, {
+      <Animated.View style={s.floatPill}>
+        {item?.icon ? <Animated.Image source={themedIcon(resolved, {
           light: item.icon, dark: item.iconDark || item.icon,
           palestine: item.iconPalestine || item.icon, palestineDark: item.iconPalestineDark || item.iconDark || item.icon,
-        })} resizeMode="contain" style={{ width: 26, height: 26, opacity: focused ? 1 : 0.5 }} /> : ico('ellipse-outline', 20, focused ? C.green : C.chevron)}
-        <Text numberOfLines={1} style={[s.floatLabel, focused && s.floatLabelActive]}>{label}</Text>
+        })} resizeMode="contain" style={{ width: 26, height: 26, opacity: iconOpacity, transform: [{ scale: iconScale }] }} /> : ico('ellipse-outline', 20, focused ? C.green : C.chevron)}
+        {/* Two labels stacked rather than one whose colour is animated.
+            Colour cannot be tweened on the native driver, and the native
+            driver is what keeps this smooth; fading one over the other gets
+            the same result on the compositor. */}
+        <View style={s.floatLabelWrap}>
+          <Text numberOfLines={1} style={s.floatLabel}>{label}</Text>
+          <Animated.Text numberOfLines={1} style={[s.floatLabel, s.floatLabelActive, s.floatLabelOver, { opacity: on }]}>{label}</Animated.Text>
+        </View>
       </Animated.View>
     </Pressable>
   </Animated.View>;
@@ -12318,6 +12349,36 @@ function FloatingTabBar({ state, navigation }: any) {
   useEffect(() => {
     Animated.timing(drop, { toValue: hidden ? 0 : 1, duration: 200, useNativeDriver: true }).start();
   }, [hidden, drop]);
+
+  /* One indicator that belongs to the bar, rather than one pill per tab
+     that appears and disappears. The difference is that a shared one can
+     be seen travelling, and the travel is the whole effect. */
+  const slots = Math.max(state.routes.length, 1);
+  const slot = (barWidth - FLOAT_BAR_PAD * 2) / slots;
+  /* `at` is the tab the indicator is over, as a fraction rather than an
+     index, so an interruption mid-flight starts from wherever it is. */
+  const at = useRef(new Animated.Value(state.index)).current;
+  const stretch = useRef(new Animated.Value(1)).current;
+  const from = useRef(state.index);
+  useEffect(() => {
+    if (from.current === state.index) return;
+    /* Further to travel, further it stretches. Two tabs apart pulls the
+       glass out more than next door does, which is what makes a long jump
+       read as effort rather than as a teleport. */
+    const distance = Math.min(Math.abs(state.index - from.current), 3);
+    from.current = state.index;
+    Animated.parallel([
+      Animated.spring(at, { toValue: state.index, ...TAB_SPRING }),
+      Animated.sequence([
+        Animated.timing(stretch, {
+          toValue: 1 + distance * 0.09, duration: 120,
+          easing: Easing.out(Easing.quad), useNativeDriver: true,
+        }),
+        Animated.spring(stretch, { toValue: 1, ...TAB_SPRING }),
+      ]),
+    ]).start();
+  }, [state.index, at, stretch]);
+
   return <Animated.View pointerEvents="box-none" style={[s.floatBarWrap, {
     opacity: drop,
     transform: [{ translateY: drop.interpolate({ inputRange: [0, 1], outputRange: [110, 0] }) }]
@@ -12338,6 +12399,28 @@ function FloatingTabBar({ state, navigation }: any) {
         {/* Light falling across the top edge, gone by the middle. */}
         <LinearGradient pointerEvents="none" colors={glass.sheen}
           start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={StyleSheet.absoluteFill} />
+        {/* The selected tab, as a thicker piece of the same material.
+
+            Deliberately not a second BlurView. A blur blurs what is behind
+            it, and behind this is already a blur — stacking one on another
+            costs twice and reads as mud. What makes a selected region read
+            as selected is that it is more of the material, not a different
+            material: a stronger fill, its own sheen, and a hairline. */}
+        <Animated.View pointerEvents="none" style={[s.floatIndicator, {
+          width: slot - 6,
+          transform: [
+            { translateX: at.interpolate({ inputRange: [0, slots - 1], outputRange: [0, (slots - 1) * slot] }) },
+            { scaleX: stretch },
+          ],
+        }]}>
+          <View style={[StyleSheet.absoluteFill, {
+            backgroundColor: glass.pill, borderRadius: 24, overflow: 'hidden',
+            borderWidth: 1, borderColor: glass.pillRim,
+          }]}>
+            <LinearGradient pointerEvents="none" colors={glass.sheen}
+              start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={StyleSheet.absoluteFill} />
+          </View>
+        </Animated.View>
         {state.routes.map((route: any, index: number) => (
           <TabButton key={route.key} route={route} focused={state.index === index}
             navigation={navigation} resolved={resolved} rtl={rtl} language={language} state={state} index={index} />
@@ -14036,7 +14119,7 @@ function makeStyles() {
      comes from expo-blur plus the wash painted inside it, so there is no
      backgroundColor here — setting one would sit under the tint and
      deaden the glass. */
-  floatBar:{height:66,borderRadius:33,overflow:'hidden',alignItems:'center',justifyContent:'space-between',paddingHorizontal:8,
+  floatBar:{height:66,borderRadius:33,overflow:'hidden',alignItems:'center',justifyContent:'space-between',paddingHorizontal:FLOAT_BAR_PAD,
     /* Four hairlines rather than one. Bright along the top where the light
        falls, dim along the bottom: that gradient across the edge is most of
        what makes the capsule read as something with thickness rather than as
@@ -14046,13 +14129,17 @@ function makeStyles() {
     borderLeftColor:themeDark?GLASS.dark.rimSide:GLASS.light.rimSide,
     borderRightColor:themeDark?GLASS.dark.rimSide:GLASS.light.rimSide,
     borderBottomColor:themeDark?GLASS.dark.rimBottom:GLASS.light.rimBottom},
+  /* The indicator is measured, not laid out: it is absolutely placed and
+     moved with a transform, so nothing about it can reflow the bar. */
+  floatIndicator:{position:'absolute',left:FLOAT_BAR_PAD+3,top:6,height:54,borderRadius:24},
   floatItem:{flex:1,alignItems:'center',justifyContent:'center',minHeight:54,borderRadius:28},
   floatPill:{alignItems:'center',justifyContent:'center',borderRadius:24,paddingHorizontal:12,paddingVertical:8,minWidth:58},
   /* The selected tab is lifted out of the material rather than painted on
      top of it: a brighter piece of the same glass, with its own hairline. */
-  floatPillActive:{backgroundColor:themeDark?GLASS.dark.pill:GLASS.light.pill,borderWidth:1,borderColor:themeDark?GLASS.dark.pillRim:GLASS.light.pillRim},
-  floatLabel:{color:C.muted,fontFamily:'DMSans_600SemiBold',fontSize:10,letterSpacing:.2,marginTop:4},
+  floatLabelWrap:{marginTop:4,height:13,alignItems:'center',justifyContent:'center'},
+  floatLabel:{color:C.muted,fontFamily:'DMSans_600SemiBold',fontSize:10,letterSpacing:.2},
   floatLabelActive:{color:C.green},
+  floatLabelOver:{position:'absolute',left:0,right:0,textAlign:'center'},
  safe:{flex:1,backgroundColor:C.bg,overflow:'hidden',paddingTop:Platform.OS==='android'?StatusBar.currentHeight:0},page:{flex:1,backgroundColor:C.bg},pageWide:{width:'100%',maxWidth:1180,alignSelf:'center'},scroll:{width:'100%',maxWidth:980,alignSelf:'center',paddingHorizontal:20,paddingTop:20,paddingBottom:BOTTOM_RESERVE},row:{flexDirection:'row',alignItems:'center'},press:{opacity:.72,transform:[{scale:.98}]},loading:{padding:44,alignItems:'center',gap:12},loadingText:{color:C.muted,fontSize:12},error:{backgroundColor:C.card,padding:24,borderRadius:24,alignItems:'center',marginVertical:12},errorIcon:{width:48,height:48,borderRadius:16,backgroundColor:C.yellow,alignItems:'center',justifyContent:'center'},errorTitle:{color:C.ink,fontSize:16,fontFamily:'DMSans_600SemiBold',marginTop:12},errorText:{color:C.muted,textAlign:'center',fontSize:12,lineHeight:18,marginTop:4},retry:{backgroundColor:C.ink,paddingHorizontal:16,paddingVertical:8,borderRadius:12,marginTop:12},retryText:{color:C.onAccent,fontSize:11,fontFamily:'DMSans_600SemiBold'},
  topbar:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginBottom:20},
  appHeader:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginBottom:20},
