@@ -1542,6 +1542,12 @@ const TOOL_IMAGES_PALESTINE: Record<string, any> = {
   'Sunnah Prayers': require('./assets/tool-icons/sunnah-prayers-palestine.png'),
   Journal: require('./assets/tool-icons/journal-palestine.png'),
 
+  'Biometric Unlock': require('./assets/tool-icons/biometric-unlock-palestine.png'),
+  Cycle: require('./assets/tool-icons/cycles-palestine.png'),
+  Corrections: require('./assets/tool-icons/corrections-palestine.png'),
+  Purity: require('./assets/tool-icons/purity-palestine.png'),
+  'Qada fasts': require('./assets/tool-icons/qada-fasts-2-palestine.png'),
+
   'Cycle Tracker': require('./assets/tool-icons/cycle-palestine.png'),
   Istihada: require('./assets/tool-icons/istihada-palestine.png'),
   'Qada Fasts': require('./assets/tool-icons/qada-fasts-palestine.png'),
@@ -1644,6 +1650,12 @@ const TOOL_IMAGES_PALESTINE_DARK: Record<string, any> = {
   Tasbih: require('./assets/tool-icons/tasbih-dark-palestine.png'),
   'Sunnah Prayers': require('./assets/tool-icons/sunnah-prayers-dark-palestine.png'),
   Journal: require('./assets/tool-icons/journal-dark-palestine.png'),
+
+  'Biometric Unlock': require('./assets/tool-icons/biometric-unlock-dark-palestine.png'),
+  Cycle: require('./assets/tool-icons/cycles-dark-palestine.png'),
+  Corrections: require('./assets/tool-icons/corrections-dark-palestine.png'),
+  Purity: require('./assets/tool-icons/purity-dark-palestine.png'),
+  'Qada fasts': require('./assets/tool-icons/qada-fasts-2-dark-palestine.png'),
 
   'Cycle Tracker': require('./assets/tool-icons/cycle-dark-palestine.png'),
   Istihada: require('./assets/tool-icons/istihada-dark-palestine.png'),
@@ -4973,7 +4985,7 @@ function TranslationScreen({navigation}:any){const{preferences,update}=useQuranP
 
 function QuranSearchScreen({route,navigation}:any){const{preferences}=useQuranPreferences();const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);const[query,setQuery]=useState(route.params?.initialQuery||'');const[results,setResults]=useState<QuranSearchResult[]>([]);const[history,setHistory]=useState<string[]>([]);const[error,setError]=useState('');const[loading,setLoading]=useState(false);useEffect(()=>{loadSearchHistory().then(setHistory);if(route.params?.initialQuery)run(route.params.initialQuery)},[]);const run=async(value=query)=>{const q=value.trim();if(q.length<2)return;setLoading(true);setError('');try{const edition=/[\u0600-\u06ff]/.test(q)?preferences.scriptEdition:preferences.translationEdition;setResults((await searchQuran(q,edition)).slice(0,100));setHistory(await addSearchHistory(q))}catch(e:any){setError(T(e.message))}finally{setLoading(false)}};const open=(r:QuranSearchResult)=>navigation.navigate('Reader',{chapter:{id:r.surahId,name_simple:r.surahName,name_arabic:'',verses_count:0},focusVerse:r.verseKey});return <Page><ToolBar title={T('Quran search')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage} keyboardShouldPersistTaps="handled"><ToolGraphic tool="Quran Search" size={81}/><Text style={s.dataTitle}>{T('Search Arabic or translation')}</Text><View style={s.search}>{ico('search-outline',19,C.muted)}<TextInput autoFocus value={query} onChangeText={setQuery} onSubmitEditing={()=>run()} returnKeyType="search" style={s.searchInput} placeholder={T('Mercy, الصبر, or 2:255')}/><Pressable onPress={()=>run()}>{ico('arrow-forward-circle',22,C.green)}</Pressable></View>{history.length>0&&<><View style={s.historyHead}><Text style={s.preferenceLabel}>{T('RECENT SEARCHES')}</Text><Pressable onPress={async()=>{await clearSearchHistory();setHistory([])}}><Text style={s.sectionAction}>{T('Clear')}</Text></Pressable></View><View style={s.historyWrap}>{history.map(item=><Pressable key={item} onPress={()=>{setQuery(item);run(item)}} onLongPress={async()=>setHistory(await removeSearchHistory(item))} style={s.historyChip}><Text style={s.meta}>{item}</Text></Pressable>)}</View></>}{error?<ErrorState message={error} retry={()=>run()}/>:loading?<SkeletonList rows={6} />:<View>{results.map(r=><Pressable key={`${r.verseKey}-${r.edition}`} onPress={()=>open(r)} style={s.searchResult}><Text style={s.dataMeta}>{r.surahName} · {r.verseKey}</Text><Text numberOfLines={4} style={/[\u0600-\u06ff]/.test(r.text)?s.dataArabic:s.dataBody}>{r.text}</Text><Text style={s.meta}>{r.edition}</Text></Pressable>)}</View>}</ScrollView></Page>}
 
-function BookmarkScreen({navigation}:any){const[items,setItems]=useState<QuranBookmark[]>([]);const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);useEffect(()=>{const unsub=navigation.addListener('focus',()=>loadBookmarks().then(setItems));loadBookmarks().then(setItems);return unsub},[navigation]);const[chapters,setChapters]=useState<Chapter[]>([]);useEffect(()=>{getChapters().then(setChapters)},[]);const openBookmark=(item:QuranBookmark)=>{const full=chapters.find(c=>c.id===item.surahId);navigation.navigate('Reader',{chapter:full||{id:item.surahId,name_simple:item.surahName,name_arabic:'',verses_count:0},focusVerse:item.verseKey})};return <Page><ToolBar title={T('Bookmarks')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><ToolGraphic tool="Bookmarks" size={81}/><Text style={s.dataTitle}>{tf(language,'{n} saved verses',{n:items.length})}</Text>{!items.length?<View style={s.empty}><Text style={s.errorTitle}>{T('No bookmarks yet')}</Text><Text style={s.errorText}>{T('Use the bookmark action beside any verse.')}</Text></View>:items.map(item=><View key={item.verseKey} style={s.dataCard}><Pressable onPress={()=>openBookmark(item)} style={s.bookmarkMain}><Text style={s.dataMeta}>{item.surahName} · {item.verseKey}</Text><Text numberOfLines={3} style={s.dataArabic}>{item.arabic}</Text><Text numberOfLines={3} style={s.dataBody}>{item.translation}</Text></Pressable><Pressable accessibilityLabel={`${T('Remove bookmark')} ${item.verseKey}`} onPress={async()=>setItems(await toggleBookmark(item))} style={s.bookmarkRemove}>{ico('trash-outline',18,C.muted)}</Pressable></View>)}</ScrollView></Page>}
+function BookmarkScreen({navigation}:any){const[items,setItems]=useState<QuranBookmark[]>([]);const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);useEffect(()=>{const unsub=navigation.addListener('focus',()=>loadBookmarks().then(setItems));loadBookmarks().then(setItems);return unsub},[navigation]);const[chapters,setChapters]=useState<Chapter[]>([]);useEffect(()=>{getChapters().then(setChapters)},[]);const openBookmark=(item:QuranBookmark)=>{const full=chapters.find(c=>c.id===item.surahId);navigation.navigate('Reader',{chapter:full||{id:item.surahId,name_simple:item.surahName,name_arabic:'',verses_count:0},focusVerse:item.verseKey})};return <Page><ToolBar tool="Bookmarks" title={T('Bookmarks')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><ToolGraphic tool="Bookmarks" size={81}/><Text style={s.dataTitle}>{tf(language,'{n} saved verses',{n:items.length})}</Text>{!items.length?<View style={s.empty}><Text style={s.errorTitle}>{T('No bookmarks yet')}</Text><Text style={s.errorText}>{T('Use the bookmark action beside any verse.')}</Text></View>:items.map(item=><View key={item.verseKey} style={s.dataCard}><Pressable onPress={()=>openBookmark(item)} style={s.bookmarkMain}><Text style={s.dataMeta}>{item.surahName} · {item.verseKey}</Text><Text numberOfLines={3} style={s.dataArabic}>{item.arabic}</Text><Text numberOfLines={3} style={s.dataBody}>{item.translation}</Text></Pressable><Pressable accessibilityLabel={`${T('Remove bookmark')} ${item.verseKey}`} onPress={async()=>setItems(await toggleBookmark(item))} style={s.bookmarkRemove}>{ico('trash-outline',18,C.muted)}</Pressable></View>)}</ScrollView></Page>}
 function NotesScreen({navigation}:any){const[items,setItems]=useState<QuranNote[]>([]);const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);useEffect(()=>{const unsub=navigation.addListener('focus',()=>loadNotes().then(setItems));loadNotes().then(setItems);return unsub},[navigation]);return <Page><ToolBar title={T('Quran notes')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><ToolGraphic tool="Notes" size={81}/><Text style={s.dataTitle}>{tf(language,'{n} private notes',{n:items.length})}</Text><Text style={s.intro}>{T('Notes remain on this device and are never added to diagnostics.')}</Text>{!items.length?<View style={s.empty}><Text style={s.errorTitle}>{T('No notes yet')}</Text><Text style={s.errorText}>{T('Open verse actions to add a reflection.')}</Text></View>:items.map(item=><Tactile key={item.verseKey} onPress={()=>navigation.navigate('Note Editor',{verse:item,chapter:{id:item.surahId,name_simple:item.surahName}})} style={s.dataCard}><Text style={s.dataMeta}>{item.surahName} · {item.verseKey}</Text><Text style={s.noteText}>{item.note}</Text><Text style={s.meta}>{new Date(item.updatedAt).toLocaleDateString()}</Text></Tactile>)}</ScrollView></Page>}
 /**
  * Three screens read their payload straight off `route.params`. In normal use
@@ -5334,7 +5346,7 @@ function stripTafsirMarkup(input:string):string{
     .trim();
 }
 
-function TafsirScreen({navigation}:any){const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);const[editions,setEditions]=useState<IslamicEdition[]>([]);const[chapters,setChapters]=useState<IslamicChapter[]>([]);const[picked,setPicked]=useState<IslamicEdition|null>(null);const[surah,setSurah]=useState(1);const[result,setResult]=useState<CachedSurah|null>(null);const[busy,setBusy]=useState(false);const[error,setError]=useState('');const load=()=>{  getEditions('tafsir').then(setEditions).catch(e=>setError(T(e.message)));  getWorkerChapters().then(setChapters).catch(()=>undefined);};useEffect(()=>{load()},[]);useEffect(()=>{  if(!picked)return;  let live=true;  setBusy(true);setError('');  getSurah('tafsir',picked.id,surah)    .then(r=>{if(live)setResult(r)})    .catch(e=>{if(live)setError(T(e.message))})    .finally(()=>{if(live)setBusy(false)});  return()=>{live=false};},[picked,surah]);const chapter=chapters.find(c=>c.number===surah);const title=chapter?(rtl?chapter.nameArabic:chapter.nameSimple):(tf(language,'Surah {n}',{n:surah}));if(!picked)return <Page><ToolBar title={T('Tafsir')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage} keyboardShouldPersistTaps="handled"><ToolGraphic tool="Tafsir" size={85}/><Text style={s.dataTitle}>{T('Choose a Tafsir')}</Text><Text style={s.intro}>{T('Commentary on the Quran, in the language you read it in. Tafsir is one scholar’s reading, not the text itself.')}</Text>{error&&!editions.length?<ErrorState message={error} retry={load}/>:!editions.length?<SkeletonList rows={6} />:<EditionPicker C={C} editions={editions} category="tafsir" searchPlaceholder={T('Search commentary')}  onPick={e=>setPicked(e)}/>}</ScrollView></Page>;return <Page><ToolBar title={T('Tafsir')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><Pressable onPress={()=>setPicked(null)} style={s.editionChip}><Text style={{fontSize:20}}>{languageFlag(picked.language||'ar')}</Text><View style={{flex:1}}><Text style={s.settingName}>{editionDisplayName(picked)}</Text><Text style={s.meta}>{editionSubtitle(picked)}</Text></View><Text style={s.sectionAction}>{T('Change')}</Text></Pressable><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap:8,marginTop:12}}>{chapters.map(c=><ChoicePill key={c.number} label={rtl?c.nameArabic:c.nameSimple} selected={c.number===surah} onPress={()=>setSurah(c.number)}/>)}</ScrollView>{busy&&!result?<Spinner/>:error?<ErrorState message={error}/>:result&&<View style={{marginTop:12}}>{result.rows.map(row=><View key={row.verseKey} style={s.dataCard}><Text style={s.dataMeta}>{title} · {T('AYAH')} {row.numberInSurah}</Text><Text style={s.dataBody}>{stripTafsirMarkup(row.text)}</Text></View>)}</View>}</ScrollView></Page>}
+function TafsirScreen({navigation}:any){const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);const[editions,setEditions]=useState<IslamicEdition[]>([]);const[chapters,setChapters]=useState<IslamicChapter[]>([]);const[picked,setPicked]=useState<IslamicEdition|null>(null);const[surah,setSurah]=useState(1);const[result,setResult]=useState<CachedSurah|null>(null);const[busy,setBusy]=useState(false);const[error,setError]=useState('');const load=()=>{  getEditions('tafsir').then(setEditions).catch(e=>setError(T(e.message)));  getWorkerChapters().then(setChapters).catch(()=>undefined);};useEffect(()=>{load()},[]);useEffect(()=>{  if(!picked)return;  let live=true;  setBusy(true);setError('');  getSurah('tafsir',picked.id,surah)    .then(r=>{if(live)setResult(r)})    .catch(e=>{if(live)setError(T(e.message))})    .finally(()=>{if(live)setBusy(false)});  return()=>{live=false};},[picked,surah]);const chapter=chapters.find(c=>c.number===surah);const title=chapter?(rtl?chapter.nameArabic:chapter.nameSimple):(tf(language,'Surah {n}',{n:surah}));if(!picked)return <Page><ToolBar tool="Tafsir" title={T('Tafsir')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage} keyboardShouldPersistTaps="handled"><ToolGraphic tool="Tafsir" size={85}/><Text style={s.dataTitle}>{T('Choose a Tafsir')}</Text><Text style={s.intro}>{T('Commentary on the Quran, in the language you read it in. Tafsir is one scholar’s reading, not the text itself.')}</Text>{error&&!editions.length?<ErrorState message={error} retry={load}/>:!editions.length?<SkeletonList rows={6} />:<EditionPicker C={C} editions={editions} category="tafsir" searchPlaceholder={T('Search commentary')}  onPick={e=>setPicked(e)}/>}</ScrollView></Page>;return <Page><ToolBar tool="Tafsir" title={T('Tafsir')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><Pressable onPress={()=>setPicked(null)} style={s.editionChip}><Text style={{fontSize:20}}>{languageFlag(picked.language||'ar')}</Text><View style={{flex:1}}><Text style={s.settingName}>{editionDisplayName(picked)}</Text><Text style={s.meta}>{editionSubtitle(picked)}</Text></View><Text style={s.sectionAction}>{T('Change')}</Text></Pressable><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap:8,marginTop:12}}>{chapters.map(c=><ChoicePill key={c.number} label={rtl?c.nameArabic:c.nameSimple} selected={c.number===surah} onPress={()=>setSurah(c.number)}/>)}</ScrollView>{busy&&!result?<Spinner/>:error?<ErrorState message={error}/>:result&&<View style={{marginTop:12}}>{result.rows.map(row=><View key={row.verseKey} style={s.dataCard}><Text style={s.dataMeta}>{title} · {T('AYAH')} {row.numberInSurah}</Text><Text style={s.dataBody}>{stripTafsirMarkup(row.text)}</Text></View>)}</View>}</ScrollView></Page>}
 function TafsirCompareScreen({route,navigation}:any){const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);const verse:Verse=route.params?.verse||{verse_key:'2:255',text_uthmani:''};const[reference,setReference]=useState(verse.verse_key);const{preferences}=useQuranPreferences();const{width}=useWindowDimensions();const[mode,setMode]=useState<'translation'|'tafsir'>('translation');const[editions,setEditions]=useState<QuranEdition[]>([]);const[selected,setSelected]=useState<string[]>([preferences.translationEdition,'en.pickthall'].filter((x,i,a)=>a.indexOf(x)===i));const[rows,setRows]=useState<any[]>([]);const[query,setQuery]=useState('');const[error,setError]=useState('');const loadEditions=()=>getQuranEditions(mode).then(setEditions).catch(e=>setError(T(e.message)));const load=async()=>{setError('');const ids=[preferences.scriptEdition==='quran-indopak'?'quran-uthmani':preferences.scriptEdition,...selected];const cacheKey=`${reference}:${ids.join(',')}`;const cached=mode==='tafsir'?await getCachedJson<any[]>('tafsir',cacheKey):null;if(cached)setRows(cached);try{const fresh=await getAyahEditions(reference,ids);setRows(fresh);if(mode==='tafsir')await setCachedJson('tafsir',cacheKey,fresh)}catch(e:any){if(!cached)setError(T(e.message))}};useEffect(()=>{loadEditions()},[mode]);useEffect(()=>{load()},[reference,selected.join('|'),preferences.scriptEdition]);useEffect(()=>{if(mode==='tafsir')setSelected(['ar.jalalayn']);else setSelected([preferences.translationEdition,'en.pickthall'].filter((x,i,a)=>a.indexOf(x)===i))},[mode]);const toggle=(id:string)=>setSelected(current=>current.includes(id)?current.length>1?current.filter(x=>x!==id):current:current.length<(mode==='translation'?3:1)?[...current,id]:current);const results=query.trim().length<2?[]:editions.filter(e=>`${e.englishName} ${e.name} ${e.language}`.toLowerCase().includes(query.toLowerCase())).slice(0,30);const arabic=rows[0];const compared=rows.slice(1);const wide=width>=760;const columnWidth=wide?Math.max(260,(Math.min(width-40,900)-12*(compared.length-1))/Math.max(1,compared.length)):0;return <Page><ToolBar title={T('Tafsir & comparison')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}>
       {/* Where you are. The stepper moves one verse; the field takes a typed one. */}
       <View style={s.tcRefBar}>
@@ -5425,9 +5437,9 @@ function VocabularyScreen({navigation}:any){const[index,setIndex]=useState(0);co
 
 function TajweedStudyScreen({navigation}:any){const[reference,setReference]=useState('2:255');const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);const[rows,setRows]=useState<any[]>([]);const[error,setError]=useState('');const[showNormal,setShowNormal]=useState(false);const load=()=>{if(!/^([1-9]|[1-9]\d|1(?:0\d|1[0-4])):([1-9]\d*)$/.test(reference.trim())){setError(T('Enter a verse reference such as 2:255.'));return}setError('');setRows([]);getAyahEditions(reference.trim(),['quran-tajweed','quran-uthmani','en.sahih']).then(setRows).catch(e=>setError(T(e.message)))};useEffect(load,[]);return <Page><ToolBar title={T('Tajweed study')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><ToolGraphic tool="Tajweed" size={83}/><Text style={s.dataTitle}>{T('Read the rules in colour')}</Text><Text style={s.intro}>{T('Each Tajweed rule is coloured where it applies. Colours are a learning aid and do not replace study with a qualified teacher.')}</Text><View style={s.search}><TextInput value={reference} onChangeText={setReference} onSubmitEditing={load} placeholder="2:255" style={s.searchInput}/><Pressable accessibilityLabel={T('Load this verse')} onPress={load} style={s.searchGo}>{ico('arrow-forward-circle',23,C.green)}</Pressable></View><View style={s.choiceRow}><ChoicePill label={T('Tajweed colour')} selected={!showNormal} onPress={()=>setShowNormal(false)}/><ChoicePill label={T('Normal text')} selected={showNormal} onPress={()=>setShowNormal(true)}/></View>{error?<ErrorState message={error} retry={load}/>:!rows.length?<SkeletonList rows={5} />:<View style={s.tajweedPractice}><Text style={s.dataMeta}>{T('QURAN')} {reference}</Text>{showNormal?<Text style={s.dataArabic}>{rows[1]?.text}</Text>:<TajweedText text={rows[0]?.text||''} style={s.dataArabic}/>}<Text style={s.dataBody}>{rows[2]?.text}</Text></View>}<Section title={T('Colour legend')}/><View style={s.settings}>{TAJWEED_RULES.map(rule=><View key={rule.name} style={s.tajweedRule}><View style={[s.tajweedSwatch,{backgroundColor:rule.color}]}/><View style={{flex:1}}><Text style={s.settingName}>{tajweedName(rule,language)}</Text><Text style={s.meta}>{tajweedDetail(rule,language)}</Text></View></View>)}</View></ScrollView></Page>}
 
-function JuzDirectoryScreen({navigation}:any){const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);return <Page><ToolBar title={T('30 Juz')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><ToolGraphic tool="30 Juz" size={81}/><Text style={s.dataTitle}>{T('Read by Juz')}</Text><View style={s.juzGrid}>{Array.from({length:30},(_,i)=>i+1).map(juz=><Tactile key={juz} onPress={()=>navigation.navigate('Reader',{section:'juz',juz})} style={s.juzCard}><Text style={s.juzNo}>{juz}</Text><Text style={s.meta}>{T('JUZ')}</Text></Tactile>)}</View></ScrollView></Page>}
-function HizbDirectoryScreen({navigation}:any){const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);return <Page><ToolBar title={T('60 Hizb')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><ToolGraphic tool="60 Hizb" size={81}/><Text style={s.dataTitle}>{T('Read by Hizb')}</Text><Text style={s.intro}>{T('Each Hizb contains four quarter-Hizb sections.')}</Text><View style={s.juzGrid}>{Array.from({length:60},(_,i)=>i+1).map(hizb=><Tactile key={hizb} onPress={()=>navigation.navigate('Reader',{section:'hizb',hizb})} style={s.juzCard}><Text style={s.juzNo}>{hizb}</Text><Text style={s.meta}>{T('HIZB')}</Text></Tactile>)}</View></ScrollView></Page>}
-function QuranPreloadScreen({navigation}:any){const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);const{preferences}=useQuranPreferences();const[state,setState]=useState(getPreloadState());useEffect(()=>{const unsubscribe=subscribePreload(setState);refreshPreload({script:preferences.scriptEdition,translation:preferences.translationEdition});return unsubscribe},[preferences.scriptEdition,preferences.translationEdition]);const start=()=>startQuranPreload({script:preferences.scriptEdition,translation:preferences.translationEdition});return <Page><ToolBar title={T('Offline Quran')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><ToolGraphic tool="Offline Quran" size={85}/><Text style={s.dataTitle}>{T('Prepare for offline reading')}</Text><Text style={s.intro}>{T('Downloads the Arabic script and translation you have selected, one Surah at a time. Preparation continues while you use other screens and prioritizes your current reading Surah.')}</Text><View style={s.preloadScore}><Text style={s.planDays}>{state.cached}</Text><Text style={s.settingName}>{T('of 114 Surahs cached')}</Text><View style={s.preloadTrack}><View style={[s.preloadFill,{width:`${state.cached/114*100}%`} as any]}/></View><Text style={s.meta}>{T(preferences.scriptName)} · {T(rtl ? preferences.translationLanguage : preferences.translationName)}{state.current?(tf(language,' · Preparing Surah {n}',{n:state.current})):''}</Text>{state.usage&&<Text style={s.cacheUsage}>{tf(language,'Quran cache {u} MB · limit {l} MB · total limit {t} MB',{u:(state.usage.byNamespace.quran/1048576).toFixed(1),l:(state.usage.limits.quran/1000000).toFixed(0),t:(state.usage.limits.total/1000000).toFixed(0)})}</Text>}</View>{state.error&&<ErrorState message={state.error} retry={start}/>}<View style={s.actionRow}>{!state.running?<Tactile onPress={start} style={s.primary}><Text style={s.primaryText}>{T(state.cached ? 'Resume preparation' : 'Preload all')}</Text></Tactile>:<Tactile onPress={pauseQuranPreload} style={s.secondary}><Text style={s.secondaryText}>{T('Pause')}</Text></Tactile>}<Tactile onPress={clearPreparedQuran} style={s.dangerButton}><Text style={s.dangerText}>{T('Clear Quran cache')}</Text></Tactile></View><View style={s.sourceCard}>{ico('shield-checkmark-outline',21,C.green)}<View style={{flex:1}}><Text style={s.sourceTitle}>{T('Managed low-priority preparation')}</Text><Text style={s.sourceBody}>{T('Cached Surahs open first, already-saved content is skipped, and bounded LRU storage prevents unlimited growth.')}</Text></View></View></ScrollView></Page>}
+function JuzDirectoryScreen({navigation}:any){const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);return <Page><ToolBar tool="30 Juz" title={T('30 Juz')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><ToolGraphic tool="30 Juz" size={81}/><Text style={s.dataTitle}>{T('Read by Juz')}</Text><View style={s.juzGrid}>{Array.from({length:30},(_,i)=>i+1).map(juz=><Tactile key={juz} onPress={()=>navigation.navigate('Reader',{section:'juz',juz})} style={s.juzCard}><Text style={s.juzNo}>{juz}</Text><Text style={s.meta}>{T('JUZ')}</Text></Tactile>)}</View></ScrollView></Page>}
+function HizbDirectoryScreen({navigation}:any){const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);return <Page><ToolBar tool="60 Hizb" title={T('60 Hizb')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><ToolGraphic tool="60 Hizb" size={81}/><Text style={s.dataTitle}>{T('Read by Hizb')}</Text><Text style={s.intro}>{T('Each Hizb contains four quarter-Hizb sections.')}</Text><View style={s.juzGrid}>{Array.from({length:60},(_,i)=>i+1).map(hizb=><Tactile key={hizb} onPress={()=>navigation.navigate('Reader',{section:'hizb',hizb})} style={s.juzCard}><Text style={s.juzNo}>{hizb}</Text><Text style={s.meta}>{T('HIZB')}</Text></Tactile>)}</View></ScrollView></Page>}
+function QuranPreloadScreen({navigation}:any){const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);const{preferences}=useQuranPreferences();const[state,setState]=useState(getPreloadState());useEffect(()=>{const unsubscribe=subscribePreload(setState);refreshPreload({script:preferences.scriptEdition,translation:preferences.translationEdition});return unsubscribe},[preferences.scriptEdition,preferences.translationEdition]);const start=()=>startQuranPreload({script:preferences.scriptEdition,translation:preferences.translationEdition});return <Page><ToolBar tool="Offline Quran" title={T('Offline Quran')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><ToolGraphic tool="Offline Quran" size={85}/><Text style={s.dataTitle}>{T('Prepare for offline reading')}</Text><Text style={s.intro}>{T('Downloads the Arabic script and translation you have selected, one Surah at a time. Preparation continues while you use other screens and prioritizes your current reading Surah.')}</Text><View style={s.preloadScore}><Text style={s.planDays}>{state.cached}</Text><Text style={s.settingName}>{T('of 114 Surahs cached')}</Text><View style={s.preloadTrack}><View style={[s.preloadFill,{width:`${state.cached/114*100}%`} as any]}/></View><Text style={s.meta}>{T(preferences.scriptName)} · {T(rtl ? preferences.translationLanguage : preferences.translationName)}{state.current?(tf(language,' · Preparing Surah {n}',{n:state.current})):''}</Text>{state.usage&&<Text style={s.cacheUsage}>{tf(language,'Quran cache {u} MB · limit {l} MB · total limit {t} MB',{u:(state.usage.byNamespace.quran/1048576).toFixed(1),l:(state.usage.limits.quran/1000000).toFixed(0),t:(state.usage.limits.total/1000000).toFixed(0)})}</Text>}</View>{state.error&&<ErrorState message={state.error} retry={start}/>}<View style={s.actionRow}>{!state.running?<Tactile onPress={start} style={s.primary}><Text style={s.primaryText}>{T(state.cached ? 'Resume preparation' : 'Preload all')}</Text></Tactile>:<Tactile onPress={pauseQuranPreload} style={s.secondary}><Text style={s.secondaryText}>{T('Pause')}</Text></Tactile>}<Tactile onPress={clearPreparedQuran} style={s.dangerButton}><Text style={s.dangerText}>{T('Clear Quran cache')}</Text></Tactile></View><View style={s.sourceCard}>{ico('shield-checkmark-outline',21,C.green)}<View style={{flex:1}}><Text style={s.sourceTitle}>{T('Managed low-priority preparation')}</Text><Text style={s.sourceBody}>{T('Cached Surahs open first, already-saved content is skipped, and bounded LRU storage prevents unlimited growth.')}</Text></View></View></ScrollView></Page>}
 function ReadingPlansScreen({navigation}:any){const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);const[plan,setPlan]=useState<any>(null);useEffect(()=>{loadPlan().then(setPlan)},[]);const start=async(days:number)=>{const next={days,startedAt:Date.now(),completed:[]};await savePlan(next);setPlan(next)};const today=plan?Math.min(plan.days,Math.floor((Date.now()-plan.startedAt)/86400000)+1):0;const toggle=async()=>{const completed=plan.completed.includes(today)?plan.completed.filter((x:number)=>x!==today):[...plan.completed,today];const next={...plan,completed};await savePlan(next);setPlan(next)};return <Page><ToolBar title={T('Reading plans')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><ToolGraphic tool="Reading Plans" size={81}/><Text style={s.dataTitle}>{T('Complete the Quran')}</Text>{!plan?<><Text style={s.intro}>{T('Choose a private local plan. Progress stays on this device.')}</Text><View style={s.planGrid}>{[30,60,90,120].map(days=><Pressable key={days} onPress={()=>start(days)} style={s.planCard}><Text style={s.planDays}>{days}</Text><Text style={s.settingName}>{T('day plan')}</Text><Text style={s.meta}>{tf(language,'{n} pages daily',{n:(604/days).toFixed(1)})}</Text></Pressable>)}</View></>:<><View style={s.summaryScore}><View><Text style={s.nextCardLabel}>{T('CURRENT DAY')}</Text><Text style={s.zakatNo}>{today} / {plan.days}</Text></View><View><Text style={s.nextCardLabel}>{T('COMPLETED')}</Text><Text style={s.zakatNo}>{plan.completed.length}</Text></View></View><Pressable onPress={toggle} style={s.planToday}><Text style={s.settingName}>{tf(language,'Day {d} reading',{d:today})}</Text>{ico(plan.completed.includes(today)?'checkmark-circle':'ellipse-outline',28,C.green)}</Pressable><Tactile onPress={async()=>{await savePlan(null);setPlan(null)}} style={s.dangerButton}><Text style={s.dangerText}>{T('End current plan')}</Text></Tactile></>}</ScrollView></Page>}
 function HifzScreen({navigation}:any){const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);const[chapters,setChapters]=useState<Chapter[]>([]);const[status,setStatus]=useState<Record<number,HifzStatus>>({});const[filter,setFilter]=useState<'all'|HifzStatus>('all');useEffect(()=>{getChapters().then(setChapters);loadHifz().then(setStatus)},[]);const cycle=async(id:number)=>{const current=status[id]||'not-started';const next:HifzStatus=current==='not-started'?'revising':current==='revising'?'memorized':'not-started';const value={...status,[id]:next};setStatus(value);await saveHifz(value)};const shown=chapters.filter(c=>filter==='all'||(status[c.id]||'not-started')===filter);const memorized=Object.values(status).filter(x=>x==='memorized').length;return <Page><ToolBar title={T('Hifz tracker')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><ToolGraphic tool="Hifz" size={81}/><Text style={s.dataTitle}>{tf(language,'{n} of 114 memorized',{n:memorized})}</Text><Tactile onPress={()=>navigation.navigate('Memorize')} style={s.practiceLaunch}><View><Text style={s.settingName}>{T('Hide-and-peek recall')}</Text><Text style={s.meta}>{T('Test a verse from your revising or memorized Surahs')}</Text></View>{ico('play-circle',28,C.green)}</Tactile><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap: 8}}>{(['all','not-started','revising','memorized'] as const).map(value=><ChoicePill key={value} label={T(value.replace('-',' '))} selected={filter===value} onPress={()=>setFilter(value)}/>)}</ScrollView><View style={{height:13}}/><View style={s.settings}>{shown.map(c=><Pressable key={c.id} onPress={()=>cycle(c.id)} style={s.translationRow}><View style={s.surahNum}><Text style={s.surahNumText}>{c.id}</Text></View><View style={{flex:1}}><View style={s.surahNameRow}>{rtl && <Text style={s.surahArInline}>{c.name_arabic}</Text>}<Text style={[s.settingName,{flexShrink:1}]} numberOfLines={1}>{c.name_simple}</Text>{!rtl && <Text style={s.surahArInline}>{c.name_arabic}</Text>}</View><Text style={s.meta}>{tf(language,'{n} verses',{n:c.verses_count})}</Text></View><Text style={s.hifzStatus}>{T((status[c.id]||'not-started').replace('-',' '))}</Text></Pressable>)}</View></ScrollView></Page>}
 
@@ -5911,7 +5923,7 @@ function TransliterationScreen({navigation}:any){
     if(next!==chapterId)setChapterId(next);
   };
 
-  return <Page><ToolBar title={T('Transliteration')} navigation={navigation}/>
+  return <Page><ToolBar tool="Transliteration" title={T('Transliteration')} navigation={navigation}/>
     <ScrollView {...SCROLL} contentContainerStyle={s.dataPage}>
       <ToolGraphic tool="Transliteration" size={81}/>
       <Text style={s.dataTitle}>{T('How the Arabic sounds')}</Text>
@@ -6045,7 +6057,7 @@ function ExploreHome({navigation}:any){
    `goBackOrHome` rather than calling `goBack()` itself: a screen that passes
    no navigator — or one sitting at the bottom of its stack — used to leave
    this arrow pointing at nothing. */
-function ToolBar({title,navigation}:any){const {rtl,language}=useLanguage();return <View style={s.readerBar}><IconButton name={rtl?'arrow-forward':'arrow-back'} label={tx(language,'Back')} onPress={()=>goBackOrHome(navigation)}/><Text style={s.readerName}>{title}</Text><View style={{width:44}}/></View>}
+function ToolBar({title,navigation,tool}:any){const {rtl,language}=useLanguage();return <View style={s.readerBar}><IconButton name={rtl?'arrow-forward':'arrow-back'} label={tx(language,'Back')} onPress={()=>goBackOrHome(navigation)}/><Text numberOfLines={1} style={s.readerName}>{title}</Text>{tool?<ToolGraphic tool={tool} size={30}/>:<View style={{width:44}}/>}</View>}
 /* Sixteen points, the usual navigational set. Left as the Latin abbreviations
    in both languages: they are the standard notation on a compass rather than
    prose, and an invented Arabic for "north-north-east" would be a guess
@@ -6243,7 +6255,7 @@ function TasbihScreen({ navigation }: any) {const {rtl,language}=useLanguage();c
       fallbackText: `${phrase.arabic}\n\n${dhikrMeaning(phrase, language)}\n\n${phrase.transliteration}`,
     });
   };
-  return <Page><ToolBar title={T('Tasbih')} navigation={navigation} />
+  return <Page><ToolBar tool="Tasbih" title={T('Tasbih')} navigation={navigation} />
     <ScrollView keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
       <ToolGraphic tool="Tasbih" size={76} />
       <Text style={s.dataTitle}>{T('Dhikr counter')}</Text>
@@ -6433,7 +6445,7 @@ function DownloadsScreen({ route, navigation }: any) {
     url
   }));
   const used = totalDownloadBytes();
-  return <Page><ToolBar title={T('Downloads')} navigation={navigation} />
+  return <Page><ToolBar tool="Downloads" title={T('Downloads')} navigation={navigation} />
     <ScrollView keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
       <ToolGraphic tool="Offline Quran" size={76} />
       <Text style={s.dataTitle}>{T('Kept on this device')}</Text>
@@ -7109,7 +7121,7 @@ function HolyChannelsScreen({ route, navigation }: any) {
   const channels = site ? HOLY_CHANNELS.filter((channel) => channel.site === site) : HOLY_CHANNELS;
   const heading = site === 'Madinah' ? 'Madinah Live' : 'Makkah Live';
   const open = async (channel: (typeof HOLY_CHANNELS)[number]) => { setOpened(channel.id); await openChannel(channel); };
-  return <Page><ToolBar title={site ? T(heading) : (tx(language, 'Holy site channels'))} navigation={navigation} />
+  return <Page><ToolBar tool={site ? heading : 'Holy site channels'} title={site ? T(heading) : (tx(language, 'Holy site channels'))} navigation={navigation} />
     <ScrollView keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
       <ToolGraphic tool="Holy site channels" size={85} />
       <Text style={s.dataTitle}>{tx(language, 'Holy site channels')}</Text>
@@ -7281,7 +7293,7 @@ function LocationSetupScreen({navigation}:any){const {rtl,language}=useLanguage(
     goBackOrHome(navigation);
   };
 
-  return <Page><ToolBar title={T('Location')} navigation={navigation}/>
+  return <Page><ToolBar tool="Location" title={T('Location')} navigation={navigation}/>
     <ScrollView {...SCROLL} contentContainerStyle={s.dataPage} keyboardShouldPersistTaps="handled">
       <Text style={s.dataTitle}>{T('Where are your prayer times?')}</Text>
       <Text style={s.intro}>{T('Prayer times, Qibla, Ramadan and nearby mosques all read from this one place. It is asked once and kept on this device.')}</Text>
@@ -7494,7 +7506,7 @@ function SalahTrackerScreen({ navigation }: any) {
     void savePrayerCompletion(day, next).then(() => setOpenDay(null));
   };
 
-  return <Page><ToolBar title={T('Salah Tracker')} navigation={navigation} />
+  return <Page><ToolBar tool="Salah Tracker" title={T('Salah Tracker')} navigation={navigation} />
     <ScrollView keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
       <Text style={s.intro}>{T('Every day you have marked, going back as far as your record does. A square is a day; the deeper the gold, the more of the five you prayed.')}</Text>
 
@@ -7613,7 +7625,7 @@ function SunnahScreen({ navigation }: any) {
 
   return (
     <Page>
-      <ToolBar title={T('Sunnah Prayers')} navigation={navigation} />
+      <ToolBar tool="Sunnah Prayers" title={T('Sunnah Prayers')} navigation={navigation} />
       <ScrollView {...SCROLL} contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
         <ToolGraphic tool="Sunnah Prayers" size={87} />
         <Text style={s.dataTitle}>{T('Sunnah prayers')}</Text>
@@ -7716,7 +7728,7 @@ function NotificationInboxScreen({navigation}:any){
 
   const KIND_COLOUR:Record<string,string>={adhan:C.green,'pre-adhan':C.green,continue:C.green,verse:C.green,hadith:C.green,sleep:C.green,quran:C.green};
 
-  return <Page><ToolBar title={T('Notifications')} navigation={navigation}/>
+  return <Page><ToolBar tool="Notifications" title={T('Notifications')} navigation={navigation}/>
     <ScrollView {...SCROLL} contentContainerStyle={s.dataPage}>
       <Text style={s.intro}>{T('Every reminder this app has sent you. A past entry means it was sent — the system delivers notifications whether or not the app is open, so it cannot say whether you saw it.')}</Text>
       {!log.length
@@ -8264,7 +8276,7 @@ function AdhanScreen({navigation}:any){const {rtl,language}=useLanguage();const 
   const {settings,update}=useWorshipSettings();
   const fajrId=adhanTrack(settings.adhanFajrReciter,FAJR_TRACKS[0]).id;
   const otherId=adhanTrack(settings.adhanReciter,ADHAN_TRACKS[0]).id;
-  return <Page><ToolBar title={T('Adhan')} navigation={navigation}/>
+  return <Page><ToolBar tool="Adhan" title={T('Adhan')} navigation={navigation}/>
     <ScrollView {...SCROLL} contentContainerStyle={s.dataPage}>
       <ToolGraphic tool="Adhan" size={92}/>
       <Text style={s.dataTitle}>{T('Choose an Adhan')}</Text>
@@ -8288,7 +8300,7 @@ function GuideDirectory({route,navigation}:any){const {rtl,language}=useLanguage
      screen, beside the timetable they belong with, and having them in both
      places made two tiles that look like different features show the same
      six things. */
-  const guides=WORSHIP_GUIDES.filter((guide)=>!RAMADAN_GUIDE_IDS.includes(guide.id));return <Page><ToolBar title={T('Worship guides')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><ToolGraphic tool="Worship guides" size={87}/><Text style={s.dataTitle}>{T('Learn with references')}</Text><Text style={s.intro}>{T('Concise educational overviews with transparent Qur’an and Hadith references. Detailed rulings should be learned from a qualified local scholar.')}</Text><View style={s.guideGrid}>{guides.map((guide,i)=>{const g=localizeGuide(guide,language);return <MotionPress key={guide.id} index={i} onPress={()=>navigation.navigate('Guide Detail',{guide})} style={s.guideCard}><View style={s.guideCardInner}><ToolGraphic tool={guide.id} size={69}/><Text style={s.exploreTitle}>{g.title}</Text><Text style={s.exploreBody}>{g.subtitle}</Text><View style={s.exploreArrow}>{ico(rtl ? 'arrow-back' : 'arrow-forward',15,C.green)}</View></View></MotionPress>})}</View></ScrollView></Page>}
+  const guides=WORSHIP_GUIDES.filter((guide)=>!RAMADAN_GUIDE_IDS.includes(guide.id));return <Page><ToolBar tool="Worship guides" title={T('Worship guides')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><ToolGraphic tool="Worship guides" size={87}/><Text style={s.dataTitle}>{T('Learn with references')}</Text><Text style={s.intro}>{T('Concise educational overviews with transparent Qur’an and Hadith references. Detailed rulings should be learned from a qualified local scholar.')}</Text><View style={s.guideGrid}>{guides.map((guide,i)=>{const g=localizeGuide(guide,language);return <MotionPress key={guide.id} index={i} onPress={()=>navigation.navigate('Guide Detail',{guide})} style={s.guideCard}><View style={s.guideCardInner}><ToolGraphic tool={guide.id} size={69}/><Text style={s.exploreTitle}>{g.title}</Text><Text style={s.exploreBody}>{g.subtitle}</Text><View style={s.exploreArrow}>{ico(rtl ? 'arrow-back' : 'arrow-forward',15,C.green)}</View></View></MotionPress>})}</View></ScrollView></Page>}
 /**
  * The evidence for a guide, shown in full on the page rather than as a link
  * out. Both kinds are held on the device in guideSources, so a guide reads
@@ -8479,7 +8491,7 @@ function HijriCalendarScreen({navigation}:any){
 
   const selectedEvents=selected?eventOn(selected.hijriMonthNumber,selected.hijriDay):[];
 
-  return <Page><ToolBar title={T('Hijri calendar')} navigation={navigation}/>
+  return <Page><ToolBar tool="Hijri calendar" title={T('Hijri calendar')} navigation={navigation}/>
   <ScrollView {...SCROLL} contentContainerStyle={s.dataPage}>
     {!location?<LocationPrompt compact/>:<>
       <View style={s.calendarIntro}>
@@ -8688,7 +8700,7 @@ function RamadanScreen({ navigation }: any) {
   const lead = opening ? Math.max(0, WEEKDAY_NAMES.indexOf(opening.weekday)) : 0;
   const initials = rtl ? WEEK_INITIALS_AR : WEEK_INITIALS_EN;
 
-  return <Page><ToolBar title={T('Ramadan')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}>{!location ? <LocationPrompt compact/> : <>
+  return <Page><ToolBar tool="Ramadan" title={T('Ramadan')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}>{!location ? <LocationPrompt compact/> : <>
     {/* The day you are in — or, for eleven months of the year, the opening one.
         Palestine takes the deep green off the flag: the theme's own green is
         too light to carry white type at this size. */}
@@ -8911,7 +8923,7 @@ function IstihadaScreen({ navigation }: any) {
     </View>
   );
 
-  return <PrivateArea navigation={navigation}><Page><ToolBar title={T('Istihada')} navigation={navigation} />
+  return <PrivateArea navigation={navigation}><Page><ToolBar tool="Istihada" title={T('Istihada')} navigation={navigation} />
     <ScrollView keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
       <ToolGraphic tool="Istihada" size={87} />
       <Text style={s.dataTitle}>{T('Is this bleeding a period?')}</Text>
@@ -9062,7 +9074,7 @@ function RamadanPlannerScreen({ navigation }: any) {
     );
   };
 
-  return <PrivateArea navigation={navigation}><Page><ToolBar title={T('Ramadan Planner')} navigation={navigation} />
+  return <PrivateArea navigation={navigation}><Page><ToolBar tool="Ramadan Planner" title={T('Ramadan Planner')} navigation={navigation} />
     <ScrollView keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
       <ToolGraphic tool="Ramadan Planner" size={87} />
       <Text style={s.dataTitle}>{T('Ramadan through your cycle')}</Text>
@@ -9211,7 +9223,7 @@ function TheseDaysScreen({ navigation }: any) {
       ? tf(language, 'Day {n} of this cycle', { n: stats.dayOfCycle })
       : null;
 
-  return <PrivateArea navigation={navigation}><Page><ToolBar title={T('These Days')} navigation={navigation} />
+  return <PrivateArea navigation={navigation}><Page><ToolBar tool="These Days" title={T('These Days')} navigation={navigation} />
     <ScrollView keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
       <ToolGraphic tool="These Days" size={87} />
       <Text style={s.dataTitle}>{T('Keeping going through these days')}</Text>
@@ -9283,7 +9295,7 @@ function WomenHubScreen({ navigation }: any) {
   const qada = qadaStats(womens);
   const today = dayKey();
 
-  if (!womens.optedIn) return <Page><ToolBar title={T('Women’s worship')} navigation={navigation} />
+  if (!womens.optedIn) return <Page><ToolBar tool="Women’s worship" title={T('Women’s worship')} navigation={navigation} />
     <ScrollView {...SCROLL} contentContainerStyle={s.dataPage}>
       <ToolGraphic tool="Women’s worship" size={90} />
       <Text style={s.dataTitle}>{T('A private area')}</Text>
@@ -9306,7 +9318,7 @@ function WomenHubScreen({ navigation }: any) {
         ? tf(language,'Next cycle expected in {n} days',{n:stats.daysToNext ?? ''})
         : T('Record a cycle to see your averages');
 
-  return <PrivateArea navigation={navigation}><Page><ToolBar title={T('Women’s worship')} navigation={navigation} />
+  return <PrivateArea navigation={navigation}><Page><ToolBar tool="Women’s worship" title={T('Women’s worship')} navigation={navigation} />
     <ScrollView keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
       <LinearGradient colors={[C.heroA, C.green]} style={s.summaryScore}>
         <View style={{ flex: 1 }}><Text style={s.nextCardLabel}>{T('TODAY')} · {formatDay(today, language).toUpperCase()}</Text><Text style={s.zakatNo}>{status}</Text><Text style={s.weekScoreBody}>{detail}</Text></View>
@@ -9346,7 +9358,7 @@ function CycleScreen({ navigation }: any) {
   const cycle = (status: PurityStatus) => (status === 'flow' ? 'spotting' : status === 'spotting' ? 'pure' : 'flow') as PurityStatus;
   const statusWord: Record<string, string> = { flow: T('Flow'), spotting: T('Spotting'), pure: T('Pure') };
 
-  return <PrivateArea navigation={navigation}><Page><ToolBar title={T('Cycle')} navigation={navigation} />
+  return <PrivateArea navigation={navigation}><Page><ToolBar tool="Cycle" title={T('Cycle')} navigation={navigation} />
     <ScrollView keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
       <ToolGraphic tool="Cycle" size={87} />
       <Text style={s.dataTitle}>{T('Your cycle')}</Text>
@@ -9392,7 +9404,7 @@ function CycleScreen({ navigation }: any) {
    same service rather than restated, so the two screens cannot disagree. */
 function GhuslScreen({ navigation }: any) {
   const { rtl , language }=useLanguage(); const T = (text: string) => tx(language, text);
-  return <Page><ToolBar title={T('Ghusl')} navigation={navigation} />
+  return <Page><ToolBar tool="Ghusl" title={T('Ghusl')} navigation={navigation} />
     <ScrollView keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
       <ToolGraphic tool="Purity" size={87} />
       <Text style={s.dataTitle}>{T('The full washing')}</Text>
@@ -9499,7 +9511,7 @@ function QadaScreen({ navigation }: any) {
   const owed = womens.qada.filter((entry) => !entry.done);
   const settled = womens.qada.filter((entry) => entry.done);
 
-  return <PrivateArea navigation={navigation}><Page><ToolBar title={T('Qada fasts')} navigation={navigation} />
+  return <PrivateArea navigation={navigation}><Page><ToolBar tool="Qada fasts" title={T('Qada fasts')} navigation={navigation} />
     <ScrollView keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
       <ToolGraphic tool="Qada fasts" size={87} />
       <Text style={s.dataTitle}>{T('Days owed')}</Text>
@@ -9570,7 +9582,7 @@ function KhatamScreen({ navigation }: any) {
 
   return (
     <Page>
-      <ToolBar title={T('Khatam')} navigation={navigation} />
+      <ToolBar tool="Khatam" title={T('Khatam')} navigation={navigation} />
       <ScrollView {...SCROLL} contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
         <ToolGraphic tool="Khatam" size={87} />
         <Text style={s.dataTitle}>{T("Completing the Qur'an")}</Text>
@@ -9810,7 +9822,7 @@ function SadaqahScreen({ navigation }: any) {
 
   return (
     <Page>
-      <ToolBar title={T('Sadaqah')} navigation={navigation} />
+      <ToolBar tool="Sadaqah" title={T('Sadaqah')} navigation={navigation} />
       <ScrollView {...SCROLL} contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
         <ToolGraphic tool="Sadaqah" size={87} />
         <Text style={s.dataTitle}>{T('Voluntary giving')}</Text>
@@ -9921,7 +9933,7 @@ function JournalScreen({ navigation }: any) {
 
   return (
     <Page>
-      <ToolBar title={T('Journal')} navigation={navigation} />
+      <ToolBar tool="Journal" title={T('Journal')} navigation={navigation} />
       <ScrollView {...SCROLL} contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
         <ToolGraphic tool="Journal" size={87} />
         <Text style={s.dataTitle}>{T('A private journal')}</Text>
@@ -10139,7 +10151,7 @@ function ZakatScreen({ navigation }: any) {
 
   const metalPrice = (metal: 'gold' | 'silver') => (metal === 'gold' ? result.goldPerGram : result.silverPerGram);
 
-  return <Page><ToolBar title={T('Zakat')} navigation={navigation} />
+  return <Page><ToolBar tool="Zakat" title={T('Zakat')} navigation={navigation} />
     <ScrollView keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
       <ToolGraphic tool="Zakat" size={87} />
       <Text style={s.dataTitle}>{T('Work out what is due')}</Text>
@@ -10308,7 +10320,7 @@ function HadithScreen({navigation}:any){const {rtl,language:appLanguage}=useLang
 
   const searching3=query.trim().length>=3;
   const open=(slug:string,number?:number)=>navigation.navigate(number?'Hadith Detail':'Hadith Collection',number?{slug,number}:{slug});
-  return <Page><ToolBar title={T('Hadith')} navigation={navigation}/><ScrollView keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
+  return <Page><ToolBar tool="Hadith" title={T('Hadith')} navigation={navigation}/><ScrollView keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
     <ToolGraphic tool="Hadith" size={81}/>
     <Text style={s.dataTitle}>{T('Hadith')}</Text>
 
@@ -10991,7 +11003,7 @@ function BackupScreen({ navigation }: any) {
       autoCorrect={false} placeholder={T(label)} placeholderTextColor={C.muted}
       style={s.backupInput} accessibilityLabel={T(label)} />;
 
-  return <Page><ToolBar title={T('Backup')} navigation={navigation} />
+  return <Page><ToolBar tool="Backup" title={T('Backup')} navigation={navigation} />
     <ScrollView {...SCROLL} contentContainerStyle={s.dataPage} keyboardShouldPersistTaps="handled">
       <Text style={s.dataTitle}>{T('An encrypted copy of everything')}</Text>
       <Text style={s.intro}>{T('Your worship, memorisation, notes, fasting and Qada are sealed with a password you choose. The password is never written down and cannot be recovered — not by this app, and not by anyone else.')}</Text>
@@ -11168,7 +11180,7 @@ function StorageScreen({navigation}:any){
   const total=rows.reduce((n,r)=>n+r.bytes,0);
   const largest=rows.reduce((m,r)=>Math.max(m,r.bytes),1);
 
-  return <Page><ToolBar title={T('Storage')} navigation={navigation}/>
+  return <Page><ToolBar tool="Storage" title={T('Storage')} navigation={navigation}/>
     <ScrollView {...SCROLL} contentContainerStyle={s.dataPage}>
       <ToolGraphic tool="Storage" size={81}/>
       <Text style={s.dataTitle}>{T('What the app is holding')}</Text>
@@ -14294,7 +14306,7 @@ surahCard:{width:'100%',minHeight:64,backgroundColor:C.card,borderRadius:16,bord
      read back as nothing at all - the picture comes out empty. Being off the
      top of the screen is what hides it, so the opacity has to stay at 1 and
      the position is what keeps it unseen. */
-  offscreenCard:{position:'absolute',top:-100000,left:0,opacity:1},readerName:{color:C.ink,fontSize:16,fontFamily:'DMSans_700Bold'},readerProgress:{height:4,backgroundColor:C.mint,overflow:'hidden'},readerScroll:{width:'100%',maxWidth:860,alignSelf:'center',padding:16,paddingBottom:BOTTOM_RESERVE},surahHead:{borderRadius:28,padding:24,alignItems:'center',...shadow},surahHeadAr:{color:C.onAccent,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:38,marginTop:16,writingDirection:'rtl'},surahHeadEn:{color:C.onAccent,fontSize:10,marginTop:4},bismillah:{color:C.onAccent,fontFamily:'KFGQPCUthmanicHafs',fontSize:22,marginTop:24,writingDirection:'rtl'},ayahContinuous:{marginTop:4,borderRadius:4,borderBottomWidth:1,shadowOpacity:0,elevation:0},ayahSelected:{borderColor:C.gold,borderWidth:2,backgroundColor:C.card},ayahActions:{flexDirection:'row',alignItems:'center',gap:6,marginLeft:-4},ayahFooter:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginTop:12},ayah:{backgroundColor:C.white,borderRadius:24,padding:20,marginTop:12,borderWidth:1,borderColor:C.line,...soft},ayahTop:{flexDirection:'row',alignItems:'center',justifyContent:'space-between'},ayahNo:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold',backgroundColor:C.mint,paddingHorizontal:8,paddingVertical:8,borderRadius:12},ayahAr:{color:C.ink,textAlign:'right',fontFamily:'KFGQPCUthmanicHafs',fontSize:30,lineHeight:58,marginTop:16,writingDirection:'rtl'},ayahTranslation:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:14,lineHeight:20,marginTop:16,paddingTop:16,borderTopWidth:1,borderColor:C.line},ayahMeta:{color:C.muted,fontSize:10,marginTop:12},
+  offscreenCard:{position:'absolute',top:-100000,left:0,opacity:1},readerName:{flex:1,color:C.ink,fontSize:16,fontFamily:'DMSans_700Bold'},readerProgress:{height:4,backgroundColor:C.mint,overflow:'hidden'},readerScroll:{width:'100%',maxWidth:860,alignSelf:'center',padding:16,paddingBottom:BOTTOM_RESERVE},surahHead:{borderRadius:28,padding:24,alignItems:'center',...shadow},surahHeadAr:{color:C.onAccent,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:38,marginTop:16,writingDirection:'rtl'},surahHeadEn:{color:C.onAccent,fontSize:10,marginTop:4},bismillah:{color:C.onAccent,fontFamily:'KFGQPCUthmanicHafs',fontSize:22,marginTop:24,writingDirection:'rtl'},ayahContinuous:{marginTop:4,borderRadius:4,borderBottomWidth:1,shadowOpacity:0,elevation:0},ayahSelected:{borderColor:C.gold,borderWidth:2,backgroundColor:C.card},ayahActions:{flexDirection:'row',alignItems:'center',gap:6,marginLeft:-4},ayahFooter:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginTop:12},ayah:{backgroundColor:C.white,borderRadius:24,padding:20,marginTop:12,borderWidth:1,borderColor:C.line,...soft},ayahTop:{flexDirection:'row',alignItems:'center',justifyContent:'space-between'},ayahNo:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold',backgroundColor:C.mint,paddingHorizontal:8,paddingVertical:8,borderRadius:12},ayahAr:{color:C.ink,textAlign:'right',fontFamily:'KFGQPCUthmanicHafs',fontSize:30,lineHeight:58,marginTop:16,writingDirection:'rtl'},ayahTranslation:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:14,lineHeight:20,marginTop:16,paddingTop:16,borderTopWidth:1,borderColor:C.line},ayahMeta:{color:C.muted,fontSize:10,marginTop:12},
  translationRow:{minHeight:67,flexDirection:'row',alignItems:'center',gap:12,paddingHorizontal:12,borderBottomWidth:1,borderColor:C.line},languageBadge:{width:52,height:34,borderRadius:12,backgroundColor:C.mint,alignItems:'center',justifyContent:'center',flexDirection:'row',gap:4},languageFlag:{fontSize:12},languageBadgeText:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10},historyHead:{flexDirection:'row',alignItems:'center',justifyContent:'space-between'},historyWrap:{flexDirection:'row',flexWrap:'wrap',gap:8,marginBottom:12},historyChip:{backgroundColor:C.mint,borderRadius:16,paddingHorizontal:12,paddingVertical:8},searchResult:{backgroundColor:C.white,borderRadius:20,padding:16,marginBottom:8,borderWidth:1,borderColor:C.line},noteText:{color:C.ink,fontFamily:'Newsreader_600SemiBold',fontSize:17,lineHeight:24,marginVertical:8},noteInput:{minHeight:180,backgroundColor:C.white,borderRadius:20,padding:16,textAlignVertical:'top',fontFamily:'DMSans_400Regular',fontSize:14,color:C.ink,borderWidth:1,borderColor:C.line,outlineStyle:'none'} as any,stepper:{backgroundColor:C.white,borderRadius:20,padding:12,flexDirection:'row',alignItems:'center',justifyContent:'space-between',borderWidth:1,borderColor:C.line},stepButton:{width:44,height:44,borderRadius:16,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},fontPreview:{backgroundColor:C.mint,borderRadius:20,padding:16,marginTop:12,borderWidth:1,borderColor:C.line},fontPreviewText:{color:C.ink,textAlign:'right',lineHeight:52,includeFontPadding:false},previewArabic:{color:C.ink,fontFamily:'KFGQPCUthmanicHafs',writingDirection:'rtl'},referenceNavigator:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:12,marginBottom:12},referenceInput:{width:100,textAlign:'center',backgroundColor:C.white,borderWidth:1,borderColor:C.line,borderRadius:16,padding:12,color:C.ink,fontFamily:'DMSans_700Bold',outlineStyle:'none'} as any,comparisonHelp:{color:C.muted,fontSize:10,lineHeight:15,marginTop:8},editionPicker:{gap:8,marginTop:12},editionChip:{minHeight:58,backgroundColor:C.white,borderRadius:16,paddingHorizontal:12,flexDirection:'row',alignItems:'center',gap:12,borderWidth:1,borderColor:C.line},editionChipActive:{borderColor:C.green,backgroundColor:C.mint},editionFlag:{fontSize:20},arabicReference:{backgroundColor:C.yellow,borderRadius:24,padding:20,marginTop:16,borderWidth:1,borderColor:C.gold},comparisonColumns:{gap:12,paddingVertical:12,paddingRight:20},comparisonText:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:13,lineHeight:20,marginTop:12},mushafPage:{width:'100%',maxWidth:900,alignSelf:'center',paddingHorizontal:18,paddingTop:22,paddingBottom:BOTTOM_RESERVE},mushafNav:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:12},mushafNavFoot:{marginTop:18},pageJump:{flex:1,minWidth:0,alignItems:'center'},pageInput:{minWidth:74,textAlign:'center',color:C.ink,fontFamily:'Newsreader_600SemiBold',fontSize:28,borderBottomWidth:1,borderColor:C.line,paddingVertical:4,outlineStyle:'none'} as any,pageProgress:{height:5,borderRadius:4,backgroundColor:C.mint,overflow:'hidden',marginVertical:16},mushafSheet:{backgroundColor:C.card,borderRadius:24,padding:20,borderWidth:1,borderColor:C.gold,...soft},
   /* long-press verse menu: sits entirely above the verse it belongs to, so it
      never covers the line you are reading */
