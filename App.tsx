@@ -1497,14 +1497,25 @@ const TOOL_IMAGES_PALESTINE: Record<string, any> = {
 
   /* The rite-by-rite drawings the Umrah and Hajj journeys put beside each
      step. These are keyed by icon name rather than by screen title, which is
-     why they are quoted lowercase here while the cards above are not. Four of
-     the five have arrived; Tawaf is held back until its light drawing does,
-     so it is either fully Palestine like its neighbours or not at all, rather
-     than dark alone with the light theme falling through. */
+     why they are quoted lowercase here while the cards above are not. Tawaf
+     arrived with only its dark drawing and was left out until the light one
+     turned up, so that it would not be Palestinian in one theme and Islamic
+     in the other; both halves are here now. */
   'ritual-ihram': require('./assets/tool-icons/ritual-ihram-palestine.png'),
+  'ritual-tawaf': require('./assets/tool-icons/ritual-tawaf-palestine.png'),
   'ritual-sai': require('./assets/tool-icons/ritual-sai-palestine.png'),
   'ritual-shave-or-trim-hair': require('./assets/tool-icons/ritual-shave-or-trim-hair-palestine.png'),
   'pray-rakah': require('./assets/tool-icons/pray-rakah-palestine.png'),
+
+  /* Giving, dhikr, the voluntary prayers and the private journal. Zakat here
+     is the calculator on the tools grid; 'Zakat al-Fitr' further up is the
+     Ramadan guide, and the two are different screens with different art, so
+     they deliberately do not share a drawing. */
+  Zakat: require('./assets/tool-icons/zakat-palestine.png'),
+  Sadaqah: require('./assets/tool-icons/sadaqah-palestine.png'),
+  Tasbih: require('./assets/tool-icons/tasbih-palestine.png'),
+  'Sunnah Prayers': require('./assets/tool-icons/sunnah-prayers-palestine.png'),
+  Journal: require('./assets/tool-icons/journal-palestine.png'),
 
 };
 const TOOL_IMAGES_PALESTINE_DARK: Record<string, any> = {
@@ -1564,12 +1575,19 @@ const TOOL_IMAGES_PALESTINE_DARK: Record<string, any> = {
   Umrah: require('./assets/tool-icons/umrah-dark-palestine.png'),
   Hajj: require('./assets/tool-icons/hajj-dark-palestine.png'),
 
-  /* The same four journey steps, in the dark Palestine set. Tawaf waits for
-     its light counterpart so the two themes cannot disagree about it. */
+  /* The same journey steps, in the dark Palestine set. */
   'ritual-ihram': require('./assets/tool-icons/ritual-ihram-dark-palestine.png'),
+  'ritual-tawaf': require('./assets/tool-icons/ritual-tawaf-dark-palestine.png'),
   'ritual-sai': require('./assets/tool-icons/ritual-sai-dark-palestine.png'),
   'ritual-shave-or-trim-hair': require('./assets/tool-icons/ritual-shave-or-trim-hair-dark-palestine.png'),
   'pray-rakah': require('./assets/tool-icons/pray-rakah-dark-palestine.png'),
+
+  /* The same five, in the dark Palestine set. */
+  Zakat: require('./assets/tool-icons/zakat-dark-palestine.png'),
+  Sadaqah: require('./assets/tool-icons/sadaqah-dark-palestine.png'),
+  Tasbih: require('./assets/tool-icons/tasbih-dark-palestine.png'),
+  'Sunnah Prayers': require('./assets/tool-icons/sunnah-prayers-dark-palestine.png'),
+  Journal: require('./assets/tool-icons/journal-dark-palestine.png'),
 
 };
 /**
