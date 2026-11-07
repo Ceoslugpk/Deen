@@ -2,6 +2,7 @@ import { useEffect, useMemo } from 'react';
 import { Animated, Easing, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useCalmMotion } from '../design/useCalmMotion';
 import type { Ambience } from '../services/ambience';
+import { Flake, type FlakeShape } from './FlakeShape';
 import { paletteFor, pick, rnd } from './particles';
 
 /**
@@ -37,13 +38,12 @@ import { paletteFor, pick, rnd } from './particles';
  * a screen nobody is on.
  */
 
-/** Seconds for one pass, the width and height in points, and so on. */
 type Spec = {
   count: number;
   /** Seconds for one crossing. Slow on purpose. */
   span: number;
-  width: [number, number];
-  height: [number, number];
+  /** Points across. Big enough that the shape can be read, not just seen. */
+  size: [number, number];
   /** Sideways travel at the widest point of the sway, in points. */
   sway: number;
   /** Total turn over one crossing, in degrees. */
@@ -51,25 +51,26 @@ type Spec = {
   opacity: [number, number];
   /** 1 falls, -1 rises. */
   direction: 1 | -1;
-  shape: 'round' | 'ribbon' | 'mixed';
+  shape: FlakeShape;
 };
 
 const SPECS: Record<Exclude<Ambience, 'confetti'>, Spec> = {
-  /* Snow: small, round, barely turning, drifting. The fastest of the four
-     because snow that crawls looks like dust. */
-  snow: { count: 18, span: 15, width: [4, 8], height: [4, 8], sway: 26, spin: 40, opacity: [0.6, 0.9], direction: 1, shape: 'round' },
-  /* Petals: elongated, and they turn as they go, so they catch the eye more
-     than snow does at the same speed and are given fewer of them. */
-  petals: { count: 14, span: 18, width: [5, 9], height: [7, 13], sway: 46, spin: 360, opacity: [0.5, 0.75], direction: 1, shape: 'ribbon' },
-  /* Summer: the one effect that rises. Not a weather effect at all — heat
-     and light have no picture, so this is dust in a shaft of sun, going up
-     rather than coming down. The slowest and faintest of the four. */
-  motes: { count: 14, span: 22, width: [3, 6], height: [3, 6], sway: 18, spin: 0, opacity: [0.35, 0.6], direction: -1, shape: 'round' },
-  /* Autumn: the tumble. Wide sway, heavy spin, mid-size pieces. */
-  leaves: { count: 14, span: 14, width: [7, 12], height: [7, 12], sway: 40, spin: 540, opacity: [0.6, 0.85], direction: 1, shape: 'mixed' },
-  /* Ramadan: warm light settling, slower and rounder than the burst it sits
-     beside for the rest of the year. */
-  ramadan: { count: 14, span: 20, width: [4, 7], height: [4, 7], sway: 30, spin: 0, opacity: [0.45, 0.7], direction: 1, shape: 'round' },
+  /* Snow: a real flake, and it is given room to be one — at four points a
+     snowflake is a dot and might as well be a circle. It barely turns,
+     because snow does not. */
+  snow: { count: 18, span: 15, size: [7, 13], sway: 26, spin: 40, opacity: [0.6, 0.9], direction: 1, shape: 'snow' },
+  /* Petals: pointed at one end, round at the other, and they turn as they
+     go. Fewer of them than snow because they catch the eye more. */
+  petals: { count: 14, span: 18, size: [9, 15], sway: 46, spin: 360, opacity: [0.5, 0.75], direction: 1, shape: 'petal' },
+  /* Summer: the one effect that rises. Not weather at all — heat and light
+     have no silhouette, so this is dust in a shaft of sun, going up rather
+     than coming down. A dot, and the slowest and faintest of the four. */
+  motes: { count: 14, span: 22, size: [3, 6], sway: 18, spin: 0, opacity: [0.35, 0.6], direction: -1, shape: 'dot' },
+  /* Autumn: two leaf shapes, so a fall of them is not fourteen copies of
+     one silhouette, and a wide tumble to carry them down. */
+  leaves: { count: 14, span: 14, size: [10, 17], sway: 40, spin: 540, opacity: [0.6, 0.85], direction: 1, shape: 'leaf' },
+  /* Ramadan: warm light settling. A dot again, because light has no shape. */
+  ramadan: { count: 14, span: 20, size: [4, 7], sway: 30, spin: 0, opacity: [0.45, 0.7], direction: 1, shape: 'dot' },
 };
 
 type Piece = {
@@ -79,37 +80,31 @@ type Piece = {
   sway: number;
   spin: number;
   duration: number;
-  width: number;
-  height: number;
-  radius: number;
+  size: number;
   opacity: number;
   color: string;
+  /** Which leaf, when there is more than one. */
+  variant: number;
   progress: Animated.Value;
 };
 
 function makePieces(spec: Spec, palette: string[]): Piece[] {
-  return Array.from({ length: spec.count }, (_unused, key) => {
-    const shape = spec.shape === 'mixed' ? (Math.random() < 0.45 ? 'round' : 'ribbon') : spec.shape;
-    const width = rnd(spec.width[0], spec.width[1]);
-    const height = shape === 'ribbon' ? rnd(spec.height[0], spec.height[1]) : width;
-    return {
-      key,
-      left: rnd(0.02, 0.95),
-      /* Spread across the whole pass, so the pieces do not arrive in a
-         wave. Each also runs at its own pace, so any drift into step
-         pulls itself apart within a pass or two. */
-      delay: rnd(0, 1) * spec.span * 1000,
-      sway: rnd(spec.sway * 0.4, spec.sway),
-      spin: spec.spin ? rnd(spec.spin * 0.5, spec.spin * 1.5) : 0,
-      duration: Math.round(spec.span * rnd(0.8, 1.25) * 1000),
-      width,
-      height,
-      radius: shape === 'round' ? width / 2 : Math.min(width, height) / 2,
-      opacity: rnd(spec.opacity[0], spec.opacity[1]),
-      color: pick(palette),
-      progress: new Animated.Value(0),
-    };
-  });
+  return Array.from({ length: spec.count }, (_unused, key) => ({
+    key,
+    left: rnd(0.02, 0.95),
+    /* Spread across the whole pass, so the pieces do not arrive in a wave.
+       Each also runs at its own pace, so any drift into step pulls itself
+       apart within a pass or two. */
+    delay: rnd(0, 1) * spec.span * 1000,
+    sway: rnd(spec.sway * 0.4, spec.sway),
+    spin: spec.spin ? rnd(spec.spin * 0.5, spec.spin * 1.5) : 0,
+    duration: Math.round(spec.span * rnd(0.8, 1.25) * 1000),
+    size: rnd(spec.size[0], spec.size[1]),
+    opacity: rnd(spec.opacity[0], spec.opacity[1]),
+    color: pick(palette),
+    variant: Math.floor(Math.random() * 2),
+    progress: new Animated.Value(0),
+  }));
 }
 
 export function SeasonalField({
@@ -139,6 +134,9 @@ export function SeasonalField({
           toValue: 1,
           duration: piece.duration,
           delay: piece.delay,
+          /* Linear, and it matters: the default is an ease in and out, which
+             would slow every piece at the top and bottom of its pass and
+             make a continuous fall stutter twice a cycle. */
           easing: Easing.linear,
           useNativeDriver: true,
         }),
@@ -163,9 +161,54 @@ export function SeasonalField({
       importantForAccessibility="no-hide-descendants"
     >
       {pieces.map((piece) => {
-        const beyond = piece.height + 8;
+        const beyond = piece.size + 8;
         const from = spec.direction === 1 ? -beyond : height + beyond;
         const to = spec.direction === 1 ? height + beyond : -beyond;
+        const motion = [
+          {
+            translateY: piece.progress.interpolate({
+              inputRange: [0, 1],
+              outputRange: [from, to],
+            }),
+          },
+          {
+            /* Sampled rather than a second animation: out and back and home
+               again, so the loop joins itself without a visible seam. */
+            translateX: piece.progress.interpolate({
+              inputRange: [0, 0.25, 0.5, 0.75, 1],
+              outputRange: [0, piece.sway, 0, -piece.sway, 0],
+            }),
+          },
+          {
+            rotate: piece.progress.interpolate({
+              inputRange: [0, 1],
+              outputRange: ['0deg', `${piece.spin}deg`],
+            }),
+          },
+        ];
+
+        /* A dot is a view and stays one. Giving summer and Ramadan a
+           silhouette would be worse, and this keeps two of the five effects
+           off the vector renderer entirely. */
+        if (spec.shape === 'dot') {
+          return (
+            <Animated.View
+              key={piece.key}
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: piece.left * width,
+                width: piece.size,
+                height: piece.size,
+                borderRadius: piece.size / 2,
+                backgroundColor: piece.color,
+                opacity: piece.opacity,
+                transform: motion,
+              }}
+            />
+          );
+        }
+
         return (
           <Animated.View
             key={piece.key}
@@ -173,36 +216,14 @@ export function SeasonalField({
               position: 'absolute',
               top: 0,
               left: piece.left * width,
-              width: piece.width,
-              height: piece.height,
-              borderRadius: piece.radius,
-              backgroundColor: piece.color,
+              width: piece.size,
+              height: piece.size,
               opacity: piece.opacity,
-              transform: [
-                {
-                  translateY: piece.progress.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [from, to],
-                  }),
-                },
-                {
-                  /* Sampled rather than a second animation: out and back
-                     and home again, so the loop joins itself without a
-                     visible jump at the seam. */
-                  translateX: piece.progress.interpolate({
-                    inputRange: [0, 0.25, 0.5, 0.75, 1],
-                    outputRange: [0, piece.sway, 0, -piece.sway, 0],
-                  }),
-                },
-                {
-                  rotate: piece.progress.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: ['0deg', `${piece.spin}deg`],
-                  }),
-                },
-              ],
+              transform: motion,
             }}
-          />
+          >
+            <Flake shape={spec.shape} size={piece.size} color={piece.color} variant={piece.variant} />
+          </Animated.View>
         );
       })}
     </View>
