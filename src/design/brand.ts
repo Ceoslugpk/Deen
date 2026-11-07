@@ -499,7 +499,7 @@ export const GLASS = {
         Kept light: expo-blur's own tint is already doing most of the
         frosting, and a tab bar has to keep five labels readable over
         whatever happens to be behind it. */
-    wash:      alpha(BRAND.pearl, 0.12),
+    wash:      alpha(BRAND.pearl, 0.20),
     /** Specular sheen across the top edge, fading out by the middle. */
     sheen:     [alpha(WHITE, 0.50), alpha(WHITE, 0)] as [string, string],
     /** The hairline: bright where the light falls, dim underneath. */
@@ -511,7 +511,7 @@ export const GLASS = {
     pillRim:   alpha(WHITE, 0.90),
   },
   dark: {
-    wash:      alpha(BRAND.midnightInk, 0.10),
+    wash:      alpha(BRAND.midnightInk, 0.16),
     sheen:     [alpha(WHITE, 0.13), alpha(WHITE, 0)] as [string, string],
     rimTop:    alpha(BRAND.pearl, 0.34),
     rimSide:   alpha(BRAND.pearl, 0.14),
@@ -545,7 +545,7 @@ export const GLASS_INTENSITY = {
   bar:  { light: 46, dark: 42 },
   /** A card. It sits on the flat page rather than over scrolling content,
       so it can be a touch more open than the bar for the same legibility. */
-  card: { light: 42, dark: 38 },
+  card: { light: 72, dark: 66 },
 } as const;
 
 /**
@@ -564,4 +564,4 @@ export const GLASS_INTENSITY = {
  * card read as glass on a flat ground is the edge: this, plus the brightened
  * rim, plus the shadow it already had.
  */
-export const GLASS_FILL = { light: 0.70, dark: 0.66 } as const;
+export const GLASS_FILL = { light: 0.66, dark: 0.62 } as const;
