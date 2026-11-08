@@ -27,6 +27,7 @@ export const PRAYER_NAMES = ['Fajr', 'Sunrise', 'Dhuhr', 'Asr', 'Maghrib', 'Isha
 
 /** The six methods the app offers, by the id Settings stores. */
 export const CALCULATION_METHODS: { id: number; name: string; ar: string }[] = [
+  { id: 9, name: 'UAE (IACAD)', ar: 'الإمارات (الشؤون الإسلامية)' },
   { id: 8, name: 'Gulf Region', ar: 'منطقة الخليج' },
   { id: 4, name: 'Umm al-Qura', ar: 'أم القرى' },
   { id: 3, name: 'Muslim World League', ar: 'رابطة العالم الإسلامي' },
@@ -40,15 +41,27 @@ export function methodName(id: number): string {
 }
 
 /**
- * AlAdhan's "Gulf Region" is not `adhan`'s `Dubai()`.
+ * AlAdhan's "Gulf Region" and `adhan`'s `Dubai()` are two different rules, and
+ * only one of them is what the UAE publishes.
  *
- * This one is worth a paragraph because it is the default for this app and it
- * is wrong in the obvious way. `Dubai()` is Fajr 18.2° with Isha at 18.2°.
- * The Gulf Region method — method 8, the one everybody in the Gulf actually
- * follows — is Fajr 19.5° with Isha a flat **90 minutes after Maghrib**. On a
- * day in Abu Dhabi the preset is twelve minutes out at Isha and six at Fajr,
- * which is not a rounding difference, it is a different rule. So it is built
- * by hand from the published angles instead.
+ * This is worth a paragraph because it is the default for this app and it was
+ * settled the wrong way round once. `Dubai()` is Fajr 18.2° with Isha at
+ * 18.2°. Gulf Region is Fajr 19.5° with Isha a flat **90 minutes after
+ * Maghrib** — a generic approximation that is quoted for the Gulf as a whole
+ * and does not reproduce any single authority's timetable exactly.
+ *
+ * Which is which was settled by reading the timetable IACAD publishes for
+ * Dubai, not by comparing one calculator with another, which only ever shows
+ * whether two programs agree. On 8 November 2026 the official page gives Fajr
+ * 05:11 and Isha 18:53. Working the sun's altitude back from those times gives
+ * -18.3° at Fajr and -18.1° at Isha: the 18.2° rule, to within the minute the
+ * published table is rounded to. The same two clock times under the Gulf rule
+ * come out 05:06 and 19:04 — five minutes early at Fajr and eleven late at
+ * Isha, which is not a rounding difference, it is a different rule.
+ *
+ * Both are offered. Gulf stays the default, because it is the conventional
+ * choice across the Gulf and most readers are not in the UAE; the UAE's own is
+ * there for anyone who wants to match the timetable their mosque prints.
  */
 function parameters(method: number, school: 'shafi' | 'hanafi'): CalculationParameters {
   let params: CalculationParameters;
@@ -60,6 +73,10 @@ function parameters(method: number, school: 'shafi' | 'hanafi'): CalculationPara
       params.ishaInterval = 90;
       break;
     }
+    /* The UAE's own, checked against the timetable IACAD publishes for Dubai
+       rather than against another calculator. See the note above: this is the
+       one the official times are made with, which is why it is offered. */
+    case 9: params = CalculationMethod.Dubai(); break;
     case 4: params = CalculationMethod.UmmAlQura(); break;
     case 3: params = CalculationMethod.MuslimWorldLeague(); break;
     case 5: params = CalculationMethod.Egyptian(); break;

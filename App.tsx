@@ -381,8 +381,15 @@ const MUSHAF_MIN_SIZE = 9;
 const MUSHAF_MAX_SIZE = 52;
 /** Leading, as a proportion of the script size. */
 const MUSHAF_LEAD = 1.48;
-/** How much of the page's room the text is asked to fill. */
-const MUSHAF_FILL = 0.97;
+/**
+ * How many lines a page carries. Fifteen is the Madinah mushaf: the same
+ * fifteen on all six hundred and four pages, which is what makes a page read
+ * as a page. The script size is solved to land on this count rather than the
+ * count being whatever fills the box.
+ */
+const MUSHAF_LINES = 15;
+/** How many times the solve may move the size before it takes what it has. */
+const MUSHAF_PASSES = 4;
 
 let C: Record<string, string> = { ...C_LIGHT };
 /** The palette built into the sheet right now, so a swap happens only once. */
@@ -4506,34 +4513,24 @@ function MushafConnectionNote({ kind, rtl, T, language, page, cut, nextVerse }: 
 }
 
 /**
- * One page, drawn at a given size.
- *
- * The size is passed in rather than measured, because how big a page should be
- * is decided once for the whole opening by `computeMushafLayout`, and every page
- * in the opening is then the same size. Letting each page decide for itself
- * would let the two halves of a spread drift apart.
- */
-/**
  * One page of the mushaf.
  *
- * A printed page is a fixed amount of room holding a variable amount of text:
- * one page of the Quran carries three hundred characters and another carries
- * twelve hundred. Setting the script at one size and hoping is what made this
- * screen cut pages in half — the short ones came out half empty and the dense
- * ones ran off the bottom and were clipped.
+ * The Madinah mushaf carries fifteen lines to a page, and the same fifteen on
+ * all six hundred and four of them. That is the whole of what makes a page
+ * read as a page rather than as a column of prose: the eye meets the same
+ * shape on every turn, and the script holds its size from page to page.
  *
- * So the size is solved for rather than chosen. The height a block of text
- * occupies grows with the square of the type size: double the size and you get
- * twice as many lines, each of them twice as tall. That means a single
- * measurement at one size is enough to work out the size that fills the page,
- * and a second pass corrects for the rounding that natural word breaking
- * introduces. Dense pages land smaller, sparse pages larger, and nothing is
- * ever cut off.
+ * So the solve here is not "make the text fill the box", which is what it used
+ * to be. Filling the box let one page run to eleven lines and the next to
+ * nineteen, at whatever size happened to fit, and two pages either side of a
+ * turn did not look like the same book. It is "find the size at which this
+ * page's text falls into fifteen lines". Because the verses for a page are the
+ * verses the Complex itself set on that page, that size lands in a narrow band
+ * across the whole book, and a page solved this way fills itself.
  *
- * The verses are set as one continuous text rather than one block each, which
- * is how a mushaf is actually typeset: a verse does not start a new line
- * merely because the one before it finished. Verse ends are marked inline with
- * the aya sign, as they are on the page.
+ * The lines are then justified. A mushaf is set flush to both margins, and the
+ * ragged centre this used to carry is the single thing that most made it read
+ * as ordinary text rather than as a page of the Quran.
  */
 function MushafPage({ page, verses, width, height, preferences, rtl, T, bookmarks, savedPosition,
   onBookmark, onMark, onPlay, onNote, before }: any) {
@@ -4566,7 +4563,15 @@ function MushafPage({ page, verses, width, height, preferences, rtl, T, bookmark
     return out;
   }, [verses, before, enabled]);
 
-  const [size, setSize] = useState(18);
+  /* Where the solve starts: the size at which fifteen lines would exactly fill
+     the room there is. The headings and the page number will take some of that
+     room, so this runs a little large, but on a page carrying a normal amount
+     of text it is within a point or two of the answer and the solve lands on
+     the first or second pass. */
+  const seedSize = useCallback(() => Math.max(MUSHAF_MIN_SIZE,
+    Math.min(MUSHAF_MAX_SIZE, contentH / (MUSHAF_LINES * MUSHAF_LEAD))), [contentH]);
+
+  const [size, setSize] = useState(seedSize);
   const [textH, setTextH] = useState(0);
   const [totalH, setTotalH] = useState(0);
   const [pass, setPass] = useState(0);
@@ -4583,78 +4588,86 @@ function MushafPage({ page, verses, width, height, preferences, rtl, T, bookmark
      the script is, so they are whatever the column measures minus what the
      text measures. */
   const chromeH = Math.max(0, totalH - textH);
-  /* How full the page should be. The page is a fixed object, so this is a
-     near-constant: it keeps the small margin at the foot that a printed page
-     keeps. The reader's size preference is allowed to move it a little, but
-     only a little — it belongs to the card reader, and letting it run free
-     could leave a page of the Quran half empty. */
-  const fill = MUSHAF_FILL * Math.min(1, Math.max(0.85, (preferences.fontSize || 30) / 30));
-  const budget = Math.max(40, (contentH - chromeH) * fill);
+  const budget = Math.max(40, contentH - chromeH);
 
-  const [settledH, setSettledH] = useState(0);
-  /* Whether the solve has finished, and the page may be seen.
-     It finishes three ways, and the second is the one that was being missed:
-     the size lands inside the page, the size stops moving, or it runs out of
-     passes. A page carrying very little text on a large screen asks for more
-     size than there is, stops at the largest size there is, and stops asking —
-     which is a finished solve, not a failed one. Counting only the first and
-     the last left those pages invisible for good, which is how a mushaf came
-     to have pages missing from it. */
-  const [settledFlag, setSettledFlag] = useState(false);
+  /* Whether the solve has finished, and the page may be seen. It finishes
+     three ways: the count lands on fifteen, the size stops moving, or it runs
+     out of passes. A page carrying very little text — the opening of a short
+     surah, say — asks for more size than there is, stops at the largest size
+     there is, and stops asking, which is a finished solve and not a failed
+     one. Counting only the first and the last left such pages invisible for
+     good, which is how a mushaf came to have pages missing from it. */
+  const [settled, setSettled] = useState(false);
 
   useEffect(() => {
     if (!textH) return;
-    if (pass >= 3) { setSettledFlag(true); if (settledH !== textH) setSettledH(textH); return; }
-    const ratio = budget / textH;
-    if (Math.abs(ratio - 1) < 0.03) { setSettledFlag(true); if (settledH !== textH) setSettledH(textH); return; }
-    const next = Math.max(MUSHAF_MIN_SIZE, Math.min(MUSHAF_MAX_SIZE, size * Math.sqrt(ratio)));
-    if (Math.abs(next - size) < 0.4) { setSettledFlag(true); if (settledH !== textH) setSettledH(textH); return; }
-    segH.current = {}; setTextH(0); setPass(n => n + 1); setSize(next);
-  }, [textH, budget, size, pass, settledH]);
+    /* How many lines the text fell into at the size it was given. The leading
+       is a known proportion of the size while the solve runs, so the count is
+       the measured height divided by that. */
+    const lines = textH / (size * MUSHAF_LEAD);
+    /* The largest script a page can carry: the size at which fifteen lines
+       would exactly fill the room there is. Above this a page cannot hold
+       fifteen lines and stay on the page, so it is a ceiling, not a target. */
+    const cap = budget / (MUSHAF_LINES * MUSHAF_LEAD);
 
-  /* Turning the page starts the solve again from where the last one left off,
-     which is quicker than starting from a guess. */
-  useEffect(() => { setPass(0); setSettledFlag(false); }, [page, verses, width, height]);
+    /* Landed on fifteen. */
+    if (Math.abs(lines - MUSHAF_LINES) < 0.4) { setSettled(true); return; }
+    /* At the ceiling and still carrying fewer than fifteen. This is a page
+       that cannot hold fifteen lines at any size that fits — the opening of a
+       short surah, or the last page, which carries a third of the text of a
+       full one. It is done: its leading will take up the slack. Without this
+       the solve asks for a larger script, is refused by the ceiling, and asks
+       again until it runs out of passes — which is how a page that could only
+       ever have been settled came to arrive late and at the wrong size. */
+    if (size >= cap - 0.5 && lines < MUSHAF_LINES) { setSettled(true); return; }
+    if (pass >= MUSHAF_PASSES) { setSettled(true); return; }
+    /* The count goes as the size: a larger script fits fewer words to a line
+       and so needs more lines to say the same thing. So the size moves by the
+       ratio the count is out by. Damped a little, because the count only goes
+       as the size approximately — a verse marker, or a long word that has to
+       start a new line, shifts it off the pure ratio. */
+    const wanted = size * Math.pow(MUSHAF_LINES / Math.max(1, lines), 0.9);
+    const next = Math.max(MUSHAF_MIN_SIZE, Math.min(Math.min(wanted, cap), MUSHAF_MAX_SIZE));
+    if (Math.abs(next - size) < 0.35) { setSettled(true); return; }
+    segH.current = {}; setTextH(0); setPass(n => n + 1); setSize(next);
+  }, [textH, size, pass, budget]);
+
+  /* A new page, or a new shape of page, starts the solve again from the seed
+     rather than from the size the last page happened to land on — a short
+     page solved large, left as the starting guess for a full one, is a long
+     way to climb back down. */
+  useEffect(() => {
+    segH.current = {}; setTextH(0); setPass(0); setSettled(false); setSize(seedSize());
+  }, [page, verses, contentW, contentH]);
 
   /* No page is allowed to stay invisible. If the solve has not finished a
      moment after arriving, the page is shown as it stands rather than left
-     blank — a size slightly off is a smaller wrong than a page that is not
-     there at all. */
+     blank — a line count slightly off is a smaller wrong than a page that is
+     not there at all. */
   useEffect(() => {
-    if (settledFlag) return;
-    const t = setTimeout(() => setSettledFlag(true), 900);
+    if (settled) return;
+    const t = setTimeout(() => setSettled(true), 900);
     return () => clearTimeout(t);
-  }, [settledFlag, page]);
+  }, [settled, page]);
 
-  /* Normally the leading is a fixed proportion of the size. Where the size has
-     run into one of its bounds — a page carrying very little text on a large
-     screen — the lines are spread instead, so the page still reads as full
-     rather than ending halfway down. */
-  const probeLines = settledH ? Math.max(1, Math.round(settledH / (size * MUSHAF_LEAD))) : 0;
-  const atBound = size >= MUSHAF_MAX_SIZE - 0.01 || size <= MUSHAF_MIN_SIZE + 0.01;
-  let lineHeight = atBound && probeLines
-    ? Math.max(size * 1.25, Math.min(size * 2.4, budget / probeLines))
-    : size * MUSHAF_LEAD;
-  /* However the solve ends, the text must not run past the room it has. If it
-     still would, the lines are drawn closer rather than the page losing its
-     foot. This is the backstop, not the mechanism. */
-  const room = Math.max(40, contentH - chromeH);
-  if (probeLines && probeLines * lineHeight > room) {
-    lineHeight = Math.max(size * 1.2, room / probeLines);
-  }
-  /* And where even the closest leading leaves the text past the foot of the
-     page — a size that landed one line too large, which is easily done on a
-     page carrying little, since one line there is a large step — the size
-     itself comes down. A smaller script cannot need more lines than a larger
-     one, so this cannot overshoot. */
-  let drawnSize = size;
-  if (probeLines && probeLines * size * 1.2 > room) {
-    drawnSize = Math.max(MUSHAF_MIN_SIZE, room / (probeLines * 1.2));
-    lineHeight = Math.max(drawnSize * 1.2, room / probeLines);
-  }
-  /* Until the size has settled the page is measured, not shown, so the text is
-     not seen jumping between sizes while it is being solved for. */
-  const settled = settledFlag;
+  /* The fifteen lines are then given the room there is between them. The
+     leading is free to take up the slack of a page that runs a line short, but
+     only within a little of what the size naturally wants — enough to close a
+     gap, not enough to pull a page out of shape. */
+  /* The lines are then given the room there is between them.
+     The leading follows the lines the page actually has, not the fifteen it
+     was asked for, because a page that cannot reach fifteen — the opening of a
+     short surah, which carries a third of the text of a full one — must spread
+     what it has rather than fill a third of the page and leave the rest bare.
+     It is free to open out to twice the leading the size naturally wants and
+     to close to a little under it, which is the range within which lines still
+     read as lines. */
+  const naturalLead = size * MUSHAF_LEAD;
+  const solvedLines = textH ? Math.max(1, Math.round(textH / naturalLead)) : MUSHAF_LINES;
+  let lineHeight = Math.max(naturalLead * 0.86, Math.min(naturalLead * 2, budget / solvedLines));
+  /* However the solve ends, the text must not run past the foot of the page.
+     This is the backstop, not the mechanism. */
+  if (solvedLines * lineHeight > budget) lineHeight = budget / solvedLines;
 
   const savedKeys = new Set((bookmarks || []).map((b: any) => b.verseKey));
 
@@ -4665,7 +4678,14 @@ function MushafPage({ page, verses, width, height, preferences, rtl, T, bookmark
         {/* Measured without the frame's padding, which the budget already
             allows for — counting it twice here stole about fifty points and
             the script paid for it. */}
-        <View onLayout={e => setTotalH(e.nativeEvent.layout.height)}>
+        {/* The text sits at the head of the page and the page number at the
+            foot of it, with whatever the script did not need left between
+            them. That is where a printed page puts both: a number that
+            followed straight on from the last line would ride up and down the
+            page with how full it happened to be. */}
+        <View style={{ minHeight: contentH, justifyContent: 'space-between' }}
+              onLayout={e => setTotalH(e.nativeEvent.layout.height)}>
+        <View>
         {segments.map((seg: any, idx: number) => seg.kind === 'surah' ? (
           <View key={`s${idx}`} style={s.mushafSurahBand}>
             <View style={s.mushafBandRule} />
@@ -4675,17 +4695,18 @@ function MushafPage({ page, verses, width, height, preferences, rtl, T, bookmark
         ) : seg.kind === 'marker' ? (
           <MushafMarkerBand key={`m${idx}`} marker={seg.marker} width={contentW} />
         ) : (
-          <Text key={`t${idx}`} style={[s.mushafPageLine, { fontSize: drawnSize, lineHeight, width: contentW, opacity: settled ? 1 : 0 }]}
+          <Text key={`t${idx}`} style={[s.mushafPageLine, { fontSize: size, lineHeight, width: contentW, opacity: settled ? 1 : 0 }]}
             onLayout={e => setSegH(idx, e.nativeEvent.layout.height)}>
             {seg.verses.map((v: any) => <Text key={v.verse_key}
               onLongPress={() => setOpenVerse(openVerse === v.verse_key ? null : v.verse_key)}
               onPress={() => openVerse === v.verse_key && setOpenVerse(null)}
               accessibilityLabel={`${T('Verse')} ${v.verse_key}. ${T('Press and hold for actions')}`}
               style={openVerse === v.verse_key ? s.mushafVerseOpen : undefined}>
-              {v.text_uthmani} <Text style={{ fontSize: drawnSize * 0.72 }}>۝{v.verse_key.split(':')[1]}</Text>{' '}
+              {v.text_uthmani} <Text style={{ fontSize: size * 0.72 }}>۝{v.verse_key.split(':')[1]}</Text>{' '}
             </Text>)}
           </Text>
         ))}
+        </View>
         <View style={s.mushafPageNoRow}>
           <View style={s.mushafPageNo}><Text style={s.mushafPageNoText}>{toArabicDigits(page)}</Text></View>
         </View>
@@ -14466,7 +14487,12 @@ mushafOrnamentRow:{flexDirection:'row',alignItems:'center',justifyContent:'cente
 mushafOrnamentRule:{height:1,flex:1,maxWidth:96},
 mushafPageNoRow:{alignItems:'center',marginTop:6},
 mushafPageNo:{width:30,height:30,borderRadius:15,borderWidth:1.2,borderColor:C.gold,alignItems:'center',justifyContent:'center',backgroundColor:C.mint},
-mushafPageNoText:{color:C.green,fontFamily:'Newsreader_700Bold',fontSize:16},mushafAyah:{paddingVertical:12,borderBottomWidth:1,borderColor:C.line},mushafSurah:{textAlign:'center',color:C.green,fontFamily:'Newsreader_600SemiBold',fontSize:20,backgroundColor:C.mint,borderRadius:16,paddingVertical:8,marginBottom:12},verseMarker:{color:C.gold,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:17,writingDirection:'rtl'},mushafTranslation:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:12,lineHeight:18,marginTop:8},sectionMarker:{flexDirection:'row',alignItems:'center',gap:10,marginTop:18,marginBottom:6},sectionRule:{flex:1,height:1,backgroundColor:C.line},sectionMarkerText:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10,textTransform:'uppercase',letterSpacing:1},mushafPageLine:{color:C.ink,textAlign:'center',writingDirection:'rtl'},topicGrid:{flexDirection:'row',flexWrap:'wrap',gap:12},topicWrap:{width:'48%'},topicCard:{minHeight:190,backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},vocabStats:{backgroundColor:C.mint,borderRadius:20,padding:16,marginBottom:12,flexDirection:'row',justifyContent:'space-between',alignItems:'center'},flashcard:{minHeight:330,backgroundColor:C.white,borderRadius:28,padding:24,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,...shadow},flashIndex:{position:'absolute',top:18,right:18,color:C.muted,fontFamily:'DMSans_600SemiBold',fontSize:10},flashArabic:{color:C.ink,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:58,lineHeight:86,textAlign:'center',writingDirection:'rtl'},flashTransliteration:{color:C.green,fontFamily:'Newsreader_600SemiBold',fontSize:28,marginTop:12},flashMeaning:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:18,marginVertical:8,textAlign:'center'},flashHint:{color:C.muted,fontFamily:'DMSans_600SemiBold',fontSize:11,marginTop:16},tajweedPractice:{backgroundColor:C.card,borderRadius:24,padding:20,marginTop:16,borderWidth:1,borderColor:C.line,...surface},tajweedRule:{minHeight:72,flexDirection:'row',alignItems:'center',gap:12,padding:12,borderBottomWidth:1,borderColor:C.line},tajweedSwatch:{width:18,height:44,borderRadius:9},compareCard:{backgroundColor:C.card,borderRadius:20,padding:16,marginBottom:12,borderWidth:1,borderColor:C.line,...surface},
+mushafPageNoText:{color:C.green,fontFamily:'Newsreader_700Bold',fontSize:16},mushafAyah:{paddingVertical:12,borderBottomWidth:1,borderColor:C.line},mushafSurah:{textAlign:'center',color:C.green,fontFamily:'Newsreader_600SemiBold',fontSize:20,backgroundColor:C.mint,borderRadius:16,paddingVertical:8,marginBottom:12},verseMarker:{color:C.gold,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:17,writingDirection:'rtl'},mushafTranslation:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:12,lineHeight:18,marginTop:8},sectionMarker:{flexDirection:'row',alignItems:'center',gap:10,marginTop:18,marginBottom:6},sectionRule:{flex:1,height:1,backgroundColor:C.line},sectionMarkerText:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10,textTransform:'uppercase',letterSpacing:1},/* Flush to both margins, the way a mushaf is set. This was 'center', which
+   left every line ragged at both ends and is the one thing that most made a
+   page read as ordinary text rather than as a page of the Quran. Justified
+   text is set to the last line only by the platform, so a trailing short line
+   stays as it is — which is what the printed page does too. */
+mushafPageLine:{color:C.ink,textAlign:'justify',writingDirection:'rtl'},topicGrid:{flexDirection:'row',flexWrap:'wrap',gap:12},topicWrap:{width:'48%'},topicCard:{minHeight:190,backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},vocabStats:{backgroundColor:C.mint,borderRadius:20,padding:16,marginBottom:12,flexDirection:'row',justifyContent:'space-between',alignItems:'center'},flashcard:{minHeight:330,backgroundColor:C.white,borderRadius:28,padding:24,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,...shadow},flashIndex:{position:'absolute',top:18,right:18,color:C.muted,fontFamily:'DMSans_600SemiBold',fontSize:10},flashArabic:{color:C.ink,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:58,lineHeight:86,textAlign:'center',writingDirection:'rtl'},flashTransliteration:{color:C.green,fontFamily:'Newsreader_600SemiBold',fontSize:28,marginTop:12},flashMeaning:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:18,marginVertical:8,textAlign:'center'},flashHint:{color:C.muted,fontFamily:'DMSans_600SemiBold',fontSize:11,marginTop:16},tajweedPractice:{backgroundColor:C.card,borderRadius:24,padding:20,marginTop:16,borderWidth:1,borderColor:C.line,...surface},tajweedRule:{minHeight:72,flexDirection:'row',alignItems:'center',gap:12,padding:12,borderBottomWidth:1,borderColor:C.line},tajweedSwatch:{width:18,height:44,borderRadius:9},compareCard:{backgroundColor:C.card,borderRadius:20,padding:16,marginBottom:12,borderWidth:1,borderColor:C.line,...surface},
   tcRefBar:{flexDirection:'row',alignItems:'center',gap:10,marginBottom:14},
   tcVerse:{backgroundColor:C.mint,borderRadius:20,padding:16,marginTop:14,borderWidth:1,borderColor:C.line},
   tcSectionLabel:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.2,marginTop:20,marginBottom:8},
