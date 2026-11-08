@@ -3314,6 +3314,11 @@ function HeroCountdown({ raw, rtl, language }: { raw: string; rtl: boolean; lang
  * from a stored value, so it cannot drift from the prayer list, and it
  * rolls past midnight the way the prayer it is counting to does.
  */
+/** The pill's own horizontal padding. The track is measured as the pill's
+    width less this on both sides, so the two have to agree — change the
+    padding in `nextPill` and this follows. */
+const NEXT_PILL_PAD_X = 19;
+
 function NextPrayerPill({ prayer, prayers, language, rtl, still, scrollY }: {
   prayer: Prayer; prayers: Prayer[]; language: any; rtl: boolean; still: boolean; scrollY: Animated.Value;
 }) {
@@ -3354,17 +3359,23 @@ function NextPrayerPill({ prayer, prayers, language, rtl, still, scrollY }: {
      count. */
   const span = Math.max(1, target - from);
   const run = Math.min(1, Math.max(0, (now - from) / span));
-  /* The bar is drawn in measured points rather than as a percentage.
+  /* The bar is drawn in measured points rather than as a percentage, and
+     measured off the pill rather than off the track.
 
-     The pill shrinks to fit its contents — it carries a minWidth and sits
-     in a centred wrapper — so the track's `100%` had no definite width to
-     resolve against, and the fill was then a percentage of that. On the web
-     the browser takes a second pass and the bar appears; on native the
-     fraction collapsed and the fill measured zero, which is why the pill
-     showed its countdown and no bar on Android. Measuring the track once
-     and giving the fill a number makes it identical on every platform and
-     independent of how the pill happens to be sized. */
-  const [trackWidth, setTrackWidth] = useState(0);
+     The pill shrinks to fit its contents — it carries a minWidth and sits in
+     a centred wrapper — so the track's `100%` was a percentage of a width
+     that was itself being decided by the track. On the web the browser takes
+     a second pass and the bar appears; on Android Yoga resolves that against
+     an indefinite parent and yields zero. Measuring the *track* could never
+     fix that, because a track with no width measures zero and the `w > 0`
+     guard then throws the measurement away — which is why the pill showed
+     its countdown and no bar.
+
+     The pill is the one thing here with a definite width, since its own
+     content decides it. Measuring that and subtracting the padding gives
+     the track a real number on every platform. */
+  const [pillWidth, setPillWidth] = useState(0);
+  const trackWidth = Math.max(0, pillWidth - NEXT_PILL_PAD_X * 2);
   const fillWidth = trackWidth > 0 ? Math.round(trackWidth * run * 100) / 100 : 0;
   const left = Math.max(0, Math.floor((target - now) / 1000));
   const hh = Math.floor(left / 3600);
@@ -3378,7 +3389,10 @@ function NextPrayerPill({ prayer, prayers, language, rtl, still, scrollY }: {
   const opacity = scrollY.interpolate({ inputRange: [90, 150], outputRange: [0, 1], extrapolate: 'clamp' });
   const lift = scrollY.interpolate({ inputRange: [90, 150], outputRange: still ? [0, 0] : [-10, 0], extrapolate: 'clamp' });
   return <Animated.View pointerEvents="none" style={[s.nextPillWrap, { opacity, transform: [{ translateY: lift }] }]}>
-    <View style={s.nextPill}>
+    <View style={s.nextPill} onLayout={(e) => {
+      const w = e?.nativeEvent?.layout?.width || 0;
+      if (w > 0) setPillWidth((prev) => (Math.abs(prev - w) > 0.5 ? w : prev));
+    }}>
       <View style={s.nextPillRow}>
         {ico('time-outline', 15, C.gold)}
         {/* prayerName rather than T: the six prayer names are not in the copy
@@ -3396,13 +3410,7 @@ function NextPrayerPill({ prayer, prayers, language, rtl, still, scrollY }: {
           long is left without saying how long there was, so a wait of
           four minutes out of four hours looks the same as one four
           minutes out of forty. This is the other half of that. */}
-      <View
-        style={s.nextPillTrack}
-        onLayout={(e) => {
-          const w = e?.nativeEvent?.layout?.width || 0;
-          if (w > 0) setTrackWidth((prev) => (Math.abs(prev - w) > 0.5 ? w : prev));
-        }}
-      >
+      <View style={[s.nextPillTrack, { width: trackWidth }]}>
         <View style={[s.nextPillFill, { width: fillWidth }]} />
       </View>
     </View>
