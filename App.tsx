@@ -391,6 +391,7 @@ const MUSHAF_LINES = 15;
 /** How many times the solve may move the size before it takes what it has. */
 const MUSHAF_PASSES = 4;
 
+
 let C: Record<string, string> = { ...C_LIGHT };
 /** The palette built into the sheet right now, so a swap happens only once. */
 let themeApplied: ResolvedTheme = 'islamicLight';
@@ -4533,7 +4534,7 @@ function MushafConnectionNote({ kind, rtl, T, language, page, cut, nextVerse }: 
  * as ordinary text rather than as a page of the Quran.
  */
 function MushafPage({ page, verses, width, height, preferences, rtl, T, bookmarks, savedPosition,
-  onBookmark, onMark, onPlay, onNote, before }: any) {
+  onBookmark, onMark, onPlay, onNote, before, variant = 'madani' }: any) {
   const [openVerse, setOpenVerse] = useState<string | null>(null);
   const enabled = preferences.mushafMarkers || {};
 
@@ -4589,6 +4590,11 @@ function MushafPage({ page, verses, width, height, preferences, rtl, T, bookmark
      text measures. */
   const chromeH = Math.max(0, totalH - textH);
   const budget = Math.max(40, contentH - chromeH);
+  /* Which page this is. The ruled one is the Madinah page. The other is the
+     page this replaced, kept because some eyes need the largest script the
+     screen allows more than they need the grid: it asks only that the text
+     fill the room it has and takes whatever number of lines that leaves. */
+  const madani = variant === 'madani';
 
   /* Whether the solve has finished, and the page may be seen. It finishes
      three ways: the count lands on fifteen, the size stops moving, or it runs
@@ -4610,6 +4616,19 @@ function MushafPage({ page, verses, width, height, preferences, rtl, T, bookmark
        fifteen lines and stay on the page, so it is a ceiling, not a target. */
     const cap = budget / (MUSHAF_LINES * MUSHAF_LEAD);
 
+    /* The flowing page has no count to land on. It asks only that the text
+       fill the room it has — the question the page used to ask before the
+       fifteen were asked for — so the script grows or shrinks to suit and the
+       number of lines is whatever that leaves. */
+    if (!madani) {
+      const ratio = budget / textH;
+      if (Math.abs(ratio - 1) < 0.03 || pass >= MUSHAF_PASSES) { setSettled(true); return; }
+      const next = Math.max(MUSHAF_MIN_SIZE, Math.min(MUSHAF_MAX_SIZE, size * Math.pow(ratio, 0.6)));
+      if (Math.abs(next - size) < 0.35) { setSettled(true); return; }
+      segH.current = {}; setTextH(0); setPass(n => n + 1); setSize(next);
+      return;
+    }
+
     /* Landed on fifteen. */
     if (Math.abs(lines - MUSHAF_LINES) < 0.4) { setSettled(true); return; }
     /* At the ceiling and still carrying fewer than fifteen. This is a page
@@ -4630,7 +4649,7 @@ function MushafPage({ page, verses, width, height, preferences, rtl, T, bookmark
     const next = Math.max(MUSHAF_MIN_SIZE, Math.min(Math.min(wanted, cap), MUSHAF_MAX_SIZE));
     if (Math.abs(next - size) < 0.35) { setSettled(true); return; }
     segH.current = {}; setTextH(0); setPass(n => n + 1); setSize(next);
-  }, [textH, size, pass, budget]);
+  }, [textH, size, pass, budget, madani]);
 
   /* A new page, or a new shape of page, starts the solve again from the seed
      rather than from the size the last page happened to land on — a short
@@ -4650,10 +4669,6 @@ function MushafPage({ page, verses, width, height, preferences, rtl, T, bookmark
     return () => clearTimeout(t);
   }, [settled, page]);
 
-  /* The fifteen lines are then given the room there is between them. The
-     leading is free to take up the slack of a page that runs a line short, but
-     only within a little of what the size naturally wants — enough to close a
-     gap, not enough to pull a page out of shape. */
   /* The lines are then given the room there is between them.
      The leading follows the lines the page actually has, not the fifteen it
      was asked for, because a page that cannot reach fifteen — the opening of a
@@ -4695,7 +4710,7 @@ function MushafPage({ page, verses, width, height, preferences, rtl, T, bookmark
         ) : seg.kind === 'marker' ? (
           <MushafMarkerBand key={`m${idx}`} marker={seg.marker} width={contentW} />
         ) : (
-          <Text key={`t${idx}`} style={[s.mushafPageLine, { fontSize: size, lineHeight, width: contentW, opacity: settled ? 1 : 0 }]}
+          <Text key={`t${idx}`} style={[s.mushafPageLine, madani && s.mushafPageLineJustified, { fontSize: size, lineHeight, width: contentW, opacity: settled ? 1 : 0 }]}
             onLayout={e => setSegH(idx, e.nativeEvent.layout.height)}>
             {seg.verses.map((v: any) => <Text key={v.verse_key}
               onLongPress={() => setOpenVerse(openVerse === v.verse_key ? null : v.verse_key)}
@@ -4816,7 +4831,7 @@ function MushafPageView({page,verses,error,cached,retry,preferences,rtl,T,langua
    <View style={s.mushafPageStack}>
      {!!preferences.showVerseConnections && page > 1 &&
        <MushafConnectionNote kind="continued" rtl={rtl} T={T} language={language} page={page} cut={startsContinued} nextVerse={neighbours.prev[neighbours.prev.length - 1]} />}
-     <MushafPage page={page} verses={verses} width={layout.pageWidth} height={layout.pageHeight} before={neighbours.prev} {...pageProps} />
+     <MushafPage page={page} verses={verses} width={layout.pageWidth} height={layout.pageHeight} before={neighbours.prev} {...pageProps} variant={pageProps.preferences?.mushafLayout === 'flowing' ? 'flowing' : 'madani'} />
      {!!preferences.showVerseConnections && page < 604 &&
        <MushafConnectionNote kind="continues" rtl={rtl} T={T} language={language} page={page} cut={endsContinued} nextVerse={neighbours.next[0]} />}
    </View>}
@@ -5212,11 +5227,19 @@ function ReaderSettingsScreen({navigation}:any){
 
           {preferences.scriptEdition==='quran-mushaf'&&<View style={s.rsGroup}>
             <Text style={s.rsGroupTitle}>{T('MUSHAF PAGE')}</Text>
-            <Text style={s.rsGroupTitle}>{T('ON THE PAGE')}</Text>
             <View style={s.settings}>
               <Tactile accessibilityRole="switch" accessibilityState={{checked:!!preferences.mushafTranslation}} onPress={()=>update({mushafTranslation:!preferences.mushafTranslation})} style={s.setting}><MotionGlyph name={preferences.mushafTranslation?'text':'text-outline'} size={19}/><View style={{flex:1}}><Text style={s.settingName}>{T('Show the meaning on the page')}</Text><Text style={s.meta}>{T('A printed page carries no translation. Turn this on to have the meaning under each verse.')}</Text></View>{ico(preferences.mushafTranslation?'toggle':'toggle-outline',22,preferences.mushafTranslation?C.green:C.muted)}</Tactile>
               <Tactile accessibilityRole="switch" accessibilityState={{checked:preferences.showVerseConnections!==false}} onPress={()=>update({showVerseConnections:preferences.showVerseConnections===false})} style={s.setting}><MotionGlyph name="git-compare-outline" size={19}/><View style={{flex:1}}><Text style={s.settingName}>{T('Mark verses cut across a page')}</Text><Text style={s.meta}>{T('Notes where a verse runs on to the next page, so the sentence does not simply stop.')}</Text></View>{ico(preferences.showVerseConnections!==false?'toggle':'toggle-outline',22,preferences.showVerseConnections!==false?C.green:C.muted)}</Tactile>
             </View>
+            <View style={s.rsDivider}/>
+            <Text style={s.rsGroupTitle}>{T('HOW THE PAGE IS RULED')}</Text>
+            <View style={s.choiceGrid}>
+              <ChoicePill label={T('Fifteen lines')} selected={preferences.mushafLayout!=='flowing'} onPress={()=>update({mushafLayout:'madani'})}/>
+              <ChoicePill label={T('Largest script')} selected={preferences.mushafLayout==='flowing'} onPress={()=>update({mushafLayout:'flowing'})}/>
+            </View>
+            <Text style={s.rsHint}>{preferences.mushafLayout==='flowing'
+              ? T('The script grows to fill the page. The number of lines changes with it, so a page of short ayat runs short and a dense one runs long.')
+              : T('Every page is set at fifteen lines, as the printed Madinah mushaf is. The script is then sized to fall into them.')}</Text>
             <View style={s.rsDivider}/>
             <Text style={s.rsGroupTitle}>{T('DIVISION MARKS')}</Text>
             <View style={s.settings}>{MARKER_KINDS.map(kind=><Tactile key={kind} accessibilityRole="switch" accessibilityState={{checked:preferences.mushafMarkers[kind]!==false}} onPress={()=>update({mushafMarkers:{...preferences.mushafMarkers,[kind]:preferences.mushafMarkers[kind]===false}})} style={s.setting}><MotionGlyph name="bookmark-outline" size={19}/><View style={{flex:1}}><Text style={s.settingName}>{rtl?MARKER_LABELS[kind].ar:MARKER_LABELS[kind].en}</Text></View>{ico(preferences.mushafMarkers[kind]!==false?'toggle':'toggle-outline',22,preferences.mushafMarkers[kind]!==false?C.green:C.muted)}</Tactile>)}</View>
@@ -10478,6 +10501,10 @@ function HadithCollectionScreen({route,navigation}:any){const {rtl,language:appL
   const [loadingBook,setLoadingBook]=useState(false);
   const [error,setError]=useState('');
   const [query,setQuery]=useState('');
+  /* The collection's own search. The book's bar below looks inside one book;
+     this one answers the question a reader actually arrives with — "I have a
+     number, take me to it" — which needs the whole collection, not a book. */
+  const [jump,setJump]=useState('');
   const [limit,setLimit]=useState(20);
   const downloaded=useDownloadedCollections();
   const progress=hadithDownloadProgress(slug);
@@ -10509,6 +10536,30 @@ function HadithCollectionScreen({route,navigation}:any){const {rtl,language:appL
     : rows;
   const shown=filtered.slice(0,limit);
   const totalInCollection=outline?.total||outline?.books.reduce((sum,entry)=>sum+entry.count,0)||0;
+
+  /* Which narration the typed number means, and which book it lives in.
+     The outline already carries each book's first and last, so this is found
+     without opening a single book — no network, no waiting, and it works on a
+     collection that has never been downloaded. */
+  const jumpNumber=(()=>{
+    const raw=String(jump).trim();
+    if(!/^\d+$/.test(raw))return null;
+    const value=Number(raw);
+    if(!Number.isFinite(value)||value<1||!totalInCollection||value>totalInCollection)return null;
+    return value;
+  })();
+  /* Which book it lives in, for the line under the number.
+     Book 0 is skipped on purpose. It is not a book but a catch-all for
+     narrations the source never filed, and its span runs from well inside the
+     collection to its very end — in Bukhari, 299 to 7495 — so it swallows
+     ninety-one of the ninety-seven real books. Matching against it first would
+     have named the wrong book for almost every number typed. Books 1 and up are
+     contiguous and do not overlap, so the first of them to contain the number
+     is the right one. A number that falls in a gap between them belongs to the
+     catch-all; there is no book to name, and the number alone still opens it. */
+  const jumpBook=jumpNumber==null?null:(outline?.books.find(entry=>
+    (entry.number||0)>=1&&entry.first&&entry.last&&
+    jumpNumber>=entry.first&&jumpNumber<=entry.last)||null);
   const booksDone=progress.booksDone, booksTotal=progress.booksTotal;
   const pct=booksTotal?Math.round(booksDone/booksTotal*100):0;
 
@@ -10550,6 +10601,41 @@ function HadithCollectionScreen({route,navigation}:any){const {rtl,language:appL
               <Text style={s.secondaryText}>{T('Remove download')}</Text></Pressable>}
           </View>
           {progress.phase==='error'&&<Text style={s.meta}>{T(progress.error||'Download failed')}</Text>}
+        </View>
+
+        {/* Hadith number search — its own bar, because the one below it can
+            only look inside the book that happens to be open, and a number a
+            reader was given belongs to the collection, not to a book. It
+            resolves from the outline alone, so it answers before anything has
+            been fetched. */}
+        <View style={s.hadithJumpWrap}>
+          <View style={s.search}>
+            {ico('search',18,C.muted)}
+            <TextInput accessibilityLabel={T('Search by hadith number')} keyboardType="number-pad"
+              value={jump} onChangeText={setJump} returnKeyType="search"
+              onSubmitEditing={()=>{if(jumpNumber!=null)navigation.navigate('Hadith Detail',{slug,number:jumpNumber})}}
+              style={s.searchInput} placeholder={T('Go to hadith number')} placeholderTextColor={C.muted}/>
+            {!!jump&&<Pressable accessibilityLabel={T('Clear')} onPress={()=>setJump('')} hitSlop={8}>{ico('close-circle',18,C.muted)}</Pressable>}
+          </View>
+
+          {jumpNumber!=null&&<Tactile accessibilityLabel={`${T('Open hadith')} ${jumpNumber}`}
+            onPress={()=>navigation.navigate('Hadith Detail',{slug,number:jumpNumber})}
+            style={[s.dataCard,s.hadithJumpCard]}>
+            <View style={s.hadithRowTop}>
+              <View style={s.hadithNumber}><Text style={s.hadithNumberText}>{jumpNumber}</Text></View>
+              <View style={{flex:1}}>
+                <Text style={s.dataName}>{hadithSourceLabel(language,slug)} {jumpNumber}</Text>
+                {!!jumpBook&&<Text style={s.hadithRowMeta}>{jumpBook.name}</Text>}
+              </View>
+              {ico('chevron-forward',16,C.muted)}
+            </View>
+          </Tactile>}
+
+          {jump.trim()!==''&&jumpNumber==null&&!!totalInCollection&&(
+            <Text style={s.hadithJumpHint}>
+              {tf(language,'Enter a number from 1 to {n}',{n:totalInCollection.toLocaleString()})}
+            </Text>
+          )}
         </View>
 
         <Section title={T('Books')}/>
@@ -10716,7 +10802,10 @@ function HadithSavedScreen({navigation}:any){const {rtl,language}=useLanguage();
     </View>)}
   </Page>}
 
-const PRAYER_METHODS=[{id:8,name:'Gulf Region',ar:'منطقة الخليج'},{id:4,name:'Umm al-Qura',ar:'أم القرى'},{id:3,name:'Muslim World League',ar:'رابطة العالم الإسلامي'},{id:5,name:'Egyptian Authority',ar:'الهيئة المصرية'},{id:1,name:'Karachi',ar:'كراتشي'},{id:2,name:'North America',ar:'أمريكا الشمالية'}];
+/* Mirrors CALCULATION_METHODS in src/services/prayerTimes.ts, which is where
+   the angles actually live. This copy is what the picker renders; keep the two
+   in step, or a choice offered here is silently ignored there. */
+const PRAYER_METHODS=[{id:9,name:'UAE (IACAD)',ar:'الإمارات · دائرة الشؤون الإسلامية'},{id:8,name:'Gulf Region',ar:'منطقة الخليج'},{id:4,name:'Umm al-Qura',ar:'أم القرى'},{id:3,name:'Muslim World League',ar:'رابطة العالم الإسلامي'},{id:5,name:'Egyptian Authority',ar:'الهيئة المصرية'},{id:1,name:'Karachi',ar:'كراتشي'},{id:2,name:'North America',ar:'أمريكا الشمالية'}];
 /**
  * A choice. Forty-odd of these carry every toggle in the app, and they used to
  * answer a press with nothing at all. They now answer the way a card does -
@@ -14487,12 +14576,12 @@ mushafOrnamentRow:{flexDirection:'row',alignItems:'center',justifyContent:'cente
 mushafOrnamentRule:{height:1,flex:1,maxWidth:96},
 mushafPageNoRow:{alignItems:'center',marginTop:6},
 mushafPageNo:{width:30,height:30,borderRadius:15,borderWidth:1.2,borderColor:C.gold,alignItems:'center',justifyContent:'center',backgroundColor:C.mint},
-mushafPageNoText:{color:C.green,fontFamily:'Newsreader_700Bold',fontSize:16},mushafAyah:{paddingVertical:12,borderBottomWidth:1,borderColor:C.line},mushafSurah:{textAlign:'center',color:C.green,fontFamily:'Newsreader_600SemiBold',fontSize:20,backgroundColor:C.mint,borderRadius:16,paddingVertical:8,marginBottom:12},verseMarker:{color:C.gold,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:17,writingDirection:'rtl'},mushafTranslation:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:12,lineHeight:18,marginTop:8},sectionMarker:{flexDirection:'row',alignItems:'center',gap:10,marginTop:18,marginBottom:6},sectionRule:{flex:1,height:1,backgroundColor:C.line},sectionMarkerText:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10,textTransform:'uppercase',letterSpacing:1},/* Flush to both margins, the way a mushaf is set. This was 'center', which
-   left every line ragged at both ends and is the one thing that most made a
-   page read as ordinary text rather than as a page of the Quran. Justified
-   text is set to the last line only by the platform, so a trailing short line
-   stays as it is — which is what the printed page does too. */
-mushafPageLine:{color:C.ink,textAlign:'justify',writingDirection:'rtl'},topicGrid:{flexDirection:'row',flexWrap:'wrap',gap:12},topicWrap:{width:'48%'},topicCard:{minHeight:190,backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},vocabStats:{backgroundColor:C.mint,borderRadius:20,padding:16,marginBottom:12,flexDirection:'row',justifyContent:'space-between',alignItems:'center'},flashcard:{minHeight:330,backgroundColor:C.white,borderRadius:28,padding:24,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,...shadow},flashIndex:{position:'absolute',top:18,right:18,color:C.muted,fontFamily:'DMSans_600SemiBold',fontSize:10},flashArabic:{color:C.ink,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:58,lineHeight:86,textAlign:'center',writingDirection:'rtl'},flashTransliteration:{color:C.green,fontFamily:'Newsreader_600SemiBold',fontSize:28,marginTop:12},flashMeaning:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:18,marginVertical:8,textAlign:'center'},flashHint:{color:C.muted,fontFamily:'DMSans_600SemiBold',fontSize:11,marginTop:16},tajweedPractice:{backgroundColor:C.card,borderRadius:24,padding:20,marginTop:16,borderWidth:1,borderColor:C.line,...surface},tajweedRule:{minHeight:72,flexDirection:'row',alignItems:'center',gap:12,padding:12,borderBottomWidth:1,borderColor:C.line},tajweedSwatch:{width:18,height:44,borderRadius:9},compareCard:{backgroundColor:C.card,borderRadius:20,padding:16,marginBottom:12,borderWidth:1,borderColor:C.line,...surface},
+mushafPageNoText:{color:C.green,fontFamily:'Newsreader_700Bold',fontSize:16},mushafAyah:{paddingVertical:12,borderBottomWidth:1,borderColor:C.line},mushafSurah:{textAlign:'center',color:C.green,fontFamily:'Newsreader_600SemiBold',fontSize:20,backgroundColor:C.mint,borderRadius:16,paddingVertical:8,marginBottom:12},verseMarker:{color:C.gold,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:17,writingDirection:'rtl'},mushafTranslation:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:12,lineHeight:18,marginTop:8},sectionMarker:{flexDirection:'row',alignItems:'center',gap:10,marginTop:18,marginBottom:6},sectionRule:{flex:1,height:1,backgroundColor:C.line},sectionMarkerText:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10,textTransform:'uppercase',letterSpacing:1},mushafPageLine:{color:C.ink,textAlign:'center',writingDirection:'rtl'},
+  /* Set flush to both edges. This is the single biggest difference between a
+     page that has been typeset and a column of centred text: centring leaves a
+     ragged edge down the inside of every line, justifying closes it, so the
+     block of script takes the straight-sided shape a printed page has. */
+  mushafPageLineJustified:{textAlign:'justify'},topicGrid:{flexDirection:'row',flexWrap:'wrap',gap:12},topicWrap:{width:'48%'},topicCard:{minHeight:190,backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},vocabStats:{backgroundColor:C.mint,borderRadius:20,padding:16,marginBottom:12,flexDirection:'row',justifyContent:'space-between',alignItems:'center'},flashcard:{minHeight:330,backgroundColor:C.white,borderRadius:28,padding:24,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,...shadow},flashIndex:{position:'absolute',top:18,right:18,color:C.muted,fontFamily:'DMSans_600SemiBold',fontSize:10},flashArabic:{color:C.ink,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:58,lineHeight:86,textAlign:'center',writingDirection:'rtl'},flashTransliteration:{color:C.green,fontFamily:'Newsreader_600SemiBold',fontSize:28,marginTop:12},flashMeaning:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:18,marginVertical:8,textAlign:'center'},flashHint:{color:C.muted,fontFamily:'DMSans_600SemiBold',fontSize:11,marginTop:16},tajweedPractice:{backgroundColor:C.card,borderRadius:24,padding:20,marginTop:16,borderWidth:1,borderColor:C.line,...surface},tajweedRule:{minHeight:72,flexDirection:'row',alignItems:'center',gap:12,padding:12,borderBottomWidth:1,borderColor:C.line},tajweedSwatch:{width:18,height:44,borderRadius:9},compareCard:{backgroundColor:C.card,borderRadius:20,padding:16,marginBottom:12,borderWidth:1,borderColor:C.line,...surface},
   tcRefBar:{flexDirection:'row',alignItems:'center',gap:10,marginBottom:14},
   tcVerse:{backgroundColor:C.mint,borderRadius:20,padding:16,marginTop:14,borderWidth:1,borderColor:C.line},
   tcSectionLabel:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.2,marginTop:20,marginBottom:8},
@@ -14517,7 +14606,11 @@ kaaba:{position:'absolute',right:43,bottom:47,width:31,height:31,alignItems:'cen
   rsPreviewMeta:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold'},
   rsGroup:{backgroundColor:C.card,borderRadius:24,padding:16,marginTop:16,borderWidth:1,borderColor:C.line,...surface},
   rsGroupTitle:{color:C.ink,fontSize:12,fontFamily:'DMSans_700Bold',letterSpacing:1.1,marginBottom:12},
-  rsDivider:{height:1,backgroundColor:C.line,marginVertical:16},fieldRow:{flexDirection:'row',gap:12},textField:{backgroundColor:C.bg,borderWidth:1,borderColor:C.line,borderRadius:16,padding:12,fontSize:13,color:C.ink,marginTop:8,outlineStyle:'none'} as any,dangerButton:{padding:16,alignItems:'center',marginTop:12},dangerText:{color:C.coral,fontFamily:'DMSans_700Bold',fontSize:11},healthCard:{flexDirection:'row',alignItems:'center',gap:12,backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,marginBottom:16,...surface},healthDot:{width:10,height:10,borderRadius:5},actionRow:{flexDirection:'row',alignItems:'center',flexWrap:'wrap',gap:8,marginTop:4},audioPreview:{backgroundColor:C.deep,borderRadius:24,padding:16,flexDirection:'row',alignItems:'center',gap:12},audioPlay:{width:48,height:48,borderRadius:24,backgroundColor:C.accent,alignItems:'center',justifyContent:'center'},guideGrid:{flexDirection:'row',flexWrap:'wrap',gap:12},guideCard:{flexGrow:1,flexBasis:'30%',minWidth:150},guideCardInner:{minHeight:180,backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},guideHero:{borderRadius:24,padding:22,marginTop:16,alignItems:'center'},guideHeroKicker:{color:C.onHero,fontFamily:'DMSans_700Bold',fontSize:10,letterSpacing:1.4,textTransform:'uppercase',marginBottom:14},guideHeroArabic:{color:C.onAccent,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:26,lineHeight:46,textAlign:'center',writingDirection:'rtl'},guideStep:{flexDirection:'row',gap:14,paddingVertical:16,paddingHorizontal:16,borderBottomWidth:1,borderColor:C.line,alignItems:'flex-start'},guideStepLast:{borderBottomWidth:0},stepNo:{width:28,height:28,borderRadius:14,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},stepNoText:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10},guideStepText:{flex:1,color:C.ink,fontFamily:'DMSans_400Regular',fontSize:13.5,lineHeight:21},guideNote:{backgroundColor:C.yellow,borderRadius:20,padding:16,marginTop:20},referenceRow:{minHeight:54,backgroundColor:C.white,borderRadius:16,paddingHorizontal:16,marginBottom:8,flexDirection:'row',alignItems:'center',justifyContent:'space-between',borderWidth:1,borderColor:C.line},evidenceCard:{backgroundColor:C.card,borderRadius:18,padding:15,marginBottom:11,borderWidth:1,borderColor:C.line},evidenceLabel:{color:C.green,fontSize:11,fontFamily:'DMSans_700Bold',letterSpacing:.4,marginBottom:9},evidenceArabic:{color:C.ink,fontSize:17,fontFamily:'NotoNaskhArabic_400Regular',lineHeight:31,marginBottom:8,writingDirection:'rtl',textAlign:'right'},evidenceBody:{color:C.body,fontSize:13,fontFamily:'DMSans_400Regular',lineHeight:20},evidenceVerse:{marginBottom:11},evidenceFoot:{flexDirection:'row',alignItems:'center',marginTop:10,paddingTop:10,borderTopWidth:1,borderTopColor:C.line},evidenceLink:{flex:1,color:C.green,fontSize:12,fontFamily:'DMSans_600SemiBold'},emptyWrap:{alignItems:'center',justifyContent:'center',paddingVertical:60,gap:10,paddingHorizontal:24},emptyTitle:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:16,textAlign:'center'},emptyBody:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:13,lineHeight:20,textAlign:'center'},
+  rsDivider:{height:1,backgroundColor:C.line,marginVertical:16},
+  /* Explains the choice rather than describing the control. Sits tight under
+     the pills it belongs to and well clear of the rule that follows, so it
+     reads as a note on the group above it and not as part of the next one. */
+  rsHint:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:11,lineHeight:16,marginTop:10,marginBottom:0},fieldRow:{flexDirection:'row',gap:12},textField:{backgroundColor:C.bg,borderWidth:1,borderColor:C.line,borderRadius:16,padding:12,fontSize:13,color:C.ink,marginTop:8,outlineStyle:'none'} as any,dangerButton:{padding:16,alignItems:'center',marginTop:12},dangerText:{color:C.coral,fontFamily:'DMSans_700Bold',fontSize:11},healthCard:{flexDirection:'row',alignItems:'center',gap:12,backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,marginBottom:16,...surface},healthDot:{width:10,height:10,borderRadius:5},actionRow:{flexDirection:'row',alignItems:'center',flexWrap:'wrap',gap:8,marginTop:4},audioPreview:{backgroundColor:C.deep,borderRadius:24,padding:16,flexDirection:'row',alignItems:'center',gap:12},audioPlay:{width:48,height:48,borderRadius:24,backgroundColor:C.accent,alignItems:'center',justifyContent:'center'},guideGrid:{flexDirection:'row',flexWrap:'wrap',gap:12},guideCard:{flexGrow:1,flexBasis:'30%',minWidth:150},guideCardInner:{minHeight:180,backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},guideHero:{borderRadius:24,padding:22,marginTop:16,alignItems:'center'},guideHeroKicker:{color:C.onHero,fontFamily:'DMSans_700Bold',fontSize:10,letterSpacing:1.4,textTransform:'uppercase',marginBottom:14},guideHeroArabic:{color:C.onAccent,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:26,lineHeight:46,textAlign:'center',writingDirection:'rtl'},guideStep:{flexDirection:'row',gap:14,paddingVertical:16,paddingHorizontal:16,borderBottomWidth:1,borderColor:C.line,alignItems:'flex-start'},guideStepLast:{borderBottomWidth:0},stepNo:{width:28,height:28,borderRadius:14,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},stepNoText:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10},guideStepText:{flex:1,color:C.ink,fontFamily:'DMSans_400Regular',fontSize:13.5,lineHeight:21},guideNote:{backgroundColor:C.yellow,borderRadius:20,padding:16,marginTop:20},referenceRow:{minHeight:54,backgroundColor:C.white,borderRadius:16,paddingHorizontal:16,marginBottom:8,flexDirection:'row',alignItems:'center',justifyContent:'space-between',borderWidth:1,borderColor:C.line},evidenceCard:{backgroundColor:C.card,borderRadius:18,padding:15,marginBottom:11,borderWidth:1,borderColor:C.line},evidenceLabel:{color:C.green,fontSize:11,fontFamily:'DMSans_700Bold',letterSpacing:.4,marginBottom:9},evidenceArabic:{color:C.ink,fontSize:17,fontFamily:'NotoNaskhArabic_400Regular',lineHeight:31,marginBottom:8,writingDirection:'rtl',textAlign:'right'},evidenceBody:{color:C.body,fontSize:13,fontFamily:'DMSans_400Regular',lineHeight:20},evidenceVerse:{marginBottom:11},evidenceFoot:{flexDirection:'row',alignItems:'center',marginTop:10,paddingTop:10,borderTopWidth:1,borderTopColor:C.line},evidenceLink:{flex:1,color:C.green,fontSize:12,fontFamily:'DMSans_600SemiBold'},emptyWrap:{alignItems:'center',justifyContent:'center',paddingVertical:60,gap:10,paddingHorizontal:24},emptyTitle:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:16,textAlign:'center'},emptyBody:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:13,lineHeight:20,textAlign:'center'},
   inboxEmpty:{alignItems:'center',paddingVertical:40,gap:8},inboxHead:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginBottom:10},
   inboxRow:{flexDirection:'row',gap:12,padding:14,borderBottomWidth:1,borderColor:C.line,alignItems:'flex-start'},inboxDot:{width:8,height:8,borderRadius:4,marginTop:6},
   inboxKind:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:9,letterSpacing:.8},inboxTime:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:11,marginTop:2},dataPage:{width:'100%',maxWidth:860,alignSelf:'center',padding:20,paddingBottom:BOTTOM_RESERVE},empty:{backgroundColor:C.white,borderRadius:24,padding:24,alignItems:'center',borderWidth:1,borderColor:C.line},dataTitle:{color:C.ink,fontSize:29,fontFamily:'Newsreader_600SemiBold',letterSpacing:-.5,marginTop:16,marginBottom:8},dataCard:{backgroundColor:C.card,borderRadius:20,padding:16,marginBottom:12,borderWidth:1,borderColor:C.line,...surface},bookmarkMain:{flex:1},bookmarkRemove:{paddingStart:10,paddingVertical:4,justifyContent:'center'},dataArabic:{color:C.green,fontFamily:'KFGQPCUthmanicHafs',fontSize:27,lineHeight:48,textAlign:'right',writingDirection:'rtl'},dataName:{color:C.ink,fontSize:14,fontFamily:'DMSans_700Bold',marginTop:4},dataBody:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:13,lineHeight:18,marginTop:4},dataMeta:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold',marginTop:12,textTransform:'uppercase'},inputLabel:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.2,marginTop:12},moneyInput:{backgroundColor:C.white,borderWidth:1,borderColor:C.line,borderRadius:20,padding:16,fontSize:24,fontFamily:'DMSans_700Bold',color:C.ink,marginTop:8,outlineStyle:'none'} as any,zakatResult:{borderRadius:24,padding:20,marginTop:12},zakatNo:{color:C.onAccent,fontSize:34,fontFamily:'DMSans_700Bold',marginTop:8},
@@ -14656,6 +14749,14 @@ playerTranslationOptionOn:{backgroundColor:C.mint},
   hadithCollectionTop:{flexDirection:'row',alignItems:'center',gap:12},hadithCollectionAr:{color:C.green,fontFamily:'KFGQPCUthmanicHafs',fontSize:19,lineHeight:30,textAlign:'right',writingDirection:'rtl',marginTop:2},hadithCountCol:{alignItems:'flex-end',marginLeft:4},hadithCountNum:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:15,includeFontPadding:false},hadithCountLabel:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:9,marginTop:1},hadithRowMeta:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold',textTransform:'uppercase',marginTop:3},hadithRowAr:{color:C.green,fontFamily:'KFGQPCUthmanicHafs',fontSize:21,lineHeight:36,textAlign:'right',writingDirection:'rtl',marginTop:7,includeFontPadding:false},
   hadithRowTop:{flexDirection:'row',alignItems:'flex-start',gap:12},
   hadithNumber:{minWidth:34,height:34,borderRadius:12,backgroundColor:C.mint,alignItems:'center',justifyContent:'center',paddingHorizontal:8},hadithRowRef:{color:C.muted,fontSize:10,marginTop:5,fontFamily:'DMSans_600SemiBold'},
+  /* The number search sits between the collection panel and the book list, so
+     it is spaced against both: clear of the panel above, and close enough to
+     its own result to read as one thing with it. */
+  hadithJumpWrap:{marginTop:22,marginBottom:0},
+  /* No bottom margin — the section rule below supplies the gap, and the card's
+     own 12 would stack with it and leave a hole. */
+  hadithJumpCard:{marginTop:10,marginBottom:0},
+  hadithJumpHint:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:11,lineHeight:16,marginTop:10,marginBottom:0},
   hadithNumberText:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:12,includeFontPadding:false,textAlign:'center'},
   hadithNumberLarge:{width:46,height:46,borderRadius:16,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},
   hadithDetailHead:{flexDirection:'row',alignItems:'center',gap:12},

@@ -55,6 +55,22 @@ export type QuranPreferences = {
   showVerseConnections: boolean;
 
   /**
+   * How the mushaf page is ruled.
+   *
+   * 'madani' sets the page at fifteen lines the way the printed Madinah mushaf
+   * is set, and chooses the size of the script to make the text fall into
+   * them. 'flowing' makes the script as large as fits and lets the number of
+   * lines fall where it may.
+   *
+   * Both are kept because they suit different reading. The fifteen-line page
+   * is the book as it is printed and is the one to use for reciting and
+   * memorising, where a passage is found by where it sits on the page. The
+   * flowing page gives the largest script the screen allows, which some eyes
+   * need more than they need the grid.
+   */
+  mushafLayout: 'madani' | 'flowing';
+
+  /**
    * Whether the meaning appears on the mushaf page under the script.
    *
    * Off by default. A printed page carries no translation, and putting one on
@@ -117,6 +133,7 @@ export const DEFAULTS: QuranPreferences = {
   focusMode: false,
   mushafMarkers: { juz: true, hizb: true, rub: true, nisf: true, thuluth: true },
   showVerseConnections: true,
+  mushafLayout: 'madani',
   mushafTranslation: false,
   translationFontSize: 16, ...WORKER_DEFAULT_TRANSLATION,
   transliterationEdition: DEFAULT_TRANSLITERATION.edition,
