@@ -49,7 +49,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import CustomIcon, { iconTheme } from './src/components/CustomIcon';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
-import Svg, { Circle, Defs, Ellipse, Path, Polygon, RadialGradient, Stop } from 'react-native-svg';
+import Svg, { Circle, Defs, Ellipse, Path, Polygon, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { StatusBar as ExpoStatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import {
@@ -3149,7 +3149,6 @@ function UmrahPackingScreen({ navigation }: any) {
 
   return <Page><ToolBar title={T('Umrah packing')} navigation={navigation} />
     <ScrollView keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
-      <ToolGraphic tool="Pilgrimage" size={83} />
       <Text style={s.dataTitle}>{T('What to take')}</Text>
       <Text style={s.intro}>{T('A list you can tick off, kept on this device. While you are in ihram, anything with perfume in it is best left at home.')}</Text>
       <View style={s.packingHead}>
@@ -6066,7 +6065,7 @@ function ExploreHome({navigation}:any){
    `goBackOrHome` rather than calling `goBack()` itself: a screen that passes
    no navigator — or one sitting at the bottom of its stack — used to leave
    this arrow pointing at nothing. */
-function ToolBar({title,navigation,tool}:any){const {rtl,language}=useLanguage();return <View style={s.readerBar}><IconButton name={rtl?'arrow-forward':'arrow-back'} label={tx(language,'Back')} onPress={()=>goBackOrHome(navigation)}/><Text numberOfLines={1} style={s.readerName}>{title}</Text>{tool?<ToolGraphic tool={tool} size={30}/>:<View style={{width:44}}/>}</View>}
+function ToolBar({title,navigation,tool}:any){const {rtl,language}=useLanguage();return <View style={[s.readerBar,s.toolBar]}><IconButton name={rtl?'arrow-forward':'arrow-back'} label={tx(language,'Back')} onPress={()=>goBackOrHome(navigation)}/><Text numberOfLines={1} style={s.readerName}>{title}</Text>{tool?<ToolGraphic tool={tool} size={30}/>:<View style={{width:44}}/>}</View>}
 /* Sixteen points, the usual navigational set. Left as the Latin abbreviations
    in both languages: they are the standard notation on a compass rather than
    prose, and an invented Arabic for "north-north-east" would be a guess
@@ -6155,7 +6154,49 @@ function useCompass(active: boolean): number | null {
   return heading;
 }
 
-function QiblaScreen({navigation}:any){const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);const{location}=useAppLocation();const[direction,setDirection]=useState<number|null>(null);const[error,setError]=useState('');const heading=useCompass(direction!==null);const load=async()=>{if(!location)return;setDirection(null);setError('');try{setDirection(await getQibla(location.latitude,location.longitude))}catch(e:any){setError(T(e.message))}};useEffect(()=>{load()},[location?.latitude,location?.longitude]);return <Page><ToolBar title={T('Qibla direction')} navigation={navigation}/>{!location?<View style={s.dataPage}><LocationPrompt compact/></View>:<ScrollView keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} contentContainerStyle={s.toolPageScroll} showsVerticalScrollIndicator={false}><View style={s.toolPage}><Text style={s.toolEyebrow}>{T(location.label)}</Text>{error?<ErrorState message={error} retry={load}/>:direction===null?<SkeletonCard lines={3} />:<><View style={s.compass}><View style={[s.compassRose,{transform:[{rotate:`${-(heading ?? 0)}deg`}]}]}><Text style={s.north}>N</Text><View style={[s.compassArrow,{transform:[{rotate:`${direction}deg`}]}]}>{ico('navigate',74,C.green)}</View></View><View style={s.kaaba}><View style={s.kaabaGold}/></View></View><Text style={s.direction}>{direction.toFixed(1)}°</Text>
+/**
+ * The Kaaba, drawn rather than photographed.
+ *
+ * A depiction of one building, so it keeps the building's own colours: the
+ * black kiswah, the gold band, the marble plinth. Those are not decoration
+ * that can follow a palette — in the Palestine theme the "gold" is the flag's
+ * green, and a green Kaaba would not be the Kaaba. Of everything in the app
+ * this is the one thing that is a picture *of* something, so it is drawn as
+ * that thing looks.
+ *
+ * What does follow the theme is the hairline round the cube. On the light
+ * compass a black cube reads on its own; on the dark one black on near-black
+ * disappears, so the outline is lifted from the ink, which is light in the
+ * dark themes and dark in the light ones.
+ *
+ * Drawn rather than shipped as a PNG for the same reason the icons are: it
+ * stays sharp at any size, and it costs nothing in the bundle.
+ */
+function KaabaMark({ size = 31 }: { size?: number }) {
+  const GOLD = '#DFB163';      // Radiant Gold, fixed: the band is gold whatever the theme
+  const MARBLE = '#CFC7B8';    // the plinth the cube stands on
+  return (
+    <Svg width={size} height={size} viewBox="0 0 32 32">
+      <Rect x="4" y="25.6" width="24" height="3.6" rx="1.1" fill={MARBLE} />
+      {/* The rim is what makes a black cube visible on the dark dials, where
+          the fill alone measures 1.2:1 against the face and simply vanishes.
+          At 0.55 it clears 3:1 on every dial — 4.9:1 on the Islamic dark one —
+          and the width is what buys it a whole pixel at the 31 it is drawn at;
+          a 0.9 line inside a 32 box lands under one device pixel and reads as
+          nothing. In the light themes the ink is near-black like the cube, so
+          the rim disappears and does no harm. */}
+      <Rect x="7.5" y="5.4" width="17" height="20.4" rx="0.9"
+            fill={C.deep} stroke={C.ink} strokeOpacity="0.55" strokeWidth="1.3" />
+      {/* the hizam: the embroidered band across the upper third */}
+      <Rect x="7.5" y="11.2" width="17" height="4.2" fill={GOLD} />
+      {/* the door, gold-framed rather than solid, so it reads as a door */}
+      <Rect x="12.8" y="18.2" width="6.4" height="7.6" rx="0.8"
+            fill={C.deep} stroke={GOLD} strokeWidth="1.1" />
+    </Svg>
+  );
+}
+
+function QiblaScreen({navigation}:any){const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);const{location}=useAppLocation();const[direction,setDirection]=useState<number|null>(null);const[error,setError]=useState('');const heading=useCompass(direction!==null);const load=async()=>{if(!location)return;setDirection(null);setError('');try{setDirection(await getQibla(location.latitude,location.longitude))}catch(e:any){setError(T(e.message))}};useEffect(()=>{load()},[location?.latitude,location?.longitude]);return <Page><ToolBar title={T('Qibla direction')} navigation={navigation}/>{!location?<View style={s.dataPage}><LocationPrompt compact/></View>:<ScrollView keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} contentContainerStyle={s.toolPageScroll} showsVerticalScrollIndicator={false}><View style={s.toolPage}><Text style={s.toolEyebrow}>{T(location.label)}</Text>{error?<ErrorState message={error} retry={load}/>:direction===null?<SkeletonCard lines={3} />:<><View style={s.compass}><View style={[s.compassRose,{transform:[{rotate:`${-(heading ?? 0)}deg`}]}]}><Text style={s.north}>N</Text><View style={[s.compassArrow,{transform:[{rotate:`${direction}deg`}]}]}>{ico('navigate',74,C.green)}</View></View><View style={s.kaaba}><KaabaMark size={31}/></View></View><Text style={s.direction}>{direction.toFixed(1)}°</Text>
         <Text style={s.directionText}>{compassPoint(direction)} · {T('clockwise from true north')}</Text>{heading!==null&&<><Text style={s.compassLive}>{T('Live')} · {Math.round(heading)}° {T('facing')}</Text><Text style={s.compassHint}>{T('Hold the phone flat, or in a figure of eight, if the arrow drifts.')}</Text></>}
         {!!location && <View style={s.trackStats}>
           <View style={s.trackStat}><Text style={s.trackStatValue}>{Math.round(qiblaDistance(location.latitude, location.longitude)).toLocaleString('en-US')}</Text><Text style={s.trackStatLabel}>{T('km to Makkah')}</Text></View>
@@ -7132,12 +7173,15 @@ function HolyChannelsScreen({ route, navigation }: any) {
   const open = async (channel: (typeof HOLY_CHANNELS)[number]) => { setOpened(channel.id); await openChannel(channel); };
   return <Page><ToolBar tool={site ? heading : 'Holy site channels'} title={site ? T(heading) : (tx(language, 'Holy site channels'))} navigation={navigation} />
     <ScrollView keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
-      <ToolGraphic tool="Holy site channels" size={85} />
+      {/* On a Makkah or Madinah page the drawing is that mosque's, not the
+          generic holy-sites mark — the page already says which one it is in
+          the bar above, and the two should agree. */}
+      <ToolGraphic tool={site ? heading : 'Holy site channels'} size={85} />
       <Text style={s.dataTitle}>{tx(language, 'Holy site channels')}</Text>
       <Text style={s.intro}>{tx(language, 'The official broadcasts from Makkah and Madinah, around the clock.')}</Text>
       {channels.map((channel) => <View key={channel.id} style={s.channelCard}>
         <View style={[s.channelHead, ]}>
-          <ToolGraphic tool="Holy site channels" size={52} />
+          <ToolGraphic tool={channel.site === 'Madinah' ? 'Madinah Live' : 'Makkah Live'} size={52} />
           <View style={{ flex: 1 }}>
             <Text style={s.dataMeta}>{channel.site.toUpperCase()} · {channel.channel.toUpperCase()}</Text>
             {/* Through T() so the two that are descriptions rather than
@@ -7737,11 +7781,11 @@ function NotificationInboxScreen({navigation}:any){
 
   const KIND_COLOUR:Record<string,string>={adhan:C.green,'pre-adhan':C.green,continue:C.green,verse:C.green,hadith:C.green,sleep:C.green,quran:C.green};
 
-  return <Page><ToolBar tool="Notifications" title={T('Notifications')} navigation={navigation}/>
+  return <Page><ToolBar tool="Prayer Reminders" title={T('Notifications')} navigation={navigation}/>
     <ScrollView {...SCROLL} contentContainerStyle={s.dataPage}>
       <Text style={s.intro}>{T('Every reminder this app has sent you. A past entry means it was sent — the system delivers notifications whether or not the app is open, so it cannot say whether you saw it.')}</Text>
       {!log.length
-        ? <View style={s.inboxEmpty}><ToolGraphic tool="Reminders" size={70}/><Text style={s.emptyTitle}>{busy?T('Loading…'):T('Nothing yet')}</Text><Text style={s.emptyBody}>{T('Switch a reminder on and it will be listed here once it has been sent.')}</Text></View>
+        ? <View style={s.inboxEmpty}><ToolGraphic tool="Prayer Reminders" size={70}/><Text style={s.emptyTitle}>{busy?T('Loading…'):T('Nothing yet')}</Text><Text style={s.emptyBody}>{T('Switch a reminder on and it will be listed here once it has been sent.')}</Text></View>
         : <>
             <View style={s.inboxHead}><Text style={s.meta}>{log.length} {T('sent')}</Text><Pressable accessibilityRole="button" onPress={clear}><Text style={s.sectionAction}>{T('Clear')}</Text></Pressable></View>
             <View style={s.settings}>{log.map((entry)=>{
@@ -7981,7 +8025,7 @@ function NotificationScreen({navigation}:any){const {rtl,language}=useLanguage()
 
   return <Page><ToolBar title={T('Prayer reminders')} navigation={navigation}/>
     <ScrollView {...SCROLL} contentContainerStyle={s.dataPage}>
-      <ToolGraphic tool="Notifications" size={85}/>
+      <ToolGraphic tool="Prayer Reminders" size={85}/>
       <Text style={s.dataTitle}>{T('Gentle, local reminders')}</Text>
       <Text style={s.intro}>{T('Permission and scheduling happen on your device. No notification profile is sent to us.')}</Text>
 
@@ -8042,9 +8086,9 @@ function NotificationScreen({navigation}:any){const {rtl,language}=useLanguage()
           actually played. Rather than leave a control that lies, the choice
           lives in one place: the Adhan screen above, where every recording can
           be heard before it is picked. */}
-      <View style={s.settings}>
+      <View style={[s.settings,{marginTop:12}]}>
         {prayers.map(name=><View key={name} style={s.setting}>
-          <ToolGraphic tool="Notifications" size={47}/>
+          <ToolGraphic tool="Prayer Reminders" size={47}/>
           <Text style={[s.settingName,{flex:1}]}>{prayerName(language, name)}</Text>
           <View style={{direction:'ltr'} as any}>
             <Switch value={!!settings.adhanEnabled?.[name]} onValueChange={()=>toggleAdhan(name)} trackColor={{true:C.green}}/>
@@ -8064,9 +8108,9 @@ function NotificationScreen({navigation}:any){const {rtl,language}=useLanguage()
         {[5,10,15,30].map(value=><ChoicePill key={value} label={tf(language,'{n} min',{n:value})}
           selected={settings.reminderOffset===value} onPress={()=>update({reminderOffset:value})}/>)}
       </View>
-      <View style={s.settings}>
+      <View style={[s.settings,{marginTop:12}]}>
         {prayers.map(name=><View key={name} style={s.setting}>
-          <ToolGraphic tool="Notifications" size={47}/>
+          <ToolGraphic tool="Prayer Reminders" size={47}/>
           <Text style={[s.settingName,{flex:1}]}>{prayerName(language, name)}</Text>
           <View style={{direction:'ltr'} as any}>
             <Switch value={!!settings.prayerReminders?.[name]} onValueChange={()=>togglePre(name)} trackColor={{true:C.green}}/>
@@ -14309,7 +14353,14 @@ surahCard:{width:'100%',minHeight:64,backgroundColor:C.card,borderRadius:16,bord
      separate token rather than a change to that one. */
   surahMedal:{width:36,height:36,borderRadius:12,backgroundColor:C.surahBadge,borderWidth:1,borderColor:C.surahBadge,alignItems:'center',justifyContent:'center'},
   surahMedalText:{color:C.surahBadgeInk,fontSize:13,fontFamily:'Newsreader_700Bold'},surahNumText:{color:C.green,fontSize:13,fontFamily:'Newsreader_700Bold'},surahName:{color:C.ink,fontSize:14.5,fontFamily:'DMSans_700Bold',flexShrink:1},surahNameRow:{flexDirection:'row',alignItems:'center',gap:9},surahArInline:{color:C.green,fontSize:16.5,fontFamily:'KFGQPCUthmanicHafs',writingDirection:'rtl'},surahAr:{color:C.green,fontSize:20,fontFamily:'KFGQPCUthmanicHafs',writingDirection:'rtl'},
- readerModes:{flexDirection:'row',gap:12,marginTop:12},readerMode:{flex:1,minHeight:56,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:8,backgroundColor:C.white,borderRadius:20,borderWidth:1,borderColor:C.line},readerModeActive:{backgroundColor:C.mint,borderColor:C.line},readerModeText:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:11},readerBar:{height:56,flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingHorizontal:8,borderBottomWidth:1,borderColor:C.line},surahStep:{width:32,height:32,alignItems:'center',justifyContent:'center',marginHorizontal:2},/* Hidden off the top of the screen, but not transparent.
+ readerModes:{flexDirection:'row',gap:12,marginTop:12},readerMode:{flex:1,minHeight:56,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:8,backgroundColor:C.white,borderRadius:20,borderWidth:1,borderColor:C.line},readerModeActive:{backgroundColor:C.mint,borderColor:C.line},readerModeText:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:11},readerBar:{height:56,flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingHorizontal:8,borderBottomWidth:1,borderColor:C.line},/* The back button is a 44-square box and the title used to begin on the very
+   pixel where that box ended, so the two read as one lump. This is the room
+   between them on the ordinary screen header.
+
+   It is kept off `readerBar` itself on purpose. The Quran reader uses the same
+   bar but a different shape: a centred title with a step button either side,
+   where a gap would shove five children apart rather than separate two. */
+toolBar:{gap:12},surahStep:{width:32,height:32,alignItems:'center',justifyContent:'center',marginHorizontal:2},/* Hidden off the top of the screen, but not transparent.
 
      The capture reads the view back off the GPU, and a view at opacity 0 is
      read back as nothing at all - the picture comes out empty. Being off the
@@ -14427,7 +14478,9 @@ mushafPageNoText:{color:C.green,fontFamily:'Newsreader_700Bold',fontSize:16},mus
   tcCardHead:{flexDirection:'row',alignItems:'center',gap:8,paddingBottom:10,marginBottom:10,borderBottomWidth:1,borderColor:C.line},
   tcCardName:{flex:1,color:C.ink,fontSize:13,fontFamily:'DMSans_700Bold'},
   tcCardLang:{color:C.muted,fontSize:10,fontFamily:'DMSans_700Bold'},juzGrid:{flexDirection:'row',flexWrap:'wrap',gap:8},juzCard:{width:'22.8%',aspectRatio:1,backgroundColor:C.card,borderRadius:16,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,...surface},juzNo:{color:C.green,fontFamily:'Newsreader_600SemiBold',fontSize:23},preloadScore:{backgroundColor:C.white,borderRadius:24,padding:20,borderWidth:1,borderColor:C.line},cacheUsage:{color:C.green,fontFamily:'DMSans_600SemiBold',fontSize:10,marginTop:8},preloadTrack:{height:9,borderRadius:4,backgroundColor:C.mint,overflow:'hidden',marginVertical:12},preloadFill:{height:'100%',backgroundColor:C.green,borderRadius:4},planGrid:{flexDirection:'row',flexWrap:'wrap',gap:12},planCard:{width:'48%',minHeight:130,backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},planDays:{color:C.green,fontFamily:'Newsreader_600SemiBold',fontSize:36},planToday:{backgroundColor:C.white,borderRadius:20,padding:16,marginTop:16,flexDirection:'row',alignItems:'center',justifyContent:'space-between',borderWidth:1,borderColor:C.line},practiceLaunch:{backgroundColor:C.mint,borderRadius:20,padding:16,marginBottom:16,flexDirection:'row',alignItems:'center',justifyContent:'space-between',borderWidth:1,borderColor:C.line},recallCard:{minHeight:340,backgroundColor:C.white,borderRadius:28,padding:20,borderWidth:1,borderColor:C.line,...shadow},recallPrompt:{color:C.ink,fontFamily:'Newsreader_600SemiBold',fontSize:21,lineHeight:29,marginTop:28,textAlign:'center'},recallArabic:{color:C.green,fontFamily:'KFGQPCUthmanicHafs',fontSize:32,lineHeight:58,textAlign:'right',marginTop:24,paddingTop:20,borderTopWidth:1,borderColor:C.line,writingDirection:'rtl'},revealArea:{flex:1,minHeight:110,alignItems:'center',justifyContent:'center',gap:8,marginTop:20,borderTopWidth:1,borderColor:C.line},hifzStatus:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10,textTransform:'uppercase'},intro:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:14,lineHeight:19,marginTop:0,marginBottom:20},exploreGrid:{flexDirection:'row',flexWrap:'wrap',gap:12},exploreCard:{flexGrow:1,flexBasis:'31%',minWidth:150},exploreCardInner:{minHeight:164,backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},exploreTitle:{color:C.ink,fontSize:16,fontFamily:'DMSans_700Bold',marginTop:12},exploreBody:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:11,lineHeight:15,marginTop:4,flex:1},exploreArrow:{width:29,height:29,borderRadius:16,backgroundColor:C.mint,alignItems:'center',justifyContent:'center',alignSelf:'flex-end'},apiPanel:{backgroundColor:C.deep,borderRadius:24,padding:20,marginTop:12},apiTitle:{color:C.onAccent,fontSize:14,fontFamily:'DMSans_700Bold',marginTop:16},apiText:{color:C.onAccent,fontSize:10,marginTop:4},dataProvider:{color:C.onAccent,fontSize:10.5,fontFamily:'DMSans_600SemiBold',marginTop:3,opacity:.72,letterSpacing:.2},
- toolPage:{width:'100%',maxWidth:780,alignSelf:'center',alignItems:'center',padding:24,paddingTop:24,paddingBottom:BOTTOM_RESERVE},toolPageScroll:{flexGrow:1},toolEyebrow:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.2,marginTop:20},compass:{width:260,height:260,borderRadius:130,backgroundColor:C.white,borderWidth:12,borderColor:C.line,alignItems:'center',justifyContent:'center',marginTop:32,...shadow},compassRose:{position:'absolute',width:'100%',height:'100%',alignItems:'center',justifyContent:'center'},compassLive:{fontFamily:'DMSans_600SemiBold',fontSize:11,color:C.green,marginTop:8},compassHint:{color:C.muted,fontSize:11,marginTop:4,textAlign:'center'},north:{position:'absolute',top:12,color:C.coral,fontSize:10,fontFamily:'DMSans_700Bold'},compassArrow:{alignItems:'center',justifyContent:'center'},kaaba:{position:'absolute',right:43,bottom:47,width:31,height:31,backgroundColor:C.deep,borderRadius:4},kaabaGold:{height:5,backgroundColor:C.gold,marginTop:8},direction:{color:C.ink,fontSize:31,fontFamily:'DMSans_700Bold',marginTop:24},directionText:{color:C.muted,fontSize:11,marginTop:4},primary:{backgroundColor:C.accent,paddingHorizontal:20,paddingVertical:12,minHeight:48,alignItems:'center',justifyContent:'center',borderRadius:16,marginTop:20},primaryText:{color:C.onAccentInk,fontSize:11,fontFamily:'DMSans_700Bold'},tasbihAr:{color:C.ink,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:32,marginTop:16,writingDirection:'rtl'},counter:{width:205,height:205,borderRadius:103,backgroundColor:C.accent,alignItems:'center',justifyContent:'center',borderWidth:12,borderColor:C.line,marginVertical:32,...shadow},counterNo:{color:C.onAccent,fontSize:58,fontFamily:'DMSans_700Bold'},counterGoal:{color:C.onAccent,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.3},secondary:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:8,minHeight:44,backgroundColor:C.white,paddingHorizontal:16,paddingVertical:12,borderRadius:16,borderWidth:1,borderColor:C.line,marginHorizontal:4},secondaryText:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold'},
+ toolPage:{width:'100%',maxWidth:780,alignSelf:'center',alignItems:'center',padding:24,paddingTop:24,paddingBottom:BOTTOM_RESERVE},toolPageScroll:{flexGrow:1},toolEyebrow:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.2,marginTop:20},compass:{width:260,height:260,borderRadius:130,backgroundColor:C.white,borderWidth:12,borderColor:C.line,alignItems:'center',justifyContent:'center',marginTop:32,...shadow},compassRose:{position:'absolute',width:'100%',height:'100%',alignItems:'center',justifyContent:'center'},compassLive:{fontFamily:'DMSans_600SemiBold',fontSize:11,color:C.green,marginTop:8},compassHint:{color:C.muted,fontSize:11,marginTop:4,textAlign:'center'},north:{position:'absolute',top:12,color:C.coral,fontSize:10,fontFamily:'DMSans_700Bold'},compassArrow:{alignItems:'center',justifyContent:'center'},/* The cube used to be a plain square with a gold stripe under it. It is the
+   Kaaba now, drawn in `KaabaMark`; the sheet only puts it on the dial. */
+kaaba:{position:'absolute',right:43,bottom:47,width:31,height:31,alignItems:'center',justifyContent:'center'},direction:{color:C.ink,fontSize:31,fontFamily:'DMSans_700Bold',marginTop:24},directionText:{color:C.muted,fontSize:11,marginTop:4},primary:{backgroundColor:C.accent,paddingHorizontal:20,paddingVertical:12,minHeight:48,alignItems:'center',justifyContent:'center',borderRadius:16,marginTop:20},primaryText:{color:C.onAccentInk,fontSize:11,fontFamily:'DMSans_700Bold'},tasbihAr:{color:C.ink,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:32,marginTop:16,writingDirection:'rtl'},counter:{width:205,height:205,borderRadius:103,backgroundColor:C.accent,alignItems:'center',justifyContent:'center',borderWidth:12,borderColor:C.line,marginVertical:32,...shadow},counterNo:{color:C.onAccent,fontSize:58,fontFamily:'DMSans_700Bold'},counterGoal:{color:C.onAccent,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.3},secondary:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:8,minHeight:44,backgroundColor:C.white,paddingHorizontal:16,paddingVertical:12,borderRadius:16,borderWidth:1,borderColor:C.line,marginHorizontal:4},secondaryText:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold'},
  summaryScore:{backgroundColor:C.deep,borderRadius:24,padding:20,flexDirection:'row',justifyContent:'space-between',...shadow,borderTopColor:depth.edge},summaryDay:{minHeight:66,flexDirection:'row',alignItems:'center',gap:12,paddingHorizontal:16,borderBottomWidth:1,borderColor:C.line},summaryDots:{flexDirection:'row',gap:4},summaryDot:{width:8,height:8,borderRadius:4,backgroundColor:C.mint},summaryDotDone:{backgroundColor:C.green},cityGrid:{flexDirection:'row',flexWrap:'wrap',gap:8},cityCard:{width:'48.5%',minHeight:76,backgroundColor:C.card,borderRadius:16,padding:12,borderWidth:1,borderColor:C.line,...surface},cityCardActive:{backgroundColor:C.mint,borderColor:C.line},cityName:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:12},formCard:{backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},
   rsEyebrow:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.2,marginBottom:10},
   rsPreview:{backgroundColor:C.card,borderRadius:24,padding:20,borderWidth:1,borderColor:C.line,...surface},

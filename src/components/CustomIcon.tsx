@@ -129,6 +129,10 @@ export default function CustomIcon({ name, size = 22, color, accent }: { name: s
     case'cloud-download':art=<><Path {...common} d="M7 19.6h9.3a2.9 2.9 0 0 0 .2-5.8 4.3 4.3 0 0 0-8.2 1.1A2.6 2.6 0 0 0 7 19.6z"/><Path {...common} d="M12 4.6v8.8"/><Polyline {...common} points="8.6,9.8 12,13.4 15.4,9.8"/></>;break;
     case'volume-medium':art=<><Path {...common} d="M11.2 5 6.6 8.8H3.6v6.4h3L11.2 19z"/><Path {...common} d="M15.2 9.2a4 4 0 0 1 0 5.6"/></>;break;
     case'cloud-done':art=<><Path {...common} d="M7 19.6h9.3a2.9 2.9 0 0 0 .2-5.8 4.3 4.3 0 0 0-8.2 1.1A2.6 2.6 0 0 0 7 19.6z"/><Polyline {...common} points="9,11.4 11.3,13.7 15.6,9.2"/></>;break;
+    /* Two more the app asks for: the crosshair behind "mark where I was", and
+       the schoolhouse standing in for learning on the Hifz card. */
+    case'locate':art=<><Circle {...common} cx="12" cy="12" r="7.4"/><Circle {...common} cx="12" cy="12" r="2.4"/><Line {...common} x1="12" y1="1.8" x2="12" y2="4.6"/><Line {...common} x1="12" y1="19.4" x2="12" y2="22.2"/><Line {...common} x1="1.8" y1="12" x2="4.6" y2="12"/><Line {...common} x1="19.4" y1="12" x2="22.2" y2="12"/></>;break;
+    case'school':art=<><Path {...common} d="M5.6 20.6V9.4L12 5.2l6.4 4.2v11.2z"/><Path {...common} d="M9.8 20.6v-5.4h4.4v5.4"/><Line {...common} x1="3.4" y1="20.6" x2="20.6" y2="20.6"/></>;break;
     default:art=<><Circle {...common} cx="12" cy="12" r="8.5"/><Path {...common} d="m12 7 1.5 3.5L17 12l-3.5 1.5L12 17l-1.5-3.5L7 12l3.5-1.5z"/></>;
   }
   return <Svg width={size} height={size} viewBox="0 0 24 24"><Circle cx="19" cy="5" r="2" fill={detail} opacity={0.20}/>{art}</Svg>;
