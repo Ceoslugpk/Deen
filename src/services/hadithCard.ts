@@ -280,7 +280,7 @@ async function renderWeb(data: HadithCardData): Promise<Blob> {
   ctx.fillText([`${data.collection} · ${data.number}`, data.date].filter(Boolean).join(' · '), PAD, H - PAD - 6);
 
   // ---- brand: the wordmark, and the same mark the app header wears ----
-  const mark = await loadBrandMark();
+  const mark = await loadBrandMark(data.theme);
   const MARK = 36;
   ctx.textAlign = 'right';
   ctx.fillStyle = pal.footer;

@@ -8,6 +8,7 @@ import { resolveArabicFamily } from '../services/fonts';
     the card is a dark gradient, so the dark-background artwork is the
     one that reads. */
 const BRAND_MARK = require('../../assets/logo-mark.png');
+const BRAND_MARK_PALESTINE = require('../../assets/logo-mark-palestine.png');
 
 /**
  * The verse card as a real view. On native this is what gets captured into the
@@ -174,7 +175,7 @@ export function VerseShareCard({
         <Text style={styles.footerLeft}>{translationName}</Text>
         <View style={styles.brand}>
           <Text style={styles.footerRight}>Islamic</Text>
-          <Image source={BRAND_MARK} resizeMode="contain" style={styles.brandMark} />
+          <Image source={theme === 'palestine' ? BRAND_MARK_PALESTINE : BRAND_MARK} resizeMode="contain" style={styles.brandMark} />
         </View>
       </View>
     </View>

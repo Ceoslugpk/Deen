@@ -154,7 +154,10 @@ export const UI_STACK =
 export const FALLBACK_ARABIC =
   '"NotoNaskhArabic_400Regular","Amiri_400Regular","Geeza Pro","Al Bayan",Tahoma,serif';
 
+/* Both marks, so a card can wear the one its reader's theme wears. They are
+   the same two files the app header picks between. */
 const BRAND_MARK = require('../../assets/logo-mark.png');
+const BRAND_MARK_PALESTINE = require('../../assets/logo-mark-palestine.png');
 
 export function font(size: number, weight: number, stack: string) {
   return `${weight} ${size}px ${stack}`;
@@ -225,9 +228,12 @@ export function fitArabic(
  * gradient, so this is the light-on-dark variant. If it cannot be decoded we
  * simply draw the wordmark without it rather than failing the whole share.
  */
-export async function loadBrandMark(): Promise<HTMLImageElement | null> {
+export async function loadBrandMark(theme?: CardTheme | null): Promise<HTMLImageElement | null> {
   try {
-    const raw: any = BRAND_MARK;
+    /* The card already paints itself in the reader's theme; the mark has to
+       follow it, or a Palestine card carries the Islamic mark beside a
+       Palestine wordmark. Falls back to the Islamic set, as the palette does. */
+    const raw: any = theme === 'palestine' ? BRAND_MARK_PALESTINE : BRAND_MARK;
     const src = typeof raw === 'string' ? raw : (raw?.default ?? raw?.uri ?? raw);
     if (!src || typeof src !== 'string') return null;
     const img = new Image();
@@ -304,7 +310,7 @@ export async function renderShareCard(
      Without this the first wrap is done in the fallback metrics and the
      Arabic is set at the wrong size. */
   await documentFontsReady();
-  const mark = await loadBrandMark();
+  const mark = await loadBrandMark(theme ?? data.theme);
 
   // ---- measure ----
   ctx.font = font(34, 400, UI_STACK);

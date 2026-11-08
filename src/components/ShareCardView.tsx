@@ -6,8 +6,12 @@ import { resolveArabicFamily } from '../services/fonts';
 
 /** The same mark the app header wears, in its light-on-dark variant:
     the card is a dark gradient, so the dark-background artwork is the
-    one that reads. */
+    one that reads.
+
+    Both marks are required because the header's mark depends on the theme,
+    and a card has to carry whichever one its reader's header is showing. */
 const BRAND_MARK = require('../../assets/logo-mark.png');
+const BRAND_MARK_PALESTINE = require('../../assets/logo-mark-palestine.png');
 
 /**
  * The generic share card as a real view.
@@ -110,7 +114,7 @@ export function ShareCardView({
       )}
 
       <View style={card.brandRow}>
-        <Image source={BRAND_MARK} resizeMode="contain" style={card.brandMark} />
+        <Image source={theme === 'palestine' ? BRAND_MARK_PALESTINE : BRAND_MARK} resizeMode="contain" style={card.brandMark} />
         <Text style={[card.brandText, { color: pal.footer }]}>Islamic · Your Daily Companion</Text>
       </View>
     </View>
