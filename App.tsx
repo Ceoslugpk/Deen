@@ -77,6 +77,7 @@ import { addNotificationReceivedListener, addNotificationResponseReceivedListene
 import { getBatteryOptimizationState, openBatterySettings, requestBatteryExemption, type BatteryState } from './src/services/batteryOptimization';
 import { copyFeedback, issueLabel, loadReports, markReportSent } from './src/services/reportService';
 import { computeMushafLayout } from './src/services/mushafLayout';
+import { mushafPageLines } from './src/services/mushafPageData';
 import { markerBetween, MARKER_KINDS, MARKER_LABELS, MARKER_NOTE, type MushafMarker, type MarkerKind, type PageConnection } from './src/services/mushafMarkers';
 import { localizeGuide, WORSHIP_GUIDES, WorshipGuide } from './src/content/worshipGuides';
 import { GUIDE_HADITH, GUIDE_VERSES } from './src/content/guideSources';
@@ -388,8 +389,9 @@ const MUSHAF_LEAD = 1.48;
  * count being whatever fills the box.
  */
 const MUSHAF_LINES = 15;
-/** How many times the solve may move the size before it takes what it has. */
-const MUSHAF_PASSES = 4;
+/** The strip the page number occupies at the foot of the page. The script is
+    sized to what is left above it, so the two have to agree. */
+const MUSHAF_PAGE_NO_H = 34;
 
 
 let C: Record<string, string> = { ...C_LIGHT };
@@ -4524,22 +4526,25 @@ function MushafConnectionNote({ kind, rtl, T, language, page, cut, nextVerse }: 
 /**
  * One page of the mushaf.
  *
- * The Madinah mushaf carries fifteen lines to a page, and the same fifteen on
- * all six hundred and four of them. That is the whole of what makes a page
- * read as a page rather than as a column of prose: the eye meets the same
- * shape on every turn, and the script holds its size from page to page.
+ * The page is set, not solved for. It carries the lines the King Fahd Complex
+ * itself set on it — fifteen on every one of the six hundred and four pages
+ * but the opening two, which carry eight because their surah headings are
+ * decorated rather than set in a line of text — and for every line, the words
+ * on it and the verse each of them belongs to.
  *
- * So the solve here is not "make the text fill the box", which is what it used
- * to be. Filling the box let one page run to eleven lines and the next to
- * nineteen, at whatever size happened to fit, and two pages either side of a
- * turn did not look like the same book. It is "find the size at which this
- * page's text falls into fifteen lines". Because the verses for a page are the
- * verses the Complex itself set on that page, that size lands in a narrow band
- * across the whole book, and a page solved this way fills itself.
+ * Nothing here measures anything, and nothing iterates. The number of lines
+ * is known before the first one is drawn, so the size of the script is a
+ * division — the room there is, over the lines there are — rather than a
+ * search. The page this replaced measured the rendered text, asked how many
+ * lines it had fallen into, moved the size and measured again, and gave up
+ * when it ran out of attempts. Its answer depended on the font, the width and
+ * the device, and on a page it could not satisfy it never settled at all.
  *
- * The lines are then justified. A mushaf is set flush to both margins, and the
- * ragged centre this used to carry is the single thing that most made it read
- * as ordinary text rather than as a page of the Quran.
+ * Setting the lines also sets the breaks, which is the part that matters most.
+ * A page now ends where the printed page ends, and that is not always where a
+ * verse ends: a reader crosses the turn in the middle of a sentence exactly as
+ * a reader of the printed mushaf does, instead of every page politely stopping
+ * at a full stop.
  */
 function MushafPage({ page, verses, width, height, preferences, rtl, T, bookmarks, savedPosition,
   onBookmark, onMark, onPlay, onNote, before, variant = 'madani' }: any) {
@@ -4551,198 +4556,119 @@ function MushafPage({ page, verses, width, height, preferences, rtl, T, bookmark
   const contentW = Math.max(60, width - 2 * (MUSHAF_FRAME_PAD + MUSHAF_FRAME_BORDER) - 2 * (MUSHAF_INNER_PAD_H + MUSHAF_INNER_BORDER));
   const contentH = Math.max(60, height - 2 * (MUSHAF_FRAME_PAD + MUSHAF_FRAME_BORDER) - 2 * (MUSHAF_INNER_PAD_V + MUSHAF_INNER_BORDER));
 
-  /* The runs of text, split wherever something that is not text has to be
-     inserted — the heading of a surah, or a division mark. Everything else
-     flows as one piece. */
-  const segments = useMemo(() => {
-    const out: any[] = [];
-    let run: any[] = [];
-    const flush = () => { if (run.length) { out.push({ kind: 'text', verses: run }); run = []; } };
-    verses.forEach((v: any, i: number) => {
-      const prev = i > 0 ? verses[i - 1] : (before && before.length ? before[before.length - 1] : null);
-      const startsSurah = i === 0
-        ? (!prev || prev.surah_name !== v.surah_name)
-        : verses[i - 1].surah_name !== v.surah_name;
-      const marker = markerBetween(prev, v);
-      if (startsSurah) { flush(); out.push({ kind: 'surah', name: v.surah_name }); }
-      if (marker && enabled[marker.kind] !== false) { flush(); out.push({ kind: 'marker', marker }); }
-      run.push(v);
-    });
-    flush();
-    return out;
-  }, [verses, before, enabled]);
+  /* The lines of the printed page, in the order the Complex set them. */
+  const lines = useMemo(() => mushafPageLines(page), [page]);
+  const lineCount = Math.max(1, lines.length);
+  const madani = variant !== 'flowing';
 
-  /* Where the solve starts: the size at which fifteen lines would exactly fill
-     the room there is. The headings and the page number will take some of that
-     room, so this runs a little large, but on a page carrying a normal amount
-     of text it is within a point or two of the answer and the solve lands on
-     the first or second pass. */
-  const seedSize = useCallback(() => Math.max(MUSHAF_MIN_SIZE,
-    Math.min(MUSHAF_MAX_SIZE, contentH / (MUSHAF_LINES * MUSHAF_LEAD))), [contentH]);
+  /* The verses the reader's own fetch brought, so a verse can be acted on and
+     not only looked at. The printed page is the authority on which verses are
+     here at all, so a verse it names and the fetch did not bring is given
+     enough of a shape to be bookmarked or marked rather than silently
+     ignored — it is on the page, and the page is what the reader is reading. */
+  const byKey = useMemo(() => {
+    const map: Record<string, any> = {};
+    (verses || []).forEach((v: any) => { if (v && v.verse_key) map[v.verse_key] = v; });
+    return map;
+  }, [verses]);
 
-  const [size, setSize] = useState(seedSize);
-  const [textH, setTextH] = useState(0);
-  const [totalH, setTotalH] = useState(0);
-  const [pass, setPass] = useState(0);
-  const segH = useRef<{ [k: number]: number }>({});
+  const verseFor = useCallback((key: string) => byKey[key] || null, [byKey]);
 
-  const setSegH = (k: number, h: number) => {
-    if (Math.abs((segH.current[k] || 0) - h) < 0.5) return;
-    segH.current[k] = h;
-    setTextH(Object.keys(segH.current).reduce((a, key) => a + segH.current[+key], 0));
-  };
+  /* The page number takes a strip at the foot; what is left is the text. */
+  const textH = Math.max(40, contentH - MUSHAF_PAGE_NO_H);
 
-  /* What is left once everything that is not text has taken its share. The
-     headings, the marks and the page number occupy the same room whatever size
-     the script is, so they are whatever the column measures minus what the
-     text measures. */
-  const chromeH = Math.max(0, totalH - textH);
-  const budget = Math.max(40, contentH - chromeH);
-  /* Which page this is. The ruled one is the Madinah page. The other is the
-     page this replaced, kept because some eyes need the largest script the
-     screen allows more than they need the grid: it asks only that the text
-     fill the room it has and takes whatever number of lines that leaves. */
-  const madani = variant === 'madani';
+  /* How many characters the page carries, for the flowing size below. */
+  const chars = useMemo(() => lines.reduce((n, l) =>
+    n + (l.t === 'a' ? l.x.reduce((m, f) => m + f[1].length, 0) : 0), 0), [lines]);
 
-  /* Whether the solve has finished, and the page may be seen. It finishes
-     three ways: the count lands on fifteen, the size stops moving, or it runs
-     out of passes. A page carrying very little text — the opening of a short
-     surah, say — asks for more size than there is, stops at the largest size
-     there is, and stops asking, which is a finished solve and not a failed
-     one. Counting only the first and the last left such pages invisible for
-     good, which is how a mushaf came to have pages missing from it. */
-  const [settled, setSettled] = useState(false);
-
-  useEffect(() => {
-    if (!textH) return;
-    /* How many lines the text fell into at the size it was given. The leading
-       is a known proportion of the size while the solve runs, so the count is
-       the measured height divided by that. */
-    const lines = textH / (size * MUSHAF_LEAD);
-    /* The largest script a page can carry: the size at which fifteen lines
-       would exactly fill the room there is. Above this a page cannot hold
-       fifteen lines and stay on the page, so it is a ceiling, not a target. */
-    const cap = budget / (MUSHAF_LINES * MUSHAF_LEAD);
-
-    /* The flowing page has no count to land on. It asks only that the text
-       fill the room it has — the question the page used to ask before the
-       fifteen were asked for — so the script grows or shrinks to suit and the
-       number of lines is whatever that leaves. */
-    if (!madani) {
-      const ratio = budget / textH;
-      if (Math.abs(ratio - 1) < 0.03 || pass >= MUSHAF_PASSES) { setSettled(true); return; }
-      const next = Math.max(MUSHAF_MIN_SIZE, Math.min(MUSHAF_MAX_SIZE, size * Math.pow(ratio, 0.6)));
-      if (Math.abs(next - size) < 0.35) { setSettled(true); return; }
-      segH.current = {}; setTextH(0); setPass(n => n + 1); setSize(next);
-      return;
+  const size = useMemo(() => {
+    if (madani) {
+      /* The room there is, over the lines there are. Every line sits on the
+         same baseline grid — a surah heading and a Basmalah included — which
+         is how the Complex sets them. */
+      return Math.max(MUSHAF_MIN_SIZE, Math.min(MUSHAF_MAX_SIZE, textH / (lineCount * MUSHAF_LEAD)));
     }
+    /* The flowing page has no lines to fill, only room to use. How much room
+       a piece of prose needs goes as the square of the size — twice the size
+       is half as many words to a line and twice the height to each of them —
+       so the size that fills the page is a square root.
 
-    /* Landed on fifteen. */
-    if (Math.abs(lines - MUSHAF_LINES) < 0.4) { setSettled(true); return; }
-    /* At the ceiling and still carrying fewer than fifteen. This is a page
-       that cannot hold fifteen lines at any size that fits — the opening of a
-       short surah, or the last page, which carries a third of the text of a
-       full one. It is done: its leading will take up the slack. Without this
-       the solve asks for a larger script, is refused by the ceiling, and asks
-       again until it runs out of passes — which is how a page that could only
-       ever have been settled came to arrive late and at the wrong size. */
-    if (size >= cap - 0.5 && lines < MUSHAF_LINES) { setSettled(true); return; }
-    if (pass >= MUSHAF_PASSES) { setSettled(true); return; }
-    /* The count goes as the size: a larger script fits fewer words to a line
-       and so needs more lines to say the same thing. So the size moves by the
-       ratio the count is out by. Damped a little, because the count only goes
-       as the size approximately — a verse marker, or a long word that has to
-       start a new line, shifts it off the pure ratio. */
-    const wanted = size * Math.pow(MUSHAF_LINES / Math.max(1, lines), 0.9);
-    const next = Math.max(MUSHAF_MIN_SIZE, Math.min(Math.min(wanted, cap), MUSHAF_MAX_SIZE));
-    if (Math.abs(next - size) < 0.35) { setSettled(true); return; }
-    segH.current = {}; setTextH(0); setPass(n => n + 1); setSize(next);
-  }, [textH, size, pass, budget, madani]);
+       It is an estimate, and deliberately so. The page this replaced measured
+       itself to answer the same question, and a page a little loosely or
+       tightly set is a far smaller wrong than a page that measures itself in
+       a loop and sometimes never stops. */
+    const fitted = Math.sqrt((2 * contentW * textH) / (Math.max(1, chars) * MUSHAF_LEAD));
+    return Math.max(MUSHAF_MIN_SIZE, Math.min(MUSHAF_MAX_SIZE, fitted));
+  }, [madani, textH, lineCount, contentW, chars]);
 
-  /* A new page, or a new shape of page, starts the solve again from the seed
-     rather than from the size the last page happened to land on — a short
-     page solved large, left as the starting guess for a full one, is a long
-     way to climb back down. */
-  useEffect(() => {
-    segH.current = {}; setTextH(0); setPass(0); setSettled(false); setSize(seedSize());
-  }, [page, verses, contentW, contentH]);
+  const lineHeight = size * MUSHAF_LEAD;
 
-  /* No page is allowed to stay invisible. If the solve has not finished a
-     moment after arriving, the page is shown as it stands rather than left
-     blank — a line count slightly off is a smaller wrong than a page that is
-     not there at all. */
-  useEffect(() => {
-    if (settled) return;
-    const t = setTimeout(() => setSettled(true), 900);
-    return () => clearTimeout(t);
-  }, [settled, page]);
-
-  /* The lines are then given the room there is between them.
-     The leading follows the lines the page actually has, not the fifteen it
-     was asked for, because a page that cannot reach fifteen — the opening of a
-     short surah, which carries a third of the text of a full one — must spread
-     what it has rather than fill a third of the page and leave the rest bare.
-     It is free to open out to twice the leading the size naturally wants and
-     to close to a little under it, which is the range within which lines still
-     read as lines. */
-  const naturalLead = size * MUSHAF_LEAD;
-  const solvedLines = textH ? Math.max(1, Math.round(textH / naturalLead)) : MUSHAF_LINES;
-  let lineHeight = Math.max(naturalLead * 0.86, Math.min(naturalLead * 2, budget / solvedLines));
-  /* However the solve ends, the text must not run past the foot of the page.
-     This is the backstop, not the mechanism. */
-  if (solvedLines * lineHeight > budget) lineHeight = budget / solvedLines;
+  /* A division beginning on a line is announced above it. Worked out from the
+     verses the line carries rather than assumed, because most divisions open
+     midway through a page and only the layout knows where the lines fall. */
+  const lineMarkers = useMemo(() => {
+    const out: any[] = [];
+    let prev: any = (before && before.length) ? before[before.length - 1] : null;
+    for (const line of lines) {
+      if (line.t !== 'a' || !line.x.length) { out.push(null); continue; }
+      const first = byKey[line.x[0][0]] || null;
+      const marker = first ? markerBetween(prev, first) : null;
+      out.push(marker && enabled[marker.kind] !== false ? marker : null);
+      prev = byKey[line.x[line.x.length - 1][0]] || prev;
+    }
+    return out;
+  }, [lines, byKey, before, enabled]);
 
   const savedKeys = new Set((bookmarks || []).map((b: any) => b.verseKey));
+  const open = openVerse ? verseFor(openVerse) : null;
 
   return <View style={[s.mushafPageOuter, { width, height }]}>
     <View style={s.mushafFrame}>
       <MushafCorners />
       <View style={s.mushafFrameInner}>
-        {/* Measured without the frame's padding, which the budget already
-            allows for — counting it twice here stole about fifty points and
-            the script paid for it. */}
-        {/* The text sits at the head of the page and the page number at the
-            foot of it, with whatever the script did not need left between
-            them. That is where a printed page puts both: a number that
-            followed straight on from the last line would ride up and down the
-            page with how full it happened to be. */}
-        <View style={{ minHeight: contentH, justifyContent: 'space-between' }}
-              onLayout={e => setTotalH(e.nativeEvent.layout.height)}>
-        <View>
-        {segments.map((seg: any, idx: number) => seg.kind === 'surah' ? (
-          <View key={`s${idx}`} style={s.mushafSurahBand}>
-            <View style={s.mushafBandRule} />
-            <Text style={s.mushafSurahName}>{seg.name}</Text>
-            <View style={s.mushafBandRule} />
+        <View style={{ minHeight: contentH, justifyContent: 'space-between' }}>
+          <View>
+          {lines.map((line: any, i: number) => line.t === 'h' ? (
+            /* The heading is set on the same grid as everything else: a band
+               that took more or less room than a line of text would push the
+               fifteen out of true. */
+            <View key={`h${i}`} style={[s.mushafSurahBand, { height: lineHeight }]}>
+              <View style={s.mushafBandRule} />
+              <Text style={s.mushafSurahName}>{line.x}</Text>
+              <View style={s.mushafBandRule} />
+            </View>
+          ) : line.t === 'b' ? (
+            <Text key={`b${i}`} style={[s.mushafPageLine, { fontSize: size, lineHeight, width: contentW }]}>﷽</Text>
+          ) : (
+            <View key={`a${i}`}>
+              {!!lineMarkers[i] && <MushafMarkerBand marker={lineMarkers[i]} width={contentW} />}
+              <Text style={[s.mushafPageLine, madani && s.mushafPageLineJustified, { fontSize: size, lineHeight, width: contentW }]}>
+                {line.x.map((run: [string, string], j: number) => (
+                  <Text key={`${run[0]}-${j}`}
+                    onLongPress={() => setOpenVerse(openVerse === run[0] ? null : run[0])}
+                    onPress={() => openVerse === run[0] && setOpenVerse(null)}
+                    accessibilityLabel={`${T('Verse')} ${run[0]}. ${T('Press and hold for actions')}`}
+                    style={openVerse === run[0] ? s.mushafVerseOpen : undefined}>
+                    {run[1]}{j < line.x.length - 1 ? ' ' : ''}
+                  </Text>
+                ))}
+              </Text>
+            </View>
+          ))}
           </View>
-        ) : seg.kind === 'marker' ? (
-          <MushafMarkerBand key={`m${idx}`} marker={seg.marker} width={contentW} />
-        ) : (
-          <Text key={`t${idx}`} style={[s.mushafPageLine, madani && s.mushafPageLineJustified, { fontSize: size, lineHeight, width: contentW, opacity: settled ? 1 : 0 }]}
-            onLayout={e => setSegH(idx, e.nativeEvent.layout.height)}>
-            {seg.verses.map((v: any) => <Text key={v.verse_key}
-              onLongPress={() => setOpenVerse(openVerse === v.verse_key ? null : v.verse_key)}
-              onPress={() => openVerse === v.verse_key && setOpenVerse(null)}
-              accessibilityLabel={`${T('Verse')} ${v.verse_key}. ${T('Press and hold for actions')}`}
-              style={openVerse === v.verse_key ? s.mushafVerseOpen : undefined}>
-              {v.text_uthmani} <Text style={{ fontSize: size * 0.72 }}>۝{v.verse_key.split(':')[1]}</Text>{' '}
-            </Text>)}
-          </Text>
-        ))}
-        </View>
-        <View style={s.mushafPageNoRow}>
-          <View style={s.mushafPageNo}><Text style={s.mushafPageNoText}>{toArabicDigits(page)}</Text></View>
-        </View>
+          <View style={s.mushafPageNoRow}>
+            <View style={s.mushafPageNo}><Text style={s.mushafPageNoText}>{toArabicDigits(page)}</Text></View>
+          </View>
         </View>
       </View>
-      {!!openVerse && <View style={s.mushafVerseMenuOverlay}>
+      {!!open && <View style={s.mushafVerseMenuOverlay}>
         <MushafVerseMenu T={T} rtl={rtl}
           saved={savedKeys.has(openVerse)}
           marked={savedPosition?.verseKey === openVerse}
-          onPlay={() => { const v = verses.find((x: any) => x.verse_key === openVerse); setOpenVerse(null); v && onPlay(v); }}
-          onBookmark={() => { const v = verses.find((x: any) => x.verse_key === openVerse); setOpenVerse(null); v && onBookmark(v); }}
-          onMark={() => { const v = verses.find((x: any) => x.verse_key === openVerse); setOpenVerse(null); v && onMark(v); }}
-          onNote={() => { const v = verses.find((x: any) => x.verse_key === openVerse); setOpenVerse(null); v && onNote(v); }} />
+          onPlay={() => { setOpenVerse(null); onPlay(open); }}
+          onBookmark={() => { setOpenVerse(null); onBookmark(open); }}
+          onMark={() => { setOpenVerse(null); onMark(open); }}
+          onNote={() => { setOpenVerse(null); onNote(open); }} />
       </View>}
     </View>
   </View>;
@@ -4804,6 +4730,8 @@ function MushafPageView({page,verses,error,cached,retry,preferences,rtl,T,langua
      both sides. So the neighbours are fetched: quietly, and only once per
      page, since what comes back is cached with everything else. */
   const neighbours = useMushafNeighbours(page, scriptFor(preferences.scriptEdition), preferences.translationEdition);
+  /* The printed page is on the device, so this is known at once. */
+  const hasLines = useMemo(() => mushafPageLines(page).length > 0, [page]);
 
   const step = (delta: number) => goPage(page + delta);
 
@@ -4835,8 +4763,13 @@ function MushafPageView({page,verses,error,cached,retry,preferences,rtl,T,langua
   </View>
   <View style={s.pageProgress}><View style={[s.preloadFill, { width: `${page / 604 * 100}%` } as any]} /></View>
 
-  {error ? <ErrorState message={error} retry={retry} /> : !verses.length ? <SkeletonParagraph lines={12} /> :
-   <View style={s.mushafPageStack}>
+  {/* The page is drawn from the printed layout, which is bundled. The fetch
+      brings the verses only so that a verse can be acted on — bookmarked,
+      marked, played — and so a page opens, reads and turns with no network at
+      all. A page that waited on the fetch to be worth showing was a page that
+      vanished the moment the connection did. */}
+  {!hasLines ? (error ? <ErrorState message={error} retry={retry} /> : <SkeletonParagraph lines={12} />)
+   : <View style={s.mushafPageStack}>
      {!!preferences.showVerseConnections && page > 1 &&
        <MushafConnectionNote kind="continued" rtl={rtl} T={T} language={language} page={page} cut={startsContinued} nextVerse={neighbours.prev[neighbours.prev.length - 1]} />}
      <MushafPage page={page} verses={verses} width={layout.pageWidth} height={layout.pageHeight} before={neighbours.prev} {...pageProps} variant={pageProps.preferences?.mushafLayout === 'flowing' ? 'flowing' : 'madani'} />
