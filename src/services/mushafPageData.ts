@@ -1,4 +1,15 @@
-import { MUSHAF_PAGE_JSON } from '../data/mushafLines';
+/* Read on demand, not at import.
+
+   The table is well over a megabyte and the printed layout is withdrawn until
+   it works everywhere, so on a phone that has never opened it this must not
+   cost anything at all — not even the work of building the object. `require`
+   is what buys that: the module is only evaluated the first time a page is
+   actually asked for. */
+let table: Record<number, string> | null = null;
+function pageJson(): Record<number, string> {
+  if (!table) table = require('../data/mushafLines').MUSHAF_PAGE_JSON as Record<number, string>;
+  return table;
+}
 
 /**
  * The lines of the printed Madinah mushaf.
@@ -47,7 +58,7 @@ function read(page: number): MushafLine[] {
   const held = parsed.get(page);
   if (held) return held;
 
-  const raw = MUSHAF_PAGE_JSON[page];
+  const raw = pageJson()[page];
   if (!raw) return [];
 
   const lines = JSON.parse(raw) as MushafLine[];

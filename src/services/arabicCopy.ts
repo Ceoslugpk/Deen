@@ -13,25 +13,44 @@
 // Accessibility labels stay in English on purpose — the QA scripts drive the
 // screens by them, in both languages.
 
-import { UR } from './urduCopy';
-import { TR } from './turkishCopy';
-import { FA } from './persianCopy';
-import { ID } from './indonesianCopy';
-import { HI } from './hindiCopy';
-import { ML } from './malayalamCopy';
-import { RU } from './russianCopy';
-import { FR } from './frenchCopy';
-import { BN } from './bengaliCopy';
-import { MS } from './malayCopy';
-import { TA } from './tamilCopy';
-import { UZ } from './uzbekCopy';
-import { ZH } from './chineseCopy';
-import { KK } from './kazakhCopy';
-import { VI } from './vietnameseCopy';
-import { AZ } from './azCopy';
-import { BS } from './bosnianCopy';
-import { BG } from './bulgarianCopy';
-import { SI } from './sinhalaCopy';
+/**
+ * One copy table per language, fetched the first time it is read.
+ *
+ * The app carries twenty languages and any one reader uses one of them. They
+ * were all imported here, which meant all twenty were built at startup — a
+ * few megabytes of objects constructed on the way to a first paint that
+ * needed exactly one of them. On a small phone that is the whole difference
+ * between an app that opens and an app that stutters for a second.
+ *
+ * So each table now arrives on demand. `require` is what makes that work: the
+ * module is present in the bundle but is not evaluated until it is asked for,
+ * and it is never asked for until its language is the one in use.
+ *
+ * `tx` stays synchronous, because the tables are loaded before the first
+ * frame — see `loadCopy` — and a lookup that might happen before then simply
+ * reads back the English it was given rather than throwing.
+ */
+const COPY_LOADERS: Record<string, () => Record<string, string>> = {
+  ur: () => require('./urduCopy').UR,
+  tr: () => require('./turkishCopy').TR,
+  fa: () => require('./persianCopy').FA,
+  id: () => require('./indonesianCopy').ID,
+  hi: () => require('./hindiCopy').HI,
+  ml: () => require('./malayalamCopy').ML,
+  ru: () => require('./russianCopy').RU,
+  fr: () => require('./frenchCopy').FR,
+  bn: () => require('./bengaliCopy').BN,
+  ms: () => require('./malayCopy').MS,
+  ta: () => require('./tamilCopy').TA,
+  uz: () => require('./uzbekCopy').UZ,
+  zh: () => require('./chineseCopy').ZH,
+  kk: () => require('./kazakhCopy').KK,
+  vi: () => require('./vietnameseCopy').VI,
+  az: () => require('./azCopy').AZ,
+  bs: () => require('./bosnianCopy').BS,
+  bg: () => require('./bulgarianCopy').BG,
+  si: () => require('./sinhalaCopy').SI,
+};
 
 const AR: Record<string, string> = {
   '  (file per Surah)': '  (ملف لكل سورة)',
@@ -2802,6 +2821,36 @@ const AR: Record<string, string> = {
   '− 1 day': '− يوم واحد',
 };
 
+/**
+ * The tables that have been read so far. Arabic is here from the start
+ * because it lives in this file; the rest arrive as their language is chosen.
+ */
+const COPY_TABLES: Record<string, Record<string, string> | undefined> = { ar: AR };
+
+/**
+ * Make one language's copy available, and say when it is.
+ *
+ * Called before the first frame with the saved language, so that `tx` never
+ * has to answer before the words are there, and again whenever the reader
+ * picks another language. Cheap to call twice: a table already in hand is
+ * returned without touching its module again.
+ */
+export function loadCopy(code: string | boolean): Promise<void> {
+  const table = tableFor(code);
+  if (!table || table === 'ar' || COPY_TABLES[table]) return Promise.resolve();
+  const loader = COPY_LOADERS[table];
+  if (!loader) return Promise.resolve();
+  /* Wrapped because a module that will not load must not stop the app from
+     painting — an untranslated screen is recoverable, a white one is not. */
+  try {
+    COPY_TABLES[table] = loader();
+  } catch {
+    /* Left untranslated. */
+  }
+  return Promise.resolve();
+}
+
+
 
 
 const PRAYERS_AR: Record<string, string> = {
@@ -2947,27 +2996,13 @@ export function prayerName(code: string | boolean, name: string): string {
    */
   export function tx(code: string | boolean, text: string): string {
     const table = tableFor(code);
+    if (!table) return text;
+    /* Arabic is written in this file, so it is always here. Anything else
+       arrives the first time its language is used, and until it does the
+       English source text is the honest answer. */
     if (table === 'ar') return AR[text] ?? text;
-    if (table === 'ur') return UR[text] ?? text;
-    if (table === 'tr') return TR[text] ?? text;
-    if (table === 'fa') return FA[text] ?? text;
-    if (table === 'id') return ID[text] ?? text;
-    if (table === 'hi') return HI[text] ?? text;
-    if (table === 'ml') return ML[text] ?? text;
-    if (table === 'ru') return RU[text] ?? text;
-    if (table === 'fr') return FR[text] ?? text;
-    if (table === 'bn') return BN[text] ?? text;
-    if (table === 'ms') return MS[text] ?? text;
-    if (table === 'ta') return TA[text] ?? text;
-    if (table === 'uz') return UZ[text] ?? text;
-    if (table === 'zh') return ZH[text] ?? text;
-    if (table === 'kk') return KK[text] ?? text;
-    if (table === 'vi') return VI[text] ?? text;
-    if (table === 'az') return AZ[text] ?? text;
-    if (table === 'bs') return BS[text] ?? text;
-    if (table === 'bg') return BG[text] ?? text;
-    if (table === 'si') return SI[text] ?? text;
-    return text;
+    const dict = COPY_TABLES[table];
+    return (dict && dict[text]) ?? text;
   }
 
 /**

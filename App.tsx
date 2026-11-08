@@ -247,7 +247,7 @@ import { BiometricInfo, biometricInfo, checkPin, removePin, RELOCK_OPTIONS, setP
 import { CURRENCIES, clearHistory, computeZakat, currencySymbol, deleteCalculation, formatMoney, livePrices, loadZakatState, marketIsFresh, pricesAvailable, NISAB_GOLD_GRAMS, NISAB_SILVER_GRAMS, refreshMarket, saveCalculation, setAssetAmount, setBasis, setCurrency, setLiabilityAmount, setMetalPrice, setMoneyLocale, useLiveMetalPrices, useMarket, useZakat } from './src/services/zakatService';
 import { setSurahNameLanguage } from './src/content/surahNames';
 
-import { arNoun, clockTime, prayerName, tx, tf } from './src/services/arabicCopy';
+import { arNoun, clockTime, prayerName, tx, tf, loadCopy } from './src/services/arabicCopy';
 import { downloadSurahAudio, loadDownloads, estimateFreeBytes, formatBytes, pauseDownload, removeDownload, resolveAudioSource, resumeDownload, retryDownload, totalDownloadBytes, useDownloads } from './src/services/downloadService';
 import { NAME_LANGUAGES } from './src/services/api';
 import { PROPHETS } from './src/content/prophets';
@@ -1118,11 +1118,14 @@ function LanguageProvider({children}:{children:React.ReactNode}){
   const setLanguage=(next:AppLanguage)=>{
     const wantsRtl=isRtl(next);
     currentLanguage=next;
-    setLanguageState(next);
-    /* The language has to reach storage before the reload, or the app would
-       come back in the old language under the new direction — worse than the
-       bug being fixed. */
+    /* The new language's words are fetched before the switch is published, so
+       no screen is ever painted half in one language and half in another. */
     void (async()=>{
+      await loadCopy(next);
+      setLanguageState(next);
+      /* The language has to reach storage before the reload, or the app would
+         come back in the old language under the new direction — worse than the
+         bug being fixed. */
       await saveLanguage(next);
       if(await applyDirection(wantsRtl))await restartForDirection();
     })();
@@ -1135,6 +1138,10 @@ function LanguageProvider({children}:{children:React.ReactNode}){
       /* ready gates the first frame, so the app never paints in the wrong
          language and then swap underneath you. */
       currentLanguage=code;
+      /* Only the language in use is fetched, before the first frame. The other
+         nineteen stay unread in the bundle for the whole session — which is
+         what keeps a small phone from paying for all of them at startup. */
+      await loadCopy(code);
       setLanguageState(code);
       setReady(true);
       try{if(await applyDirection(isRtl(code)))void restartForDirection()}catch{/* a device that refuses the reload still gets the right layout from the direction style */}
