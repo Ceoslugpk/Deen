@@ -37,6 +37,8 @@ export type HadithShareCardProps = {
   viewRef?: any;
   /** Which colours the card wears. Defaults to the Islamic set. */
   theme?: CardTheme;
+  /** The day it was the hadith of, already formatted for the reader. */
+  date?: string;
 };
 
 /* Built from the palette rather than written out once, so that a card made
@@ -107,7 +109,11 @@ function makeStyles(pal: CardPalette) {
     bodySolo: { color: pal.body, fontSize: 42, lineHeight: 62, marginTop: 56 },
     footerRule: { height: 1.5, backgroundColor: pal.hairline, marginTop: 72 },
     footer: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 26 },
-    footerLeft: { color: pal.rule, fontSize: 26 },
+    /* The citation now carries the date as well, which makes it the longest
+       line on the card. It is allowed to shrink — and to lose its tail to an
+       ellipsis — rather than shove the wordmark off the right edge on the one
+       collection whose name is long enough to reach it. */
+    footerLeft: { color: pal.rule, fontSize: 26, flexShrink: 1 },
     footerRight: { color: pal.footer, fontSize: 26, fontWeight: '700' },
     brand: { flexDirection: 'row', alignItems: 'center', gap: 14 },
     brandMark: { width: 40, height: 40 },
@@ -135,6 +141,7 @@ export function HadithShareCard({
   arabicFontFamily,
   viewRef,
   theme,
+  date,
 }: HadithShareCardProps) {
   const pal = cardPalette(theme);
   const styles = React.useMemo(() => makeStyles(pal), [pal]);
@@ -177,7 +184,7 @@ export function HadithShareCard({
 
       <View style={styles.footerRule} />
       <View style={styles.footer}>
-        <Text style={styles.footerLeft}>{`${collection} · ${number}`}</Text>
+        <Text style={styles.footerLeft} numberOfLines={1}>{[`${collection} · ${number}`, date].filter(Boolean).join(' · ')}</Text>
         <View style={styles.brand}>
           <Text style={styles.footerRight}>Islamic</Text>
           <Image source={BRAND_MARK} resizeMode="contain" style={styles.brandMark} />

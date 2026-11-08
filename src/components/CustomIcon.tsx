@@ -112,6 +112,23 @@ export default function CustomIcon({ name, size = 22, color, accent }: { name: s
     case'heart':art=<Path {...common} d="M12 20s-7.4-4.6-7.4-9.6A4.2 4.2 0 0 1 12 7.4a4.2 4.2 0 0 1 7.4 3c0 5-7.4 9.6-7.4 9.6z"/>;break;
     case'person':art=<><Circle {...common} cx="12" cy="8" r="3.6"/><Path {...common} d="M4.6 20.4c.7-4.2 3.4-6.6 7.4-6.6s6.7 2.4 7.4 6.6"/></>;break;
     case'star':art=<Path {...common} d="m12 3.8 2.6 5.4 5.9.8-4.3 4.2 1 5.9-5.2-2.8-5.2 2.8 1-5.9L3.5 10l5.9-.8z"/>;break;
+    /* Twelve names the app asks for that had no drawing of their own. Each one
+       was falling through to the default below — a four-point spark — so an
+       undo, an alert, a blanked eye and a cloud were all wearing the same
+       glyph. Drawn in the house style: one 24-square box, a 1.8 line, round
+       joins, nothing filled but a detail or two. */
+    case'arrow-undo':art=<><Path {...common} d="M4.5 8.5h8.8a5.2 5.2 0 0 1 0 10.4H8.2"/><Polyline {...common} points="8,5 4.5,8.5 8,12"/></>;break;
+    case'image':art=<><Rect {...common} x="3" y="4.5" width="18" height="15" rx="2.5"/><Circle cx="8.4" cy="9.4" r="1.5" fill={detail}/><Path {...common} d="m3.6 17.6 4.7-4.2 3.1 2.8 3.6-3.3 5.4 4.7"/></>;break;
+    case'alert-circle':art=<><Circle {...common} cx="12" cy="12" r="9"/><Line {...common} x1="12" y1="7" x2="12" y2="13.6"/><Path {...common} d="M12 16.7h.01"/></>;break;
+    case'eye-off':art=<><Path {...common} d="M9.9 5.9A9.6 9.6 0 0 1 12 5.6c6 0 9.5 6.4 9.5 6.4a17.4 17.4 0 0 1-2.5 3.5M6.4 7.3A16.8 16.8 0 0 0 2.5 12S6 18.4 12 18.4c1.5 0 2.9-.4 4.1-1"/><Path {...common} d="M10.2 10.2a3 3 0 0 0 4.2 4.2"/><Line {...common} x1="3.2" y1="20.8" x2="20.8" y2="3.2"/></>;break;
+    case'trending-down':art=<><Polyline {...common} points="4,7 9.6,12.6 13.6,8.6 20,15"/><Polyline {...common} points="15,15 20,15 20,10"/></>;break;
+    case'arrow-down-circle':art=<><Circle {...common} cx="12" cy="12" r="9"/><Line {...common} x1="12" y1="7.4" x2="12" y2="16"/><Polyline {...common} points="8.6,12.6 12,16 15.4,12.6"/></>;break;
+    case'fullscreen':art=<><Path {...common} d="M4 9.2V5.6A1.6 1.6 0 0 1 5.6 4h3.6"/><Path {...common} d="M14.8 4h3.6A1.6 1.6 0 0 1 20 5.6v3.6"/><Path {...common} d="M20 14.8v3.6a1.6 1.6 0 0 1-1.6 1.6h-3.6"/><Path {...common} d="M9.2 20H5.6A1.6 1.6 0 0 1 4 18.4v-3.6"/></>;break;
+    case'backspace':art=<><Path {...common} d="M20.6 5.6H10L3.6 12 10 18.4h10.6a1.4 1.4 0 0 0 1.4-1.4V7a1.4 1.4 0 0 0-1.4-1.4z"/><Path {...common} d="m11.4 9.6 4.8 4.8M16.2 9.6l-4.8 4.8"/></>;break;
+    case'cloud-upload':art=<><Path {...common} d="M7 19.6h9.3a2.9 2.9 0 0 0 .2-5.8 4.3 4.3 0 0 0-8.2 1.1A2.6 2.6 0 0 0 7 19.6z"/><Path {...common} d="M12 13.4V4.6"/><Polyline {...common} points="8.6,8 12,4.6 15.4,8"/></>;break;
+    case'cloud-download':art=<><Path {...common} d="M7 19.6h9.3a2.9 2.9 0 0 0 .2-5.8 4.3 4.3 0 0 0-8.2 1.1A2.6 2.6 0 0 0 7 19.6z"/><Path {...common} d="M12 4.6v8.8"/><Polyline {...common} points="8.6,9.8 12,13.4 15.4,9.8"/></>;break;
+    case'volume-medium':art=<><Path {...common} d="M11.2 5 6.6 8.8H3.6v6.4h3L11.2 19z"/><Path {...common} d="M15.2 9.2a4 4 0 0 1 0 5.6"/></>;break;
+    case'cloud-done':art=<><Path {...common} d="M7 19.6h9.3a2.9 2.9 0 0 0 .2-5.8 4.3 4.3 0 0 0-8.2 1.1A2.6 2.6 0 0 0 7 19.6z"/><Polyline {...common} points="9,11.4 11.3,13.7 15.6,9.2"/></>;break;
     default:art=<><Circle {...common} cx="12" cy="12" r="8.5"/><Path {...common} d="m12 7 1.5 3.5L17 12l-3.5 1.5L12 17l-1.5-3.5L7 12l3.5-1.5z"/></>;
   }
   return <Svg width={size} height={size} viewBox="0 0 24 24"><Circle cx="19" cy="5" r="2" fill={detail} opacity={0.20}/>{art}</Svg>;

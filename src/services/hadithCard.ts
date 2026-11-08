@@ -39,7 +39,46 @@ export type HadithCardData = {
   arabicFontFamily: string;
   /** Which colours the card wears. Defaults to the Islamic set. */
   theme?: CardTheme;
+  /** The day it was the hadith of, already formatted for the reader. */
+  date?: string;
 };
+
+/**
+ * The day as the card should print it, in the reader's own language.
+ *
+ * A shared picture travels. It is saved to a camera roll, sent to someone, and
+ * looked at weeks later, by which point "today" is no longer the day on it —
+ * so the card carries the date rather than assuming the reader remembers.
+ *
+ * Every language the app speaks is handed straight to the platform, except
+ * Arabic and Persian, which get their own month names but keep Latin digits —
+ * swapping numbering systems halfway down a line reads as a mistake rather
+ * than as a translation.
+ *
+ * That is deliberately wider than the app's own date map, which names eight
+ * languages and leaves the rest to the device. A card is not a screen: it
+ * leaves the app, so it cannot borrow the device's language the way a screen
+ * quietly does. A Russian card reading "November 8, 2026" would be the only
+ * English on it. A tag the platform will not accept falls back to English
+ * rather than taking the whole card down with it.
+ */
+export function cardDateLabel(language?: string, on: Date = new Date()): string {
+  const code =
+    language === 'ar' ? 'ar-u-nu-latn'
+    : language === 'fa' ? 'fa-u-nu-latn'
+    : language;
+  /* Short month rather than long. The footer line is the citation and the date
+     sharing one row with the wordmark, and the longest collection name —
+     "Forty Hadith of Shah Waliullah", set in capitals — plus a full
+     "November 8, 2026" runs into the mark on the right. "Nov 8, 2026" leaves
+     the row room to breathe in every language the app speaks. */
+  const opts = { day: 'numeric', month: 'short', year: 'numeric' } as const;
+  try {
+    return on.toLocaleDateString(code, opts);
+  } catch {
+    return on.toLocaleDateString('en', opts);
+  }
+}
 
 const W = 1080;
 const PAD = 84;
@@ -236,7 +275,9 @@ async function renderWeb(data: HadithCardData): Promise<Blob> {
   ctx.textAlign = 'left';
   ctx.fillStyle = pal.rule;
   ctx.font = font(26, 400, UI_STACK);
-  ctx.fillText(`${data.collection} · ${data.number}`, PAD, H - PAD - 6);
+  /* The citation, and the day, when there is one. The date is the last thing
+     in the line so the two read as one breath: what it is, then when. */
+  ctx.fillText([`${data.collection} · ${data.number}`, data.date].filter(Boolean).join(' · '), PAD, H - PAD - 6);
 
   // ---- brand: the wordmark, and the same mark the app header wears ----
   const mark = await loadBrandMark();

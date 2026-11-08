@@ -126,7 +126,7 @@ import {
 import { loadNameLanguage, loadNameOfDay, loadNames, saveNameLanguage } from './src/services/namesService';
 import { ARABIC_UI, ARABIC_UI_SEMIBOLD, ensureLatinFace, ensureQuranFont, quranFontFamily as quranFont, QURAN_FONTS, useQuranFont } from './src/services/fonts';
 import { shareVerseCard } from './src/services/verseCard';
-import { shareHadithCard } from './src/services/hadithCard';
+import { cardDateLabel, shareHadithCard } from './src/services/hadithCard';
 import { shareCard, type CardTheme, type ShareCardData } from './src/services/shareCard';
 import { VerseShareCard } from './src/components/VerseShareCard';
 import { HadithShareCard } from './src/components/HadithShareCard';
@@ -2424,6 +2424,10 @@ const[quranPosition,setQuranPosition]=useState<any>(null);const[openReflection,s
       number: String(h.number || ''),
       arabicFontFamily: quranFont(preferences.arabicFont),
       theme: cardTheme,
+      /* It is the hadith *of the day*, so the card says which day. Formatted
+         in the reader's own language, which is also the language the
+         collection name above it is in. */
+      date: cardDateLabel(language),
     };
     setSharingHadith(true);
     try {
@@ -2736,7 +2740,7 @@ const onRefresh=async()=>{setRefreshing(true);await Promise.all([data.load(),hyd
       <Text style={s.readKicker}>{T(quranPosition ? 'CONTINUE READING' : 'FEATURED READING')}</Text><Text style={s.readArabic}>{quranPosition?'۝':'يس'}</Text><Text style={s.readTitle}>{quranPosition ? quranPosition.surahName : T('Surah Ya-Sin')}</Text><Text style={s.readMeta}>{quranPosition ? `${quranPosition.verseKey} · ${tx(language, 'Page')} ${quranPosition.page || '—'}` : (tx(language, '83 verses · Makkan'))}</Text><Tactile onPress={()=>nav.navigate('Quran',{screen:'Reader',params:{chapter:quranPosition?{id:quranPosition.surahId,name_simple:quranPosition.surahName,name_arabic:'',verses_count:0}:{id:36,name_simple:'Ya-Sin',name_arabic:'يس',verses_count:83},focusVerse:quranPosition?.verseKey},initial:false})} style={s.whiteButton}><Text style={s.whiteButtonText}>{T(quranPosition ? 'Continue' : 'Read now')}</Text>{ico(rtl ? 'arrow-back' : 'arrow-forward',14,C.green)}</Tactile>
     </DepthCard>
     <Section title={T('Hadith of the day')} />
-    <View style={[s.depthCard,s.hadithSurface,{borderRadius:RADIUS.xl}]}><Text style={s.quote}>“</Text><Text numberOfLines={6} style={s.hadithText}>{data.hadith ? (rtl && data.hadith.arabic ? stripTags(data.hadith.arabic) : data.hadith.text) : T('Loading today’s authenticated hadith…')}</Text><View style={s.hadithFoot}><Text style={s.meta}>{data.hadith ? `${hadithSourceLabel(rtl, data.hadith.collection)} · ${data.hadith.number}` : ''}</Text><View style={s.hadithActions}>{!!data.hadith&&<Pressable accessibilityRole="button" accessibilityLabel={T('Share as image card')} onPress={shareHadithAsImage} disabled={sharingHadith} hitSlop={10} style={{opacity:sharingHadith?.5:1}}>{ico('image-outline',18,C.muted)}</Pressable>}{!!data.hadith&&<Pressable accessibilityRole="button" accessibilityLabel={T('Report a correction in this hadith')} onPress={()=>{const h=data.hadith;if(h)setReportHadith({collection:h.collection,number:h.number,arabic:h.arabic,text:h.text})}} hitSlop={10}>{ico('flag-outline',18,C.muted)}</Pressable>}</View></View></View>
+    <View style={[s.depthCard,s.hadithSurface,{borderRadius:RADIUS.xl}]}><Text style={s.quote}>“</Text><Text numberOfLines={6} style={s.hadithText}>{data.hadith ? (rtl && data.hadith.arabic ? stripTags(data.hadith.arabic) : data.hadith.text) : T('Loading today’s authenticated hadith…')}</Text><View style={s.hadithFoot}><Text style={s.meta}>{data.hadith ? `${hadithSourceLabel(rtl, data.hadith.collection)} · ${data.hadith.number}` : ''}</Text><View style={s.hadithActions}>{!!data.hadith&&<Pressable accessibilityRole="button" accessibilityLabel={T('Share as image card')} onPress={shareHadithAsImage} disabled={sharingHadith} hitSlop={10} style={{opacity:sharingHadith?.5:1}}>{ico('share-outline',18,C.muted)}</Pressable>}{!!data.hadith&&<Pressable accessibilityRole="button" accessibilityLabel={T('Report a correction in this hadith')} onPress={()=>{const h=data.hadith;if(h)setReportHadith({collection:h.collection,number:h.number,arabic:h.arabic,text:h.text})}} hitSlop={10}>{ico('flag-outline',18,C.muted)}</Pressable>}</View></View></View>
   </Animated.ScrollView>
   {/* Outside the scroller, so it stays put while the page moves under it.
       Only Home mounts it: `scrollY` here is Home's own offset. */}
@@ -2753,6 +2757,7 @@ const onRefresh=async()=>{setRefreshing(true);await Promise.all([data.load(),hyd
       number={String(data.hadith.number || '')}
       arabicFontFamily={quranFont(preferences.arabicFont)}
       theme={cardTheme}
+      date={cardDateLabel(language)}
     />
   </View>}
   {/* The light and the burst never run together: on an Eid the ambience
