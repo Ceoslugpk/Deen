@@ -907,8 +907,31 @@ function useOverlaySheet(key: string, active: boolean, render: () => React.React
 /* The same defaults the service uses, so the two cannot drift: this is only
    what is on screen until the stored preferences have been read. */
 const DEFAULT_QURAN_PREFERENCES:QuranPreferences=DEFAULTS;
+
+/**
+ * Scripts that were once offered and no longer are, and the script each one
+ * is read back as.
+ *
+ * "Mushaf page" was never a script. It was a page layout that borrowed the
+ * Uthmani text, and it is withdrawn until it works everywhere. But it is
+ * still sitting in the stored preferences of everyone who chose it, and it
+ * is no longer in the list, so those readers cannot put it back the way they
+ * found it — and meanwhile the bare string goes out to a server that has
+ * never heard of it, in the offline preload, in search, in tafsir, in the
+ * topic pages.
+ *
+ * So it is settled here, at the one place every reader of the preference
+ * passes through, rather than at each of the dozen places that use it.
+ */
+const SETTLED_SCRIPTS:Record<string,string>={'quran-mushaf':'quran-uthmani'};
+const SETTLED_NAMES:Record<string,string>={'quran-uthmani':'Uthmani'};
+function settlePreferences(value:QuranPreferences):QuranPreferences{
+  const settled=SETTLED_SCRIPTS[value.scriptEdition];
+  if(!settled)return value;
+  return {...value,scriptEdition:settled,scriptName:SETTLED_NAMES[settled]||'Uthmani'};
+}
 const QuranPreferencesContext=createContext<QuranPreferencesState>({preferences:DEFAULT_QURAN_PREFERENCES,hydrated:false,update:async()=>{},fontTick:0});
-function QuranPreferencesProvider({children}:{children:React.ReactNode}){const[preferences,setPreferences]=useState(DEFAULT_QURAN_PREFERENCES);const[hydrated,setHydrated]=useState(false);useEffect(()=>{loadQuranPreferences().then(value=>{setPreferences(value);setHydrated(true)})},[]);
+function QuranPreferencesProvider({children}:{children:React.ReactNode}){const[preferences,setPreferences]=useState(DEFAULT_QURAN_PREFERENCES);const[hydrated,setHydrated]=useState(false);useEffect(()=>{loadQuranPreferences().then(value=>{setPreferences(settlePreferences(value));setHydrated(true)})},[]);
   /* The chosen face is fetched on demand, so it may not be there yet. Once it
      is, the sheet is rebuilt with it and everyone wearing it re-renders. */
   useEffect(()=>{
@@ -922,7 +945,7 @@ function QuranPreferencesProvider({children}:{children:React.ReactNode}){const[p
     });
     return ()=>{alive=false};
   },[preferences.arabicFont]);
-  const [fontTick,setFontTick]=useState(0);const update=async(patch:Partial<QuranPreferences>)=>{const next={...preferences,...patch};setPreferences(next);await saveQuranPreferences(next)};return <QuranPreferencesContext.Provider value={{preferences,hydrated,update,fontTick}}>{children}</QuranPreferencesContext.Provider>}
+  const [fontTick,setFontTick]=useState(0);const update=async(patch:Partial<QuranPreferences>)=>{const next=settlePreferences({...preferences,...patch});setPreferences(next);await saveQuranPreferences(next)};return <QuranPreferencesContext.Provider value={{preferences,hydrated,update,fontTick}}>{children}</QuranPreferencesContext.Provider>}
 function useQuranPreferences(){return useContext(QuranPreferencesContext)}
 type WorshipSettingsState={settings:WorshipSettings;hydrated:boolean;update:(patch:Partial<WorshipSettings>)=>Promise<void>};
 const WorshipSettingsContext=createContext<WorshipSettingsState>({settings:DEFAULT_WORSHIP_SETTINGS,hydrated:false,update:async()=>{}});
