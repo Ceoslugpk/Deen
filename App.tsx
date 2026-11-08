@@ -13,7 +13,7 @@ function ToolsStack(){const subtle=useSubtleTransitions();return <Stack.Navigato
 import { Accelerometer, Magnetometer } from 'expo-sensors';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  AccessibilityInfo, ActivityIndicator, Alert, Animated, AppState, BackHandler, Easing, Image, ImageBackground, Linking, Platform,
+  AccessibilityInfo, ActivityIndicator, Alert, Animated, AppState, BackHandler, Easing, FlatList, Image, ImageBackground, Linking, Platform,
   Pressable as BarePressable,
   I18nManager, RefreshControl, SafeAreaView, ScrollView, Share, StatusBar, StyleSheet, Switch, Text, TextInput,
   PanResponder, useColorScheme, useWindowDimensions, View, Modal, Dimensions, Keyboard
@@ -782,6 +782,15 @@ const Pressable = React.forwardRef<React.ElementRef<typeof BarePressable>, Hapti
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
+/**
+ * How the reader decides which ayah is "where you are".
+ *
+ * `minimumViewTime` is what keeps this quiet: without it the list reports
+ * every verse that flickers past during a fast scroll, and the reading
+ * position is rewritten dozens of times on the way to nowhere.
+ */
+const VERSE_VIEWABILITY = { itemVisiblePercentThreshold: 10, minimumViewTime: 350 };
+
 type QuranPreferencesState={preferences:QuranPreferences;hydrated:boolean;update:(patch:Partial<QuranPreferences>)=>Promise<void>;fontTick:number};
 /**
  * Whether the reading chrome is currently hidden.
@@ -3707,19 +3716,21 @@ function ReaderScreen({route,navigation}:any){
       never again, so continuing from a notification into a surah that was
       already open updated the verse and left the page where it was. */
   const restoredFor=useRef<string|null>(null);
-  const verseRefs=useRef<Record<string,any>>({});
+  /* The list, so a verse can be scrolled to by its position in the surah
+     rather than by measuring where it happens to be sitting. */
+  const listRef=useRef<any>(null);
   const scrollY=useRef(0);
   const {rtl,language}=useLanguage();
   const ar = language === 'ar';
   const T=(text:string)=>tx(language,text);
   const[target,setTarget]=useState<string|null>(focusVerse||null);
-  /* Where each ayah sits inside the scroll content, measured once per layout.
-     Measuring during a scroll would be far too expensive to repeat for every
-     verse on every frame, so the offsets are taken after the list settles and
-     then simply looked up. Anything that changes the height of the page -
-     turning the translation off, changing the font - makes them stale, so
-     they are retaken when any of that changes. */
-  const offsets=useRef<Record<string,number>>({});
+  /* Which ayah is at the top of the screen, as the list itself reports it.
+
+     This used to be worked out by measuring every verse on the page: for the
+     long surahs that is several hundred round trips to the native side, taken
+     in one burst shortly after the surah opens. The list already knows what
+     is on screen, so it is simply asked. */
+  const topVerse=useRef<string>('');
   const lastSavedVerse=useRef<string>('');
   const[savedPosition,setSavedPosition]=useState<ReadingPosition|null>(null);
   const[shareVerse,setShareVerse]=useState<Verse|null>(null);
@@ -3746,22 +3757,15 @@ function ReaderScreen({route,navigation}:any){
   /* Landing on the right ayah. `onLayout` cannot do this: the y it reports is
      the gap since the previous sibling - about 12px for every verse - not the
      offset inside the scroll content, so every continuation scrolled to the
-     top of the surah. Measuring the verse and the scroll view in page
-     coordinates and adding the current offset gives the real position. */
+     top of the surah. The list is now asked to go to the verse by its place
+     in the surah, which needs no measuring at all. */
   useEffect(()=>{
     if(!target||!verses.length||restoredFor.current===target)return;
-    const node=verseRefs.current[target];
-    if(!node)return;
+    const index=verses.findIndex(v=>v.verse_key===target);
+    if(index<0)return;
     restoredFor.current=target;
     const timer=setTimeout(()=>{
-      node.measure?.((_x:number,_y:number,_w:number,_h:number,_px:number,py:number)=>{
-        scrollRef.current?.measure?.((
-          _sx:number,_sy:number,_sw:number,_sh:number,_spx:number,spy:number,
-        )=>{
-          const offset=(py-spy)+scrollY.current;
-          scrollRef.current?.scrollTo({y:Math.max(0,offset-88),animated:false});
-        });
-      });
+      listRef.current?.scrollToIndex({index,viewPosition:0,viewOffset:88,animated:false});
     },120);
     return()=>clearTimeout(timer);
   },[verses,target]);
@@ -3783,20 +3787,6 @@ function ReaderScreen({route,navigation}:any){
   useEffect(()=>{getChapters().then(setChapters)},[]);
   useEffect(()=>{if(focusVerse){setTarget(focusVerse);return}let live=true;loadReadingPosition().then(pos=>{if(live&&pos&&pos.surahId===chapterId)setTarget(pos.verseKey)});return()=>{live=false}},[chapterId,focusVerse]);
   useEffect(()=>{if(page!==null)setInput(String(page))},[page]);
-  useEffect(()=>{
-    offsets.current={};
-    const take=()=>{
-      for(const v of verses){
-        const node=verseRefs.current[v.verse_key];
-        node?.measure?.((_x:number,_y:number,_w:number,_h:number,_px:number,py:number)=>{
-          offsets.current[v.verse_key]=py;
-        });
-      }
-    };
-    const timer=setTimeout(take,260);
-    return()=>clearTimeout(timer);
-  },[verses,preferences.arabicFont,preferences.fontSize,preferences.translationFontSize,preferences.showTranslation,preferences.showTransliteration]);
-
   /* Keeping the reading position live.
      Continuing used to resume wherever you last pressed "save reading
      position" - which for most people is nowhere, because nothing ever
@@ -3805,15 +3795,11 @@ function ReaderScreen({route,navigation}:any){
      the verse they left instead of the beginning. */
   const rememberTimer=useRef<any>(null);
   const rememberPosition=useCallback(()=>{
-    const entries=Object.entries(offsets.current);
-    if(!entries.length||!verses.length)return;
-    const at=scrollY.current+96;
-    let bestKey='';let bestDelta=Infinity;
-    for(const[key,y]of entries){
-      const delta=Math.abs(y-at);
-      if(delta<bestDelta){bestDelta=delta;bestKey=key;}
-    }
-    if(!bestKey||bestKey===lastSavedVerse.current)return;
+    /* The list has already said which ayah is at the top; there is nothing
+       left to scan or measure. */
+    const bestKey=topVerse.current;
+    if(!bestKey||!verses.length)return;
+    if(bestKey===lastSavedVerse.current)return;
     const v=verses.find(x=>x.verse_key===bestKey);
     if(!v)return;
     lastSavedVerse.current=bestKey;
@@ -3862,28 +3848,23 @@ function ReaderScreen({route,navigation}:any){
   useOverlaySheet('verse-actions', !!actionsVerse, () => actionsVerse
     ? <VerseActionsSheet verse={actionsVerse} chapter={full} rtl={rtl} T={T} language={language} navigation={navigation} onClose={()=>setActionsVerse(null)}/>
     : null, () => setActionsVerse(null));
-  return <Page><Animated.View style={[s.readerBar,{transform:[{translateY:chromeY}]}]}><IconButton name={rtl?'arrow-forward':'arrow-back'} onPress={()=>goBackOrHome(navigation)}/>{!narrow&&(canStep(-1)?<Pressable accessibilityLabel={T('Previous section')} onPress={()=>step(-1)} style={s.surahStep}>{ico(rtl?'chevron-forward':'chevron-back',19,C.ink)}</Pressable>:<View style={s.surahStep}/>)}<View style={{alignItems:'center',flex:1}}><Text style={s.readerName} numberOfLines={1}>{title}</Text><Text style={s.meta} numberOfLines={1}>{subtitle}</Text></View>{!narrow&&(canStep(1)?<Pressable accessibilityLabel={T('Next section')} onPress={()=>step(1)} style={s.surahStep}>{ico(rtl?'chevron-back':'chevron-forward',19,C.ink)}</Pressable>:<View style={s.surahStep}/>)}<View style={s.readerHeaderActions}>{section==='surah'&&<Pressable accessibilityLabel={T('Play this Surah')} onPress={()=>{void playSurahFromReader(full,rtl)}} style={s.readerIconBtn}>{ico('play-circle',20,C.ink)}</Pressable>}{section==='surah'&&<Pressable accessibilityLabel={T('Keep this Surah for offline')} onPress={()=>navigation.navigate('Downloads',{chapterId,surahName:full.name_simple})} style={s.readerIconBtn}>{ico('download-outline',20,C.ink)}</Pressable>}<Pressable accessibilityRole="switch" accessibilityState={{checked:focusOn}} accessibilityLabel={`${T('Focus mode')}: ${focusOn?T('On'):T('Off')}`} onPress={()=>update({focusMode:!focusOn})} style={s.readerIconBtn}>{ico(focusOn?'eye':'eye-outline',20,focusOn?C.gold:C.ink)}</Pressable><Pressable accessibilityLabel={T('Reader settings')} onPress={()=>navigation.navigate('Reader Settings')} style={s.readerIconBtn}>{ico('options-outline',20,C.ink)}</Pressable></View></Animated.View><View style={s.readerProgress}><Animated.View style={[s.preloadFill,{width:progressWidth as any}]}/></View>
-  <ScrollView keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} ref={scrollRef} contentContainerStyle={s.readerScroll} showsVerticalScrollIndicator={false} scrollEventThrottle={16} onScroll={Animated.event(
-    [{nativeEvent:{contentOffset:{y:progressY}}}],
-    {useNativeDriver:false,listener:(e:any)=>{const{contentOffset}=e.nativeEvent;if(focusOn){const dy=contentOffset.y-scrollY.current;if(dy>4&&chromeShown)setChromeShown(false)}scrollY.current=contentOffset.y;
-    if(rememberTimer.current)clearTimeout(rememberTimer.current);
-    rememberTimer.current=setTimeout(rememberPosition,700);}})}
-  onContentSizeChange={(w:number,h:number)=>{contentHeight.current=h;measureSpan();}}
-  onLayout={e=>{viewportHeight.current=e.nativeEvent.layout.height;measureSpan();}}
-  /* On Android only. A long surah keeps several hundred ayahs mounted, and
-     this lets the platform drop the offscreen ones out of the native
-     hierarchy instead of composing all of them — the single largest win
-     available on a phone, where the long surahs were reported as slow. It
-     is left off elsewhere: on iOS it has a history of leaving blank
-     patches behind, and on the web it does nothing at all. */
-  removeClippedSubviews={Platform.OS==='android'}>
-  {isMushaf?<MushafPageView page={page||1} verses={verses} error={error} cached={cached} retry={load} preferences={preferences} rtl={rtl} T={T} language={language} input={input} setInput={setInput} goPage={goPage} navigation={navigation} arStyle={arStyle} bookmarks={bookmarks} savedPosition={savedPosition} onBookmark={(v:any)=>{void bookmark(v)}} onMark={(v:any)=>{void mark(v)}} onPlay={(v:any)=>{void playFromReader(full,v,rtl)}} onNote={(v:any)=>setNoteVerse(v)}/>
-  :<>
-  {section==='surah'&&<LinearGradient colors={[C.heroA,C.green]} style={s.surahHead}>{!!cached&&<LiveBadge source="SAVED ON DEVICE"/>}<Text style={s.surahHeadAr}>{full.name_arabic}</Text><Text style={s.surahHeadEn}>{chapter?.translated_name?.name}</Text><Text style={s.bismillah}>بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</Text></LinearGradient>}
-  {error?<ErrorState message={error} retry={load}/>:!verses.length?<SkeletonList rows={7} />:verses.map((v,i)=>{const saved=bookmarks.some(x=>x.verseKey===v.verse_key);const prev=i>0?verses[i-1]:null;const newJuz=!!v.juz&&(!prev||prev.juz!==v.juz);const newHizb=!!hizbOf(v)&&(!prev||hizbOf(prev)!==hizbOf(v));return <View key={v.id||v.verse_key}>
+
+  /* One ayah, as the list asks for it.
+
+     The list calls this only for the verses it is actually showing, and
+     never for the rest. That is the whole of the difference on a long
+     surah: Al-Baqarah used to put several hundred of these on the screen
+     at once, each with its five action buttons and the two animated nodes
+     behind every one of them, and a small phone paid for all of them. */
+  const renderVerse=useCallback(({item:v,index:i}:{item:any;index:number})=>{
+    const saved=bookmarks.some(x=>x.verseKey===v.verse_key);
+    const prev=i>0?verses[i-1]:null;
+    const newJuz=!!v.juz&&(!prev||prev.juz!==v.juz);
+    const newHizb=!!hizbOf(v)&&(!prev||hizbOf(prev)!==hizbOf(v));
+    return <View key={v.id||v.verse_key}>
   {newJuz&&<View style={s.sectionMarker}><View style={s.sectionRule}/><Text style={s.sectionMarkerText}>{tf(language,'JUZ {n}',{n:v.juz ?? ''})}</Text><View style={s.sectionRule}/></View>}
   {newHizb&&<View style={s.sectionMarker}><View style={s.sectionRule}/><Text style={s.sectionMarkerText}>{tf(language,'HIZB {n}',{n:hizbOf(v)})}</Text><View style={s.sectionRule}/></View>}
-  <Pressable ref={(node:any)=>{verseRefs.current[v.verse_key]=node}} delayLongPress={500} onLongPress={()=>setNoteVerse(v)} onPress={()=>revealChrome()} style={[s.ayah,preferences.readingMode==='continuous'&&s.ayahContinuous,focusVerse===v.verse_key&&s.ayahSelected]}>
+  <Pressable delayLongPress={500} onLongPress={()=>setNoteVerse(v)} onPress={()=>revealChrome()} style={[s.ayah,preferences.readingMode==='continuous'&&s.ayahContinuous,focusVerse===v.verse_key&&s.ayahSelected]}>
   <View style={s.ayahTop}><Text style={s.ayahNo}>{v.verse_key}</Text><View style={s.ayahActions}>
     <VerseActionButton label={`${T('Play verse')} ${v.verse_key}`} name="play-circle" size={22} onPress={()=>{void playFromReader(full,v,rtl)}}/>
     <VerseActionButton label={`${T('Mark position at')} ${v.verse_key}`} name={isMarked(v)?'locate':'locate-outline'} size={19} active={isMarked(v)} onPress={()=>mark(v)} haptic="success"/>
@@ -3894,9 +3875,74 @@ function ReaderScreen({route,navigation}:any){
   {preferences.scriptEdition==='quran-tajweed'?<TajweedText text={v.text_uthmani} style={[s.ayahAr,...arStyle]}/>:<Text style={[s.ayahAr,...arStyle]}>{v.text_uthmani}</Text>}
   {preferences.showTranslation&&v.translation?<Text style={s.ayahTranslation}>{v.translation}</Text>:null}
   {section!=='surah'&&<Text style={s.dataMeta}>{v.surah_name}</Text>}
-  <View style={s.ayahFooter}><Text style={s.ayahMeta}>{tf(language,'Juz {j} · Page {p}',{j:v.juz ?? '',p:v.page ?? ''})}{section==='hizb'?(tf(language,' · Quarter {n}',{n:v.hizbQuarter ?? ''})):''} · {T(rtl?preferences.translationLanguage:preferences.translationName)}</Text></View></Pressable></View>})}
-  </>}
-  </ScrollView>
+  <View style={s.ayahFooter}><Text style={s.ayahMeta}>{tf(language,'Juz {j} · Page {p}',{j:v.juz ?? '',p:v.page ?? ''})}{section==='hizb'?(tf(language,' · Quarter {n}',{n:v.hizbQuarter ?? ''})):''} · {T(rtl?preferences.translationLanguage:preferences.translationName)}</Text></View></Pressable></View>
+    ;
+  },[bookmarks,verses,language,rtl,T,section,preferences,full,savedPosition,focusVerse,arStyle]);
+
+  /* Which verse counts as "where you are": the one nearest the top of the
+     screen. Reported by the list as it scrolls, so nothing is measured. */
+  const onViewableVerses=useCallback(({viewableItems}:any)=>{
+    if(!viewableItems||!viewableItems.length)return;
+    let best=viewableItems[0];
+    for(const it of viewableItems){
+      if(typeof it.index==='number'&&typeof best.index==='number'&&it.index<best.index)best=it;
+    }
+    const key=best?.item?.verse_key;
+    if(key)topVerse.current=key;
+  },[]);
+
+  /* Heights vary — an ayah is two words or two lines — so the list cannot
+     always jump straight to a verse it has not laid out yet. When that
+     happens it says so, and the honest answer is to try again once the
+     layout has caught up rather than to leave the reader at the top. */
+  const onScrollToIndexFailed=useCallback((info:{index:number})=>{
+    const timer=setTimeout(()=>{
+      listRef.current?.scrollToIndex({index:info.index,viewPosition:0,viewOffset:88,animated:false});
+    },180);
+    return()=>clearTimeout(timer);
+  },[]);
+
+  return <Page><Animated.View style={[s.readerBar,{transform:[{translateY:chromeY}]}]}><IconButton name={rtl?'arrow-forward':'arrow-back'} onPress={()=>goBackOrHome(navigation)}/>{!narrow&&(canStep(-1)?<Pressable accessibilityLabel={T('Previous section')} onPress={()=>step(-1)} style={s.surahStep}>{ico(rtl?'chevron-forward':'chevron-back',19,C.ink)}</Pressable>:<View style={s.surahStep}/>)}<View style={{alignItems:'center',flex:1}}><Text style={s.readerName} numberOfLines={1}>{title}</Text><Text style={s.meta} numberOfLines={1}>{subtitle}</Text></View>{!narrow&&(canStep(1)?<Pressable accessibilityLabel={T('Next section')} onPress={()=>step(1)} style={s.surahStep}>{ico(rtl?'chevron-back':'chevron-forward',19,C.ink)}</Pressable>:<View style={s.surahStep}/>)}<View style={s.readerHeaderActions}>{section==='surah'&&<Pressable accessibilityLabel={T('Play this Surah')} onPress={()=>{void playSurahFromReader(full,rtl)}} style={s.readerIconBtn}>{ico('play-circle',20,C.ink)}</Pressable>}{section==='surah'&&<Pressable accessibilityLabel={T('Keep this Surah for offline')} onPress={()=>navigation.navigate('Downloads',{chapterId,surahName:full.name_simple})} style={s.readerIconBtn}>{ico('download-outline',20,C.ink)}</Pressable>}<Pressable accessibilityRole="switch" accessibilityState={{checked:focusOn}} accessibilityLabel={`${T('Focus mode')}: ${focusOn?T('On'):T('Off')}`} onPress={()=>update({focusMode:!focusOn})} style={s.readerIconBtn}>{ico(focusOn?'eye':'eye-outline',20,focusOn?C.gold:C.ink)}</Pressable><Pressable accessibilityLabel={T('Reader settings')} onPress={()=>navigation.navigate('Reader Settings')} style={s.readerIconBtn}>{ico('options-outline',20,C.ink)}</Pressable></View></Animated.View><View style={s.readerProgress}><Animated.View style={[s.preloadFill,{width:progressWidth as any}]}/></View>
+  {isMushaf
+    ? <ScrollView keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} ref={scrollRef} contentContainerStyle={s.readerScroll} showsVerticalScrollIndicator={false}>
+isMushaf?<MushafPageView page={page||1} verses={verses} error={error} cached={cached} retry={load} preferences={preferences} rtl={rtl} T={T} language={language} input={input} setInput={setInput} goPage={goPage} navigation={navigation} arStyle={arStyle} bookmarks={bookmarks} savedPosition={savedPosition} onBookmark={(v:any)=>{void bookmark(v)}} onMark={(v:any)=>{void mark(v)}} onPlay={(v:any)=>{void playFromReader(full,v,rtl)}} onNote={(v:any)=>setNoteVerse(v)}/>
+      </ScrollView>
+    : <FlatList
+        ref={listRef}
+        data={verses}
+        keyExtractor={(v:any)=>String(v.id||v.verse_key)}
+        renderItem={renderVerse}
+        ListHeaderComponent={section==='surah'?
+<LinearGradient colors={[C.heroA,C.green]} style={s.surahHead}>{!!cached&&<LiveBadge source="SAVED ON DEVICE"/>}<Text style={s.surahHeadAr}>{full.name_arabic}</Text><Text style={s.surahHeadEn}>{chapter?.translated_name?.name}</Text><Text style={s.bismillah}>بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</Text></LinearGradient>
+        :undefined}
+        ListEmptyComponent={error?<ErrorState message={error} retry={load}/>:<SkeletonList rows={7} />}
+        keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps}
+        overScrollMode={SCROLL.overScrollMode}
+        contentContainerStyle={s.readerScroll}
+        showsVerticalScrollIndicator={false}
+        scrollEventThrottle={16}
+        onScroll={Animated.event(
+          [{nativeEvent:{contentOffset:{y:progressY}}}],
+          {useNativeDriver:false,listener:(e:any)=>{const{contentOffset}=e.nativeEvent;if(focusOn){const dy=contentOffset.y-scrollY.current;if(dy>4&&chromeShown)setChromeShown(false)}scrollY.current=contentOffset.y;
+          if(rememberTimer.current)clearTimeout(rememberTimer.current);
+          rememberTimer.current=setTimeout(rememberPosition,700);}})}
+        onContentSizeChange={(w:number,h:number)=>{contentHeight.current=h;measureSpan();}}
+        onLayout={(e:any)=>{viewportHeight.current=e.nativeEvent.layout.height;measureSpan();}}
+        viewabilityConfig={VERSE_VIEWABILITY}
+        onViewableItemsChanged={onViewableVerses}
+        onScrollToIndexFailed={onScrollToIndexFailed}
+        /* How much of the surah is held at once. Seven screens' worth is
+           enough that a flick never finds a bare patch, and small enough
+           that a two-hundred-verse surah is not all in memory at once. */
+        windowSize={7}
+        initialNumToRender={12}
+        maxToRenderPerBatch={8}
+        updateCellsBatchingPeriod={50}
+        /* On Android only, and now a secondary measure: the list is already
+           virtualising. It is left off elsewhere — on iOS it has a history of
+           leaving blank patches behind, and on the web it does nothing. */
+        removeClippedSubviews={Platform.OS==='android'}
+      />}
   </Page>
 }
 
