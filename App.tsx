@@ -329,6 +329,10 @@ const isPal = (theme: ResolvedTheme) => theme === 'palestineLight' || theme === 
    ground; if a genuinely different dark cut is drawn later, add it back as
    logo-mark-dark.png and restore the choice below. */
 const LOGO_MARK = require('./assets/logo-mark.png');
+const LOGO_MARK_PALESTINE = require('./assets/logo-mark-palestine.png');
+/** The mark in the theme that is showing. The header, the splash and the
+    onboarding all wear it, and all three know which theme they are in. */
+const logoMark = (resolved: ResolvedTheme) => (isPal(resolved) ? LOGO_MARK_PALESTINE : LOGO_MARK);
 
 /**
  * The palettes live in `src/design/brand.ts`, next to the ten brand colours
@@ -2091,7 +2095,7 @@ function AppHeader() {
     {canGoBack
       ? <IconButton name={rtl ? 'arrow-forward' : 'arrow-back'} label={tx(language,'Back')} onPress={() => goBackOrHome(navigation)} />
       : <View style={s.appHeaderBrand}>
-        <Image source={LOGO_MARK} resizeMode="contain" style={s.appLogo} />
+        <Image source={logoMark(resolved)} resizeMode="contain" style={s.appLogo} />
         <Text style={s.appName} numberOfLines={1}>{T('Islamic')}</Text>
       </View>}
     <View style={s.appHeaderActions}>
@@ -12881,7 +12885,7 @@ function Splash({ ready, progress, onDone }: { ready: boolean; progress: number;
       <View style={s.splashMarkWrap}>
         <Khatam draw={draw} settle={settle} />
         <Animated.View style={{ transform: [{ scale: mark }] }}>
-          <Image source={LOGO_MARK} resizeMode="contain" style={s.splashMark} />
+          <Image source={logoMark(resolved)} resizeMode="contain" style={s.splashMark} />
         </Animated.View>
       </View>
       <Animated.View style={[s.splashWords, { opacity: words, transform: [{ translateY: words.interpolate({ inputRange: [0, 1], outputRange: [14, 0] }) }] }]}>
@@ -13409,7 +13413,7 @@ function Onboarding({ onFinish }: { onFinish: () => void }) {
   return <View style={s.safe}>
     <StatusBar barStyle={dark ? 'light-content' : 'dark-content'} />
     <View style={s.onbTop}>
-      <Image source={LOGO_MARK} resizeMode="contain" style={s.appLogo} />
+      <Image source={logoMark(resolved)} resizeMode="contain" style={s.appLogo} />
     </View>
     <ScrollView keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} contentContainerStyle={s.onbScroll} showsVerticalScrollIndicator={false}>
       <Animated.View style={[s.onbHead, { opacity: slide, transform: [{ translateX: slide.interpolate({ inputRange: [0, 1], outputRange: [rtl ? -26 : 26, 0] }) }] }]}>

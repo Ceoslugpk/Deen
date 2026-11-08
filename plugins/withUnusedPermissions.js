@@ -38,6 +38,25 @@ const REMOVED = [
       'accelerometer are used here, for the Qibla compass, and neither needs ' +
       'a permission. Play files this one under Health and fitness.',
   },
+  {
+    name: 'android.permission.SYSTEM_ALERT_WINDOW',
+    why:
+      'Draw over other apps. Nothing here draws over anything: the floating ' +
+      'menu is a view inside the app, not an overlay. It reaches the release ' +
+      'manifest by accident of the build — Expo folds React Native\'s debug ' +
+      'manifest into the app\'s own, and that one carries this permission for ' +
+      'the red developer error box. Play treats it as high risk and expects a ' +
+      'declaration for it, so an app that never asked for it should not be ' +
+      'answering questions about it.',
+  },
+  {
+    name: 'android.permission.USE_FINGERPRINT',
+    why:
+      'The pre-Android 9 fingerprint permission, superseded by USE_BIOMETRIC, ' +
+      'which is declared as well. expo-local-authentication still ships both ' +
+      'for old devices; there is no supported device where only this one ' +
+      'would do the job, so it is dead weight in the declaration.',
+  },
 ];
 
 const TOOLS_NS = 'xmlns:tools';
@@ -57,6 +76,20 @@ module.exports = function withUnusedPermissions(config) {
     }
 
     for (const entry of REMOVED) {
+      /* Drop any plain declaration first. Some of these arrive already written
+         into the app's own manifest — Expo folds React Native's debug manifest
+         into it during prebuild — and a plain entry sitting next to a `remove`
+         marker for the same permission is the marker arguing with itself in
+         one file. The marker is what removes a library's contribution at merge
+         time; the app's own line has to be taken out here, by hand. */
+      manifest.manifest['uses-permission'] = manifest.manifest['uses-permission'].filter(
+        (p) =>
+          !(
+            p?.$?.['android:name'] === entry.name &&
+            p?.$?.['tools:node'] === undefined
+          ),
+      );
+
       const already = manifest.manifest['uses-permission'].some(
         (p) => p?.$?.['android:name'] === entry.name && p?.$?.['tools:node'] === 'remove',
       );

@@ -37,8 +37,16 @@ const SOURCES = [
 ];
 
 const PERMISSIONS = [
+  /* SCHEDULE_EXACT_ALARM, and deliberately not USE_EXACT_ALARM. Both grant
+     exact alarms; they differ in who can take them away. USE_EXACT_ALARM is
+     granted on install and cannot be revoked, which is exactly why Play
+     restricts it to a short list of cases and asks for a declaration — an
+     app that can set an exact alarm the user cannot switch off has to
+     justify that. SCHEDULE_EXACT_ALARM is granted by default and the user
+     can turn it off in settings, which is the one an alarm app is expected
+     to use. Losing the irrevocable one costs nothing: the prayer times are
+     still exact, and the user keeps the switch. */
   'android.permission.SCHEDULE_EXACT_ALARM',
-  'android.permission.USE_EXACT_ALARM',
   'android.permission.FOREGROUND_SERVICE',
   'android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK',
   'android.permission.WAKE_LOCK',
