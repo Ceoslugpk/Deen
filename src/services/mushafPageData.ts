@@ -1,4 +1,4 @@
-import { MUSHAF_LINES_JSON } from '../data/mushafLines';
+import { MUSHAF_PAGE_JSON } from '../data/mushafLines';
 
 /**
  * The lines of the printed Madinah mushaf.
@@ -30,25 +30,43 @@ export type MushafTextLine = { t: 'a'; x: [string, string][] };
 
 export type MushafLine = MushafHeaderLine | MushafBasmalaLine | MushafTextLine;
 
-
-let table: Record<string, MushafLine[]> | null = null;
-
 /**
- * The table, parsed the first time a page is asked for and held after that.
+ * The pages already turned into objects, most recently read last.
  *
- * It is a megabyte and a half of JSON, which is not something to turn into an
- * object tree on the way to the home screen. Nothing but the mushaf asks for
- * it, so nothing but the mushaf pays for it, and it pays once.
+ * Small on purpose. A page is about three kilobytes of objects, so even a
+ * dozen of them is nothing; but the whole book at once is tens of megabytes,
+ * which is how an app comes to be killed on a phone that has done nothing
+ * wrong. Turning a page is cheap and reading one back is cheaper, so there is
+ * no reason to hold more than the reader can see.
  */
-function lines(): Record<string, MushafLine[]> {
-  if (!table) table = JSON.parse(MUSHAF_LINES_JSON) as Record<string, MushafLine[]>;
-  return table;
+const OPEN = 8;
+const open: number[] = [];
+const parsed = new Map<number, MushafLine[]>();
+
+function read(page: number): MushafLine[] {
+  const held = parsed.get(page);
+  if (held) return held;
+
+  const raw = MUSHAF_PAGE_JSON[page];
+  if (!raw) return [];
+
+  const lines = JSON.parse(raw) as MushafLine[];
+  parsed.set(page, lines);
+  open.push(page);
+  if (open.length > OPEN) parsed.delete(open.shift() as number);
+  return lines;
 }
 
 /** The lines of one page, in the order they are printed. */
 export function mushafPageLines(page: number): MushafLine[] {
   const p = Math.min(604, Math.max(1, Math.round(page) || 1));
-  return lines()[String(p)] || [];
+  try {
+    return read(p);
+  } catch {
+    /* A page that will not parse is a page we cannot show, and the answer is
+       to show nothing rather than to take the reader's app down with it. */
+    return [];
+  }
 }
 
 /** Whether the printed layout is available for a page. */
