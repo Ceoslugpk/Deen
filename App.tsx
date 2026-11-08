@@ -4524,6 +4524,50 @@ function MushafConnectionNote({ kind, rtl, T, language, page, cut, nextVerse }: 
 }
 
 /**
+ * A wall around one mushaf page.
+ *
+ * A page is drawn from a hundred thousand characters of bundled Arabic, set
+ * with a font the device may or may not have, inside a frame whose size comes
+ * from the screen it is on. There are more ways for one of those to go wrong
+ * on a particular device than can be thought of in advance, and the cost of
+ * being wrong used to be the whole app.
+ *
+ * So a page that throws is caught here and shown as what it is. It is not
+ * a nicer kind of blank page: the message is on the screen, because the one
+ * thing worse than a page that fails is a page that fails and keeps what it
+ * knows to itself. The reader can turn to another page, and the page that
+ * failed can be retried without the app being restarted.
+ */
+class MushafPageBoundary extends React.Component<
+  { page: number; children: React.ReactNode },
+  { error: Error | null }
+> {
+  state: { error: Error | null } = { error: null };
+
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+
+  /* A new page is a fresh start, not the same failure carried forward. */
+  componentDidUpdate(prev: { page: number }) {
+    if (prev.page !== this.props.page && this.state.error) this.setState({ error: null });
+  }
+
+  render() {
+    if (!this.state.error) return this.props.children;
+    const message = String(this.state.error?.message || this.state.error || 'Unknown error');
+    return <View style={s.mushafCrash}>
+      <Text style={s.mushafCrashTitle}>{`This page could not be drawn (${this.props.page})`}</Text>
+      <Text style={s.mushafCrashBody} selectable>{message}</Text>
+      <Tactile accessibilityRole="button" accessibilityLabel="Try this page again"
+        onPress={() => this.setState({ error: null })} style={s.secondary}>
+        <Text style={s.secondaryText}>Try again</Text>
+      </Tactile>
+    </View>;
+  }
+}
+
+/**
  * One page of the mushaf.
  *
  * The page is set, not solved for. It carries the lines the King Fahd Complex
@@ -4772,7 +4816,9 @@ function MushafPageView({page,verses,error,cached,retry,preferences,rtl,T,langua
    : <View style={s.mushafPageStack}>
      {!!preferences.showVerseConnections && page > 1 &&
        <MushafConnectionNote kind="continued" rtl={rtl} T={T} language={language} page={page} cut={startsContinued} nextVerse={neighbours.prev[neighbours.prev.length - 1]} />}
-     <MushafPage page={page} verses={verses} width={layout.pageWidth} height={layout.pageHeight} before={neighbours.prev} {...pageProps} variant={pageProps.preferences?.mushafLayout === 'flowing' ? 'flowing' : 'madani'} />
+     <MushafPageBoundary page={page}>
+       <MushafPage page={page} verses={verses} width={layout.pageWidth} height={layout.pageHeight} before={neighbours.prev} {...pageProps} variant={pageProps.preferences?.mushafLayout === 'flowing' ? 'flowing' : 'madani'} />
+     </MushafPageBoundary>
      {!!preferences.showVerseConnections && page < 604 &&
        <MushafConnectionNote kind="continues" rtl={rtl} T={T} language={language} page={page} cut={endsContinued} nextVerse={neighbours.next[0]} />}
    </View>}
@@ -14879,7 +14925,7 @@ rangeEnd:{flex:1},
 stepperSmall:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:6,marginTop:4,backgroundColor:C.bg,borderRadius:11,paddingHorizontal:6,paddingVertical:3,borderWidth:1,borderColor:C.line},
 rangeNumber:{color:C.ink,fontSize:14,fontFamily:'DMSans_600SemiBold'},
 stepButtonSmall:{padding:4},
-mushafPageStack:{alignItems:'center',paddingVertical:6},
+mushafCrash:{width:'100%',minHeight:220,borderRadius:20,borderWidth:1,borderColor:C.line,backgroundColor:C.card,padding:20,justifyContent:'center',gap:10},mushafCrashTitle:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:14,textAlign:'center'},mushafCrashBody:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:12,lineHeight:18,textAlign:'center'},mushafPageStack:{alignItems:'center',paddingVertical:6},
 mushafPageOuter:{overflow:'hidden'},
 mushafMarkerBand:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:6,marginVertical:5},
 mushafMarkerRule:{height:1,backgroundColor:C.gold,opacity:.55},
