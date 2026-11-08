@@ -1,4 +1,5 @@
 import { getCachedJson, setCachedJson } from './contentCache';
+import { cached, singleFlight } from './requestCache';
 import { daysOfHijriMonth, gregorianForHijri, hijriForDate } from './hijri';
 import { getChapters as getWorkerChapters, getDailyHadith as getWorkerDailyHadith, getEditions, getSurah, IslamicChapter, IslamicDataError, IslamicEdition } from './islamicDataApi';
 import {
@@ -452,6 +453,19 @@ export async function getChapters(): Promise<Chapter[]> {
 }
 
 export async function getVerses(chapterId: number, options: { script?: string; translation?: string } = {}): Promise<Verse[]> {
+  /* The Arabic and the meaning underneath are already saved to disk by
+     `getSurah`, and the reader keeps its own copy of the finished list. What
+     nothing held is the list once it has been built, so opening a surah,
+     going back and opening it again assembled all two hundred and eighty-six
+     verses a second time. Held in memory only: saving it too would put a
+     third copy of the same text on the device. */
+  const script = options.script || 'quran-uthmani';
+  const translation = options.translation || DEFAULT_TRANSLATION_EDITION;
+  return cached('quran', `composed:verses:${chapterId}:${script}:${translation}`,
+    () => composeVerses(chapterId, options), { memoryOnly: true, ttlMs: 30 * 60 * 1000 });
+}
+
+async function composeVerses(chapterId: number, options: { script?: string; translation?: string } = {}): Promise<Verse[]> {
   const script = options.script || 'quran-uthmani';
   const translation = options.translation || DEFAULT_TRANSLATION_EDITION;
 
@@ -541,6 +555,17 @@ export async function getAyahOfDay(edition = DEFAULT_TRANSLATION_EDITION): Promi
  * several before they are needed and keep them on the device.
  */
 export async function getAyahForDate(date: Date, edition = DEFAULT_TRANSLATION_EDITION): Promise<DailyAyah> {
+  /* Which ayah a day gets is settled by arithmetic on the day of the year, so
+     the answer cannot change — and yet every visit rebuilt it, which meant a
+     request for the surah and another for the meaning each time the home
+     screen appeared. Held for the rest of the session, and on disk for a
+     month so that tomorrow's is still there after a restart. */
+  const day = Math.floor((new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime() - new Date(date.getFullYear(), 0, 0).getTime()) / 86400000);
+  return cached('daily', `ayah:${date.getFullYear()}:${day}:${edition}`,
+    () => composeAyahForDate(date, edition), { ttlMs: 30 * 24 * 60 * 60 * 1000, staleMs: 90 * 24 * 60 * 60 * 1000 });
+}
+
+async function composeAyahForDate(date: Date, edition: string): Promise<DailyAyah> {
   const start = new Date(date.getFullYear(), 0, 0);
   const day = Math.floor((new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime() - start.getTime()) / 86400000);
   const ayahNumber = (day % QURAN_AYAH_COUNT) + 1;
@@ -569,7 +594,9 @@ export async function getAyahForDate(date: Date, edition = DEFAULT_TRANSLATION_E
 }
 
 export async function getJuzVerses(juz: number, options: { script?: string; translation?: string } = {}): Promise<Verse[]> {
-  return versesForDivision(juzVerseKeys(juz), juz, options, (surah, verse) => juz);
+  return cached('quran', `composed:juz:${juz}:${options.script || 'quran-uthmani'}:${options.translation || DEFAULT_TRANSLATION_EDITION}`,
+    () => versesForDivision(juzVerseKeys(juz), juz, options, (surah, verse) => juz),
+    { memoryOnly: true, ttlMs: 30 * 60 * 1000 });
 }
 
 /**
@@ -619,6 +646,13 @@ async function versesForDivision(
  * then need de-duplicating.
  */
 export async function getHizbVerses(hizb: number, options: { script?: string; translation?: string } = {}): Promise<Verse[]> {
+  const script = options.script || 'quran-uthmani';
+  const translation = options.translation || DEFAULT_TRANSLATION_EDITION;
+  return cached('quran', `composed:hizb:${hizb}:${script}:${translation}`,
+    () => composeHizbVerses(hizb, options), { memoryOnly: true, ttlMs: 30 * 60 * 1000 });
+}
+
+async function composeHizbVerses(hizb: number, options: { script?: string; translation?: string } = {}): Promise<Verse[]> {
   const quarters = Array.from({ length: 4 }, (_, i) => (hizb - 1) * 4 + i + 1);
   const keys = quarters.flatMap((quarter) => rubVerseKeys(quarter));
   /* A hizb can straddle a juz boundary, so each verse is asked which juz it
@@ -687,6 +721,13 @@ async function wholeEdition(editionId: string): Promise<Array<{ surah: number; r
 }
 
 export async function searchQuran(query: string, edition = DEFAULT_TRANSLATION_EDITION): Promise<QuranSearchResult[]> {
+  /* Not stored — a search is answered once and thrown away. But two callers
+     typing the same thing at the same moment still share one request rather
+     than sending it twice. */
+  return singleFlight(`search:${edition}:${query}`, () => runSearch(query, edition));
+}
+
+async function runSearch(query: string, edition = DEFAULT_TRANSLATION_EDITION): Promise<QuranSearchResult[]> {
   const needle = query.trim().toLowerCase();
   if (needle.length < 2) return [];
 
@@ -741,6 +782,19 @@ export async function searchQuran(query: string, edition = DEFAULT_TRANSLATION_E
  * So membership of the catalog is the whole test - no guesswork about shape.
  */
 export async function getAyahEditions(verseKey: string, editions: string[]): Promise<{edition:string;name:string;language:string;text:string}[]> {
+  /* Commentary on a verse is the one thing in the app that can never change:
+     the tafsir of 2:255 is the tafsir of 2:255, today and for as long as the
+     book is read. It was being fetched again on every visit to a topic page
+     and every comparison. Saved for a year, which is to say effectively
+     forever — and served from memory for the rest of the session. */
+  const key = `ayah-editions:${verseKey}:${(editions || []).filter(Boolean).slice().sort().join(',')}`;
+  return cached('tafsir', key, () => composeAyahEditions(verseKey, editions), {
+    ttlMs: 365 * 24 * 60 * 60 * 1000,
+    staleMs: 365 * 24 * 60 * 60 * 1000,
+  });
+}
+
+async function composeAyahEditions(verseKey: string, editions: string[]): Promise<{edition:string;name:string;language:string;text:string}[]> {
   const surah = String(verseKey).split(':')[0];
   const wanted = (editions || []).filter(Boolean);
 
@@ -1091,6 +1145,19 @@ function coverageOf(variant: any): number {
  * setting already holds, so someone's chosen reciter survives the switch.
  */
 export async function getSurahReciters(): Promise<SurahReciter[]> {
+  /* This catalogue is 449 KB and answers in about three quarters of a second,
+     and it is the one thing in the app that was fetched in full every single
+     time — twice over, because picking a reciter and preparing a download
+     both ask. It changes when a recitation is added, which is to say almost
+     never, so a week is a generous TTL and a stale copy is still far better
+     than a blank list while the network is slow. */
+  return cached('audio-meta', 'surah-reciters/v1', fetchReciters, {
+    ttlMs: 7 * 24 * 60 * 60 * 1000,
+    staleMs: 30 * 24 * 60 * 60 * 1000,
+  });
+}
+
+async function fetchReciters(): Promise<SurahReciter[]> {
   const response = await fetch('https://audio.islamicdata.uz/v1/reciters', { headers: { Accept: 'application/json' } });
   if (!response.ok) throw new Error(`Request failed (${response.status})`);
   const body = await response.json();
