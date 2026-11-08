@@ -10843,15 +10843,81 @@ function HadithDetailScreen({route,navigation}:any){const {rtl,language:appLangu
 
 function HadithSavedScreen({navigation}:any){const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);
   const state=useHadithState();
+  const {resolved}=useTheme();
+  const {preferences:quranPrefs}=useQuranPreferences();
+  const hadithLanguage=useHadithLanguage();
+  /* The card wears the theme it was saved in, as it does on the detail
+     screen — a card leaving the app should look like the app it left. */
+  const cardTheme:CardTheme=isPal(resolved)?'palestine':'islamic';
+  const hadithCardRef=useRef<any>(null);
+  /* A bookmark holds a short preview, not the narration, so the card cannot
+     be drawn from what this list already has. The narration is fetched on
+     demand, and the card is mounted only while it is being photographed —
+     a full-bleed card behind every saved hadith would be ruinous. */
+  const [pending,setPending]=useState<null|{id:string,arabic?:string,translation:string,collection:string,number:string}>(null);
+  const [busyId,setBusyId]=useState('');
+  useEffect(()=>{
+    if(!pending)return;
+    let alive=true;
+    const run=async()=>{
+      /* Two frames: one for React to commit the card to the tree, one for its
+         layout to be measured. Capturing sooner yields a blank PNG. */
+      await new Promise<void>((done)=>requestAnimationFrame(()=>requestAnimationFrame(()=>done())));
+      if(!alive)return;
+      try{
+        const result=await shareHadithCard({
+          arabic:pending.arabic,translation:pending.translation,
+          collection:pending.collection,number:pending.number,
+          arabicFontFamily:quranFont(quranPrefs.arabicFont),theme:cardTheme,
+        },hadithCardRef);
+        if(alive&&result==='saved')Alert.alert(T('Image saved'),T('The hadith card was saved to your downloads.'));
+      }finally{if(alive){setPending(null);setBusyId('')}}
+    };
+    void run();
+    return ()=>{alive=false};
+  },[pending,cardTheme,quranPrefs.arabicFont]);
+  const shareCard=async(item:any)=>{
+    if(busyId)return;
+    setBusyId(item.id);
+    try{
+      /* The same call the detail screen makes, so anything already read is
+         served from the cache rather than fetched again. */
+      const hadith=await fetchHadithOne(item.slug,item.number,hadithLanguage);
+      setPending({
+        id:item.id,
+        arabic:hadith.arabic?stripTags(hadith.arabic):undefined,
+        translation:stripTags(hadith.english||''),
+        collection:hadithSourceLabel(language,item.slug),
+        number:String(item.number),
+      });
+    }catch{
+      setBusyId('');
+      Alert.alert(T('Something went wrong'),T('Please check your connection.'));
+    }
+  };
   return <Page><ToolBar title={T('Saved hadith')} navigation={navigation}/>
     {!state.saved.length&&<View style={s.empty}><ToolGraphic tool="Hadith" size={60}/><Text style={s.dataTitle}>{T('Nothing saved yet')}</Text><Text style={s.dataBody}>{T('Save a hadith from any collection and it will appear here on this device only.')}</Text></View>}
-    {state.saved.map(item=><View key={item.id} style={s.dataCard}>
+    {state.saved.map(item=>{const busy=busyId===item.id;return <View key={item.id} style={s.dataCard}>
       <Pressable onPress={()=>navigation.navigate('Hadith Detail',{slug:item.slug,number:item.number})}>
         <Text style={s.dataMeta}>{item.collection} · {T('Hadith')} {item.number}</Text>
         <Text style={s.dataBody} numberOfLines={4}>{item.preview}</Text>
       </Pressable>
-      <Pressable accessibilityLabel={T('Remove saved hadith')} onPress={()=>void removeHadithBookmark(item.id)} style={{marginTop:10,alignSelf:'flex-start'}}><Text style={s.dangerText}>{T('Remove')}</Text></Pressable>
-    </View>)}
+      <View style={[s.actionRow,{marginTop:10}]}>
+        <Tactile accessibilityLabel={T('Share as image card')} onPress={()=>void shareCard(item)} disabled={busy} style={[s.secondary,{opacity:busy?.5:1}]}>
+          {ico('image-outline',15,C.green)}<Text style={s.secondaryText}>{busy?T('Preparing…'):T('Share card')}</Text>
+        </Tactile>
+        <Tactile accessibilityLabel={T('Remove saved hadith')} onPress={()=>void removeHadithBookmark(item.id)} style={s.secondary}>
+          <Text style={s.dangerText}>{T('Remove')}</Text>
+        </Tactile>
+      </View>
+    </View>})}
+    {/* Off-screen rather than hidden: a view with no layout captures as a
+        blank PNG. It is only ever photographed, never shown. */}
+    {!!pending&&<View style={s.offscreenCard} pointerEvents="none" aria-hidden>
+      <HadithShareCard viewRef={hadithCardRef} arabic={pending.arabic} translation={pending.translation}
+        collection={pending.collection} number={pending.number}
+        arabicFontFamily={quranFont(quranPrefs.arabicFont)} theme={cardTheme}/>
+    </View>}
   </Page>}
 
 /* Mirrors CALCULATION_METHODS in src/services/prayerTimes.ts, which is where
@@ -12535,8 +12601,13 @@ const TAB_ITEMS = [
  * without wobbling — you see the motion stop rather than see it bounce.
  * Mass is below one so it feels like a light object being placed, not a
  * heavy one being dragged.
+ *
+ * Damping sits above critical (2 * sqrt(stiffness * mass) ~= 34.3), so the
+ * indicator cannot overshoot even on a four-tab jump: it leaves, it passes
+ * over the tabs between, it stops. No rebound, and nothing else layered on
+ * top of the travel.
  */
-const TAB_SPRING = { stiffness: 480, damping: 32, mass: 0.65, useNativeDriver: true };
+const TAB_SPRING = { stiffness: 420, damping: 40, mass: 0.7, useNativeDriver: true };
 
 /** The bar's own horizontal padding. The indicator measures its slot from
     this, so the two have to agree — change one and the other follows. */
@@ -12563,7 +12634,7 @@ function TabButton({ route, focused, navigation, resolved, rtl, language, state,
     Animated.spring(on, { toValue: focused ? 1 : 0, ...TAB_SPRING }).start();
   }, [focused, on]);
   const iconOpacity = on.interpolate({ inputRange: [0, 1], outputRange: [0.5, 1] });
-  const iconScale = on.interpolate({ inputRange: [0, 1], outputRange: [0.9, 1] });
+  const iconScale = on.interpolate({ inputRange: [0, 1], outputRange: [0.94, 1] });
   return <Animated.View style={[s.floatItem, { transform: [{ scale: press.scale }] }]}>
     <Pressable accessibilityRole="button" accessibilityState={{ selected: focused }} accessibilityLabel={label}
       onPressIn={press.onPressIn} onPressOut={press.onPressOut}
@@ -12622,6 +12693,7 @@ function TabButton({ route, focused, navigation, resolved, rtl, language, state,
  */
 function FloatingTabBar({ state, navigation }: any) {
   const { width } = useWindowDimensions();
+  const still = useCalmMotion();
   const { rtl , language }=useLanguage();
   const { resolved, dark } = useTheme();
   const hidden = useChromeHidden();
@@ -12640,26 +12712,14 @@ function FloatingTabBar({ state, navigation }: any) {
   /* `at` is the tab the indicator is over, as a fraction rather than an
      index, so an interruption mid-flight starts from wherever it is. */
   const at = useRef(new Animated.Value(state.index)).current;
-  const stretch = useRef(new Animated.Value(1)).current;
   const from = useRef(state.index);
   useEffect(() => {
     if (from.current === state.index) return;
-    /* Further to travel, further it stretches. Two tabs apart pulls the
-       glass out more than next door does, which is what makes a long jump
-       read as effort rather than as a teleport. */
-    const distance = Math.min(Math.abs(state.index - from.current), 3);
     from.current = state.index;
-    Animated.parallel([
-      Animated.spring(at, { toValue: state.index, ...TAB_SPRING }),
-      Animated.sequence([
-        Animated.timing(stretch, {
-          toValue: 1 + distance * 0.09, duration: 120,
-          easing: Easing.out(Easing.quad), useNativeDriver: true,
-        }),
-        Animated.spring(stretch, { toValue: 1, ...TAB_SPRING }),
-      ]),
-    ]).start();
-  }, [state.index, at, stretch]);
+    /* Reduced motion means the indicator arrives without travelling. */
+    if (still) { at.setValue(state.index); return; }
+    Animated.spring(at, { toValue: state.index, ...TAB_SPRING }).start();
+  }, [state.index, at, still]);
 
   return <Animated.View pointerEvents="box-none" style={[s.floatBarWrap, {
     opacity: drop,
@@ -12692,7 +12752,6 @@ function FloatingTabBar({ state, navigation }: any) {
           width: slot - 6,
           transform: [
             { translateX: at.interpolate({ inputRange: [0, slots - 1], outputRange: [0, (slots - 1) * slot] }) },
-            { scaleX: stretch },
           ],
         }]}>
           <View style={[StyleSheet.absoluteFill, {
