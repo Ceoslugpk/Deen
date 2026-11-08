@@ -383,10 +383,23 @@ const MUSHAF_MAX_SIZE = 52;
 /** Leading, as a proportion of the script size. */
 const MUSHAF_LEAD = 1.48;
 /**
+ * Whether the mushaf page is offered at all.
+ *
+ * Withdrawn. The page is set from the printed layout of the Madinah mushaf
+ * now — real lines, real breaks, nothing measured — and that part is right.
+ * But it is not right on every device it has been tried on, and a reader who
+ * opens the Quran should not be met by a page that fails. So the choice is
+ * out of the list until it can be shown to work, and everything behind it
+ * stays where it is: turning this back on is one word.
+ */
+const MUSHAF_ENABLED = false;
+
+/**
  * How many lines a page carries. Fifteen is the Madinah mushaf: the same
  * fifteen on all six hundred and four pages, which is what makes a page read
- * as a page. The script size is solved to land on this count rather than the
- * count being whatever fills the box.
+ * as a page. The printed layout says how many lines a given page has, and the
+ * script is then sized to that number rather than the number being whatever
+ * happens to fill the box.
  */
 const MUSHAF_LINES = 15;
 /** The strip the page number occupies at the foot of the page. The script is
@@ -3316,11 +3329,6 @@ function HeroCountdown({ raw, rtl, language }: { raw: string; rtl: boolean; lang
  * from a stored value, so it cannot drift from the prayer list, and it
  * rolls past midnight the way the prayer it is counting to does.
  */
-/** The pill's own horizontal padding. The track is measured as the pill's
-    width less this on both sides, so the two have to agree — change the
-    padding in `nextPill` and this follows. */
-const NEXT_PILL_PAD_X = 19;
-
 function NextPrayerPill({ prayer, prayers, language, rtl, still, scrollY }: {
   prayer: Prayer; prayers: Prayer[]; language: any; rtl: boolean; still: boolean; scrollY: Animated.Value;
 }) {
@@ -3361,24 +3369,22 @@ function NextPrayerPill({ prayer, prayers, language, rtl, still, scrollY }: {
      count. */
   const span = Math.max(1, target - from);
   const run = Math.min(1, Math.max(0, (now - from) / span));
-  /* The bar is drawn in measured points rather than as a percentage, and
-     measured off the pill rather than off the track.
+  /* How full the track is, as a percentage of the track.
 
-     The pill shrinks to fit its contents — it carries a minWidth and sits in
-     a centred wrapper — so the track's `100%` was a percentage of a width
-     that was itself being decided by the track. On the web the browser takes
-     a second pass and the bar appears; on Android Yoga resolves that against
-     an indefinite parent and yields zero. Measuring the *track* could never
-     fix that, because a track with no width measures zero and the `w > 0`
-     guard then throws the measurement away — which is why the pill showed
-     its countdown and no bar.
+     The track reaches across the pill by stretching, which gives it a width
+     the layout has already decided before the fill is drawn — so the fill is
+     a plain percentage and nothing here is measured.
 
-     The pill is the one thing here with a definite width, since its own
-     content decides it. Measuring that and subtracting the padding gives
-     the track a real number on every platform. */
-  const [pillWidth, setPillWidth] = useState(0);
-  const trackWidth = Math.max(0, pillWidth - NEXT_PILL_PAD_X * 2);
-  const fillWidth = trackWidth > 0 ? Math.round(trackWidth * run * 100) / 100 : 0;
+     It was measured before, twice over, and neither attempt worked: the
+     track was `width:'100%'` inside a pill that shrank to fit its own
+     contents, so it was a percentage of a width the track itself was being
+     asked to help decide. On the web the browser took a second pass and the
+     bar appeared; on Android Yoga resolved it against an indefinite parent
+     and yielded zero, so the pill showed its countdown and no bar. Measuring
+     the track could not fix that, because a track with no width measures
+     zero. Measuring the pill instead did fix it, and took a state, a layout
+     callback and a constant to do what `alignSelf:'stretch'` does for
+     nothing. */
   const left = Math.max(0, Math.floor((target - now) / 1000));
   const hh = Math.floor(left / 3600);
   const mm = Math.floor((left - hh * 3600) / 60);
@@ -3391,10 +3397,7 @@ function NextPrayerPill({ prayer, prayers, language, rtl, still, scrollY }: {
   const opacity = scrollY.interpolate({ inputRange: [90, 150], outputRange: [0, 1], extrapolate: 'clamp' });
   const lift = scrollY.interpolate({ inputRange: [90, 150], outputRange: still ? [0, 0] : [-10, 0], extrapolate: 'clamp' });
   return <Animated.View pointerEvents="none" style={[s.nextPillWrap, { opacity, transform: [{ translateY: lift }] }]}>
-    <View style={s.nextPill} onLayout={(e) => {
-      const w = e?.nativeEvent?.layout?.width || 0;
-      if (w > 0) setPillWidth((prev) => (Math.abs(prev - w) > 0.5 ? w : prev));
-    }}>
+    <View style={s.nextPill}>
       <View style={s.nextPillRow}>
         {ico('time-outline', 15, C.gold)}
         {/* prayerName rather than T: the six prayer names are not in the copy
@@ -3412,8 +3415,8 @@ function NextPrayerPill({ prayer, prayers, language, rtl, still, scrollY }: {
           long is left without saying how long there was, so a wait of
           four minutes out of four hours looks the same as one four
           minutes out of forty. This is the other half of that. */}
-      <View style={[s.nextPillTrack, { width: trackWidth }]}>
-        <View style={[s.nextPillFill, { width: fillWidth }]} />
+      <View style={s.nextPillTrack}>
+        <View style={[s.nextPillFill, { width: `${Math.round(run * 100)}%` } as any]} />
       </View>
     </View>
   </Animated.View>;
@@ -3636,7 +3639,7 @@ function ReaderScreen({route,navigation}:any){
   const focusVerse=route.params?.focusVerse;
   const{preferences,update}=useQuranPreferences();
   /* "Mushaf page" is a script like Uthmani or IndoPak, not a separate screen. */
-  const isMushaf=preferences.scriptEdition==='quran-mushaf';
+  const isMushaf=MUSHAF_ENABLED&&preferences.scriptEdition==='quran-mushaf';
   /* Arabic is always shown and the translation follows the preference, which
      lives in Reading Settings. There used to be two buttons above the ayahs
      for this; they duplicated what the settings screen already offered, and
@@ -5099,7 +5102,8 @@ function ReaderSettingsScreen({navigation}:any){
     return ()=>{ live=false; };
   },[catalogAttempt]);
 
-  const scripts=[['quran-uthmani','Uthmani'],['quran-simple','Imla’i Simple'],['quran-indopak','IndoPak'],['quran-tajweed','Tajweed colour'],['quran-mushaf','Mushaf page']];
+  const scripts=[['quran-uthmani','Uthmani'],['quran-simple','Imla’i Simple'],['quran-indopak','IndoPak'],['quran-tajweed','Tajweed colour'],
+  ...(MUSHAF_ENABLED?[['quran-mushaf','Mushaf page']] as any:[])];
   /* Every control below is a setting of the same two lines of text, so the two
      lines sit at the top and change as the controls change. Reading about a
      type size is slower than seeing it. */
@@ -5212,7 +5216,7 @@ function ReaderSettingsScreen({navigation}:any){
             <View style={s.choiceGrid}><ChoicePill label={T('Ayah cards')} selected={preferences.readingMode==='cards'} onPress={()=>update({readingMode:'cards'})}/><ChoicePill label={T('Continuous')} selected={preferences.readingMode==='continuous'} onPress={()=>update({readingMode:'continuous'})}/></View>
           </View>
 
-          {preferences.scriptEdition==='quran-mushaf'&&<View style={s.rsGroup}>
+          {MUSHAF_ENABLED&&preferences.scriptEdition==='quran-mushaf'&&<View style={s.rsGroup}>
             <Text style={s.rsGroupTitle}>{T('MUSHAF PAGE')}</Text>
             <View style={s.settings}>
               <Tactile accessibilityRole="switch" accessibilityState={{checked:!!preferences.mushafTranslation}} onPress={()=>update({mushafTranslation:!preferences.mushafTranslation})} style={s.setting}><MotionGlyph name={preferences.mushafTranslation?'text':'text-outline'} size={19}/><View style={{flex:1}}><Text style={s.settingName}>{T('Show the meaning on the page')}</Text><Text style={s.meta}>{T('A printed page carries no translation. Turn this on to have the meaning under each verse.')}</Text></View>{ico(preferences.mushafTranslation?'toggle':'toggle-outline',22,preferences.mushafTranslation?C.green:C.muted)}</Tactile>
@@ -14475,7 +14479,7 @@ function makeStyles() {
    surface and a small lift rather than sitting on the content like a row
    would. C.card and C.ink keep it inside whichever palette is wearing. */
 nextPillWrap:{position:'absolute',top:6,left:0,right:0,alignItems:'center',zIndex:30},
-nextPill:{alignItems:'center',justifyContent:'center',minWidth:176,backgroundColor:C.card,borderWidth:1,borderColor:C.line,borderRadius:22,paddingHorizontal:19,paddingTop:9,paddingBottom:8,elevation:4,shadowColor:'#000',shadowOpacity:.18,shadowRadius:10,shadowOffset:{width:0,height:3}},nextPillRow:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:9},nextPillTrack:{width:'100%',height:3,borderRadius:2,backgroundColor:C.line,marginTop:7,overflow:'hidden'},nextPillFill:{height:3,borderRadius:2,backgroundColor:C.gold},
+nextPill:{alignItems:'center',justifyContent:'center',minWidth:176,backgroundColor:C.card,borderWidth:1,borderColor:C.line,borderRadius:22,paddingHorizontal:19,paddingTop:9,paddingBottom:8,elevation:4,shadowColor:'#000',shadowOpacity:.18,shadowRadius:10,shadowOffset:{width:0,height:3}},nextPillRow:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:9},nextPillTrack:{alignSelf:'stretch',height:3,borderRadius:2,backgroundColor:C.line,marginTop:7,overflow:'hidden'},nextPillFill:{height:3,borderRadius:2,backgroundColor:C.gold},
 nextPillName:{color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:13},
 nextPillDot:{color:C.muted,fontFamily:'DMSans_600SemiBold',fontSize:13},
 /* successInk, not gold: gold measures 2.7:1 against the card in the light
