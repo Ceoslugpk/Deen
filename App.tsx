@@ -7210,19 +7210,27 @@ function LiveStreamPlayer({ channel, rtl, T }: { channel: HolyChannel; rtl: bool
 function HolyChannelsScreen({ route, navigation }: any) {
   const { rtl , language }=useLanguage();
   const T = (text: string) => tx(language, text);
-  const [opened, setOpened] = useState('');
   const site = route?.params?.site;
-  const channels = site ? HOLY_CHANNELS.filter((channel) => channel.site === site) : HOLY_CHANNELS;
+  /* A Makkah page carries Makkah and nothing else, and the same for Madinah.
+     The channels that are not a broadcast of their own — the Authority's
+     channel, the relay page, the Hajj coverage — belong on the screen that
+     lists them all, not on a page a reader opened to watch one mosque. */
+  const channels = site
+    ? HOLY_CHANNELS.filter((channel) => channel.site === site && channel.streamUrl)
+    : HOLY_CHANNELS;
   const heading = site === 'Madinah' ? 'Madinah Live' : 'Makkah Live';
-  const open = async (channel: (typeof HOLY_CHANNELS)[number]) => { setOpened(channel.id); await openChannel(channel); };
   return <Page><ToolBar tool={site ? heading : 'Holy site channels'} title={site ? T(heading) : (tx(language, 'Holy site channels'))} navigation={navigation} />
     <ScrollView keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
       {/* On a Makkah or Madinah page the drawing is that mosque's, not the
           generic holy-sites mark — the page already says which one it is in
           the bar above, and the two should agree. */}
       <ToolGraphic tool={site ? heading : 'Holy site channels'} size={85} />
-      <Text style={s.dataTitle}>{tx(language, 'Holy site channels')}</Text>
-      <Text style={s.intro}>{tx(language, 'The official broadcasts from Makkah and Madinah, around the clock.')}</Text>
+      <Text style={s.dataTitle}>{site ? T(heading) : tx(language, 'Holy site channels')}</Text>
+      {/* The mosque's own line — the same one the tool card uses. Both cities
+          only belong together on the screen that lists them both. */}
+      <Text style={s.intro}>{site
+        ? T(site === 'Madinah' ? 'Al-Masjid an-Nabawi, around the clock' : 'Al-Masjid al-Haram, around the clock')
+        : tx(language, 'The official broadcasts from Makkah and Madinah, around the clock.')}</Text>
       {channels.map((channel) => <View key={channel.id} style={s.channelCard}>
         <View style={[s.channelHead, ]}>
           <ToolGraphic tool={channel.site === 'Madinah' ? 'Madinah Live' : 'Makkah Live'} size={52} />
@@ -7237,15 +7245,14 @@ function HolyChannelsScreen({ route, navigation }: any) {
         <Text style={s.dataBody}>{T(channel.detail)}</Text>
         <Text style={s.meta}>{T(channel.broadcaster)}</Text>
         {!!channel.streamUrl && Platform.OS !== 'web' && <LiveStreamPlayer channel={channel} rtl={rtl} T={T} />}
-        <Tactile accessibilityRole="button" accessibilityLabel={`${T('Watch live')} ${channel.channel}`} onPress={() => open(channel)} style={s.primary}>
-          <Text style={s.primaryText}>{opened === channel.id ? T('Opening…')
-            : (channel.streamUrl ? T('Open outside the app') : T('Open live stream'))}</Text>
-        </Tactile>
       </View>)}
-      <View style={s.apiPanel}>
+      {/* Kept only on the screen that lists every channel: there it explains
+          why some play here and some do not. On a Makkah or Madinah page
+          there is one broadcast and nothing else to explain. */}
+      {!site && <View style={s.apiPanel}>
         <Text style={s.apiTitle}>{tx(language, 'About these streams')}</Text>
         <Text style={s.apiText}>{tx(language, 'Quran TV and Sunnah TV play right here, from the broadcaster’s own stream. The other channels open outside this app, because carrying them here would need rights the app does not hold.')}</Text>
-      </View>
+      </View>}
     </ScrollView>
   </Page>;
 }

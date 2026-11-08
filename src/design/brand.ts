@@ -496,28 +496,37 @@ export const DEPTH = {
 export const GLASS = {
   light: {
     /** The wash that gives the material its colour, laid over the blur.
-        Kept light: expo-blur's own tint is already doing most of the
-        frosting, and a tab bar has to keep five labels readable over
-        whatever happens to be behind it. */
-    wash:      alpha(BRAND.pearl, 0.12),
+        This is also what makes the bar solid, and on Android it is the only
+        thing that does: expo-blur renders a plain translucent view there
+        rather than a real blur, so whatever the wash does not cover shows
+        straight through. At 0.12 the bar carried almost no material of its
+        own and content passing behind it was plainly visible through the
+        labels. It now carries enough that the glass reads as a surface. */
+    wash:      alpha(BRAND.pearl, 0.72),
     /** Specular sheen across the top edge, fading out by the middle. */
     sheen:     [alpha(WHITE, 0.50), alpha(WHITE, 0)] as [string, string],
     /** The hairline: bright where the light falls, dim underneath. */
     rimTop:    alpha(WHITE, 0.90),
     rimSide:   alpha(WHITE, 0.45),
     rimBottom: alpha(BRAND.midnightInk, 0.10),
-    /** The selected tab, lifted out of the material. */
-    pill:      alpha(WHITE, 0.62),
+    /** The selected tab, lifted out of the material. Raised with the wash:
+        a pill that was brighter than a near-clear bar is barely brighter
+        than a solid one, and the selected tab has to stay obvious. */
+    pill:      alpha(WHITE, 0.82),
     pillRim:   alpha(WHITE, 0.90),
   },
   dark: {
-    wash:      alpha(BRAND.midnightInk, 0.10),
+    /* Denser for the same reason as the light one, and a little denser still
+       than it would otherwise be: on a dark ground the page behind the bar is
+       mostly dark too, so a thin wash there does not hide the content passing
+       under it so much as smear it. */
+    wash:      alpha(BRAND.midnightInk, 0.74),
     sheen:     [alpha(WHITE, 0.13), alpha(WHITE, 0)] as [string, string],
     rimTop:    alpha(BRAND.pearl, 0.34),
     rimSide:   alpha(BRAND.pearl, 0.14),
     rimBottom: alpha(BLACK, 0.30),
-    pill:      alpha(BRAND.pearl, 0.15),
-    pillRim:   alpha(BRAND.pearl, 0.26),
+    pill:      alpha(BRAND.pearl, 0.26),
+    pillRim:   alpha(BRAND.pearl, 0.34),
   },
 } as const;
 
