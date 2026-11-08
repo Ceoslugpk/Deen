@@ -10689,6 +10689,10 @@ function HadithCollectionScreen({route,navigation}:any){const {rtl,language:appL
     </>}
   </Page>}
 function HadithDetailScreen({route,navigation}:any){const {rtl,language:appLanguage}=useLanguage();const T=(text:string)=>tx(appLanguage,text);
+  /* A shared picture leaves the app, so it should belong to the colours it was
+     made in — the resolved theme, not the card's default. */
+  const {resolved}=useTheme();
+  const {preferences:quranPrefs}=useQuranPreferences();
   const slug=route.params?.slug||'bukhari';
   const number=Number(route.params?.number||1);
   const collection=HADITH_COLLECTIONS.find(item=>item.slug===slug);
@@ -10699,9 +10703,16 @@ function HadithDetailScreen({route,navigation}:any){const {rtl,language:appLangu
   const [error,setError]=useState('');
   const [copied,setCopied]=useState(false);
   const [reporting,setReporting]=useState(false);
+  const [sharingHadith,setSharingHadith]=useState(false);
   useHadithState();
   const saved=isHadithSaved(slug,number);
   const total=outline?.total||0;
+
+  /* The card is mounted for the whole screen and photographed on the press.
+     It has to be laid out before it can be captured, which is the only reason
+     it lives in the tree at all times rather than being built when asked for. */
+  const hadithCardRef=useRef<any>(null);
+  const cardTheme:CardTheme=isPal(resolved)?'palestine':'islamic';
 
   /* One request for the narration, one for its book so the reader can walk
      forward and back. The book is cached, so walking is free after the first
@@ -10739,6 +10750,26 @@ function HadithDetailScreen({route,navigation}:any){const {rtl,language:appLangu
   const copy=async()=>{
     if(!hadith)return;
     try{await Clipboard.setStringAsync(`${hadith.arabic}\n\n${hadith.english}`);setCopied(true);setTimeout(()=>setCopied(false),1800)}catch{/* clipboard unavailable */}
+  };
+  /* The same card the daily hadith is shared as, so any hadith in any
+     collection can leave as a picture and not only the one on the home
+     screen. No date: that one is the hadith *of the day*, and this is a
+     narration the reader went looking for. */
+  const shareAsImage=async()=>{
+    if(!hadith||sharingHadith)return;
+    const card={
+      arabic:hadith.arabic?stripTags(hadith.arabic):undefined,
+      translation:stripTags(hadith.english||''),
+      collection:hadithSourceLabel(language,slug),
+      number:String(hadith.number||''),
+      arabicFontFamily:quranFont(quranPrefs.arabicFont),
+      theme:cardTheme,
+    };
+    setSharingHadith(true);
+    try{
+      const result=await shareHadithCard(card,hadithCardRef);
+      if(result==='saved')Alert.alert(T('Image saved'),T('The hadith card was saved to your downloads.'));
+    }finally{setSharingHadith(false)}
   };
   useOverlaySheet('hadith-detail-report', !!hadith && reporting, () => hadith
     ? <CorrectionSheet
@@ -10779,6 +10810,7 @@ function HadithDetailScreen({route,navigation}:any){const {rtl,language:appLangu
         <Tactile accessibilityLabel={saved?'Remove hadith from saved':'Save this hadith'} onPress={()=>{if(collection)void toggleHadithSaved(collection,hadith)}} style={s.secondary}><Text style={s.secondaryText}>{saved?T('Saved'):T('Save')}</Text></Tactile>
         <Tactile accessibilityLabel={T('Copy hadith text')} onPress={copy} style={s.secondary}><Text style={s.secondaryText}>{copied?T('Copied'):T('Copy')}</Text></Tactile>
         <Tactile accessibilityLabel={T('Share hadith')} onPress={share} style={s.secondary}><Text style={s.secondaryText}>{T('Share')}</Text></Tactile>
+        <Tactile accessibilityLabel={T('Share as image card')} onPress={shareAsImage} disabled={sharingHadith} style={[s.secondary,{opacity:sharingHadith?.5:1}]}>{ico('image-outline',15,C.green)}<Text style={s.secondaryText}>{T('Share card')}</Text></Tactile>
         <Tactile accessibilityLabel={T('Report a correction')} onPress={()=>setReporting(true)} style={s.secondary}>{ico('flag-outline',15,C.green)}<Text style={s.secondaryText}>{T('Report')}</Text></Tactile>
       </View>
       <View style={s.hadithNav}>
@@ -10787,6 +10819,19 @@ function HadithDetailScreen({route,navigation}:any){const {rtl,language:appLangu
       </View>
       <View style={s.apiPanel}><Text style={s.apiTitle}>{T('Source')}</Text><Text style={s.apiText}>{hadithReference(collection,hadith)}</Text></View>
     </ScrollView>}
+    {/* Off-screen rather than hidden: a view with no layout captures as a
+        blank PNG. It is only ever photographed, never shown. */}
+    {!!hadith&&<View style={s.offscreenCard} pointerEvents="none" aria-hidden>
+      <HadithShareCard
+        viewRef={hadithCardRef}
+        arabic={hadith.arabic?stripTags(hadith.arabic):undefined}
+        translation={stripTags(hadith.english||'')}
+        collection={hadithSourceLabel(language,slug)}
+        number={String(hadith.number||'')}
+        arabicFontFamily={quranFont(quranPrefs.arabicFont)}
+        theme={cardTheme}
+      />
+    </View>}
   </Page>}
 
 function HadithSavedScreen({navigation}:any){const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);
