@@ -1,5 +1,5 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { PrayerSnapshot } from './api';
+import { readJson, readText, removeKey, writeJson, writeText } from './storage';
 import { adhanTrack, ADHAN_TRACKS, DEFAULT_ADHAN_ID, DEFAULT_FAJR_ID, FAJR_TRACKS } from './adhanCatalog';
 
 export type TimeFormat = '12' | '24';
@@ -64,32 +64,22 @@ export type WorshipSettings = {
    * no longer matches anything must never leave a hole in the row.
    */
   dayTools?: string[];
-  /**
-   * A burst of confetti on the Home screen on the morning of Eid.
-   *
-   * On by default, because a greeting nobody receives is not one. Two things
-   * override it without touching this switch: a device set to reduce motion,
-   * which is read fresh each time rather than stored here, and the Eid
-   * having already been greeted, which `lastCelebratedEid` records.
-   */
+  /* The Eid greeting and the drifting-light field that used to be switched
+     from here are gone. Their keys stayed in saved settings on devices that
+     had used them; they are dropped when a saved object is read, so an old
+     install does not carry switches for a feature that no longer exists. */
+};
+
+/**
+ * What those two switches were called while the feature existed.
+ *
+ * Kept only so the read below can name and drop them. They belong to
+ * settings this build no longer has, so they are not part of
+ * `WorshipSettings` and never will be again.
+ */
+type LegacyAmbienceSettings = {
   celebrateEid?: boolean;
-  /**
-   * Something quiet drifting across the Home screen: snow in winter,
-   * petals in spring, rising light in summer, leaves in autumn, and warm
-   * light through Ramadan. Nothing during Muharram.
-   *
-   * On by default and deliberately faint — a handful of pieces, slow
-   * enough to read as weather rather than as activity. This one is the
-   * most likely of anything here to divide people, so it has a switch,
-   * and it stops entirely for anyone who has asked for reduced motion.
-   */
   ambientEffects?: boolean;
-  /**
-   * Which Eid has already been greeted, so the burst happens once rather
-   * than on every visit to Home. Named after the Eid and not the day, so
-   * the next one starts it again on its own — there is nothing to expire
-   * and nothing to clean up.
-   */
   lastCelebratedEid?: string;
 };
 
@@ -105,6 +95,9 @@ export const DEFAULT_DAY_TOOLS = ['quran', 'qibla', 'tasbih', 'audio'];
  * one IANA string rather than anything clever.
  */
 export type StoredLocation = { latitude: number; longitude: number; label: string; timezone?: string };
+
+/** Reads a stored object. Absent or unreadable is null — never a default. */
+const readStored = <T>(key: string): Promise<T | null> => readJson<T | null>(key, null);
 
 export const DEFAULT_WORSHIP_SETTINGS: WorshipSettings = {
   calculationMethod: 8,
@@ -129,8 +122,6 @@ export const DEFAULT_WORSHIP_SETTINGS: WorshipSettings = {
   sleepReminderTime: '22:30',
   hapticsEnabled: true,
   dayTools: DEFAULT_DAY_TOOLS,
-  celebrateEid: true,
-  ambientEffects: true,
 };
 
 const KEYS = {
@@ -145,33 +136,27 @@ const KEYS = {
   direction: '@deen/direction/v1',
 };
 
-async function readJson<T>(key: string): Promise<T | null> {
-  try {
-    const value = await AsyncStorage.getItem(key);
-    return value ? JSON.parse(value) as T : null;
-  } catch {
-    return null;
-  }
-}
-
-async function writeJson(key: string, value: unknown) {
-  await AsyncStorage.setItem(key, JSON.stringify(value));
-}
-
 export async function loadWorshipSettings(): Promise<WorshipSettings> {
-  const saved = await readJson<Partial<WorshipSettings>>(KEYS.settings);
+  const saved = await readStored<Partial<WorshipSettings>>(KEYS.settings);
+  /* The two ambience switches are gone from the app. Anything saved by an
+     older build still carries them, and because this whole object is written
+     back whenever any setting changes, they would otherwise be carried
+     forward forever. They are dropped on read, which is the only place the
+     saved copy and the shape in memory meet. */
+  const { celebrateEid: _celebrateEid, ambientEffects: _ambientEffects, lastCelebratedEid: _lastCelebratedEid, ...rest } =
+    (saved || {}) as Partial<WorshipSettings> & Partial<LegacyAmbienceSettings>;
   return {
     ...DEFAULT_WORSHIP_SETTINGS,
-    ...saved,
-    prayerReminders: { ...DEFAULT_WORSHIP_SETTINGS.prayerReminders, ...(saved?.prayerReminders || {}) },
-    adhanEnabled: { ...DEFAULT_WORSHIP_SETTINGS.adhanEnabled, ...(saved?.adhanEnabled || {}) },
+    ...rest,
+    prayerReminders: { ...DEFAULT_WORSHIP_SETTINGS.prayerReminders, ...(rest.prayerReminders || {}) },
+    adhanEnabled: { ...DEFAULT_WORSHIP_SETTINGS.adhanEnabled, ...(rest.adhanEnabled || {}) },
     /* Older builds stored 'makkah' and 'doha', ids that never matched an
        entry in the list - so the notification quietly fell back to the system
        tone while the screen showed a recording as chosen. Anything that does
        not name a recording we still carry is dropped in favour of the
        default, which is at least the adhan a person expected to hear. */
-    adhanReciter: adhanTrack(saved?.adhanReciter || '', adhanTrack(DEFAULT_ADHAN_ID, ADHAN_TRACKS[0])).id,
-    adhanFajrReciter: adhanTrack(saved?.adhanFajrReciter || '', adhanTrack(DEFAULT_FAJR_ID, FAJR_TRACKS[0])).id,
+    adhanReciter: adhanTrack(rest.adhanReciter || '', adhanTrack(DEFAULT_ADHAN_ID, ADHAN_TRACKS[0])).id,
+    adhanFajrReciter: adhanTrack(rest.adhanFajrReciter || '', adhanTrack(DEFAULT_FAJR_ID, FAJR_TRACKS[0])).id,
   };
 }
 
@@ -180,11 +165,11 @@ export async function saveWorshipSettings(settings: WorshipSettings) {
 }
 
 export async function loadStoredLocation() {
-  return readJson<StoredLocation>(KEYS.location);
+  return readStored<StoredLocation>(KEYS.location);
 }
 
 export async function saveStoredLocation(location: StoredLocation | null) {
-  if (!location) return AsyncStorage.removeItem(KEYS.location);
+  if (!location) { void removeKey(KEYS.location); return; }
   return writeJson(KEYS.location, location);
 }
 
@@ -198,7 +183,7 @@ const prayerCacheKey = (latitude: number, longitude: number, method: number, sch
   `${latitude.toFixed(3)}:${longitude.toFixed(3)}:${method}:${school}:${new Date().toISOString().slice(0, 10)}`;
 
 export async function loadPrayerCache(latitude: number, longitude: number, method: number, school: Madhab) {
-  const cached = await readJson<PrayerCache>(KEYS.prayerCache);
+  const cached = await readStored<PrayerCache>(KEYS.prayerCache);
   if (!cached || cached.key !== prayerCacheKey(latitude, longitude, method, school)) return null;
   return cached;
 }
@@ -213,12 +198,12 @@ export async function savePrayerCache(latitude: number, longitude: number, metho
 }
 
 export async function loadPrayerCompletion(dateKey: string): Promise<string[]> {
-  const all = await readJson<Record<string, string[]>>(KEYS.prayerCompletion) || {};
+  const all = await readJson<Record<string, string[]>>(KEYS.prayerCompletion, {});
   return all[dateKey] || [];
 }
 
 export async function savePrayerCompletion(dateKey: string, completed: string[]) {
-  const all = await readJson<Record<string, string[]>>(KEYS.prayerCompletion) || {};
+  const all = await readJson<Record<string, string[]>>(KEYS.prayerCompletion, {});
   all[dateKey] = completed;
   /* Kept in full. This used to be trimmed to the last sixty days, which made a
      heat map of the whole record impossible - anything older than two months
@@ -229,11 +214,11 @@ export async function savePrayerCompletion(dateKey: string, completed: string[])
 }
 
 export async function loadPrayerHistory(): Promise<Record<string, string[]>> {
-  return await readJson<Record<string, string[]>>(KEYS.prayerCompletion) || {};
+  return await readJson<Record<string, string[]>>(KEYS.prayerCompletion, {});
 }
 
 export async function loadDailyContent<T>(dateKey: string): Promise<T | null> {
-  const cached = await readJson<{ dateKey: string; value: T }>(KEYS.dailyContent);
+  const cached = await readStored<{ dateKey: string; value: T }>(KEYS.dailyContent);
   return cached?.dateKey === dateKey ? cached.value : null;
 }
 
@@ -242,7 +227,7 @@ export async function saveDailyContent<T>(dateKey: string, value: T) {
 }
 
 export async function loadQuickTasbih(): Promise<number> {
-  return (await readJson<number>(KEYS.tasbihQuick)) || 0;
+  return (await readStored<number>(KEYS.tasbihQuick)) || 0;
 }
 
 export async function saveQuickTasbih(value: number) {
@@ -274,7 +259,7 @@ export type OnboardingState = {
 };
 
 export async function loadOnboarding(): Promise<OnboardingState | null> {
-  return readJson<OnboardingState>(KEYS.onboarding);
+  return readStored<OnboardingState>(KEYS.onboarding);
 }
 
 export async function saveOnboarding(value: OnboardingState) {
@@ -282,28 +267,32 @@ export async function saveOnboarding(value: OnboardingState) {
 }
 
 export async function clearOnboarding() {
-  try {
-    await AsyncStorage.removeItem(KEYS.onboarding);
-  } catch {
-    return;
-  }
+  await removeKey(KEYS.onboarding);
 }
 
-/** The interface language, remembered between launches. */
+/**
+ * The interface language, remembered between launches.
+ *
+ * This is the one stored value whose loss is immediately visible: a read
+ * that fails returns null, and null means English, so a transient hiccup at
+ * startup put a person who had chosen Urdu back into an English app with no
+ * explanation. Reads are retried here for that reason rather than assumed.
+ */
 export async function loadLanguage(): Promise<string | null> {
-  try {
-    return await AsyncStorage.getItem(KEYS.language);
-  } catch {
-    return null;
-  }
+  return readText(KEYS.language);
 }
 
-export async function saveLanguage(code: string) {
-  try {
-    await AsyncStorage.setItem(KEYS.language, code);
-  } catch {
-    return;
-  }
+/**
+ * Remember the interface language. Returns whether it reached the disk.
+ *
+ * It used to swallow every failure, which is how a language could be chosen,
+ * applied, and then be gone on the next launch while everything else about
+ * the choice looked like it had worked. The write is retried and read back,
+ * and the answer is handed back so the caller can tell the difference
+ * between "saved" and "applied for now".
+ */
+export async function saveLanguage(code: string): Promise<boolean> {
+  return writeText(KEYS.language, code);
 }
 
 /**
@@ -315,18 +304,17 @@ export async function saveLanguage(code: string) {
  * every launch. This marker is what makes it a one-shot.
  */
 export async function loadAppliedDirection(): Promise<'rtl' | 'ltr' | null> {
-  try {
-    const value = await AsyncStorage.getItem(KEYS.direction);
-    return value === 'rtl' || value === 'ltr' ? value : null;
-  } catch {
-    return null;
-  }
+  const value = await readText(KEYS.direction);
+  return value === 'rtl' || value === 'ltr' ? value : null;
 }
 
-export async function saveAppliedDirection(value: 'rtl' | 'ltr') {
-  try {
-    await AsyncStorage.setItem(KEYS.direction, value);
-  } catch {
-    return;
-  }
+/**
+ * Record the direction handed to I18nManager. Returns whether it landed.
+ *
+ * This marker is what keeps the restart a one-shot, so a write that fails
+ * here does not merely lose a setting — it restarts the app on every launch
+ * that follows. It is retried like the others, and the caller is told.
+ */
+export async function saveAppliedDirection(value: 'rtl' | 'ltr'): Promise<boolean> {
+  return writeText(KEYS.direction, value);
 }

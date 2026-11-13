@@ -83,6 +83,10 @@ import { localizeGuide, WORSHIP_GUIDES, WorshipGuide } from './src/content/worsh
 import { GUIDE_HADITH, GUIDE_VERSES } from './src/content/guideSources';
 import { QURAN_TOPICS, QURAN_VOCABULARY, TAJWEED_RULES, topicTitle, topicDescription, topicCategory, tajweedName, tajweedDetail } from './src/content/quranStudy';
 import {addSearchHistory, clearSearchHistory, clearSurahCache, deleteNote, HifzStatus, loadBookmarks, loadHifz, loadNotes, loadPlan, loadQuranPreferences, loadReadingPosition, loadRecentSurahs, loadSearchHistory, loadSurahCache, readerCacheKey, loadSurahCacheIndex, DEFAULTS, loadVocabularyProgress, QuranBookmark, QuranNote, QuranPreferences, removeSearchHistory, saveHifz, saveNote, savePlan, saveQuranPreferences, saveReadingPosition, saveSurahCache, saveVocabularyProgress, toggleBookmark, ReadingPosition, VocabularyProgress} from './src/services/quranState';
+import { addSearchHistory as addRecentSearch, clearSearchHistory as clearRecentSearch, loadSearchHistory as loadSearchHistoryFor, removeSearchHistory as removeRecentSearch } from './src/services/searchHistory';
+import { syncWidgets } from './src/services/widgetSync';
+import { refreshWidgets } from './src/services/widgetBridge';
+import { readSnapshotJson, lastPublishTime } from './src/services/widgetBridge';
 import {
   clearMemorization, confidenceOf, demoteVerse, getMemorization, hiddenIndexes, isWord,
   loadMemorization, MODE_LABELS, overallConfidence, pickNext, recentAttempts, recordAttempt,
@@ -230,10 +234,6 @@ function useCardShare() {
 import { CARD, CARD_GAP, RADIUS, SPACE } from './src/design/tokens';
 import { BRAND, C_DARK, C_LIGHT, C_PALESTINE, C_PALESTINE_DARK, DEPTH, FLAG, GLASS, GLASS_INTENSITY, brandHex, mix, snapToBrand } from './src/design/brand';
 import { useCalmMotion } from './src/design/useCalmMotion';
-import { EidConfetti } from './src/components/EidConfetti';
-import { AmbientField } from './src/components/AmbientField';
-import { ambienceFor, type Ambience } from './src/services/ambience';
-import { eidToday } from './src/services/eid';
 import { Tactile } from './src/components/Tactile';
 import { useSubtleTransitions } from './src/design/transitions';
 import { MOTION, easeOut, useEntrance, usePressDepth } from './src/design/motion';
@@ -253,7 +253,7 @@ import { NAME_LANGUAGES } from './src/services/api';
 import { PROPHETS } from './src/content/prophets';
 import { NAMES_MEANING_AR } from './src/content/namesAr';
 import { countMuslimNames, findMuslimNames, letterCounts, loadMuslimNames, type MuslimName, type NameFilter } from './src/services/muslimNames';
-import { currentPhrase, dhikrMeaning, DHIKR_PHRASES, loadTasbihState, removeTasbihSession, resetTasbihCount, saveTasbihSession, setTasbihGoal, setTasbihPhrase, tasbihDays, tasbihLifetime, TASBIH_GOALS, tapTasbih, todayTotal, useTasbih } from './src/services/tasbihService';
+import { setTasbihCount, currentPhrase, dhikrMeaning, DHIKR_PHRASES, loadTasbihState, removeTasbihSession, resetTasbihCount, saveTasbihSession, setTasbihGoal, setTasbihPhrase, tasbihDays, tasbihLifetime, TASBIH_GOALS, tapTasbih, todayTotal, useTasbih } from './src/services/tasbihService';
 import { formatSadaqah, loadSadaqahState, logSadaqah, removeSadaqah, resetSadaqah, sadaqahSummary, setSadaqahCurrency, useSadaqah } from './src/services/sadaqahService';
 import { loadSunnahState, resetSunnah, sunnahDayKey, sunnahForDay, sunnahHistory, sunnahSummary, SUNNAH_ORDER, SUNNAH_PRAYERS, toggleSunnah, useSunnah } from './src/services/sunnahService';
 import { journalSummary, loadJournalState, removeJournalEntry, resetJournal, saveJournalEntry, useJournal } from './src/services/journalService';
@@ -954,11 +954,16 @@ function QuranPreferencesProvider({children}:{children:React.ReactNode}){const[p
     });
     return ()=>{alive=false};
   },[preferences.arabicFont]);
-  const [fontTick,setFontTick]=useState(0);const update=async(patch:Partial<QuranPreferences>)=>{const next=settlePreferences({...preferences,...patch});setPreferences(next);await saveQuranPreferences(next)};return <QuranPreferencesContext.Provider value={{preferences,hydrated,update,fontTick}}>{children}</QuranPreferencesContext.Provider>}
+  const [fontTick,setFontTick]=useState(0);
+  const update=useCallback(async(patch:Partial<QuranPreferences>)=>{const next=settlePreferences({...preferences,...patch});setPreferences(next);await saveQuranPreferences(next)},[preferences]);
+  /* Stable object, for the same reason as the language value: 30 components
+     read this context, and a fresh literal each render rebuilds all of them. */
+  const value=useMemo(()=>({preferences,hydrated,update,fontTick}),[preferences,hydrated,update,fontTick]);
+  return <QuranPreferencesContext.Provider value={value}>{children}</QuranPreferencesContext.Provider>}
 function useQuranPreferences(){return useContext(QuranPreferencesContext)}
 type WorshipSettingsState={settings:WorshipSettings;hydrated:boolean;update:(patch:Partial<WorshipSettings>)=>Promise<void>};
 const WorshipSettingsContext=createContext<WorshipSettingsState>({settings:DEFAULT_WORSHIP_SETTINGS,hydrated:false,update:async()=>{}});
-function WorshipSettingsProvider({children}:{children:React.ReactNode}){const[settings,setSettings]=useState(DEFAULT_WORSHIP_SETTINGS);const[hydrated,setHydrated]=useState(false);useEffect(()=>{loadWorshipSettings().then(value=>{setSettings(value);setHydrated(true)})},[]);const update=async(patch:Partial<WorshipSettings>)=>{const next={...settings,...patch};setSettings(next);await saveWorshipSettings(next)};useEffect(()=>{setHapticsEnabled(settings.hapticsEnabled)},[settings.hapticsEnabled]);return <WorshipSettingsContext.Provider value={{settings,hydrated,update}}>{children}</WorshipSettingsContext.Provider>}
+function WorshipSettingsProvider({children}:{children:React.ReactNode}){const[settings,setSettings]=useState(DEFAULT_WORSHIP_SETTINGS);const[hydrated,setHydrated]=useState(false);useEffect(()=>{loadWorshipSettings().then(value=>{setSettings(value);setHydrated(true)})},[]);const update=useCallback(async(patch:Partial<WorshipSettings>)=>{const next={...settings,...patch};setSettings(next);await saveWorshipSettings(next)},[settings]);useEffect(()=>{setHapticsEnabled(settings.hapticsEnabled)},[settings.hapticsEnabled]);const worshipValue=useMemo(()=>({settings,hydrated,update}),[settings,hydrated,update]);return <WorshipSettingsContext.Provider value={worshipValue}>{children}</WorshipSettingsContext.Provider>}
 function useWorshipSettings(){return useContext(WorshipSettingsContext)}
 async function managedPrayerSnapshot(location:AppLocation,settings:WorshipSettings){try{const snapshot=await getPrayerSnapshot(location.latitude,location.longitude,{method:settings.calculationMethod,school:settings.madhab,timezone:location.timezone,timeFormat:settings.timeFormat});await savePrayerCache(location.latitude,location.longitude,settings.calculationMethod,settings.madhab,snapshot);return{snapshot,cached:false}}catch(error){const cached=await loadPrayerCache(location.latitude,location.longitude,settings.calculationMethod,settings.madhab);if(cached)return{snapshot:cached.snapshot,cached:true};throw error}}
 /** The IANA zone, when we know it, so times are read on the city's own clock. */
@@ -1011,12 +1016,17 @@ function LocationProvider({children}:{children:React.ReactNode}) {
    * When they do not, it is the phone's own: you are standing at coordinates
    * you just typed in, so your clock is the right one.
    */
-  const commit=(next:AppLocation|null)=>{
+  const commit=useCallback((next:AppLocation|null)=>{
     if(next&&!next.timezone) next={...next,timezone:deviceTimeZone()};
     setLocation(next);saveStoredLocation(next).catch(()=>{})
-  };
-  const useDubai=()=>commit({latitude:25.2048,longitude:55.2708,label:'Dubai, United Arab Emirates',timezone:'Asia/Dubai'});
-  return <LocationContext.Provider value={{location,useDubai,setManual:commit,clear:()=>commit(null)}}>{children}</LocationContext.Provider>;
+  },[]);
+  const useDubai=useCallback(()=>commit({latitude:25.2048,longitude:55.2708,label:'Dubai, United Arab Emirates',timezone:'Asia/Dubai'}),[commit]);
+  /* Every one of these used to be rebuilt on each render - `clear` was an
+     inline arrow, so the value object was new every time and all fourteen
+     consumers re-rendered whenever the provider did. */
+  const clear=useCallback(()=>commit(null),[commit]);
+  const value=useMemo(()=>({location,useDubai,setManual:commit,clear}),[location,useDubai,commit,clear]);
+  return <LocationContext.Provider value={value}>{children}</LocationContext.Provider>;
 }
 function useAppLocation(){const value=useContext(LocationContext);if(!value)throw new Error('Location provider missing');return value}
 type AppLanguage=LanguageCode;
@@ -1121,24 +1131,47 @@ function LanguageProvider({children}:{children:React.ReactNode}){
     if(applied===wanted)return false;
     I18nManager.allowRTL(true);
     if(I18nManager.isRTL!==wantsRtl)I18nManager.forceRTL(wantsRtl);
-    await saveAppliedDirection(wanted);
-    return true;
+    /* The marker is what stops the restart being asked for again. If it does
+       not save, saying yes here would restart the app on this launch and on
+       every launch after it, because nothing would ever record that the
+       direction had been applied. Better to leave the layout to the direction
+       style for now and try again on the next start. */
+    return await saveAppliedDirection(wanted);
   };
-  const setLanguage=(next:AppLanguage)=>{
+  /* Stable across renders: it is part of the context value, and re-creating
+     it would defeat the memo below and re-render every consumer of
+     `useLanguage` on any state change at all. It closes over nothing that
+     changes - the state setter and the two helpers are all constant. */
+  const setLanguage=useCallback((next:AppLanguage)=>{
     const wantsRtl=isRtl(next);
     currentLanguage=next;
     /* The new language's words are fetched before the switch is published, so
        no screen is ever painted half in one language and half in another. */
     void (async()=>{
       await loadCopy(next);
+      /* The language has to reach storage before the state is published and
+         before any reload. Saving used to be a fire-and-forget that swallowed
+         every failure, and when the write did not land the app came back from
+         the reload in English while the Quran translation — a separate key
+         that had saved — kept the chosen language. That reads as a broken
+         choice rather than a failed write, so the save is awaited, retried,
+         read back, and the answer is acted on here. */
+      const saved = await saveLanguage(next);
       setLanguageState(next);
-      /* The language has to reach storage before the reload, or the app would
-         come back in the old language under the new direction — worse than the
-         bug being fixed. */
-      await saveLanguage(next);
+      if(!saved){
+        /* Kept for this session rather than thrown away: the interface is
+           already in the language she asked for, and losing it as well would
+           punish her for a disk that would not take the write. The failure
+           has already been reported by the storage layer. */
+        return;
+      }
       if(await applyDirection(wantsRtl))await restartForDirection();
-    })();
-  };
+    })().catch((error)=>{
+      /* Nothing above may leave a rejected promise unhandled: the tree below
+         keeps running, and an unhandled rejection here is invisible. */
+      if(__DEV__) console.warn('[language] could not switch', error);
+    });
+  },[]);
   useEffect(()=>{
     void (async()=>{
       let saved:string|null=null;
@@ -1207,7 +1240,13 @@ function LanguageProvider({children}:{children:React.ReactNode}){
     /* Held in step with the state as well as with setLanguage, so the mirror
        is right whichever way the language came to be what it is. */
     currentLanguage=language;
-  return <LanguageContext.Provider value={{language,rtl,ready,setLanguage,latinFaceTick}}>{children}</LanguageContext.Provider>;
+  /* The value has to be a stable object. `useLanguage` is read by 113
+     components, so handing the context a fresh literal on every render
+     re-renders every one of them each time this provider renders at all -
+     which is what made the tree rebuild wholesale when `ready` flipped from
+     false to true at startup. */
+  const value=useMemo(()=>({language,rtl,ready,setLanguage,latinFaceTick}),[language,rtl,ready,setLanguage,latinFaceTick]);
+  return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>;
 }
 function useLanguage(){return useContext(LanguageContext)}
 const ico = (name: any, size = 21, color?: string) => <CustomIcon name={String(name)} size={size} color={color} />;
@@ -1617,6 +1656,12 @@ const TOOL_IMAGES_PALESTINE: Record<string, any> = {
   'Cycle Tracker': require('./assets/tool-icons/cycle-palestine.webp'),
   Istihada: require('./assets/tool-icons/istihada-palestine.webp'),
   'Qada Fasts': require('./assets/tool-icons/qada-fasts-palestine.webp'),
+  /* 'Quran' is the shortcut under "For your day" on Home, and it opens the
+     Quran tab. It had no Palestine drawing at all, so under either Palestine
+     theme it kept the Islamic artwork while every tile around it changed.
+     It owns its own files rather than borrowing the tab bar's, so changing
+     one can never move the other. */
+  Quran: require('./assets/tool-icons/quran-palestine.webp'),
   'Quran Reading': require('./assets/tool-icons/quran-reading-palestine.webp'),
   'Ramadan Planner': require('./assets/tool-icons/ramadan-planner-palestine.webp'),
   Storage: require('./assets/tool-icons/storage-palestine.webp'),
@@ -1726,6 +1771,7 @@ const TOOL_IMAGES_PALESTINE_DARK: Record<string, any> = {
   'Cycle Tracker': require('./assets/tool-icons/cycle-dark-palestine.webp'),
   Istihada: require('./assets/tool-icons/istihada-dark-palestine.webp'),
   'Qada Fasts': require('./assets/tool-icons/qada-fasts-dark-palestine.webp'),
+  Quran: require('./assets/tool-icons/quran-dark-palestine.webp'),
   'Quran Reading': require('./assets/tool-icons/quran-reading-dark-palestine.webp'),
   'Ramadan Planner': require('./assets/tool-icons/ramadan-planner-dark-palestine.webp'),
   Storage: require('./assets/tool-icons/storage-dark-palestine.webp'),
@@ -2275,6 +2321,10 @@ async function preloadReflectionsAhead() {
 
 function useHomeData() {
   const {rtl,language}=useLanguage(); const {location}=useAppLocation(); const {settings}=useWorshipSettings(); const dateKey=dayKeyOf(new Date());
+  /* Only needed so the widgets are told which palette to draw with: they
+     cannot read the app's theme, and a light card on a dark home screen is
+     the kind of detail that makes a widget look abandoned. */
+  const {dark}=useTheme();
   /* The hadith of the day is fetched in the reader's hadith language, so a
      change of language has to be a reason to refresh — otherwise the card
      keeps yesterday's tongue until midnight. */
@@ -2306,6 +2356,26 @@ function useHomeData() {
     setSnapshot(null);
     if(location)load();
   },[location?.latitude,location?.longitude,settings.calculationMethod,settings.madhab,settings.timeFormat,hadithLanguage]);
+  /* Hand today to the home-screen widgets.
+     The widgets cannot ask the app for anything — the system draws them, at
+     times of its own choosing — so this is the only moment they can be told.
+     It runs here because this hook is the one place that already knows the
+     location, the settings, the times and the ayah, and it is cheap: a little
+     arithmetic and one write, dropped on the floor where there are no
+     widgets to write to. */
+  useEffect(()=>{
+    if(!location||!snapshot)return;
+    void syncWidgets({
+      location:{latitude:location.latitude,longitude:location.longitude,label:location.label,timezone:location.timezone},
+      calculationMethod:settings.calculationMethod,
+      madhab:settings.madhab,
+      timeFormat:settings.timeFormat,
+      snapshot,
+      ayah,
+      labelFor:(n:string)=>prayerName(language,n),
+      dark,
+    });
+  },[location?.latitude,location?.longitude,snapshot,ayah,settings.calculationMethod,settings.madhab,settings.timeFormat,language,dark]);
   return{snapshot,ayah,hadith,name,dua,location,cached,error,load};
 }
 function getNext(prayers: Prayer[]) {
@@ -2512,34 +2582,6 @@ const onRefresh=async()=>{setRefreshing(true);await Promise.all([data.load(),hyd
      Which four is hers to say — the row is chosen, not handed over fixed. */
   const { settings: worship, update: updateWorship, hydrated: worshipHydrated } = useWorshipSettings();
   const dayTools = resolveDayTools(worship.dayTools);
-  /* Eid. The burst is remembered in state rather than derived from the
-     settings, because recording that it has fired is what stops it firing
-     again — and if the burst were derived, recording it would pull the
-     confetti off the screen mid-fall. So: work out once whether this Eid
-     still deserves a greeting, hold that answer, and write the receipt. */
-  const eid = useMemo(() => eidToday(), []);
-  const [eidBurst, setEidBurst] = useState<string | null>(null);
-  useEffect(() => {
-    /* Waiting for the saved settings matters. Before they have loaded,
-       `lastCelebratedEid` is undefined, which reads as "never greeted" —
-       and without this guard the app would greet her again every time it
-       started, which is the one thing the receipt exists to prevent. */
-    if (!eid || !worshipHydrated || eidBurst) return;
-    if (worship.celebrateEid === false || still) return;
-    if (worship.lastCelebratedEid === eid.id) return;
-    setEidBurst(eid.id);
-    void updateWorship({ lastCelebratedEid: eid.id });
-  }, [eid, worshipHydrated, eidBurst, worship.celebrateEid, worship.lastCelebratedEid, still, updateWorship]);
-
-  /* The quiet layer under all of that: snow, petals, summer light or leaves,
-     from the season where she actually is. Recomputed when the season or the
-     place changes and not on every render, and deliberately not tied to the
-     clock — a field that restarted at midnight would be a field that jumped
-     once a day for no reason anyone asked for. */
-  const ambience = useMemo(
-    () => (worship.ambientEffects === false ? null : ambienceFor(new Date())),
-    [worship.ambientEffects],
-  );
   /* Two reasons to stop, and both of them are about a screen nobody is
      looking at. Losing focus covers moving to another tab; the app going to
      the background covers locking the phone with Home still mounted. An
@@ -2822,15 +2864,6 @@ const onRefresh=async()=>{setRefreshing(true);await Promise.all([data.load(),hyd
       date={cardDateLabel(language)}
     />
   </View>}
-  {/* The light and the burst never run together: on an Eid the ambience
-      resolves to confetti, and the field stands down so the two are not
-      competing over the same screen. */}
-  <AmbientField
-    kind={ambience === null || ambience === 'confetti' ? null : ambience}
-    dark={dark}
-    active={homeFocused && appActive}
-  />
-  <EidConfetti fire={eidBurst} dark={dark} />
 </Page>;
 }
 let CARD_GREEN: any = { backgroundColor: C.mint }; let CARD_GOLD: any = { backgroundColor: C.peach };
@@ -3633,17 +3666,25 @@ function SurahRow({ chapter, onOpen, hifz }: {
     </View>
   </MotionPress>;
 });
-function QuranHome({navigation}:any){const{dark,resolved}=useTheme();
+function QuranHome({navigation}:any){
+  /* Shares the 'quran' scope with the search screen: this box and that one are
+     two doors into the same search, and anything typed here is offered there.
+     It also means the list a person already built up is here on the day this
+     arrived, rather than starting empty behind a new key. */
+  const recents=useRecentSearches('quran');const{dark,resolved}=useTheme();
  const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);
  const{width}=useWindowDimensions();const qHeroH=Math.round(Math.max(225,Math.min((Math.min(width,980)-40)/2.15,400)));const[chapters,setChapters]=useState<Chapter[]>([]);const[query,setQuery]=useState('');const[debounced,setDebounced]=useState('');const[expanded,setExpanded]=useState(false);const[error,setError]=useState('');const[position,setPosition]=useState<any>(null);const[bookmarkCount,setBookmarkCount]=useState(0);const[noteCount,setNoteCount]=useState(0);const[recent,setRecent]=useState<number[]>([]);const[plan,setPlanState]=useState<any>(null);const[hifz,setHifzState]=useState<Record<number,HifzStatus>>({});const[preload,setPreload]=useState(getPreloadState());const[gridW,setGridW]=useState(0);const{preferences}=useQuranPreferences();
  const load=()=>getChapters().then(setChapters).catch(e=>setError(T(e.message)));const hydrate=()=>Promise.all([loadReadingPosition().then(setPosition),loadBookmarks().then(x=>setBookmarkCount(x.length)),loadNotes().then(x=>setNoteCount(x.length)),loadRecentSurahs().then(setRecent),loadPlan().then(setPlanState),loadHifz().then(setHifzState),loadAudioSettings().then(value=>setAudioReciter(value.reciterName))]);useEffect(()=>{load();hydrate();resumeSavedQuranPreload();const unsubscribePreload=subscribePreload(setPreload);const unsubscribeFocus=navigation.addListener('focus',hydrate);return()=>{unsubscribePreload();unsubscribeFocus()}},[navigation]);useEffect(()=>{const id=setTimeout(()=>setDebounced(query.trim()),250);return()=>clearTimeout(id)},[query]);
- const shown=chapters.filter(c=>`${c.id} ${c.name_simple} ${c.name_arabic} ${c.translated_name?.name}`.toLowerCase().includes(debounced.toLowerCase()));const visible=expanded||debounced.length>0?shown:shown.slice(0,30);const openSurah=useCallback((chapter:Chapter)=>navigation.navigate('Reader',{chapter,mode:'both'}),[navigation]);const open=(chapter:Chapter,mode='both',focusVerse?:string)=>navigation.navigate('Reader',{chapter,mode,focusVerse});const featured={id:55,name_simple:'Ar-Rahman',name_arabic:'الرحمن',translated_name:{name:'The Most Merciful'},verses_count:78};const submit=()=>{const ref=query.match(/^(\d{1,3}):(\d{1,3})$/);if(ref){const chapter=chapters.find(c=>c.id===Number(ref[1]));if(chapter)return open(chapter,'both',query)}navigation.navigate('Quran Search',{initialQuery:query})};
+ const shown=chapters.filter(c=>`${c.id} ${c.name_simple} ${c.name_arabic} ${c.translated_name?.name}`.toLowerCase().includes(debounced.toLowerCase()));const visible=expanded||debounced.length>0?shown:shown.slice(0,30);const openSurah=useCallback((chapter:Chapter)=>navigation.navigate('Reader',{chapter,mode:'both'}),[navigation]);const open=(chapter:Chapter,mode='both',focusVerse?:string)=>navigation.navigate('Reader',{chapter,mode,focusVerse});const featured={id:55,name_simple:'Ar-Rahman',name_arabic:'الرحمن',translated_name:{name:'The Most Merciful'},verses_count:78};const goSearch=(term:string)=>{const q=term.trim();if(q.length>=2)void recents.add(q);const ref=term.match(/^(\d{1,3}):(\d{1,3})$/);if(ref){const chapter=chapters.find(c=>c.id===Number(ref[1]));if(chapter){setQuery('');return open(chapter,'both',term)}}navigation.navigate('Quran Search',{initialQuery:term})};
+const submit=()=>goSearch(query);
  const[audioReciter,setAudioReciter]=useState(T('Choose a reciter'));const memorized=Object.values(hifz).filter(value=>value==='memorized').length;const contentWidth=Math.min(Math.max(width-36,280),980);
 const gridGap=8;const gridCols=gridW>=640?10:4;const tileW=gridW?Math.floor((gridW-gridGap*(gridCols-1))/gridCols):0;
 const exploreTools:{label:string;title:string;screen:string;tab?:string;params?:Record<string,any>;tool?:string}[]=[{label:'Transliteration',title:T('Transliteration'),screen:'Transliteration',tool:'Transliteration'},{label:'30 Juz',title:T('Juz'),screen:'Juz Directory',tool:'Juz'},{label:'60 Hizb',title:T('Hizb'),screen:'Hizb Directory',tool:'Hizb'},{label:'Quran Topics',title:T('Topics'),screen:'Quran Topics',tool:'Topics'},{label:'Translation Compare',title:T('Tafsir'),screen:'Tafsir Compare',tool:'Tafsir'},{label:'Tajweed',title:T('Tajweed'),screen:'Tajweed Study',tool:'Tajweed'},{label:'Quran Vocabulary',title:T('Vocab'),screen:'Quran Vocabulary',tool:'Vocab'},{label:'Khatam',title:T('Khatam'),screen:'Khatam',tool:'Khatam'},{label:'Recitations',title:T('Audio'),screen:'Quran Audio',tool:'Audio'}];
 const compactStats=[{label:'Bookmarks',title:T('Bookmarks'),value:String(bookmarkCount),screen:'Bookmarks',icon:'bookmark-outline',tool:'Bookmarks'},{label:'Notes',title:T('Notes'),value:String(noteCount),screen:'Notes',icon:'create-outline',tool:'Notes'},{label:'Reading Plans',title:T('Plans'),value:plan?`${plan.days}d`:'—',screen:'Reading Plans',icon:'calendar-outline',tool:'Reading Plans'},{label:'Hifz',title:T('Hifz'),value:String(memorized),screen:'Hifz',icon:'school-outline',tool:'Hifz'},{label:'Offline Quran',title:T('Offline'),value:`${preload.cached}/114`,screen:'Quran Preload',icon:'download-outline',tool:'Offline Quran'}];
  return <Page><ScrollView keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}><AppHeader/>
- <View style={s.search}>{ico('search-outline',19,C.muted)}<TextInput accessibilityLabel={T('Search the Quran')} value={query} onChangeText={setQuery} onSubmitEditing={submit} returnKeyType="search" style={s.searchInput} placeholder={T('Search Surah, meaning, or 2:255')} placeholderTextColor={C.muted}/>{query.length>0&&<Pressable accessibilityLabel={T('Clear Quran search')} onPress={()=>setQuery('')}>{ico('close-circle',18,C.muted)}</Pressable>}</View>
+ <View style={s.search}>{ico('search-outline',19,C.muted)}<TextInput accessibilityLabel={T('Search the Quran')} value={query} onChangeText={setQuery} onSubmitEditing={submit} returnKeyType="search" style={s.searchInput} placeholder={T('Search Surah, meaning, or 2:255')} placeholderTextColor={C.muted}/>
+      {query.length>0&&<Pressable accessibilityLabel={T('Clear Quran search')} onPress={()=>setQuery('')}>{ico('close-circle',18,C.muted)}</Pressable>}</View>
+      <RecentSearches items={recents.items} onPick={goSearch} onRemove={recents.remove} onClear={recents.clear} visible={!query.trim()}/>
  {position&&<Pressable onPress={()=>{const chapter=chapters.find(c=>c.id===position.surahId);if(chapter)open(chapter,'both',position.verseKey)}} style={s.continueBar}><ToolGraphic tool="Quran Arabic" size={54}/><View style={{flex:1}}><Text style={s.dailyKicker}>{T('CONTINUE READING')}</Text><Text style={s.settingName}>{position.surahName} · {position.verseKey}</Text><Text style={s.meta}>{tf(language,'Page {p} · saved locally',{p:position.page || '—'})}</Text></View>{ico(rtl ? 'arrow-back' : 'arrow-forward',18,C.green)}</Pressable>}
  <View style={[s.quranHero,{height:qHeroH}]}><View style={StyleSheet.absoluteFill}><Image source={pickScene(SCENE_QURAN, resolved)} resizeMode="cover" style={s.heroBg}/></View><LinearGradient colors={isPal(resolved)?SCRIM.quranPalestine:SCRIM.quranIslamic} start={{x:0,y:.5}} end={{x:1,y:.5}} style={StyleSheet.absoluteFill}/><Text style={s.quranArabic}>الرَّحْمَٰن</Text><Text style={s.quranHeroTitle}>{T('Read. Listen. Reflect.')}</Text><Text style={s.quranHeroMeta}>{T(preferences.scriptName)} · {T(rtl ? preferences.translationLanguage : preferences.translationName)}</Text><View style={s.heroActions}><Tactile style={s.whiteButton} onPress={()=>open(featured)}><Text style={s.whiteButtonText}>{T('Start reading')}</Text>{ico('play',13,C.green)}</Tactile><Pressable style={s.ghostHeroButton} onPress={()=>navigation.navigate('Quran Audio')}><Text style={s.ghostHeroText}>{T('Listen')}</Text>{ico('headset-outline',13,C.white)}</Pressable></View></View>
  <Section title={T('Explore')}/>
@@ -3719,6 +3760,10 @@ function ReaderScreen({route,navigation}:any){
   /* The list, so a verse can be scrolled to by its position in the surah
      rather than by measuring where it happens to be sitting. */
   const listRef=useRef<any>(null);
+  /* How many times the list has been asked again to reach a verse it could
+     not lay out. Counted so a verse that genuinely cannot be reached stops
+     being chased. */
+  const scrollRetries=useRef(0);
   const scrollY=useRef(0);
   const {rtl,language}=useLanguage();
   const ar = language === 'ar';
@@ -3764,10 +3809,15 @@ function ReaderScreen({route,navigation}:any){
     const index=verses.findIndex(v=>v.verse_key===target);
     if(index<0)return;
     restoredFor.current=target;
-    const timer=setTimeout(()=>{
-      listRef.current?.scrollToIndex({index,viewPosition:0,viewOffset:88,animated:false});
-    },120);
-    return()=>clearTimeout(timer);
+    /* A fresh verse means a fresh chase. */
+    scrollRetries.current=0;
+    const jump=()=>listRef.current?.scrollToIndex({index,viewPosition:0,viewOffset:88,animated:false});
+    /* Asked more than once, and on purpose. The first ask goes by the
+       estimate and has the effect of drawing the rows near the ayah; each
+       one after it goes by what those rows actually measured, so the
+       reader closes on the ayah rather than landing near it once. */
+    const timers=[120,450,1000].map(ms=>setTimeout(jump,ms));
+    return()=>timers.forEach(clearTimeout);
   },[verses,target]);
   useEffect(()=>{let live=true;loadReadingPosition().then(p=>{if(live)setSavedPosition(p)});return()=>{live=false}},[savedPosition?.verseKey]);
   const[chapters,setChapters]=useState<Chapter[]>([]);
@@ -3891,15 +3941,67 @@ function ReaderScreen({route,navigation}:any){
     if(key)topVerse.current=key;
   },[]);
 
+  /* How tall an ayah is, for the list's own bookkeeping.
+
+     A list can only travel to a row it has already drawn. Ask it for the
+     hundred-and-fifty-sixth ayah of a surah - a row it has never laid
+     eyes on - and it does nothing whatsoever: no scroll, no error, no
+     second thought. That is why "2:156" from the search bar opened
+     Al-Baqarah at its first verse and stayed there.
+
+     Naming a height lets the list work out where every ayah sits without
+     having drawn it first, and lets it lay a trail to the end of the
+     surah rather than stopping where its own measurements run out.
+
+     It can only be an estimate - an ayah is two words or two lines, and
+     the reader's own text size changes it - so it is built from the very
+     settings that draw the row. The jump below is made twice, which is
+     what makes an estimate good enough: the first ask draws the rows,
+     and the second, now that those rows have been measured, uses their
+     real height and lands on the ayah itself. */
+  const rowHeight=useMemo(()=>{
+    /* Counted against Al-Baqarah drawn at the reader's own defaults on a
+       phone-width column, where an ayah measures 536px from the top of one
+       card to the next: some four and a half lines of Arabic, six and a bit
+       of translation, and the fixed furniture of the card around them.
+       A narrower column wraps the same words onto more lines, so the two
+       text blocks are scaled by the width of the screen doing the reading. */
+    const widthFactor=390/(Dimensions.get('window').width||390);
+    const arabic=(preferences.fontSize||30)*(preferences.lineHeight||1.9)*4.4*widthFactor;
+    const translation=preferences.showTranslation?(preferences.translationFontSize||16)*1.55*6.4*widthFactor:0;
+    const transliteration=preferences.showTransliteration?(preferences.translationFontSize||16)*1.55*2.2*widthFactor:0;
+    /* The number row, the juz and page line, and the card's own padding. */
+    return Math.round(arabic+translation+transliteration+126);
+  },[preferences.fontSize,preferences.lineHeight,preferences.showTranslation,
+     preferences.showTransliteration,preferences.translationFontSize]);
+  const getItemLayout=useCallback((_:any,index:number)=>({
+    length:rowHeight,index,offset:rowHeight*index,
+  }),[rowHeight]);
+
   /* Heights vary — an ayah is two words or two lines — so the list cannot
      always jump straight to a verse it has not laid out yet. When that
      happens it says so, and the honest answer is to try again once the
      layout has caught up rather than to leave the reader at the top. */
-  const onScrollToIndexFailed=useCallback((info:{index:number})=>{
-    const timer=setTimeout(()=>{
+  const onScrollToIndexFailed=useCallback((info:{index:number;highestMeasuredFrameIndex?:number;averageItemLength?:number})=>{
+    /* Walk towards the verse instead of asking for it again.
+       The list only knows the height of the rows it has already laid out,
+       which at first is a screenful or two. Asking again for a verse two
+       hundred rows down answers "I cannot" — and because nothing moved, no
+       further rows are laid out either, so asking again changes nothing.
+       The reader sat at the top of the surah and never moved: opening
+       "2:156" from the search bar showed Al-Baqarah from its first verse.
+
+       So each attempt scrolls to the furthest row the list *has* measured,
+       which lays out the rows beyond it, and then tries for the verse again.
+       Every round gets closer, and a surah is never more than a few rounds
+       away. The count stops the chase if the verse truly is not there. */
+    if(scrollRetries.current>=10){scrollRetries.current=0;return}
+    scrollRetries.current+=1;
+    const reach=Math.max(0,Math.min(info.highestMeasuredFrameIndex??0,info.index));
+    listRef.current?.scrollToOffset({offset:reach*(info.averageItemLength||96),animated:false});
+    setTimeout(()=>{
       listRef.current?.scrollToIndex({index:info.index,viewPosition:0,viewOffset:88,animated:false});
-    },180);
-    return()=>clearTimeout(timer);
+    },90);
   },[]);
 
   return <Page><Animated.View style={[s.readerBar,{transform:[{translateY:chromeY}]}]}><IconButton name={rtl?'arrow-forward':'arrow-back'} onPress={()=>goBackOrHome(navigation)}/>{!narrow&&(canStep(-1)?<Pressable accessibilityLabel={T('Previous section')} onPress={()=>step(-1)} style={s.surahStep}>{ico(rtl?'chevron-forward':'chevron-back',19,C.ink)}</Pressable>:<View style={s.surahStep}/>)}<View style={{alignItems:'center',flex:1}}><Text style={s.readerName} numberOfLines={1}>{title}</Text><Text style={s.meta} numberOfLines={1}>{subtitle}</Text></View>{!narrow&&(canStep(1)?<Pressable accessibilityLabel={T('Next section')} onPress={()=>step(1)} style={s.surahStep}>{ico(rtl?'chevron-back':'chevron-forward',19,C.ink)}</Pressable>:<View style={s.surahStep}/>)}<View style={s.readerHeaderActions}>{section==='surah'&&<Pressable accessibilityLabel={T('Play this Surah')} onPress={()=>{void playSurahFromReader(full,rtl)}} style={s.readerIconBtn}>{ico('play-circle',20,C.ink)}</Pressable>}{section==='surah'&&<Pressable accessibilityLabel={T('Keep this Surah for offline')} onPress={()=>navigation.navigate('Downloads',{chapterId,surahName:full.name_simple})} style={s.readerIconBtn}>{ico('download-outline',20,C.ink)}</Pressable>}<Pressable accessibilityRole="switch" accessibilityState={{checked:focusOn}} accessibilityLabel={`${T('Focus mode')}: ${focusOn?T('On'):T('Off')}`} onPress={()=>update({focusMode:!focusOn})} style={s.readerIconBtn}>{ico(focusOn?'eye':'eye-outline',20,focusOn?C.gold:C.ink)}</Pressable><Pressable accessibilityLabel={T('Reader settings')} onPress={()=>navigation.navigate('Reader Settings')} style={s.readerIconBtn}>{ico('options-outline',20,C.ink)}</Pressable></View></Animated.View><View style={s.readerProgress}><Animated.View style={[s.preloadFill,{width:progressWidth as any}]}/></View>
@@ -3930,6 +4032,7 @@ isMushaf?<MushafPageView page={page||1} verses={verses} error={error} cached={ca
         onLayout={(e:any)=>{viewportHeight.current=e.nativeEvent.layout.height;measureSpan();}}
         viewabilityConfig={VERSE_VIEWABILITY}
         onViewableItemsChanged={onViewableVerses}
+        getItemLayout={getItemLayout}
         onScrollToIndexFailed={onScrollToIndexFailed}
         /* How much of the surah is held at once. Seven screens' worth is
            enough that a flick never finds a bare patch, and small enough
@@ -5093,7 +5196,57 @@ function TranslationScreen({navigation}:any){const{preferences,update}=useQuranP
   </ScrollView>
 </Page>}
 
-function QuranSearchScreen({route,navigation}:any){const{preferences}=useQuranPreferences();const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);const[query,setQuery]=useState(route.params?.initialQuery||'');const[results,setResults]=useState<QuranSearchResult[]>([]);const[history,setHistory]=useState<string[]>([]);const[error,setError]=useState('');const[loading,setLoading]=useState(false);useEffect(()=>{loadSearchHistory().then(setHistory);if(route.params?.initialQuery)run(route.params.initialQuery)},[]);const run=async(value=query)=>{const q=value.trim();if(q.length<2)return;setLoading(true);setError('');try{const edition=/[\u0600-\u06ff]/.test(q)?preferences.scriptEdition:preferences.translationEdition;setResults((await searchQuran(q,edition)).slice(0,100));setHistory(await addSearchHistory(q))}catch(e:any){setError(T(e.message))}finally{setLoading(false)}};const open=(r:QuranSearchResult)=>navigation.navigate('Reader',{chapter:{id:r.surahId,name_simple:r.surahName,name_arabic:'',verses_count:0},focusVerse:r.verseKey});return <Page><ToolBar title={T('Quran search')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage} keyboardShouldPersistTaps="handled"><ToolGraphic tool="Quran Search" size={81}/><Text style={s.dataTitle}>{T('Search Arabic or translation')}</Text><View style={s.search}>{ico('search-outline',19,C.muted)}<TextInput autoFocus value={query} onChangeText={setQuery} onSubmitEditing={()=>run()} returnKeyType="search" style={s.searchInput} placeholder={T('Mercy, الصبر, or 2:255')}/><Pressable onPress={()=>run()}>{ico('arrow-forward-circle',22,C.green)}</Pressable></View>{history.length>0&&<><View style={s.historyHead}><Text style={s.preferenceLabel}>{T('RECENT SEARCHES')}</Text><Pressable onPress={async()=>{await clearSearchHistory();setHistory([])}}><Text style={s.sectionAction}>{T('Clear')}</Text></Pressable></View><View style={s.historyWrap}>{history.map(item=><Pressable key={item} onPress={()=>{setQuery(item);run(item)}} onLongPress={async()=>setHistory(await removeSearchHistory(item))} style={s.historyChip}><Text style={s.meta}>{item}</Text></Pressable>)}</View></>}{error?<ErrorState message={error} retry={()=>run()}/>:loading?<SkeletonList rows={6} />:<View>{results.map(r=><Pressable key={`${r.verseKey}-${r.edition}`} onPress={()=>open(r)} style={s.searchResult}><Text style={s.dataMeta}>{r.surahName} · {r.verseKey}</Text><Text numberOfLines={4} style={/[\u0600-\u06ff]/.test(r.text)?s.dataArabic:s.dataBody}>{r.text}</Text><Text style={s.meta}>{r.edition}</Text></Pressable>)}</View>}</ScrollView></Page>}
+/**
+ * The recent terms for one search bar, and the three things you can do to them.
+ *
+ * Kept in a hook so every search behaves the same way without each screen
+ * re-writing the same four lines, and so the list cannot drift out of step
+ * with what is on disk.
+ */
+function useRecentSearches(scope:string){
+  const [items,setItems]=useState<string[]>([]);
+  useEffect(()=>{let alive=true;void loadSearchHistoryFor(scope).then(list=>{if(alive)setItems(list)});return()=>{alive=false}},[scope]);
+  const add=async(query:string)=>setItems(await addRecentSearch(scope,query));
+  const remove=async(query:string)=>setItems(await removeRecentSearch(scope,query));
+  const clear=async()=>{await clearRecentSearch(scope);setItems([])};
+  return {items,add,remove,clear};
+}
+
+/**
+ * What a person has searched for here lately.
+ *
+ * Shown only while the field is empty, because once there is a query the
+ * results are what matters and a row of chips underneath them is noise that
+ * pushes the answer down the screen.
+ *
+ * Tapping a term runs it again; a long press takes just that one off. The
+ * whole list can be cleared from the heading.
+ */
+function RecentSearches({items,onPick,onRemove,onClear,visible=true}:{
+  items:string[];onPick:(term:string)=>void;onRemove:(term:string)=>Promise<void>;onClear:()=>void;visible?:boolean;
+}){
+  const {language}=useLanguage();const T=(text:string)=>tx(language,text);
+  if(!visible||!items.length)return null;
+  return <View style={s.historyBlock}>
+    <View style={s.historyHead}>
+      <Text style={s.preferenceLabel}>{T('RECENT SEARCHES')}</Text>
+      <Pressable accessibilityRole="button" accessibilityLabel={T('Clear recent searches')} onPress={onClear} hitSlop={8}>
+        <Text style={s.sectionAction}>{T('Clear')}</Text>
+      </Pressable>
+    </View>
+    <View style={s.historyWrap}>
+      {items.map(item=>(
+        <Pressable key={item} accessibilityRole="button" accessibilityLabel={T('Search for')+' '+item}
+          onPress={()=>onPick(item)} onLongPress={()=>{void onRemove(item)}}
+          style={s.historyChip}>
+          <Text style={s.historyChipText} numberOfLines={1}>{item}</Text>
+        </Pressable>
+      ))}
+    </View>
+  </View>;
+}
+
+function QuranSearchScreen({route,navigation}:any){const{preferences}=useQuranPreferences();const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);const[query,setQuery]=useState(route.params?.initialQuery||'');const[results,setResults]=useState<QuranSearchResult[]>([]);const recents=useRecentSearches('quran');const[error,setError]=useState('');const[loading,setLoading]=useState(false);useEffect(()=>{if(route.params?.initialQuery)run(route.params.initialQuery)},[]);const run=async(value=query)=>{const q=value.trim();if(q.length<2)return;setLoading(true);setError('');try{const edition=/[\u0600-\u06ff]/.test(q)?preferences.scriptEdition:preferences.translationEdition;setResults((await searchQuran(q,edition)).slice(0,100));await recents.add(q)}catch(e:any){setError(T(e.message))}finally{setLoading(false)}};const open=(r:QuranSearchResult)=>navigation.navigate('Reader',{chapter:{id:r.surahId,name_simple:r.surahName,name_arabic:'',verses_count:0},focusVerse:r.verseKey});return <Page><ToolBar title={T('Quran search')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage} keyboardShouldPersistTaps="handled"><ToolGraphic tool="Quran Search" size={81}/><Text style={s.dataTitle}>{T('Search Arabic or translation')}</Text><View style={s.search}>{ico('search-outline',19,C.muted)}<TextInput autoFocus value={query} onChangeText={setQuery} onSubmitEditing={()=>run()} returnKeyType="search" style={s.searchInput} placeholder={T('Mercy, الصبر, or 2:255')}/><Pressable onPress={()=>run()}>{ico('arrow-forward-circle',22,C.green)}</Pressable></View><RecentSearches items={recents.items} onPick={term=>{setQuery(term);run(term)}} onRemove={recents.remove} onClear={recents.clear} visible={!query.trim()}/>{error?<ErrorState message={error} retry={()=>run()}/>:loading?<SkeletonList rows={6} />:<View>{results.map(r=><Pressable key={`${r.verseKey}-${r.edition}`} onPress={()=>open(r)} style={s.searchResult}><Text style={s.dataMeta}>{r.surahName} · {r.verseKey}</Text><Text numberOfLines={4} style={/[\u0600-\u06ff]/.test(r.text)?s.dataArabic:s.dataBody}>{r.text}</Text><Text style={s.meta}>{r.edition}</Text></Pressable>)}</View>}</ScrollView></Page>}
 
 function BookmarkScreen({navigation}:any){const[items,setItems]=useState<QuranBookmark[]>([]);const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);useEffect(()=>{const unsub=navigation.addListener('focus',()=>loadBookmarks().then(setItems));loadBookmarks().then(setItems);return unsub},[navigation]);const[chapters,setChapters]=useState<Chapter[]>([]);useEffect(()=>{getChapters().then(setChapters)},[]);const openBookmark=(item:QuranBookmark)=>{const full=chapters.find(c=>c.id===item.surahId);navigation.navigate('Reader',{chapter:full||{id:item.surahId,name_simple:item.surahName,name_arabic:'',verses_count:0},focusVerse:item.verseKey})};return <Page><ToolBar tool="Bookmarks" title={T('Bookmarks')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><ToolGraphic tool="Bookmarks" size={81}/><Text style={s.dataTitle}>{tf(language,'{n} saved verses',{n:items.length})}</Text>{!items.length?<View style={s.empty}><Text style={s.errorTitle}>{T('No bookmarks yet')}</Text><Text style={s.errorText}>{T('Use the bookmark action beside any verse.')}</Text></View>:items.map(item=><View key={item.verseKey} style={s.dataCard}><Pressable onPress={()=>openBookmark(item)} style={s.bookmarkMain}><Text style={s.dataMeta}>{item.surahName} · {item.verseKey}</Text><Text numberOfLines={3} style={s.dataArabic}>{item.arabic}</Text><Text numberOfLines={3} style={s.dataBody}>{item.translation}</Text></Pressable><Pressable accessibilityLabel={`${T('Remove bookmark')} ${item.verseKey}`} onPress={async()=>setItems(await toggleBookmark(item))} style={s.bookmarkRemove}>{ico('trash-outline',18,C.muted)}</Pressable></View>)}</ScrollView></Page>}
 function NotesScreen({navigation}:any){const[items,setItems]=useState<QuranNote[]>([]);const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);useEffect(()=>{const unsub=navigation.addListener('focus',()=>loadNotes().then(setItems));loadNotes().then(setItems);return unsub},[navigation]);return <Page><ToolBar title={T('Quran notes')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><ToolGraphic tool="Notes" size={81}/><Text style={s.dataTitle}>{tf(language,'{n} private notes',{n:items.length})}</Text><Text style={s.intro}>{T('Notes remain on this device and are never added to diagnostics.')}</Text>{!items.length?<View style={s.empty}><Text style={s.errorTitle}>{T('No notes yet')}</Text><Text style={s.errorText}>{T('Open verse actions to add a reflection.')}</Text></View>:items.map(item=><Tactile key={item.verseKey} onPress={()=>navigation.navigate('Note Editor',{verse:item,chapter:{id:item.surahId,name_simple:item.surahName}})} style={s.dataCard}><Text style={s.dataMeta}>{item.surahName} · {item.verseKey}</Text><Text style={s.noteText}>{item.note}</Text><Text style={s.meta}>{new Date(item.updatedAt).toLocaleDateString()}</Text></Tactile>)}</ScrollView></Page>}
@@ -5494,7 +5647,8 @@ function TafsirCompareScreen({route,navigation}:any){const {rtl,language}=useLan
       </View>}
     </ScrollView></Page>}
 
-function QuranTopicsScreen({navigation}:any){const[category,setCategory]=useState('All');const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);const[query,setQuery]=useState('');const shown=QURAN_TOPICS.filter(topic=>(category==='All'||topic.category===category)&&`${topic.title} ${topic.description} ${topic.titleAr} ${topic.descriptionAr}`.toLowerCase().includes(query.toLowerCase()));return <Page><ToolBar title={T('Quran topics')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><ToolGraphic tool="Quran Topics" size={83}/><Text style={s.dataTitle}>{T('Explore the Quran by theme')}</Text><Text style={s.intro}>{T('Curated references open the Arabic text alongside your selected translation.')}</Text><View style={s.search}>{ico('search-outline',18,C.muted)}<TextInput value={query} onChangeText={setQuery} placeholder={T('Search faith, family, patience…')} style={s.searchInput}/></View><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap: 8,marginVertical: 12}}>{['All','Faith','Life','Spirituality'].map(item=><ChoicePill key={item} label={T(item)} selected={category===item} onPress={()=>setCategory(item)}/>)}</ScrollView><View style={s.topicGrid}>{shown.map((topic,i)=><MotionPress key={topic.id} index={i} onPress={()=>navigation.navigate('Topic Detail',{topic})} style={s.topicWrap}><View style={s.topicCard}><Text style={s.libraryKicker}>{topicCategory(topic,language)}</Text><Text style={s.exploreTitle}>{topicTitle(topic,language)}</Text><Text style={s.exploreBody}>{topicDescription(topic,language)}</Text><Text style={s.dataMeta}>{tf(language,'{n} VERSES',{n:topic.references.length})}</Text></View></MotionPress>)}</View></ScrollView></Page>}
+function QuranTopicsScreen({navigation}:any){const[category,setCategory]=useState('All');const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);const recents=useRecentSearches('quran-topics');const[query,setQuery]=useState('');const shown=QURAN_TOPICS.filter(topic=>(category==='All'||topic.category===category)&&`${topic.title} ${topic.description} ${topic.titleAr} ${topic.descriptionAr}`.toLowerCase().includes(query.toLowerCase()));return <Page><ToolBar title={T('Quran topics')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><ToolGraphic tool="Quran Topics" size={83}/><Text style={s.dataTitle}>{T('Explore the Quran by theme')}</Text><Text style={s.intro}>{T('Curated references open the Arabic text alongside your selected translation.')}</Text><View style={s.search}>{ico('search-outline',18,C.muted)}<TextInput value={query} onChangeText={setQuery} placeholder={T('Search faith, family, patience…')} style={s.searchInput} returnKeyType="search" onSubmitEditing={()=>{if(query.trim().length>=2)void recents.add(query)}}/></View>
+<RecentSearches items={recents.items} onPick={setQuery} onRemove={recents.remove} onClear={recents.clear} visible={!query.trim()}/><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap: 8,marginVertical: 12}}>{['All','Faith','Life','Spirituality'].map(item=><ChoicePill key={item} label={T(item)} selected={category===item} onPress={()=>setCategory(item)}/>)}</ScrollView><View style={s.topicGrid}>{shown.map((topic,i)=><MotionPress key={topic.id} index={i} onPress={()=>navigation.navigate('Topic Detail',{topic})} style={s.topicWrap}><View style={s.topicCard}><Text style={s.libraryKicker}>{topicCategory(topic,language)}</Text><Text style={s.exploreTitle}>{topicTitle(topic,language)}</Text><Text style={s.exploreBody}>{topicDescription(topic,language)}</Text><Text style={s.dataMeta}>{tf(language,'{n} VERSES',{n:topic.references.length})}</Text></View></MotionPress>)}</View></ScrollView></Page>}
 
 
 function TopicDetailScreen({route,navigation}:any){const topic=route.params.topic;const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);const{preferences}=useQuranPreferences();const[rows,setRows]=useState<any[]>([]);const[error,setError]=useState('');const load=()=>{setError('');return Promise.all(topic.references.map((ref:string)=>getAyahEditions(ref,[preferences.scriptEdition==='quran-indopak'?'quran-uthmani':preferences.scriptEdition,preferences.translationEdition]))).then(groups=>setRows(groups.map((items,i)=>({reference:topic.references[i],arabic:items[0],translation:items[1]})))).catch(e=>setError(T(e.message)))};useEffect(()=>{load()},[topic.id,preferences.scriptEdition,preferences.translationEdition]);return <Page><ToolBar title={topicTitle(topic,language)} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><Text style={s.libraryKicker}>{topicCategory(topic,language)}</Text><Text style={s.dataTitle}>{topicTitle(topic,language)}</Text><Text style={s.intro}>{topicDescription(topic,language)}</Text>{error?<ErrorState message={error} retry={load}/>:!rows.length?<SkeletonList rows={6} />:rows.map(row=><Tactile key={row.reference} onPress={()=>{const[surah]=row.reference.split(':').map(Number);navigation.navigate('Reader',{chapter:{id:surah,name_simple:row.arabic?.name||`Surah ${surah}`,name_arabic:'',verses_count:0},focusVerse:row.reference})}} style={s.dataCard}><Text style={s.dataMeta}>{T('QURAN')} {row.reference}</Text>{preferences.scriptEdition==='quran-tajweed'?<TajweedText text={row.arabic.text} style={s.dataArabic}/>:<Text style={s.dataArabic}>{row.arabic.text}</Text>}<Text style={s.dataBody}>{row.translation.text}</Text><Text style={s.meta}>{row.translation.name}</Text></Tactile>)}</ScrollView></Page>}
@@ -5508,7 +5662,7 @@ const VOCAB_GROUPS: { key: VocabGroup; label: string }[] = [
   { key: 'review', label: 'Still to review' },
 ];
 
-function VocabularyScreen({navigation}:any){const[index,setIndex]=useState(0);const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);const[revealed,setRevealed]=useState(false);const[progress,setProgress]=useState<VocabularyProgress>({reviewed:[],known:[],saved:[]});const[mode,setMode]=useState<'study'|'browse'>('study');const[query,setQuery]=useState('');const[group,setGroup]=useState<VocabGroup>('all');useEffect(()=>{loadVocabularyProgress().then(setProgress)},[]);const word=QURAN_VOCABULARY[index];
+function VocabularyScreen({navigation}:any){ const recents=useRecentSearches('vocabulary');const[index,setIndex]=useState(0);const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);const[revealed,setRevealed]=useState(false);const[progress,setProgress]=useState<VocabularyProgress>({reviewed:[],known:[],saved:[]});const[mode,setMode]=useState<'study'|'browse'>('study');const[query,setQuery]=useState('');const[group,setGroup]=useState<VocabGroup>('all');useEffect(()=>{loadVocabularyProgress().then(setProgress)},[]);const word=QURAN_VOCABULARY[index];
   const trimmed=query.trim();
   const needle=trimmed.toLowerCase();
   const listed=QURAN_VOCABULARY.filter((entry)=>{
@@ -5530,7 +5684,9 @@ function VocabularyScreen({navigation}:any){const[index,setIndex]=useState(0);co
 </View>
 {mode==='browse'?<>
   <TextInput accessibilityLabel={T('Search the vocabulary')} value={query} onChangeText={setQuery}
-    placeholder={T('Search Arabic, transliteration, meaning or root')} placeholderTextColor={C.muted} style={s.searchInput}/>
+    placeholder={T('Search Arabic, transliteration, meaning or root')} placeholderTextColor={C.muted} style={s.searchInput}
+    returnKeyType="search" onSubmitEditing={()=>{if(query.trim().length>=2)void recents.add(query)}}/>
+  <RecentSearches items={recents.items} onPick={setQuery} onRemove={recents.remove} onClear={recents.clear} visible={!query.trim()}/>
   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap:8,marginTop:12}}>
     {VOCAB_GROUPS.map((item)=><ChoicePill key={item.key} label={T(item.label)} selected={group===item.key} onPress={()=>setGroup(item.key)}/>)}
   </ScrollView>
@@ -6382,6 +6538,33 @@ function TasbihScreen({ navigation }: any) {const {rtl,language}=useLanguage();c
   const press = useRef(new Animated.Value(1)).current;
   const [celebrated, setCelebrated] = useState(false);
   useEffect(() => { if (!celebrated) return; const timer = setTimeout(() => setCelebrated(false), 1600); return () => clearTimeout(timer); }, [celebrated]);
+  /* The counter on the home screen.
+     Two directions, because the count exists in two places. Tapping here
+     publishes, so the widget matches. Tapping the widget is invisible to the
+     app, so on arriving here the stored stamp is compared with the last time
+     this app wrote — and the newer of the two wins. Nothing is merged: two
+     counters cannot be added together, only one of them can be right. */
+  useEffect(() => {
+    void syncWidgets({
+      location: null, snapshot: null, ayah: null,
+      calculationMethod: 9, madhab: 'shafi', timeFormat: '12',
+      tasbih: { count: state.count, target: state.goal, label: phrase.transliteration },
+    });
+  }, [state.count, state.goal, phrase.transliteration]);
+  useEffect(() => {
+    let live = true;
+    (async () => {
+      const stored = await readSnapshotJson();
+      if (!live || !stored) return;
+      const parsed = JSON.parse(stored) as { tasbih?: { count?: number }; tasbihAt?: number };
+      const stampedAt = parsed?.tasbihAt;
+      const count = parsed?.tasbih?.count;
+      if (!stampedAt || typeof count !== 'number') return;
+      /* Only adopt it if the widget's write is the newer of the two. */
+      if (stampedAt > lastPublishTime()) await setTasbihCount(count);
+    })().catch(() => undefined);
+    return () => { live = false; };
+  }, []);
   const tap = async () => {
     Animated.sequence([
       Animated.timing(press, { toValue: 0.94, duration: 70, useNativeDriver: true }),
@@ -6649,7 +6832,7 @@ function DownloadsScreen({ route, navigation }: any) {
       <View style={s.apiPanel}><Text style={s.apiTitle}>{T('How a download is verified')}</Text><Text style={s.apiText}>{T('Files are written to a temporary partial file first, checked against the size the server reported, and only then moved into place. A failed download is deleted rather than left half-written.')}</Text></View>
     </ScrollView></Page>}
 
-function NamesScreen({ navigation }: any) {const {rtl,language:appLanguage}=useLanguage();const T=(text:string)=>tx(appLanguage,text);
+function NamesScreen({ navigation }: any) { const recents=useRecentSearches('names');const {rtl,language:appLanguage}=useLanguage();const T=(text:string)=>tx(appLanguage,text);
   const { preferences } = useQuranPreferences();
   const [names, setNames] = useState<DivineName[]>([]);
   const [day, setDay] = useState<DivineName | null>(null);
@@ -6709,7 +6892,8 @@ function NamesScreen({ navigation }: any) {const {rtl,language:appLanguage}=useL
       {NAME_LANGUAGES.map((entry) => <ChoicePill key={entry.code} label={T(entry.label)} selected={entry.code === language} onPress={() => { void pickLanguage(entry.code); }} />)}
     </ScrollView>
 
-    <View style={[s.search,{marginTop:12}]}>{ico('search', 18, C.muted)}<TextInput accessibilityLabel={T('Search the Names')} value={query} onChangeText={setQuery} style={s.searchInput} placeholder={T('Search a Name')} placeholderTextColor={C.muted} />{query.length > 0 && <Pressable accessibilityLabel={T('Clear name search')} onPress={() => setQuery('')}>{ico('close', 16, C.muted)}</Pressable>}</View>
+    <View style={[s.search,{marginTop:12}]}>{ico('search', 18, C.muted)}<TextInput accessibilityLabel={T('Search the Names')} value={query} onChangeText={setQuery} style={s.searchInput} placeholder={T('Search a Name')} placeholderTextColor={C.muted} returnKeyType="search" onSubmitEditing={()=>{if(query.trim().length>=2)void recents.add(query)}} />{query.length > 0 && <Pressable accessibilityLabel={T('Clear name search')} onPress={() => setQuery('')}>{ico('close', 16, C.muted)}</Pressable>}</View>
+    <RecentSearches items={recents.items} onPick={setQuery} onRemove={recents.remove} onClear={recents.clear} visible={!query.trim()} />
 
     {!!error && <ErrorState message={error} retry={load} />}
     {!error && !names.length && <SkeletonList rows={8} tile={44} lines={3} />}
@@ -6746,7 +6930,7 @@ function NamesScreen({ navigation }: any) {const {rtl,language:appLanguage}=useL
 const NAME_FILTER_LABEL: Record<NameFilter, string> = { all: 'All', male: 'Boys', female: 'Girls', unisex: 'Unisex' };
 const NAME_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
-function MuslimNamesScreen({ navigation }: any) {
+function MuslimNamesScreen({ navigation }: any) { const recents=useRecentSearches('muslim-names');
   const { rtl , language }=useLanguage();
   const T = (text: string) => tx(language, text);
   const { preferences } = useQuranPreferences();
@@ -6807,9 +6991,12 @@ function MuslimNamesScreen({ navigation }: any) {
       <View style={[s.search, { marginTop: 12, marginBottom: 0 }]}>
         {ico('search', 18, C.muted)}
         <TextInput accessibilityLabel={T('Search Muslim names')} value={query} onChangeText={setQuery}
-          placeholder={T('Search a name, its Arabic or its meaning')} placeholderTextColor={C.muted} style={s.searchInput} />
+          placeholder={T('Search a name, its Arabic or its meaning')} placeholderTextColor={C.muted} style={s.searchInput}
+          returnKeyType="search" onSubmitEditing={()=>{if(query.trim().length>=2)void recents.add(query)}} />
         {query.length > 0 && <Pressable accessibilityLabel={T('Clear the search')} onPress={() => setQuery('')}>{ico('close', 16, C.muted)}</Pressable>}
       </View>
+
+      <RecentSearches items={recents.items} onPick={setQuery} onRemove={recents.remove} onClear={recents.clear} visible={!query.trim()} />
 
       <Section title={T('Alphabetical')} />
       <View style={s.letterGrid}>
@@ -6899,7 +7086,7 @@ function ProphetNamesScreen({ navigation }: any) {const {rtl,language}=useLangua
       })}
     </ScrollView></Page>}
 
-function DuasScreen({ navigation }: any) {const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);
+function DuasScreen({ navigation }: any) { const recents=useRecentSearches('duas');const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);
   const [payload, setPayload] = useState<{ shortcuts: string[]; categories: DuaCategory[] } | null>(null);
   const [error, setError] = useState('');
   const [query, setQuery] = useState('');
@@ -6918,7 +7105,8 @@ function DuasScreen({ navigation }: any) {const {rtl,language}=useLanguage();con
     
     <Text style={s.intro}>{T('Remembrance for 132 occasions, in Arabic with transliteration and meaning. Each entry keeps the reference the source gives for it.')}</Text>
 
-    <View style={s.search}>{ico('search', 18, C.muted)}<TextInput accessibilityLabel={T('Search occasions')} value={query} onChangeText={setQuery} style={s.searchInput} placeholder={T('Search an occasion')} placeholderTextColor={C.muted} />{query.length > 0 && <Pressable accessibilityLabel={T('Clear occasion search')} onPress={() => setQuery('')}>{ico('close', 16, C.muted)}</Pressable>}</View>
+    <View style={s.search}>{ico('search', 18, C.muted)}<TextInput accessibilityLabel={T('Search occasions')} value={query} onChangeText={setQuery} style={s.searchInput} placeholder={T('Search an occasion')} placeholderTextColor={C.muted} returnKeyType="search" onSubmitEditing={()=>{if(query.trim().length>=2)void recents.add(query)}} />{query.length > 0 && <Pressable accessibilityLabel={T('Clear occasion search')} onPress={() => setQuery('')}>{ico('close', 16, C.muted)}</Pressable>}</View>
+    <RecentSearches items={recents.items} onPick={setQuery} onRemove={recents.remove} onClear={recents.clear} visible={!query.trim()} />
 
     {!!error && <ErrorState message={error} retry={load} />}
     {!payload && !error && <SkeletonList rows={6} />}
@@ -7421,6 +7609,7 @@ function WeeklySummaryScreen({navigation}:any){const {rtl,language}=useLanguage(
 
 function LocationSetupScreen({navigation}:any){const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);
   const loc=useAppLocation();
+  const recents=useRecentSearches('cities');
   const[query,setQuery]=useState('');
   const[results,setResults]=useState<CityResult[]>([]);
   const[searching,setSearching]=useState(false);
@@ -7438,18 +7627,33 @@ function LocationSetupScreen({navigation}:any){const {rtl,language}=useLanguage(
   useEffect(()=>{
     const text=query.trim();
     if(text.length<2){setResults([]);setSearching(false);setLookedOnline(false);return}
-    let live=true; setSearching(true);
-    const local=searchLocalCities(text,14);
-    setResults(local);
-    if(local.length){setSearching(false);setLookedOnline(false);return}
-    const timer=setTimeout(()=>{
-      void searchCities(text,14).then(list=>{if(!live)return;setResults(list);setLookedOnline(list.some(c=>c.source==='online'));setSearching(false)});
-    },450);
-    return()=>{live=false;clearTimeout(timer)}
+    /* The local scan is not free either. It walks all 33,082 rows and costs
+       30-50 ms per keystroke on a desktop, several times that on a cheap
+       phone, so it is debounced as well - the debounce used to sit only on
+       the network call, which is by far the cheaper of the two. A short
+       delay collapses a burst of typing into a single scan without anyone
+       noticing a wait. */
+    let live=true; let netTimer:ReturnType<typeof setTimeout>|null=null;
+    setSearching(true);
+    const localTimer=setTimeout(()=>{
+      if(!live)return;
+      const local=searchLocalCities(text,14);
+      if(!live)return;
+      setResults(local);
+      if(local.length){setSearching(false);setLookedOnline(false);return}
+      netTimer=setTimeout(()=>{
+        void searchCities(text,14).then(list=>{if(!live)return;setResults(list);setLookedOnline(list.some(c=>c.source==='online'));setSearching(false)});
+      },450);
+    },130);
+    return()=>{live=false;clearTimeout(localTimer);if(netTimer)clearTimeout(netTimer)}
   },[query]);
 
   const choose=(city:CityResult)=>{
     haptic('success');
+    /* Remembered on picking rather than on typing: what is worth offering
+       again is the place someone actually chose, not every prefix they
+       passed through on the way to it. */
+    void recents.add(city.name);
     loc.setManual({label:`${city.name}, ${city.countryName}`,latitude:city.latitude,longitude:city.longitude,timezone:city.timezone});
     void rememberCity(city);
     goBackOrHome(navigation);
@@ -7485,6 +7689,8 @@ function LocationSetupScreen({navigation}:any){const {rtl,language}=useLanguage(
           returnKeyType="search" autoCorrect={false}/>
         {query.length>0&&<Pressable accessibilityLabel={T('Clear city search')} onPress={()=>setQuery('')}>{ico('close-circle',18,C.muted)}</Pressable>}
       </View>
+
+      <RecentSearches items={recents.items} onPick={term=>setQuery(term)} onRemove={recents.remove} onClear={recents.clear} visible={!query.trim()}/>
 
       {searching&&<SkeletonList rows={4} />}
 
@@ -9192,7 +9398,7 @@ const RAMADAN_CELL = StyleSheet.create({
   heroOwed: { color: C.ink, fontSize: 40, fontFamily: 'DMSans_700Bold', marginTop: 6 },
   heroUnit: { color: C.muted, fontSize: 13, fontFamily: 'DMSans_400Regular', marginTop: 2 },
   statRow: { flexDirection: 'row', marginTop: 14, gap: 10 },
-  stat: { flex: 1, backgroundColor: C.mint, borderRadius: 14, padding: 11 },
+  stat: { flex: 1, backgroundColor: C.mint, borderRadius: 16, padding: 12 },
   statValue: { color: C.green, fontSize: 16, fontFamily: 'DMSans_700Bold', marginTop: 2 },
   statLabel: { color: C.muted, fontSize: 10, fontFamily: 'DMSans_700Bold', letterSpacing: 0.6 }
 });
@@ -10442,7 +10648,7 @@ function HadithProgressBars(){
   </View>;
 }
 
-function HadithScreen({navigation}:any){const {rtl,language:appLanguage}=useLanguage();const T=(text:string)=>tx(appLanguage,text);const ar = appLanguage === 'ar';
+function HadithScreen({navigation}:any){ const recents=useRecentSearches('hadith');const {rtl,language:appLanguage}=useLanguage();const T=(text:string)=>tx(appLanguage,text);const ar = appLanguage === 'ar';
   const state=useHadithState();
   const [query,setQuery]=useState('');
   const [results,setResults]=useState<Hadith[]>([]);
@@ -10499,7 +10705,8 @@ function HadithScreen({navigation}:any){const {rtl,language:appLanguage}=useLang
 
     <View style={s.hadithPick}><HadithLanguagePicker available={[]}/></View>
 
-    <View style={[s.search,s.hadithSearch]}>{ico('search',18,C.muted)}<TextInput accessibilityLabel={T('Search hadith on this device')} value={query} onChangeText={setQuery} style={s.searchInput} placeholder={booksOnDevice?T('Search hadith you have opened or downloaded'):T('Search hadith')} placeholderTextColor={C.muted}/></View>
+    <View style={[s.search,s.hadithSearch]}>{ico('search',18,C.muted)}<TextInput accessibilityLabel={T('Search hadith on this device')} value={query} onChangeText={setQuery} style={s.searchInput} placeholder={booksOnDevice?T('Search hadith you have opened or downloaded'):T('Search hadith')} placeholderTextColor={C.muted} returnKeyType="search" onSubmitEditing={()=>{if(query.trim().length>=3)void recents.add(query)}}/></View>
+    <RecentSearches items={recents.items} onPick={setQuery} onRemove={recents.remove} onClear={recents.clear} visible={!query.trim()}/>
 
     {searching3?(searching?<SkeletonList rows={6} />:results.length?<>
       <Text style={[s.meta,s.hadithResults]}>{ar?`${results.length} ${arNoun(results.length, 'نتيجة', 'نتيجتان', 'نتائج', 'نتيجة')}`:tf(appLanguage,'{n} results',{n:results.length})}</Text>
@@ -10565,7 +10772,7 @@ function HadithScreen({navigation}:any){const {rtl,language:appLanguage}=useLang
     </>}
   </ScrollView></Page>}
 
-function HadithCollectionScreen({route,navigation}:any){const {rtl,language:appLanguage}=useLanguage();const T=(text:string)=>tx(appLanguage,text);
+function HadithCollectionScreen({route,navigation}:any){ const recents=useRecentSearches('hadith-book');const {rtl,language:appLanguage}=useLanguage();const T=(text:string)=>tx(appLanguage,text);
   const slug=route.params?.slug||'bukhari';
   const collection=HADITH_COLLECTIONS.find(item=>item.slug===slug);
   const [outline,setOutline]=useState<HadithOutline|null>(null);
@@ -10600,7 +10807,14 @@ function HadithCollectionScreen({route,navigation}:any){const {rtl,language:appL
     let alive=true;
     setLoadingBook(true);setError('');
     void loadHadithBook(slug,book,outline?.lang||language)
-      .then(next=>{if(alive){setRows(next);setLoadingBook(false)}})
+      .then(next=>{if(alive){setRows(next);setLoadingBook(false);
+        /* A book that turns out to hold nothing is dropped from the list, so
+           reopening the collection no longer offers it. The empty screen is
+           still shown here — going back to nothing without a word is worse
+           than saying the book is empty — but the list behind it is already
+           rebuilt by the time the reader returns to it. */
+        if(!next.length)void loadHadithOutline(slug,outline?.lang||language,true).then(setOutline).catch(()=>undefined);
+      }})
       .catch((e:any)=>{if(alive){setError(T(e.message||'Please check your connection.'));setLoadingBook(false)}});
     return ()=>{alive=false};
   },[slug,book,downloadTick,outline?.lang]);
@@ -10731,7 +10945,8 @@ function HadithCollectionScreen({route,navigation}:any){const {rtl,language:appL
           <Pressable accessibilityLabel={T('Back to books')} onPress={()=>setBook(null)} style={[s.secondary,{alignSelf:'flex-start'}]}>
             <Text style={s.secondaryText}>‹ {T('All books')}</Text></Pressable>
         </View>
-        <View style={s.search}>{ico('search',18,C.muted)}<TextInput accessibilityLabel={T('Search this book')} value={query} onChangeText={setQuery} style={s.searchInput} placeholder={T('Search this book')} placeholderTextColor={C.muted}/></View>
+        <View style={s.search}>{ico('search',18,C.muted)}<TextInput accessibilityLabel={T('Search this book')} value={query} onChangeText={setQuery} style={s.searchInput} placeholder={T('Search this book')} placeholderTextColor={C.muted} returnKeyType="search" onSubmitEditing={()=>{if(query.trim().length>=2)void recents.add(query)}}/></View>
+        <RecentSearches items={recents.items} onPick={setQuery} onRemove={recents.remove} onClear={recents.clear} visible={!query.trim()}/>
         <ScrollView keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} contentContainerStyle={s.dataPage} showsVerticalScrollIndicator={false}>
           {loadingBook&&<SkeletonList rows={6} />}
           {!!error&&<ErrorState message={error} retry={()=>setBook(book)}/>}
@@ -11685,16 +11900,6 @@ function LegalScreen({ route, navigation }: any) {
     </ScrollView></Page>;
 }
 
-/**
- * What the quiet layer is showing today, for the settings row that has to
- * describe it. Plain sentences rather than a name, because most people will
- * never know this exists and the row is the only place that tells them.
- */
-const AMBIENCE_NOTE: Record<Ambience, string> = {
-  confetti: 'Confetti — today is one of the Eids',
-  ramadan: 'Warm light — Ramadan',
-};
-
 function SettingsScreen({navigation}:any){
   const { language, rtl, setLanguage } = useLanguage();
   const T = (text: string) => tx(language, text);
@@ -11724,23 +11929,6 @@ function SettingsScreen({navigation}:any){
       : undefined;
   const { theme: themeName, mode: themeMode, setTheme, setMode, dark } = useTheme();
   const { settings, update } = useWorshipSettings();
-  const still = useCalmMotion();
-  /* Both of these are easy to switch on and then never notice: the burst is
-     two mornings a year, and the field is quiet enough to fade into the
-     background. So both can be played here on request. The tick counts up
-     rather than toggling, so every tap is a new value and the burst runs
-     again instead of sitting still. */
-  const [previewTick, setPreviewTick] = useState(0);
-  const [previewing, setPreviewing] = useState(false);
-  useEffect(() => {
-    if (!previewing) return;
-    /* Long enough to watch a piece cross the screen once. The field is
-       built to be lived with, not looked at, so ten seconds says more
-       than three would. */
-    const timer = setTimeout(() => setPreviewing(false), 10000);
-    return () => clearTimeout(timer);
-  }, [previewing, previewTick]);
-  const ambience = useMemo(() => ambienceFor(new Date()), []);
   const { preferences } = useQuranPreferences();
   const womens = useWomens();
   const lock = useLockConfig();
@@ -11844,75 +12032,6 @@ function SettingsScreen({navigation}:any){
         </View>
       </View>
 
-      {/* Two things in here that are easy to love and easy to resent, so
-          both get a switch. Somebody who opens a prayer app and gets light
-          drifting over it will either be delighted or will want it gone, and
-          that should be her call rather than the app's. */}
-      <Section title={T('Ambience')} />
-      <View style={s.preferencePanel}>
-        <PanelHead glyph="sparkles-outline" title={T('On the Home screen')} note={T('Something quiet drifting, and a greeting on Eid')} />
-        <View style={s.setting}>
-          <View style={{ flex: 1 }}>
-            <Text style={s.settingName}>{T('Ambient light')}</Text>
-            <Text style={s.meta}>{still
-              ? T('Your device is set to reduce motion, so nothing will drift')
-              : ambience === null || ambience === 'confetti'
-                ? T('Nothing today — a warm light falls through Ramadan')
-                : T(AMBIENCE_NOTE[ambience])}</Text>
-          </View>
-          <View style={{ direction: 'ltr' } as any}>
-            <Switch
-              accessibilityLabel={T('Ambient light')}
-              disabled={still}
-              value={settings.ambientEffects !== false && !still}
-              trackColor={{ true: C.green }}
-              onValueChange={(value) => {
-                if (value) haptic('toggle');
-                void update({ ambientEffects: value });
-              }}
-            />
-          </View>
-        </View>
-        <View style={s.setting}>
-          <View style={{ flex: 1 }}>
-            <Text style={s.settingName}>{T('Celebrate on Eid')}</Text>
-            <Text style={s.meta}>{still
-              ? T('Your device is set to reduce motion, so nothing will fall')
-              : T('Falls once on the Home screen on the day of Eid, and not again until the next one')}</Text>
-          </View>
-          <View style={{ direction: 'ltr' } as any}>
-            <Switch
-              accessibilityLabel={T('Celebrate on Eid')}
-              /* Reduced motion is read from the device rather than stored,
-                 so the switch is disabled rather than shown as off: the
-                 preference she set is still hers, and it comes back the
-                 moment the device setting does. */
-              disabled={still}
-              value={settings.celebrateEid !== false && !still}
-              trackColor={{ true: C.green }}
-              onValueChange={(value) => {
-                if (value) haptic('toggle');
-                void update({ celebrateEid: value });
-              }}
-            />
-          </View>
-        </View>
-        <Tactile
-          accessibilityRole="button"
-          accessibilityLabel={T('Show me')}
-          onPress={() => { haptic('toggle'); setPreviewTick((n) => n + 1); setPreviewing(true); }}
-          style={s.setting}
-        >
-          <View style={{ flex: 1 }}>
-            <Text style={s.settingName}>{T('Show me')}</Text>
-            <Text style={s.meta}>{still
-              ? T('Nothing to show while your device is set to reduce motion')
-              : previewing ? T('Playing now') : T('Play what the Home screen is showing today')}</Text>
-          </View>
-          {ico('play-circle', 22, C.green)}
-        </Tactile>
-      </View>
-
       <Section title={tx(language, 'Preferences')} />
       <View style={s.settings}>
         <Tactile accessibilityRole="button" accessibilityState={{expanded:pickingApp}} accessibilityLabel={`${T('Language')}: ${appLangLabel}`}
@@ -12011,13 +12130,6 @@ function SettingsScreen({navigation}:any){
         <Text style={s.madeWithText}>{T('Made with')} ❤️ {T('for Ummah')}</Text>
       </View>
     </ScrollView>
-    {/* Outside the ScrollView and after it: both of these belong to the whole
-        screen, and neither should scroll away with the page underneath. Only
-        one is ever live — on an Eid the ambience resolves to confetti and the
-        field stands down, so the two are never competing. */}
-    {ambience === 'confetti'
-      ? <EidConfetti fire={previewing ? `preview-${previewTick}` : null} dark={dark} />
-      : <AmbientField kind={ambience} dark={dark} active={previewing} />}
   </Page>}
 import { DEFAULT_RECITER, editionsForLanguage, LANGUAGES, Language, LanguageCode, languageByCode, isRtl, pickEdition, HADITH_LANGUAGES, hadithLanguage } from './src/services/languages';
 
@@ -12184,7 +12296,7 @@ async function playSurahFromReader(chapter: Chapter, rtl = false) {
   } catch (e: any) { Alert.alert(tx(getAppLanguage(),'Audio unavailable'),tx(getAppLanguage(),e.message)); }
 }
 
-function AudioCenterScreen({ navigation }: any) {
+function AudioCenterScreen({ navigation }: any) { const recents=useRecentSearches('audio-surahs');
   const { rtl , language }=useLanguage();
   const T = (text: string) => tx(language, text);
   const ar = language === 'ar';
@@ -12351,7 +12463,8 @@ function AudioCenterScreen({ navigation }: any) {
 
       {tab === 'surah' && <>
         <Section title={T('Play a Surah')} />
-        <View style={s.search}>{ico('search', 18, C.muted)}<TextInput accessibilityLabel={T('Search Surahs')} value={query} onChangeText={setQuery} style={s.searchInput} placeholder={T('Search 114 Surahs')} placeholderTextColor={C.muted} />{query.length > 0 && <Pressable accessibilityLabel={T('Clear Surah search')} onPress={() => setQuery('')}>{ico('close-circle', 18, C.muted)}</Pressable>}</View>
+        <View style={s.search}>{ico('search', 18, C.muted)}<TextInput accessibilityLabel={T('Search Surahs')} value={query} onChangeText={setQuery} style={s.searchInput} placeholder={T('Search 114 Surahs')} placeholderTextColor={C.muted} returnKeyType="search" onSubmitEditing={()=>{if(query.trim().length>=2)void recents.add(query)}} />{query.length > 0 && <Pressable accessibilityLabel={T('Clear Surah search')} onPress={() => setQuery('')}>{ico('close-circle', 18, C.muted)}</Pressable>}</View>
+        <RecentSearches items={recents.items} onPick={setQuery} onRemove={recents.remove} onClear={recents.clear} visible={!query.trim()} />
         <View style={s.settings}>{shownChapters.map((chapter) => <View key={chapter.id} style={s.audioRow}>
           <Pressable onPress={() => { void startChapter(chapter, 1); }} style={s.audioRowMain}>
             <View style={s.surahNo}><Text style={s.surahNoText}>{chapter.id}</Text></View>
@@ -13259,6 +13372,9 @@ function Splash({ ready, progress, onDone }: { ready: boolean; progress: number;
 function OnboardingLocation() {
   const { rtl , language }=useLanguage(); const T = (text: string) => tx(language, text);
   const loc = useAppLocation();
+  /* Shares the 'cities' scope with the location screen: same question, asked
+     in two places, and a city looked up here is worth offering there. */
+  const recents = useRecentSearches('cities');
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<CityResult[]>([]);
   const [searching, setSearching] = useState(false);
@@ -13267,22 +13383,30 @@ function OnboardingLocation() {
   useEffect(() => {
     const text = query.trim();
     if (text.length < 2) { setResults([]); setSearching(false); setOnline(false); return; }
+    /* Same reasoning as the location screen: the local walk over 33,082 rows
+       is debounced rather than run on every character. */
     let live = true;
-    const local = searchLocalCities(text, 8);
-    setResults(local);
-    if (local.length) { setSearching(false); setOnline(false); return; }
+    let netTimer:ReturnType<typeof setTimeout>|null = null;
     setSearching(true);
-    const timer = setTimeout(() => {
-      void searchCities(text, 8).then((list) => {
-        if (!live) return;
-        setResults(list); setOnline(list.some((c) => c.source === 'online')); setSearching(false);
-      });
-    }, 450);
-    return () => { live = false; clearTimeout(timer); };
+    const localTimer = setTimeout(() => {
+      if (!live) return;
+      const local = searchLocalCities(text, 8);
+      if (!live) return;
+      setResults(local);
+      if (local.length) { setSearching(false); setOnline(false); return; }
+      netTimer = setTimeout(() => {
+        void searchCities(text, 8).then((list) => {
+          if (!live) return;
+          setResults(list); setOnline(list.some((c) => c.source === 'online')); setSearching(false);
+        });
+      }, 450);
+    }, 130);
+    return () => { live = false; clearTimeout(localTimer); if (netTimer) clearTimeout(netTimer); };
   }, [query]);
 
   const choose = (city: CityResult) => {
     haptic('success');
+    void recents.add(city.name);
     loc.setManual({ label: `${city.name}, ${city.countryName}`, latitude: city.latitude, longitude: city.longitude, timezone: city.timezone });
     void rememberCity(city);
   };
@@ -13300,6 +13424,8 @@ function OnboardingLocation() {
         returnKeyType="search" autoCorrect={false} />
       {query.length > 0 && <Pressable accessibilityLabel={T('Clear city search')} onPress={() => setQuery('')}>{ico('close-circle', 18, C.muted)}</Pressable>}
     </View>
+
+    <RecentSearches items={recents.items} onPick={(term) => setQuery(term)} onRemove={recents.remove} onClear={recents.clear} visible={!query.trim()} />
 
     {searching && <SkeletonList rows={4} />}
 
@@ -13661,20 +13787,33 @@ function Onboarding({ onFinish }: { onFinish: () => void }) {
 
   // One choice moves the rest with it.
   const chooseApp = (code: LanguageCode) => { setApp(code); setLanguage(code); setText(code); setVoice(code); };
-  const chosen: string = step === 0 ? app : step === 1 ? text : voice;
-  const pick = (code: string) => { if (step === 0) chooseApp(code as LanguageCode); else if (step === 1) setText(code); else setVoice(code as LanguageCode); };
+  /* Only the language screen picks from a list now. The two folded pickers
+     compare against `text` and `voice` themselves, so they are not routed
+     through here. */
+  const chosen: string = app;
+  const pick = (code: string) => chooseApp(code as LanguageCode);
 
+  /* Three screens, not six.
+   *
+   * The three language questions were one question asked three times: a tap on
+   * the first screen already set the interface, the meaning and the voice
+   * together, so the two screens after it only ever asked somebody who reads
+   * one language and listens in another to confirm an answer that was already
+   * right. They are still there — folded into the one screen, opened by a tap,
+   * and opened on their own as soon as the three answers disagree.
+   *
+   * The sleep reminder was the last screen and the only skippable one. It is
+   * now the second half of the last screen rather than a screen of its own;
+   * Skip still clears it, and it is still the only thing here that can be
+   * declined without consequence. */
   const steps = [
     { title: T('How should the app speak to you?'), caption: T('This sets the words on every screen, and it carries the Quran text and the voice with it. You can change either of those next.') },
-    { title: T('Which meaning beside the Arabic?'), caption: T('The Quran is always shown in Arabic. This is the text you read next to it.') },
-    { title: T('Which voice with the recitation?'), caption: T('Recitation stays the Arabic Qur’an. This adds a voice in your own language underneath it.') },
     { title: T('Where should prayer times be calculated?'), caption: T('Prayer times, Qibla and the fasting timetable all read from one place. Search for your city, or use your location once. This is asked only here — you can change it any time in Settings.') },
     { title: T('May this app remind you?'), caption: T('Adhan, a quiet reminder before each prayer, and a verse each morning. Every one of these can be switched off later, and nothing is scheduled until you allow it.') },
-    { title: T('When do you sleep?'), caption: T('Surah Al-Mulk takes about five minutes. Say the hour you turn in and we will remind you before it — or skip this entirely. The hour stays on your device and is never used for tracking.') },
   ];
-  /* Named, because the Continue button has to know which step raises the
-     permission prompt, and a bare 4 says nothing to whoever reads it next. */
-  const NOTIFICATION_STEP = 4;
+  /* Named, because the permission prompt is raised as the last screen is
+     left, and a bare 2 says nothing to whoever reads it next. */
+  const NOTIFICATION_STEP = steps.length - 1;
   const active = steps[step];
   /* The offline controls belong to a question the person may never ask, so
      they stay folded away. They open themselves if there is a download to
@@ -13682,16 +13821,50 @@ function Onboarding({ onFinish }: { onFinish: () => void }) {
      choice already made is never hidden behind a collapsed section. */
   const offlineOpen = showOffline || !!dl || queued.length > textEditionIds.length;
 
-  /** A short line under a card saying honestly what that choice can offer. */
-  const hint = (entry: Language) => {
-    if (step === 0) return entry.uiReady ? null : T('Interface stays in English');
-    if (step === 1) return !entry.text ? T('Text stays in English') : entry.text.kind === 'tafsir' ? T('A tafsir, not a translation') : null;
-    return entry.voice ? null : T('Recitation only');
-  };
+  /* Three notes rather than one that switches on the step, because the
+     three lists are on the screen at the same time now. Each says what that
+     particular choice can offer, and each keeps the wording it had when it
+     was a screen of its own. */
+  const appHint = (entry: Language) => (entry.uiReady ? null : T('Interface stays in English'));
+  const textHint = (entry: Language) => (!entry.text ? T('Text stays in English') : entry.text.kind === 'tafsir' ? T('A tafsir, not a translation') : null);
+  const voiceHint = (entry: Language) => (entry.voice ? null : T('Recitation only'));
+
+  /**
+   * Whether the two extra pickers are open.
+   *
+   * One tap on the language list carries the interface, the meaning and the
+   * voice together, which is what nearly everybody wants — so that is all the
+   * first screen asks. The two lists that pull them apart stay folded, and
+   * open themselves the moment the answers differ, for the same reason the
+   * offline panel does: a choice already made is never hidden behind a
+   * collapsed section.
+   */
+  const [separate, setSeparate] = useState(false);
+  const separateOpen = separate || text !== app || voice !== app;
 
   /* `skipSleep` clears the reminder rather than merely not scheduling it, so
      that somebody who tapped an hour and then thought better of it is not
      left with a setting they never meant to keep. */
+  /**
+   * Raise the system notification prompt, if it can still be raised.
+   *
+   * Gated on canAsk and never on the status alone: on Android 13 a device
+   * that has never been asked reports `denied`, so a check written against the
+   * status silently skips the one device that most needs asking — which is why
+   * the prompt never appeared here at all for a long while. Somebody who has
+   * already answered on this screen is covered too: canAsk is false the
+   * moment they have.
+   *
+   * This used to fire when the notifications step was *left*. That step is the
+   * last one now, so leaving it is the same moment as finishing — which is why
+   * the ask lives here rather than in the Continue button.
+   */
+  const askToNotify = async () => {
+    const current = await getNotificationStatus();
+    if (!current.canAsk) return;
+    await requestNotificationPermission(language);
+  };
+
   const finish = async (skipSleep = false) => {
     if (busy) return;
     setBusy(true);
@@ -13743,6 +13916,10 @@ function Onboarding({ onFinish }: { onFinish: () => void }) {
          screen is opened - the only consequence of a failure is that the
          first prayer may fall back to a system tone. */
       void downloadAllAdhanTracks().catch(() => undefined);
+      /* Asked on the way out, rather than before the work above, so the
+         dialog appears over an app that has already settled instead of one
+         still fetching. */
+      void askToNotify();
       onFinish();
     } catch { setBusy(false); }
   };
@@ -13757,8 +13934,44 @@ function Onboarding({ onFinish }: { onFinish: () => void }) {
         <Text style={s.h1}>{active.title}</Text>
         <Text style={s.onbCaption}>{active.caption}</Text>
       </Animated.View>
-      {step === 1 ? <View style={s.onbList} key="languages">
-        {/* Search comes first because it is the short way through ninety-seven
+      {step === 0 ? <View style={s.onbList} key="language">
+        {LANGUAGES.map((entry, index) => {
+          const selected = chosen === entry.code;
+          const note = appHint(entry);
+          return <RiseIn key={entry.code} delay={index * 40}>
+            <MotionPress style={[s.onbCard, selected && s.onbCardOn]} onPress={() => pick(entry.code)}>
+              <View style={s.onbCardTop}>
+                <View style={s.onbCardText}>
+                  <Text style={[s.onbCardName, entry.rtl && s.onbCardNameRtl]}>{entry.native}</Text>
+                  {entry.native !== entry.english && <Text style={s.onbCardSub}>{entry.english}</Text>}
+                </View>
+                <View style={[s.onbTick, selected && s.onbTickOn]}>{selected && ico('checkmark', 16, C.onAccent)}</View>
+              </View>
+              {note ? <Text style={s.onbCardNote}>{note}</Text> : null}
+            </MotionPress>
+          </RiseIn>;
+        })}
+
+        {/* The two lists that pull the three answers apart. Folded, because
+            for most people they have already been answered by the tap above,
+            and a screen that asks a question twice is longer than it needs to
+            be. Opened on its own the moment any of the three differs, so an
+            answer somebody actually changed is never sitting collapsed. */}
+        <MotionPress
+          accessibilityLabel={T('Choose the Quran text and voice separately')}
+          onPress={() => setSeparate(!separateOpen)}
+          style={[s.onbOfflineHead, { marginTop: 18 }]}>
+          <View style={s.onbAllText}>
+            <Text style={s.onbOfflineTitle}>{T('Choose separately')}</Text>
+            <Text style={s.onbAllSub}>{T('Read the Quran in one language and listen in another. One tap above already set all three to the same one.')}</Text>
+          </View>
+          {ico(separateOpen ? 'chevron-up-outline' : 'chevron-down-outline', 18, C.muted)}
+        </MotionPress>
+
+        {separateOpen && <View style={{ marginTop: 18 }}>
+          <Text style={s.preferenceLabel}>{T('WHICH MEANING BESIDE THE ARABIC?')}</Text>
+          <Text style={s.onbCardNote}>{T('The Quran is always shown in Arabic. This is the text you read next to it.')}</Text>
+          {/* Search comes first because it is the short way through ninety-seven
             languages: someone who knows they read Kiswahili should never have
             to scroll to it. */}
         <View style={s.onbSearch}>
@@ -13807,12 +14020,12 @@ function Onboarding({ onFinish }: { onFinish: () => void }) {
         {editions.length > 0 && !visible.length && <Text style={s.onbCardNote}>{T('No language matches that.')}</Text>}
 
         {visible.map((entry, index) => {
-          const selected = chosen === entry.code;
+          const selected = text === entry.code;
           const list = byLanguage.get(entry.code) || [];
           const saved = hasLanguage(entry.code);
           const downloading = dl?.code === entry.code;
           return <RiseIn key={entry.code} delay={Math.min(index, 14) * 26}>
-            <MotionPress style={[s.onbCard, selected && s.onbCardOn]} onPress={() => pick(entry.code)}>
+            <MotionPress style={[s.onbCard, selected && s.onbCardOn]} onPress={() => setText(entry.code)}>
               <View style={s.onbCardTop}>
                 <Text style={s.onbFlag}>{languageFlag(entry.code)}</Text>
                 <View style={s.onbCardText}>
@@ -13863,24 +14076,30 @@ function Onboarding({ onFinish }: { onFinish: () => void }) {
           </Text>
           {ico('chevron-down-outline', 16, C.muted)}
         </MotionPress>}
-      </View> : step < 3 ? <View style={s.onbList} key={step}>
-        {LANGUAGES.map((entry, index) => {
-          const selected = chosen === entry.code;
-          const note = hint(entry);
-          return <RiseIn key={entry.code} delay={index * 40}>
-            <MotionPress style={[s.onbCard, selected && s.onbCardOn]} onPress={() => pick(entry.code)}>
-              <View style={s.onbCardTop}>
-                <View style={s.onbCardText}>
-                  <Text style={[s.onbCardName, entry.rtl && s.onbCardNameRtl]}>{entry.native}</Text>
-                  {entry.native !== entry.english && <Text style={s.onbCardSub}>{entry.english}</Text>}
-                </View>
-                <View style={[s.onbTick, selected && s.onbTickOn]}>{selected && ico('checkmark', 16, C.onAccent)}</View>
-              </View>
-              {note ? <Text style={s.onbCardNote}>{note}</Text> : null}
-            </MotionPress>
-          </RiseIn>;
-        })}
-      </View> : step === 3 ? <OnboardingLocation/> : step === 4 ? <OnboardingNotifications/> : <OnboardingSleep/>}
+        </View>}
+        {separateOpen && <View style={{ marginTop: 20 }}>
+          <Text style={s.preferenceLabel}>{T('WHICH VOICE WITH THE RECITATION?')}</Text>
+          <Text style={s.onbCardNote}>{T('Recitation stays the Arabic Qur’an. This adds a voice in your own language underneath it.')}</Text>
+          <View style={[s.onbList, { marginTop: 10, padding: 0 }]}>
+            {LANGUAGES.map((entry, index) => {
+              const selected = voice === entry.code;
+              const note = voiceHint(entry);
+              return <RiseIn key={entry.code} delay={index * 40}>
+                <MotionPress style={[s.onbCard, selected && s.onbCardOn]} onPress={() => setVoice(entry.code as LanguageCode)}>
+                  <View style={s.onbCardTop}>
+                    <View style={s.onbCardText}>
+                      <Text style={[s.onbCardName, entry.rtl && s.onbCardNameRtl]}>{entry.native}</Text>
+                      {entry.native !== entry.english && <Text style={s.onbCardSub}>{entry.english}</Text>}
+                    </View>
+                    <View style={[s.onbTick, selected && s.onbTickOn]}>{selected && ico('checkmark', 16, C.onAccent)}</View>
+                  </View>
+                  {note ? <Text style={s.onbCardNote}>{note}</Text> : null}
+                </MotionPress>
+              </RiseIn>;
+            })}
+          </View>
+        </View>}
+      </View> : step === 1 ? <OnboardingLocation/> : <View key="reminders"><OnboardingNotifications/><OnboardingSleep/></View>}
     </ScrollView>
     <View style={s.onbFoot}>
       <View style={s.onbDots}>{steps.map((_, index) => <View key={index} style={[s.onbDot, index === step && s.onbDotOn]} />)}</View>
@@ -13888,21 +14107,10 @@ function Onboarding({ onFinish }: { onFinish: () => void }) {
         {step > 0 && <MotionPress style={s.onbGhost} onPress={() => setStep(step - 1)}><Text style={s.onbGhostText}>{T('Back')}</Text></MotionPress>}
         {step === steps.length - 1 && <MotionPress style={s.onbGhost} onPress={() => void finish(true)}><Text style={s.onbGhostText}>{T('Skip')}</Text></MotionPress>}
         <MotionPress style={[s.onbCta, busy && s.onbCtaOff]} onPress={() => {
-          if (step < steps.length - 1) {
-            /* Leaving the notifications step raises the system prompt, for
-               anybody who has not answered the button on that step already. */
-            /* Gate on canAsk, never on the status alone. On Android 13 a
-               device that has never been asked reports `denied`, so any check
-               written against the status silently skips the one device that
-               most needs asking — which is why the prompt never appeared here.
-               Someone who has already answered on this screen is covered too:
-               canAsk is false the moment they have. */
-            if (step === NOTIFICATION_STEP) void getNotificationStatus().then((current) => {
-              if (!current.canAsk) return;
-              void requestNotificationPermission(language);
-            });
-            setStep(step + 1);
-          } else void finish();
+          /* The last step is the one that asks to send notifications, and it
+             asks on the way out — see `askToNotify`. */
+          if (step < steps.length - 1) setStep(step + 1);
+          else void finish();
         }}>
           <Text style={s.onbCtaText}>{step < steps.length - 1 ? T('Continue') : T('Begin')}</Text>
         </MotionPress>
@@ -14030,6 +14238,15 @@ const PREFERRED_TRANSLATION: Record<string, string> = {
      translation of Turkey's Presidency of Religious Affairs, which is
      the one a Turkish reader will recognise and expect. */
   tr: 'tr_tr_diyanet_isleri',
+  /* Pashto has only two, and the rule below would pick Abdul Wali's: it is
+     the one whose title is written in Pashto, and `inNativeScript` cannot
+     tell a translator's name in Arabic script from a translation. Both are
+     sound readings of the same text. Zakaria's is named because it is the
+     one the language entry offers, and the two should not disagree — a
+     person who picks Pashto and then opens the Translations screen should
+     find the edition they were already reading highlighted, not a second
+     one silently preferred over it. */
+  ps: 'tr_ps_zakaria_abulsalam',
 };
 
 /** True when a title is written in a script other than Latin. */
@@ -14306,21 +14523,34 @@ function AppShell() {
      Prayer times move every day, and they move a long way when somebody
      travels, so everything is rescheduled whenever the day, the place or the
      settings change — rather than trusting timers laid down earlier. */
-  useEffect(() => {
+  /* Held in a ref rather than captured, because the pass below and the
+     foreground listener below it both want the newest values, and a function
+     rebuilt whenever the settings object changes identity would fire on every
+     keystroke in the settings screen. */
+  const scheduleInputs = useRef({ location, settings, language });
+  scheduleInputs.current = { location, settings, language };
+
+  const rebuildNotifications = useCallback(async () => {
     if (Platform.OS === 'web') return;
-    if (!location || !settings) return;
-    let live = true;
-    void managedPrayerSnapshot(location, settings).then(async (value) => {
-      if (!live) return;
+    const { location: loc, settings: worn, language: lang } = scheduleInputs.current;
+    if (!loc || !worn) return;
+    try {
+      const value = await managedPrayerSnapshot(loc, worn);
       const position = await loadReadingPosition().catch(() => null);
       await schedulePrayerNotifications(
-        value.snapshot, settings, language,
+        value.snapshot, worn, lang,
         position ? { surahId: position.surahId, verseKey: position.verseKey,
                      label: `${position.surahName} ${position.verseKey}` } : null,
       );
-    }).catch(() => undefined);
-    return () => { live = false; };
-  }, [location?.latitude, location?.longitude, JSON.stringify({
+    } catch {
+      /* A pass that cannot be made costs the next reminder, not this screen:
+         the app is already up, and the next foreground tries again. */
+    }
+  }, []);
+
+  useEffect(() => {
+    void rebuildNotifications();
+  }, [rebuildNotifications, location?.latitude, location?.longitude, JSON.stringify({
     adhan: settings?.adhanEnabled, reciter: settings?.adhanReciter,
     reminders: settings?.remindersEnabled, offset: settings?.reminderOffset,
     per: settings?.prayerReminders, verse: settings?.dailyVerseReminder,
@@ -14328,6 +14558,22 @@ function AppShell() {
     hadithAt: settings?.dailyHadithTime, cont: settings?.continueReadingReminder,
     sleep: settings?.sleepReminderEnabled, sleepAt: settings?.sleepReminderTime
   })]);
+
+  /* The day turning over while the app sits in the background.
+     A pass only lays down what is still ahead of the moment it runs, so one
+     made on Monday morning covers Monday and stops at Isha — Tuesday has
+     nothing behind it until something asks again. Somebody who leaves the app
+     alone for a day or two would simply not be called to prayer, which is the
+     one thing this app must not fail at. Coming back to the front is the
+     moment to ask again, and it is cheap: the schedule is rebuilt from what
+     is already on the device. */
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    const subscription = AppState.addEventListener('change', (next) => {
+      if (next === 'active') void rebuildNotifications();
+    });
+    return () => subscription.remove();
+  }, [rebuildNotifications]);
 
   /* What the splash is waiting for. Three storage reads have to land before
      the app can show anything, and the bar counts them off rather than
@@ -14376,6 +14622,18 @@ async function reloadAllState() {
 
 export default function App(){const[fontsLoaded]=useFonts({DMSans_400Regular,DMSans_600SemiBold,DMSans_700Bold,Newsreader_600SemiBold,NotoNaskhArabic_400Regular,NotoNaskhArabic_600SemiBold,Amiri_400Regular,KFGQPCUthmanicHafs,IBMPlexSansArabic_400Regular,IBMPlexSansArabic_600SemiBold});const restoreTick=useRestoreNonce();
 useEffect(()=>{if(restoreTick>0){void reloadAllState()}},[restoreTick]);
+/* Redraw the widgets whenever the app comes back to the front.
+   A widget may have been sitting on the home screen for hours, showing a
+   countdown that stopped being true the moment the app went to the
+   background. The snapshot it draws from is still correct — it is the redraw
+   that is missing — so this asks every widget to render again from what it
+   already has, which is the cheapest of the two possible refreshes. */
+useEffect(()=>{
+  const subscription=AppState.addEventListener('change',(next)=>{
+    if(next==='active')void refreshWidgets();
+  });
+  return()=>subscription.remove();
+},[]);
 useEffect(()=>{if(fontsLoaded){void loadOfflineSetup();void resumeSavedOfflineSetup();resumeSavedQuranPreload();/* The saved recitation is restored after the first frame rather than during
    it. Restoring it means bringing the transport up, and a transport that
    answers nothing must not be able to keep the app from painting: this runs
@@ -14428,7 +14686,7 @@ function makeStyles() {
  packingPct:{color:C.muted,fontSize:12,fontFamily:'DMSans_600SemiBold',minWidth:38,textAlign:'right'},
  packingGroup:{marginTop:22},
  packingGroupTitle:{color:C.green,fontSize:11,fontFamily:'DMSans_700Bold',letterSpacing:1.4,marginBottom:10},
- packingRow:{flexDirection:'row',alignItems:'center',gap:12,paddingVertical:11,borderBottomWidth:1,borderColor:C.line},
+ packingRow:{flexDirection:'row',alignItems:'center',gap:12,paddingVertical:12,borderBottomWidth:1,borderColor:C.line},
  packingBox:{width:24,height:24,borderRadius:8,borderWidth:1,borderColor:C.line,alignItems:'center',justifyContent:'center',backgroundColor:C.card},
  packingBoxOn:{backgroundColor:C.green,borderColor:C.green},
  packingItem:{flex:1,color:C.ink,fontSize:14,fontFamily:'DMSans_400Regular'},
@@ -14447,7 +14705,7 @@ function makeStyles() {
  splashWords:{alignItems:'center',gap:8},
  splashName:{color:C.onHero,fontSize:30,fontFamily:'Newsreader_600SemiBold',letterSpacing:-.6,textAlign:'center'},
  splashTagline:{color:'rgba(255,255,255,.68)',fontSize:13,fontFamily:'DMSans_400Regular',textAlign:'center',letterSpacing:.2},
- splashVersion:{marginTop:4,paddingHorizontal:11,paddingVertical:4,borderRadius:999,borderWidth:1,borderColor:'rgba(255,255,255,.30)',backgroundColor:'rgba(255,255,255,.09)'},
+ splashVersion:{marginTop:4,paddingHorizontal:12,paddingVertical:4,borderRadius:999,borderWidth:1,borderColor:'rgba(255,255,255,.30)',backgroundColor:'rgba(255,255,255,.09)'},
  splashVersionText:{color:C.onHero,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.4,textAlign:'center'},
  splashTrack:{position:'absolute',bottom:56,left:'22%',right:'22%',height:3,borderRadius:2,backgroundColor:'rgba(255,255,255,.22)',overflow:'hidden'},
  splashBar:{height:3,borderRadius:2,backgroundColor:C.onHero},
@@ -14456,7 +14714,7 @@ function makeStyles() {
  onbHead:{marginBottom:12},
  onbCaption:{color:C.muted,fontSize:13,fontFamily:'DMSans_400Regular',lineHeight:19,marginTop:5},
  onbList:{gap:8},
- onbCard:{backgroundColor:C.card,borderRadius:16,padding:11,borderWidth:1,borderColor:C.line},
+ onbCard:{backgroundColor:C.card,borderRadius:16,padding:12,borderWidth:1,borderColor:C.line},
  onbCardOn:{borderColor:C.green,backgroundColor:C.mint},
  onbCardTop:{flexDirection:'row',alignItems:'center',gap:10},
  onbCardText:{flex:1,gap:2},
@@ -14464,29 +14722,29 @@ function makeStyles() {
  onbCardNameRtl:{textAlign:'right'},
  onbCardSub:{color:C.muted,fontSize:12,fontFamily:'DMSans_400Regular'},
  onbCardNote:{color:C.muted,fontSize:11,fontFamily:'DMSans_400Regular',marginTop:6},
- onbTick:{width:22,height:22,borderRadius:11,backgroundColor:C.blue,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line},
+ onbTick:{width:22,height:22,borderRadius:12,backgroundColor:C.blue,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line},
  onbTickOn:{backgroundColor:C.green,borderColor:C.green},
  /* --- offline downloads on the language step --- */
  onbAllBar:{flexDirection:'row',alignItems:'center',gap:12,backgroundColor:C.mint,borderRadius:18,padding:14,borderWidth:1,borderColor:C.line,marginBottom:12},
  onbAllText:{flex:1,gap:2},
  onbAllTitle:{color:C.ink,fontSize:15,fontFamily:'DMSans_600SemiBold'},
  onbAllSub:{color:C.muted,fontSize:11,fontFamily:'DMSans_400Regular',lineHeight:16},
- onbAllBtn:{flexDirection:'row',alignItems:'center',gap:6,backgroundColor:C.green,borderRadius:14,paddingHorizontal:12,paddingVertical:9},
+ onbAllBtn:{flexDirection:'row',alignItems:'center',gap:6,backgroundColor:C.green,borderRadius:16,paddingHorizontal:12,paddingVertical:8},
  onbAllBtnOn:{backgroundColor:C.success},
  onbAllBtnText:{color:C.onAccentInk,fontSize:12,fontFamily:'DMSans_600SemiBold'},
  onbCount:{color:C.muted,fontSize:11,fontFamily:'DMSans_400Regular'},
- onbDl:{width:30,height:30,borderRadius:15,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,backgroundColor:C.blue},
+ onbDl:{width:30,height:30,borderRadius:16,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,backgroundColor:C.blue},
  onbDlOn:{backgroundColor:C.success,borderColor:C.success},
  onbDlBusy:{backgroundColor:C.blue,borderColor:C.green},
  onbFlag:{fontSize:18,marginRight:8},
- onbSearch:{flexDirection:'row',alignItems:'center',gap:8,backgroundColor:C.card,borderRadius:14,paddingHorizontal:12,paddingVertical:8,borderWidth:1,borderColor:C.line,marginBottom:8},
+ onbSearch:{flexDirection:'row',alignItems:'center',gap:8,backgroundColor:C.card,borderRadius:16,paddingHorizontal:12,paddingVertical:8,borderWidth:1,borderColor:C.line,marginBottom:8},
  onbSearchInput:{flex:1,color:C.ink,fontSize:14,fontFamily:'DMSans_400Regular',padding:0},
  onbSavedRow:{flexDirection:'row',alignItems:'center',gap:6,marginTop:6},
  onbOffline:{backgroundColor:C.card,borderRadius:16,borderWidth:1,borderColor:C.line,overflow:'hidden',marginBottom:8},
  onbOfflineHead:{flexDirection:'row',alignItems:'center',gap:10,padding:12},
  onbOfflineTitle:{color:C.ink,fontSize:14,fontFamily:'DMSans_600SemiBold'},
  onbAllBarFlat:{margin:12,marginTop:0},
- onbMore:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:6,paddingVertical:12,borderRadius:14,borderWidth:1,borderColor:C.line,borderStyle:'dashed'},
+ onbMore:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:6,paddingVertical:12,borderRadius:16,borderWidth:1,borderColor:C.line,borderStyle:'dashed'},
  onbMoreText:{color:C.muted,fontSize:13,fontFamily:'DMSans_600SemiBold'},
  onbSavedText:{color:C.success,fontSize:11,fontFamily:'DMSans_500Medium'},
  onbFoot:{paddingHorizontal:20,paddingTop:10,paddingBottom:16,gap:10,borderTopWidth:1,borderColor:C.line,backgroundColor:C.bg},
@@ -14508,7 +14766,7 @@ function makeStyles() {
   stepCardDone:{borderColor:C.gold,backgroundColor:C.card},
   stepHead:{flexDirection:'row',alignItems:'flex-start',gap:CARD.gap},
   stepIndex:{color:C.muted,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.4,marginBottom:SPACE.xs},
-  stepCheck:{width:44,height:44,borderRadius:22,borderWidth:1.5,borderColor:C.line,alignItems:'center',justifyContent:'center'},
+  stepCheck:{width:44,height:44,borderRadius:20,borderWidth:1.5,borderColor:C.line,alignItems:'center',justifyContent:'center'},
   stepCheckDone:{backgroundColor:C.accent,borderColor:C.accent},
   stepCountBox:{alignItems:'center',minWidth:96},
   stepCount:{color:C.ink,fontSize:24,fontFamily:'Newsreader_600SemiBold'},
@@ -14540,7 +14798,7 @@ function makeStyles() {
   /* The indicator is measured, not laid out: it is absolutely placed and
      moved with a transform, so nothing about it can reflow the bar. */
   floatIndicator:{position:'absolute',left:FLOAT_BAR_PAD+3,top:6,height:54,borderRadius:24},
-  floatItem:{flex:1,alignItems:'center',justifyContent:'center',minHeight:54,borderRadius:28},
+  floatItem:{flex:1,alignItems:'center',justifyContent:'center',minHeight:54,borderRadius:24},
   floatPill:{alignItems:'center',justifyContent:'center',borderRadius:24,paddingHorizontal:12,paddingVertical:8,minWidth:58},
   /* The selected tab is lifted out of the material rather than painted on
      top of it: a brighter piece of the same glass, with its own hairline. */
@@ -14555,7 +14813,7 @@ function makeStyles() {
    surface and a small lift rather than sitting on the content like a row
    would. C.card and C.ink keep it inside whichever palette is wearing. */
 nextPillWrap:{position:'absolute',top:6,left:0,right:0,alignItems:'center',zIndex:30},
-nextPill:{alignItems:'center',justifyContent:'center',minWidth:176,backgroundColor:C.card,borderWidth:1,borderColor:C.line,borderRadius:22,paddingHorizontal:19,paddingTop:9,paddingBottom:8,elevation:4,shadowColor:'#000',shadowOpacity:.18,shadowRadius:10,shadowOffset:{width:0,height:3}},nextPillRow:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:9},nextPillTrack:{alignSelf:'stretch',height:3,borderRadius:2,backgroundColor:C.line,marginTop:7,overflow:'hidden'},nextPillFill:{height:3,borderRadius:2,backgroundColor:C.gold},
+nextPill:{alignItems:'center',justifyContent:'center',minWidth:176,backgroundColor:C.card,borderWidth:1,borderColor:C.line,borderRadius:20,paddingHorizontal:20,paddingTop:9,paddingBottom:8,elevation:4,shadowColor:'#000',shadowOpacity:.18,shadowRadius:10,shadowOffset:{width:0,height:3}},nextPillRow:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:9},nextPillTrack:{alignSelf:'stretch',height:3,borderRadius:2,backgroundColor:C.line,marginTop:7,overflow:'hidden'},nextPillFill:{height:3,borderRadius:2,backgroundColor:C.gold},
 nextPillName:{color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:13},
 nextPillDot:{color:C.muted,fontFamily:'DMSans_600SemiBold',fontSize:13},
 /* successInk, not gold: gold measures 2.7:1 against the card in the light
@@ -14567,9 +14825,9 @@ appHeaderBrand:{flexDirection:'row',alignItems:'center',gap:10,flexShrink:1},
  appLogo:{width:36,height:36},
  appName:{color:C.ink,fontSize:20,fontFamily:'Newsreader_600SemiBold',letterSpacing:-.5,flexShrink:1},
  appHeaderActions:{flexDirection:'row',alignItems:'center',gap:6},
- headerBtn:{width:40,height:40,borderRadius:14},overline:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.8,marginBottom:4},h1:{color:C.ink,fontSize:32,fontFamily:'Newsreader_600SemiBold',letterSpacing:-.8},iconBtn:{width:44,height:44,borderRadius:16,backgroundColor:C.white,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,...soft},iconBtnDark:{backgroundColor:C.card,borderColor:C.line},section:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginTop:28,marginBottom:16},h2:{color:C.ink,fontSize:22,fontFamily:'Newsreader_600SemiBold',letterSpacing:-.35},sectionAction:{color:C.green,fontFamily:'DMSans_600SemiBold',fontSize:11},
+ headerBtn:{width:40,height:40,borderRadius:16},overline:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.8,marginBottom:4},h1:{color:C.ink,fontSize:32,fontFamily:'Newsreader_600SemiBold',letterSpacing:-.8},iconBtn:{width:44,height:44,borderRadius:16,backgroundColor:C.white,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,...soft},iconBtnDark:{backgroundColor:C.card,borderColor:C.line},section:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginTop:28,marginBottom:16},h2:{color:C.ink,fontSize:22,fontFamily:'Newsreader_600SemiBold',letterSpacing:-.35},sectionAction:{color:C.green,fontFamily:'DMSans_600SemiBold',fontSize:11},
  graphicFrame:{alignItems:'center',justifyContent:'center',overflow:'hidden'},motionGlyph:{width:49,height:49,borderRadius:16,backgroundColor:C.mint,borderWidth:1,borderColor:C.line,alignItems:'center',justifyContent:'center'},motionGlyphInverse:{backgroundColor:'rgba(255,255,255,.14)',borderColor:'rgba(255,255,255,.22)'},glyphDot:{position:'absolute',right:6,top:6,width:5,height:5,borderRadius:4,backgroundColor:C.gold},greeting:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginBottom:16},salam:{color:C.green,fontSize:10,fontFamily:'DMSans_600SemiBold',letterSpacing:1.2,marginBottom:4},greetingTitle:{color:C.ink,fontSize:29,fontFamily:'Newsreader_600SemiBold',letterSpacing:-.6},prayerHeader:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginTop:6,marginBottom:16},prayerOverline:{color:C.muted,fontSize:10,fontFamily:'DMSans_600SemiBold',letterSpacing:1.2,marginBottom:5},prayerTitle:{color:C.ink,fontSize:27,fontFamily:'Newsreader_600SemiBold',letterSpacing:-.6},
- aura:{position:'absolute',top:'-30%',left:'-20%',right:'-20%',height:'160%'},auraAlt:{position:'absolute',top:'-20%',left:'10%',right:'-25%',height:'140%',opacity:.8},heroSheen:{position:'absolute',top:'-20%',bottom:'-20%',width:'38%',left:'31%',opacity:.5},hero:{height:285,borderRadius:28,overflow:'hidden',padding:20,...shadow},/* Poster artwork: the <Image> is always nested inside a StyleSheet.absoluteFill
+ aura:{position:'absolute',top:'-30%',left:'-20%',right:'-20%',height:'160%'},auraAlt:{position:'absolute',top:'-20%',left:'10%',right:'-25%',height:'140%',opacity:.8},heroSheen:{position:'absolute',top:'-20%',bottom:'-20%',width:'38%',left:'31%',opacity:.5},hero:{height:285,borderRadius:24,overflow:'hidden',padding:20,...shadow},/* Poster artwork: the <Image> is always nested inside a StyleSheet.absoluteFill
    wrapper (see the home hero, continue-reading card, prayer next-card and Quran
    hero). Two reasons, one per platform: on native, percentage width/height on an
    absolutely positioned image that is a direct child of a plain card resolves
@@ -14581,10 +14839,10 @@ appHeaderBrand:{flexDirection:'row',alignItems:'center',gap:10,flexShrink:1},
    heroBg:{position:'absolute',left:0,right:0,top:0,bottom:0,width:'100%',height:'100%'},locationPill:{flexDirection:'row',alignItems:'center',gap:4,alignSelf:'flex-start',maxWidth:'72%',backgroundColor:'rgba(17,16,27,.62)',paddingHorizontal:12,paddingVertical:8,borderRadius:16},locationText:{color:C.onAccent,fontFamily:'DMSans_600SemiBold',fontSize:11,flexShrink:1},hijri:{color:C.onAccent,fontSize:11,marginTop:12},nextLabel:{color:C.onHero,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.8,marginTop:36},heroTime:{color:C.onAccent,fontSize:42,fontFamily:'DMSans_700Bold',letterSpacing:-1.2,marginTop:2},heroFooter:{position:'absolute',left:20,right:20,bottom:18,flexDirection:'row',alignItems:'center',justifyContent:'space-between'},countPill:{flexDirection:'row',alignItems:'center',gap:4,backgroundColor:'rgba(255,255,255,.16)',paddingHorizontal:12,paddingVertical:8,borderRadius:16,borderWidth:1,borderColor:'rgba(255,255,255,.18)'},countText:{color:C.onAccent,fontSize:10,fontFamily:'DMSans_600SemiBold'},heroCta:{flexDirection:'row',alignItems:'center',gap:8},heroCtaText:{color:C.onAccent,fontSize:10,fontFamily:'DMSans_700Bold'},
  prayerRail:{marginHorizontal:8,marginTop:-1,backgroundColor:C.white,borderBottomLeftRadius:24,borderBottomRightRadius:24,flexDirection:'row',paddingHorizontal:8,paddingVertical:12,borderWidth:1,borderTopWidth:0,borderColor:C.line,...soft},railItem:{flex:1,alignItems:'center',paddingVertical:4,borderRadius:16},railItemActive:{backgroundColor:C.card},railIcon:{width:40,height:40,borderRadius:20,backgroundColor:'rgba(255,255,255,.94)',borderWidth:1,borderColor:C.line,alignItems:'center',justifyContent:'center',marginBottom:8},railIconDone:{backgroundColor:C.yellow,borderColor:C.green},
 adhkarDuaCard:{marginHorizontal:8},
-adhkarCount:{minWidth:38,paddingVertical:4,paddingHorizontal:9,borderRadius:11,backgroundColor:C.mint,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line},
+adhkarCount:{minWidth:38,paddingVertical:4,paddingHorizontal:8,borderRadius:12,backgroundColor:C.mint,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line},
 adhkarCountText:{color:C.muted,fontFamily:'DMSans_600SemiBold',fontSize:11},
 adhkarDots:{flexDirection:'row',justifyContent:'center',alignItems:'center',gap:6,marginTop:12,marginBottom:2},
-adhkarMore:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:4,alignSelf:'center',marginTop:10,paddingVertical:5,paddingHorizontal:12,borderRadius:13,backgroundColor:C.mint,borderWidth:1,borderColor:C.line},
+adhkarMore:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:4,alignSelf:'center',marginTop:10,paddingVertical:4,paddingHorizontal:12,borderRadius:12,backgroundColor:C.mint,borderWidth:1,borderColor:C.line},
 adhkarMoreText:{color:C.green,fontFamily:'DMSans_600SemiBold',fontSize:11},
 adhkarDot:{width:6,height:6,borderRadius:3,backgroundColor:C.line},
 adhkarDotOn:{width:18,backgroundColor:C.green},
@@ -14615,9 +14873,9 @@ homeWeekBar:{width:'100%',maxWidth:18,borderRadius:4,backgroundColor:C.gold},
 homeWeekDay:{color:mix(BRAND.lavender,BRAND.pearl,.42),fontSize:9.5,fontFamily:'DMSans_600SemiBold'},
 homeWeekDayOn:{color:C.onAccentInk},weekStatValue:{color:C.green,fontSize:29,fontFamily:'DMSans_700Bold',marginTop:8},weekBar:{flex:1,height:8,borderRadius:4,backgroundColor:C.mint,overflow:'hidden',marginHorizontal:8},weekBarFill:{height:'100%',borderRadius:4,backgroundColor:C.green},weekScoreBody:{color:C.onAccent,fontSize:10,marginTop:4},readWrap:{height:205},
 readSurface:{borderColor:'transparent'},
-readPad:{padding:20,overflow:'hidden',borderRadius:28},readKicker:{color:C.onAccent,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.5},readArabic:{color:C.onAccent,fontSize:29,marginTop:8},readTitle:{color:C.onAccent,fontSize:20,fontFamily:'DMSans_700Bold'},readMeta:{color:C.onAccent,fontSize:10,marginTop:4},whiteButton:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:8,minHeight:44,alignSelf:'flex-start',backgroundColor:C.white,paddingHorizontal:12,paddingVertical:8,borderRadius:16,marginTop:12},whiteButtonText:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold'},twoCol:{flexDirection:'row',gap:12,marginTop:12},liveBadge:{flexDirection:'row',alignItems:'center',gap:4,alignSelf:'flex-start',backgroundColor:'rgba(75,56,145,.90)',paddingHorizontal:8,paddingVertical:4,borderRadius:8} as any,liveDot:{width:5,height:5,borderRadius:4,backgroundColor:C.gold},liveText:{color:C.onAccent,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:.5},hadithSurface:{padding:16},quote:{position:'absolute',right:18,top:2,color:C.onAccent,fontSize:72,fontFamily:'DMSans_700Bold'},hadithText:{color:C.ink,fontFamily:'DMSans_400Regular',fontSize:14,lineHeight:22,marginTop:16},hadithFoot:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginTop:16,paddingTop:12,borderTopWidth:1,borderColor:C.line},hadithActions:{flexDirection:'row',alignItems:'center',gap:14},metaRow:{flexDirection:'row',alignItems:'center',gap:6,marginTop:2},meta:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:11,lineHeight:16},
- dayStripScroll:{paddingHorizontal:20,marginHorizontal:-20},dayStrip:{flexDirection:'row',gap:4,backgroundColor:C.card,padding:8,borderRadius:24,borderWidth:1,borderColor:C.line,...soft},dayChosen:{color:C.muted,fontSize:11,fontFamily:'DMSans_600SemiBold',textAlign:'center',marginTop:10},dayDot:{width:4,height:4,borderRadius:2,backgroundColor:C.line,marginTop:3},day:{width:47,alignItems:'center',paddingVertical:8,borderRadius:16},dayActive:{backgroundColor:C.accent},dayName:{color:C.muted,fontSize:10,fontFamily:'DMSans_600SemiBold'},dayNum:{color:C.ink,fontSize:14,fontFamily:'DMSans_700Bold',marginTop:4},dayText:{color:C.onAccentInk},nextCard:{height:190,borderRadius:28,padding:20,marginTop:16,overflow:'hidden',...shadow},nextCardBody:{flex:1},nextCardLabel:{color:C.onAccent,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.5,marginTop:20},nextCardName:{color:C.onAccent,fontSize:29,fontFamily:'DMSans_700Bold',marginTop:4},nextCardTime:{color:C.onAccent,fontSize:17,fontFamily:'DMSans_600SemiBold',marginBottom:12},moonOrb:{position:'absolute',right:24,top:43,width:96,height:96,borderRadius:48,backgroundColor:'rgba(255,255,255,.13)',alignItems:'center',justifyContent:'center'},prayerList:{backgroundColor:C.card,borderRadius:24,overflow:'hidden',borderWidth:1,borderColor:C.line,...surface},prayerRow:{flexDirection:'row',alignItems:'center',gap:12,paddingHorizontal:12,minHeight:68,borderBottomWidth:1,borderColor:C.line},prayerRowLive:{backgroundColor:C.card},prayerSymbol:{width:41,height:41,borderRadius:16,backgroundColor:C.mint,borderWidth:1,borderColor:C.line,alignItems:'center',justifyContent:'center'},prayerName:{color:C.ink,fontSize:13,fontFamily:'DMSans_700Bold'},prayerValue:{color:C.ink,fontSize:13,fontFamily:'DMSans_700Bold',marginRight:8},prayerProgress:{flexDirection:'row',alignItems:'center',gap:12,backgroundColor:C.card,borderRadius:20,padding:16,marginTop:12,borderWidth:1,borderColor:C.line,...surface},progressTrack:{width:86,height:7,borderRadius:4,backgroundColor:C.mint,overflow:'hidden'},progressFill:{height:'100%',borderRadius:4,backgroundColor:C.green},progressCount:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:12},prayerSymbolDone:{backgroundColor:C.accent,borderColor:C.accent},sourceCard:{flexDirection:'row',gap:12,alignItems:'center',backgroundColor:C.mint,borderRadius:20,padding:16,marginTop:16},sourceTitle:{color:C.ink,fontSize:13,fontFamily:'DMSans_700Bold'},sourceBody:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:11,marginTop:2},
- search:{height:48,flexDirection:'row',alignItems:'center',gap:8,backgroundColor:C.white,borderRadius:16,paddingHorizontal:16,borderWidth:1,borderColor:C.line,marginBottom:12,...soft},searchInput:{flex:1,color:C.ink,fontSize:12,outlineStyle:'none'} as any,quranHero:{height:225,borderRadius:28,overflow:'hidden',padding:20,...shadow},quranArabic:{color:C.onAccent,fontSize:28,marginTop:16},quranHeroTitle:{color:C.onAccent,fontSize:21,fontFamily:'DMSans_700Bold'},quranHeroMeta:{color:C.onAccent,fontFamily:'DMSans_400Regular',fontSize:11,marginTop:4},continueBar:{backgroundColor:C.card,borderRadius:20,padding:12,flexDirection:'row',alignItems:'center',gap:12,marginBottom:12,borderWidth:1,borderColor:C.line,...surface},quranActionGrid:{flexDirection:'row',flexWrap:'wrap',gap:12},quranPrimaryWrap:{flexGrow:1,flexBasis:'40%',minWidth:280},quranPrimaryAction:{height:142,borderRadius:24,padding:16,flexDirection:'row',alignItems:'center',overflow:'hidden',...soft},quranPrimaryTitle:{color:C.onAccent,fontFamily:'Newsreader_600SemiBold',fontSize:24,marginTop:8},quranPrimaryBody:{color:C.onAccent,fontFamily:'DMSans_400Regular',fontSize:10,lineHeight:15,marginTop:4},quranNavWrap:{flexGrow:1,flexBasis:'14%',minWidth:98},quranNavCard:{height:142,backgroundColor:C.card,borderRadius:20,padding:12,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,...surface},quranNavTitle:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:11,marginTop:4},quranNavCaption:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:10,lineHeight:14,marginTop:2,textAlign:'center'},quranStudyCard:{height:190,backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},quranStudyTop:{flexDirection:'row',alignItems:'flex-start',justifyContent:'space-between'},studyNumber:{width:34,height:34,borderRadius:17,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},quranStudyTitle:{color:C.ink,fontFamily:'Newsreader_600SemiBold',fontSize:20,marginTop:8},quranStudyCaption:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:11,lineHeight:16,marginTop:4},quranPreferenceRow:{flexDirection:'row',flexWrap:'wrap',gap:12},qTileGrid:{flexDirection:'row',flexWrap:'wrap',gap:8},qTile:{alignItems:'center',justifyContent:'center',backgroundColor:C.card,borderRadius:16,borderWidth:1,borderColor:C.line,paddingVertical:12,paddingHorizontal:4,...soft},qTileLabel:{marginTop:6,fontSize:11,fontFamily:'DMSans_600SemiBold',color:C.ink,textAlign:'center',lineHeight:14},
+readPad:{padding:20,overflow:'hidden',borderRadius:24},readKicker:{color:C.onAccent,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.5},readArabic:{color:C.onAccent,fontSize:29,marginTop:8},readTitle:{color:C.onAccent,fontSize:20,fontFamily:'DMSans_700Bold'},readMeta:{color:C.onAccent,fontSize:10,marginTop:4},whiteButton:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:8,minHeight:44,alignSelf:'flex-start',backgroundColor:C.white,paddingHorizontal:12,paddingVertical:8,borderRadius:16,marginTop:12},whiteButtonText:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold'},twoCol:{flexDirection:'row',gap:12,marginTop:12},liveBadge:{flexDirection:'row',alignItems:'center',gap:4,alignSelf:'flex-start',backgroundColor:'rgba(75,56,145,.90)',paddingHorizontal:8,paddingVertical:4,borderRadius:8} as any,liveDot:{width:5,height:5,borderRadius:4,backgroundColor:C.gold},liveText:{color:C.onAccent,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:.5},hadithSurface:{padding:16},quote:{position:'absolute',right:18,top:2,color:C.onAccent,fontSize:72,fontFamily:'DMSans_700Bold'},hadithText:{color:C.ink,fontFamily:'DMSans_400Regular',fontSize:14,lineHeight:22,marginTop:16},hadithFoot:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginTop:16,paddingTop:12,borderTopWidth:1,borderColor:C.line},hadithActions:{flexDirection:'row',alignItems:'center',gap:14},metaRow:{flexDirection:'row',alignItems:'center',gap:6,marginTop:2},meta:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:11,lineHeight:16},
+ dayStripScroll:{paddingHorizontal:20,marginHorizontal:-20},dayStrip:{flexDirection:'row',gap:4,backgroundColor:C.card,padding:8,borderRadius:24,borderWidth:1,borderColor:C.line,...soft},dayChosen:{color:C.muted,fontSize:11,fontFamily:'DMSans_600SemiBold',textAlign:'center',marginTop:10},dayDot:{width:4,height:4,borderRadius:2,backgroundColor:C.line,marginTop:3},day:{width:47,alignItems:'center',paddingVertical:8,borderRadius:16},dayActive:{backgroundColor:C.accent},dayName:{color:C.muted,fontSize:10,fontFamily:'DMSans_600SemiBold'},dayNum:{color:C.ink,fontSize:14,fontFamily:'DMSans_700Bold',marginTop:4},dayText:{color:C.onAccentInk},nextCard:{height:190,borderRadius:24,padding:20,marginTop:16,overflow:'hidden',...shadow},nextCardBody:{flex:1},nextCardLabel:{color:C.onAccent,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.5,marginTop:20},nextCardName:{color:C.onAccent,fontSize:29,fontFamily:'DMSans_700Bold',marginTop:4},nextCardTime:{color:C.onAccent,fontSize:17,fontFamily:'DMSans_600SemiBold',marginBottom:12},moonOrb:{position:'absolute',right:24,top:43,width:96,height:96,borderRadius:48,backgroundColor:'rgba(255,255,255,.13)',alignItems:'center',justifyContent:'center'},prayerList:{backgroundColor:C.card,borderRadius:24,overflow:'hidden',borderWidth:1,borderColor:C.line,...surface},prayerRow:{flexDirection:'row',alignItems:'center',gap:12,paddingHorizontal:12,minHeight:68,borderBottomWidth:1,borderColor:C.line},prayerRowLive:{backgroundColor:C.card},prayerSymbol:{width:41,height:41,borderRadius:16,backgroundColor:C.mint,borderWidth:1,borderColor:C.line,alignItems:'center',justifyContent:'center'},prayerName:{color:C.ink,fontSize:13,fontFamily:'DMSans_700Bold'},prayerValue:{color:C.ink,fontSize:13,fontFamily:'DMSans_700Bold',marginRight:8},prayerProgress:{flexDirection:'row',alignItems:'center',gap:12,backgroundColor:C.card,borderRadius:20,padding:16,marginTop:12,borderWidth:1,borderColor:C.line,...surface},progressTrack:{width:86,height:7,borderRadius:4,backgroundColor:C.mint,overflow:'hidden'},progressFill:{height:'100%',borderRadius:4,backgroundColor:C.green},progressCount:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:12},prayerSymbolDone:{backgroundColor:C.accent,borderColor:C.accent},sourceCard:{flexDirection:'row',gap:12,alignItems:'center',backgroundColor:C.mint,borderRadius:20,padding:16,marginTop:16},sourceTitle:{color:C.ink,fontSize:13,fontFamily:'DMSans_700Bold'},sourceBody:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:11,marginTop:2},
+ search:{height:48,flexDirection:'row',alignItems:'center',gap:8,backgroundColor:C.white,borderRadius:16,paddingHorizontal:16,borderWidth:1,borderColor:C.line,marginBottom:12,...soft},searchInput:{flex:1,color:C.ink,fontSize:12,outlineStyle:'none'} as any,quranHero:{height:225,borderRadius:24,overflow:'hidden',padding:20,...shadow},quranArabic:{color:C.onAccent,fontSize:28,marginTop:16},quranHeroTitle:{color:C.onAccent,fontSize:21,fontFamily:'DMSans_700Bold'},quranHeroMeta:{color:C.onAccent,fontFamily:'DMSans_400Regular',fontSize:11,marginTop:4},continueBar:{backgroundColor:C.card,borderRadius:20,padding:12,flexDirection:'row',alignItems:'center',gap:12,marginBottom:12,borderWidth:1,borderColor:C.line,...surface},quranActionGrid:{flexDirection:'row',flexWrap:'wrap',gap:12},quranPrimaryWrap:{flexGrow:1,flexBasis:'40%',minWidth:280},quranPrimaryAction:{height:142,borderRadius:24,padding:16,flexDirection:'row',alignItems:'center',overflow:'hidden',...soft},quranPrimaryTitle:{color:C.onAccent,fontFamily:'Newsreader_600SemiBold',fontSize:24,marginTop:8},quranPrimaryBody:{color:C.onAccent,fontFamily:'DMSans_400Regular',fontSize:10,lineHeight:15,marginTop:4},quranNavWrap:{flexGrow:1,flexBasis:'14%',minWidth:98},quranNavCard:{height:142,backgroundColor:C.card,borderRadius:20,padding:12,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,...surface},quranNavTitle:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:11,marginTop:4},quranNavCaption:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:10,lineHeight:14,marginTop:2,textAlign:'center'},quranStudyCard:{height:190,backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},quranStudyTop:{flexDirection:'row',alignItems:'flex-start',justifyContent:'space-between'},studyNumber:{width:34,height:34,borderRadius:17,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},quranStudyTitle:{color:C.ink,fontFamily:'Newsreader_600SemiBold',fontSize:20,marginTop:8},quranStudyCaption:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:11,lineHeight:16,marginTop:4},quranPreferenceRow:{flexDirection:'row',flexWrap:'wrap',gap:12},qTileGrid:{flexDirection:'row',flexWrap:'wrap',gap:8},qTile:{alignItems:'center',justifyContent:'center',backgroundColor:C.card,borderRadius:16,borderWidth:1,borderColor:C.line,paddingVertical:12,paddingHorizontal:4,...soft},qTileLabel:{marginTop:6,fontSize:11,fontFamily:'DMSans_600SemiBold',color:C.ink,textAlign:'center',lineHeight:14},
   /* The tile centres its children, but MotionPress's inner view does not: it
      is a plain column, so it grows to the width of its widest child and lets
      the icon sit at its left edge. A long title such as "Transliteration"
@@ -14626,14 +14884,14 @@ readPad:{padding:20,overflow:'hidden',borderRadius:28},readKicker:{color:C.onAcc
      centring inside it keeps every tile the same width, the icon in the
      middle of it, and gives the label a width to wrap within. */
   qTileInner:{alignSelf:'stretch',alignItems:'center'},qStatRow:{flexDirection:'row',gap:8},qStat:{flex:1,alignItems:'center',backgroundColor:C.card,borderRadius:16,borderWidth:1,borderColor:C.line,paddingVertical:12,paddingHorizontal:4,...soft},qStatIcon:{width:32,height:32,borderRadius:16,backgroundColor:C.mint,borderWidth:1,borderColor:C.line,alignItems:'center',justifyContent:'center',marginBottom:7,alignSelf:'center'},qStatValue:{fontSize:16,fontFamily:'DMSans_700Bold',color:C.ink,marginTop:1,textAlign:'center'},qStatLabel:{marginTop:2,fontSize:10,color:C.muted,fontFamily:'DMSans_600SemiBold',textAlign:'center',alignSelf:'stretch'},quranPreferenceCard:{flex:1,minWidth:260,minHeight:76,backgroundColor:C.card,borderRadius:20,padding:12,flexDirection:'row',alignItems:'center',gap:12,borderWidth:1,borderColor:C.line,...surface},quranPersonalGrid:{flexDirection:'row',flexWrap:'wrap',gap:8},quranPersonalWrap:{flexGrow:1,flexBasis:'18%',minWidth:130},quranPersonalCard:{minHeight:132,backgroundColor:C.card,borderRadius:20,padding:12,borderWidth:1,borderColor:C.line,...surface},quranPersonalHead:{flexDirection:'row',alignItems:'flex-start',justifyContent:'space-between'},quranPersonalValue:{color:C.green,fontFamily:'Newsreader_600SemiBold',fontSize:22},quranPersonalTitle:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:11,marginTop:8},quranPersonalCaption:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:10,marginTop:4},recentChip:{minWidth:128,backgroundColor:C.white,borderRadius:16,padding:12,borderWidth:1,borderColor:C.line},surahList:{gap:CARD_GAP},surahMore:{width:'100%',alignItems:'center',justifyContent:'center',paddingVertical:16,borderRadius:RADIUS.lg,borderWidth:1,borderColor:C.line,borderStyle:'dashed'},surahMoreText:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:13},surahChips:{flexDirection:'row',flexWrap:'wrap',gap:5,marginTop:7},
-surahChip:{paddingVertical:3,paddingHorizontal:8,borderRadius:9,backgroundColor:C.mint,borderWidth:1,borderColor:C.line},
+surahChip:{paddingVertical:4,paddingHorizontal:8,borderRadius:8,backgroundColor:C.mint,borderWidth:1,borderColor:C.line},
 surahChipText:{color:C.muted,fontSize:10,fontFamily:'DMSans_600SemiBold'},
 surahChipMakki:{backgroundColor:C.mint,borderColor:C.line},
 surahChipMadani:{backgroundColor:mix(BRAND.pearl,BRAND.radiantGold,.14),borderColor:mix(BRAND.radiantGold,BRAND.pearl,.5)},
 surahChipTextMakki:{color:C.green},
 surahChipTextMadani:{color:BRAND.bronze},
-surahArWrap:{alignItems:'flex-end',justifyContent:'center',paddingStart:4},surahRight:{alignItems:'flex-end',justifyContent:'center',gap:5},surahRing:{width:17,height:17,borderRadius:9,backgroundColor:C.gold,alignItems:'center',justifyContent:'center',marginBottom:3},surahRingHalf:{backgroundColor:'transparent',borderWidth:1.6,borderColor:C.gold},surahRingDot:{width:6,height:6,borderRadius:3,backgroundColor:C.gold},
-surahCard:{width:'100%',minHeight:64,backgroundColor:C.card,borderRadius:16,borderWidth:1,borderColor:C.line,paddingHorizontal:13,paddingVertical:9,...surface},surahRowInner:{flex:1,flexDirection:'row',alignItems:'center',gap:11},surahPlace:{color:C.muted,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.2,textTransform:'uppercase',marginTop:SPACE.xs},surahNum:{width:36,height:36,borderRadius:12,backgroundColor:C.mint,borderWidth:1,borderColor:C.line,alignItems:'center',justifyContent:'center'},
+surahArWrap:{alignItems:'flex-end',justifyContent:'center',paddingStart:4},surahRight:{alignItems:'flex-end',justifyContent:'center',gap:5},surahRing:{width:17,height:17,borderRadius:8,backgroundColor:C.gold,alignItems:'center',justifyContent:'center',marginBottom:3},surahRingHalf:{backgroundColor:'transparent',borderWidth:1.6,borderColor:C.gold},surahRingDot:{width:6,height:6,borderRadius:3,backgroundColor:C.gold},
+surahCard:{width:'100%',minHeight:64,backgroundColor:C.card,borderRadius:16,borderWidth:1,borderColor:C.line,paddingHorizontal:12,paddingVertical:8,...surface},surahRowInner:{flex:1,flexDirection:'row',alignItems:'center',gap:11},surahPlace:{color:C.muted,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.2,textTransform:'uppercase',marginTop:SPACE.xs},surahNum:{width:36,height:36,borderRadius:12,backgroundColor:C.mint,borderWidth:1,borderColor:C.line,alignItems:'center',justifyContent:'center'},
   /* The surah number as a small filled medallion. The fill and the number are
      a matched pair - on a gold ground the numeral has to be dark, because
      white on gold is 2.4:1 and the number is small text. The Khatam screen
@@ -14654,17 +14912,17 @@ toolBar:{gap:12},surahStep:{width:32,height:32,alignItems:'center',justifyConten
      read back as nothing at all - the picture comes out empty. Being off the
      top of the screen is what hides it, so the opacity has to stay at 1 and
      the position is what keeps it unseen. */
-  offscreenCard:{position:'absolute',top:-100000,left:0,opacity:1},readerName:{flex:1,color:C.ink,fontSize:16,fontFamily:'DMSans_700Bold'},readerProgress:{height:4,backgroundColor:C.mint,overflow:'hidden'},readerScroll:{width:'100%',maxWidth:860,alignSelf:'center',padding:16,paddingBottom:BOTTOM_RESERVE},surahHead:{borderRadius:28,padding:24,alignItems:'center',...shadow},surahHeadAr:{color:C.onAccent,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:38,marginTop:16,writingDirection:'rtl'},surahHeadEn:{color:C.onAccent,fontSize:10,marginTop:4},bismillah:{color:C.onAccent,fontFamily:'KFGQPCUthmanicHafs',fontSize:22,marginTop:24,writingDirection:'rtl'},ayahContinuous:{marginTop:4,borderRadius:4,borderBottomWidth:1,shadowOpacity:0,elevation:0},ayahSelected:{borderColor:C.gold,borderWidth:2,backgroundColor:C.card},ayahActions:{flexDirection:'row',alignItems:'center',gap:6,marginLeft:-4},ayahFooter:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginTop:12},ayah:{backgroundColor:C.white,borderRadius:24,padding:20,marginTop:12,borderWidth:1,borderColor:C.line,...soft},ayahTop:{flexDirection:'row',alignItems:'center',justifyContent:'space-between'},ayahNo:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold',backgroundColor:C.mint,paddingHorizontal:8,paddingVertical:8,borderRadius:12},ayahAr:{color:C.ink,textAlign:'right',fontFamily:'KFGQPCUthmanicHafs',fontSize:30,lineHeight:58,marginTop:16,writingDirection:'rtl'},ayahTranslation:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:14,lineHeight:20,marginTop:16,paddingTop:16,borderTopWidth:1,borderColor:C.line},ayahMeta:{color:C.muted,fontSize:10,marginTop:12},
- translationRow:{minHeight:67,flexDirection:'row',alignItems:'center',gap:12,paddingHorizontal:12,borderBottomWidth:1,borderColor:C.line},languageBadge:{width:52,height:34,borderRadius:12,backgroundColor:C.mint,alignItems:'center',justifyContent:'center',flexDirection:'row',gap:4},languageFlag:{fontSize:12},languageBadgeText:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10},historyHead:{flexDirection:'row',alignItems:'center',justifyContent:'space-between'},historyWrap:{flexDirection:'row',flexWrap:'wrap',gap:8,marginBottom:12},historyChip:{backgroundColor:C.mint,borderRadius:16,paddingHorizontal:12,paddingVertical:8},searchResult:{backgroundColor:C.white,borderRadius:20,padding:16,marginBottom:8,borderWidth:1,borderColor:C.line},noteText:{color:C.ink,fontFamily:'Newsreader_600SemiBold',fontSize:17,lineHeight:24,marginVertical:8},noteInput:{minHeight:180,backgroundColor:C.white,borderRadius:20,padding:16,textAlignVertical:'top',fontFamily:'DMSans_400Regular',fontSize:14,color:C.ink,borderWidth:1,borderColor:C.line,outlineStyle:'none'} as any,stepper:{backgroundColor:C.white,borderRadius:20,padding:12,flexDirection:'row',alignItems:'center',justifyContent:'space-between',borderWidth:1,borderColor:C.line},stepButton:{width:44,height:44,borderRadius:16,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},fontPreview:{backgroundColor:C.mint,borderRadius:20,padding:16,marginTop:12,borderWidth:1,borderColor:C.line},fontPreviewText:{color:C.ink,textAlign:'right',lineHeight:52,includeFontPadding:false},previewArabic:{color:C.ink,fontFamily:'KFGQPCUthmanicHafs',writingDirection:'rtl'},referenceNavigator:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:12,marginBottom:12},referenceInput:{width:100,textAlign:'center',backgroundColor:C.white,borderWidth:1,borderColor:C.line,borderRadius:16,padding:12,color:C.ink,fontFamily:'DMSans_700Bold',outlineStyle:'none'} as any,comparisonHelp:{color:C.muted,fontSize:10,lineHeight:15,marginTop:8},editionPicker:{gap:8,marginTop:12},editionChip:{minHeight:58,backgroundColor:C.white,borderRadius:16,paddingHorizontal:12,flexDirection:'row',alignItems:'center',gap:12,borderWidth:1,borderColor:C.line},editionChipActive:{borderColor:C.green,backgroundColor:C.mint},editionFlag:{fontSize:20},arabicReference:{backgroundColor:C.yellow,borderRadius:24,padding:20,marginTop:16,borderWidth:1,borderColor:C.gold},comparisonColumns:{gap:12,paddingVertical:12,paddingRight:20},comparisonText:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:13,lineHeight:20,marginTop:12},mushafPage:{width:'100%',maxWidth:900,alignSelf:'center',paddingHorizontal:18,paddingTop:22,paddingBottom:BOTTOM_RESERVE},mushafNav:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:12},mushafNavFoot:{marginTop:18},pageJump:{flex:1,minWidth:0,alignItems:'center'},pageInput:{minWidth:74,textAlign:'center',color:C.ink,fontFamily:'Newsreader_600SemiBold',fontSize:28,borderBottomWidth:1,borderColor:C.line,paddingVertical:4,outlineStyle:'none'} as any,pageProgress:{height:5,borderRadius:4,backgroundColor:C.mint,overflow:'hidden',marginVertical:16},mushafSheet:{backgroundColor:C.card,borderRadius:24,padding:20,borderWidth:1,borderColor:C.gold,...soft},
+  offscreenCard:{position:'absolute',top:-100000,left:0,opacity:1},readerName:{flex:1,color:C.ink,fontSize:16,fontFamily:'DMSans_700Bold'},readerProgress:{height:4,backgroundColor:C.mint,overflow:'hidden'},readerScroll:{width:'100%',maxWidth:860,alignSelf:'center',padding:16,paddingBottom:BOTTOM_RESERVE},surahHead:{borderRadius:24,padding:24,alignItems:'center',...shadow},surahHeadAr:{color:C.onAccent,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:38,marginTop:16,writingDirection:'rtl'},surahHeadEn:{color:C.onAccent,fontSize:10,marginTop:4},bismillah:{color:C.onAccent,fontFamily:'KFGQPCUthmanicHafs',fontSize:22,marginTop:24,writingDirection:'rtl'},ayahContinuous:{marginTop:4,borderRadius:4,borderBottomWidth:1,shadowOpacity:0,elevation:0},ayahSelected:{borderColor:C.gold,borderWidth:2,backgroundColor:C.card},ayahActions:{flexDirection:'row',alignItems:'center',gap:6,marginLeft:-4},ayahFooter:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginTop:12},ayah:{backgroundColor:C.white,borderRadius:24,padding:20,marginTop:12,borderWidth:1,borderColor:C.line,...soft},ayahTop:{flexDirection:'row',alignItems:'center',justifyContent:'space-between'},ayahNo:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold',backgroundColor:C.mint,paddingHorizontal:8,paddingVertical:8,borderRadius:12},ayahAr:{color:C.ink,textAlign:'right',fontFamily:'KFGQPCUthmanicHafs',fontSize:30,lineHeight:58,marginTop:16,writingDirection:'rtl'},ayahTranslation:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:14,lineHeight:20,marginTop:16,paddingTop:16,borderTopWidth:1,borderColor:C.line},ayahMeta:{color:C.muted,fontSize:10,marginTop:12},
+ translationRow:{minHeight:67,flexDirection:'row',alignItems:'center',gap:12,paddingHorizontal:12,borderBottomWidth:1,borderColor:C.line},languageBadge:{width:52,height:34,borderRadius:12,backgroundColor:C.mint,alignItems:'center',justifyContent:'center',flexDirection:'row',gap:4},languageFlag:{fontSize:12},languageBadgeText:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10},historyHead:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginBottom:10},historyWrap:{flexDirection:'row',flexWrap:'wrap',gap:8},historyChip:{backgroundColor:C.mint,borderRadius:16,paddingHorizontal:12,paddingVertical:8,maxWidth:220},historyChipText:{color:C.ink,fontFamily:'DMSans_400Regular',fontSize:13,lineHeight:18},historyBlock:{marginBottom:16},searchResult:{backgroundColor:C.white,borderRadius:20,padding:16,marginBottom:8,borderWidth:1,borderColor:C.line},noteText:{color:C.ink,fontFamily:'Newsreader_600SemiBold',fontSize:17,lineHeight:24,marginVertical:8},noteInput:{minHeight:180,backgroundColor:C.white,borderRadius:20,padding:16,textAlignVertical:'top',fontFamily:'DMSans_400Regular',fontSize:14,color:C.ink,borderWidth:1,borderColor:C.line,outlineStyle:'none'} as any,stepper:{backgroundColor:C.white,borderRadius:20,padding:12,flexDirection:'row',alignItems:'center',justifyContent:'space-between',borderWidth:1,borderColor:C.line},stepButton:{width:44,height:44,borderRadius:16,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},fontPreview:{backgroundColor:C.mint,borderRadius:20,padding:16,marginTop:12,borderWidth:1,borderColor:C.line},fontPreviewText:{color:C.ink,textAlign:'right',lineHeight:52,includeFontPadding:false},previewArabic:{color:C.ink,fontFamily:'KFGQPCUthmanicHafs',writingDirection:'rtl'},referenceNavigator:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:12,marginBottom:12},referenceInput:{width:100,textAlign:'center',backgroundColor:C.white,borderWidth:1,borderColor:C.line,borderRadius:16,padding:12,color:C.ink,fontFamily:'DMSans_700Bold',outlineStyle:'none'} as any,comparisonHelp:{color:C.muted,fontSize:10,lineHeight:15,marginTop:8},editionPicker:{gap:8,marginTop:12},editionChip:{minHeight:58,backgroundColor:C.white,borderRadius:16,paddingHorizontal:12,flexDirection:'row',alignItems:'center',gap:12,borderWidth:1,borderColor:C.line},editionChipActive:{borderColor:C.green,backgroundColor:C.mint},editionFlag:{fontSize:20},arabicReference:{backgroundColor:C.yellow,borderRadius:24,padding:20,marginTop:16,borderWidth:1,borderColor:C.gold},comparisonColumns:{gap:12,paddingVertical:12,paddingRight:20},comparisonText:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:13,lineHeight:20,marginTop:12},mushafPage:{width:'100%',maxWidth:900,alignSelf:'center',paddingHorizontal:20,paddingTop:22,paddingBottom:BOTTOM_RESERVE},mushafNav:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:12},mushafNavFoot:{marginTop:18},pageJump:{flex:1,minWidth:0,alignItems:'center'},pageInput:{minWidth:74,textAlign:'center',color:C.ink,fontFamily:'Newsreader_600SemiBold',fontSize:28,borderBottomWidth:1,borderColor:C.line,paddingVertical:4,outlineStyle:'none'} as any,pageProgress:{height:5,borderRadius:4,backgroundColor:C.mint,overflow:'hidden',marginVertical:16},mushafSheet:{backgroundColor:C.card,borderRadius:24,padding:20,borderWidth:1,borderColor:C.gold,...soft},
   /* long-press verse menu: sits entirely above the verse it belongs to, so it
      never covers the line you are reading */
   mushafMenu:{position:'absolute',left:0,right:0,bottom:'100%',zIndex:20,alignItems:'center',paddingBottom:6},
-  mushafMenuBar:{backgroundColor:C.card,borderRadius:18,paddingHorizontal:5,paddingVertical:4,borderWidth:1,borderColor:C.gold,...shadow},
-  mushafMenuItem:{flexDirection:'row',alignItems:'center',gap:5,paddingHorizontal:10,paddingVertical:7,borderRadius:14},
+  mushafMenuBar:{backgroundColor:C.card,borderRadius:16,paddingHorizontal:4,paddingVertical:4,borderWidth:1,borderColor:C.gold,...shadow},
+  mushafMenuItem:{flexDirection:'row',alignItems:'center',gap:5,paddingHorizontal:12,paddingVertical:8,borderRadius:16},
   mushafMenuItemOn:{backgroundColor:mix(BRAND.pearl,BRAND.radiantGold,.14)},
   mushafMenuLabel:{color:C.ink,fontSize:11,fontFamily:'DMSans_600SemiBold'},
   mushafVerseMenuOverlay:{position:'absolute',left:0,right:0,bottom:0,alignItems:'center',paddingBottom:6},
-  mushafVerseOpen:{backgroundColor:mix(BRAND.pearl,BRAND.radiantGold,.14),borderRadius:10},
+  mushafVerseOpen:{backgroundColor:mix(BRAND.pearl,BRAND.radiantGold,.14),borderRadius:12},
   /* the share sheet: a scrim that dismisses, and a card that rises */
   /* The overlay is the last child of the navigation container, so it is above
      the floating tab bar and the mini player by order of drawing alone. The
@@ -14672,7 +14930,7 @@ toolBar:{gap:12},surahStep:{width:32,height:32,alignItems:'center',justifyConten
   overlayLayer:{position:'absolute',left:0,right:0,top:0,bottom:0,zIndex:9000,elevation:9000},
   sheetScrim:{position:'absolute',left:0,right:0,top:0,bottom:0,backgroundColor:'rgba(20,18,32,.42)'},
   exitPrompt:{position:'absolute',left:0,right:0,bottom:0,alignItems:'center',paddingBottom:120,zIndex:9500,elevation:9500},
-  exitPill:{backgroundColor:'rgba(28,25,20,0.92)',paddingHorizontal:18,paddingVertical:11,borderRadius:999,maxWidth:'86%'},
+  exitPill:{backgroundColor:'rgba(28,25,20,0.92)',paddingHorizontal:20,paddingVertical:12,borderRadius:999,maxWidth:'86%'},
   exitText:{color:C.onAccent,fontSize:13.5,fontWeight:'600',textAlign:'center'},
   /* Sheets are drawn by the overlay host, which sits outside every SafeAreaView
      in the app, so the sheet has to clear the home indicator itself. */
@@ -14680,12 +14938,12 @@ toolBar:{gap:12},surahStep:{width:32,height:32,alignItems:'center',justifyConten
   sheetGrip:{width:44,height:4,borderRadius:2,backgroundColor:C.line,alignSelf:'center',marginBottom:14},
   sheetTitle:{color:C.ink,fontFamily:'Newsreader_600SemiBold',fontSize:19,textAlign:'center'},
   sheetSub:{color:C.muted,fontSize:11,textAlign:'center',marginTop:3,marginBottom:16},
-  sheetOption:{flexDirection:'row',alignItems:'center',gap:13,backgroundColor:C.bg,borderRadius:18,paddingHorizontal:14,paddingVertical:13,marginBottom:9,borderWidth:1,borderColor:C.line},
-  sheetOptionIcon:{width:38,height:38,borderRadius:14,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},
+  sheetOption:{flexDirection:'row',alignItems:'center',gap:13,backgroundColor:C.bg,borderRadius:16,paddingHorizontal:16,paddingVertical:12,marginBottom:9,borderWidth:1,borderColor:C.line},
+  sheetOptionIcon:{width:38,height:38,borderRadius:16,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},
   sheetOptionLabel:{color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:14},
   sheetOptionDetail:{color:C.muted,fontSize:11,marginTop:2},
   langSheet:{maxHeight:'78%'},
-  langRow:{flexDirection:'row',alignItems:'center',gap:12,paddingHorizontal:12,paddingVertical:11,borderRadius:16,borderWidth:1,borderColor:C.line,backgroundColor:C.bg,marginBottom:7},
+  langRow:{flexDirection:'row',alignItems:'center',gap:12,paddingHorizontal:12,paddingVertical:12,borderRadius:16,borderWidth:1,borderColor:C.line,backgroundColor:C.bg,marginBottom:7},
   langRowOn:{backgroundColor:C.mint,borderColor:C.green},
   langFlag:{fontSize:19,width:26,textAlign:'center'},
   /* The two-line block beside the flag: the language's own name on top,
@@ -14700,46 +14958,46 @@ toolBar:{gap:12},surahStep:{width:32,height:32,alignItems:'center',justifyConten
   surahPickAr:{color:C.green,fontSize:14,fontFamily:'KFGQPCUthmanicHafs',marginTop:1,writingDirection:'rtl',textAlign:'right'},
   surahPickHint:{color:C.green,fontSize:10,fontFamily:'DMSans_600SemiBold',marginTop:2},
   trSurahBar:{flexDirection:'row',alignItems:'center',gap:8,marginBottom:4},
-  trSurahSearch:{width:44,height:44,borderRadius:14,backgroundColor:C.mint,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,flexShrink:0},
+  trSurahSearch:{width:44,height:44,borderRadius:16,backgroundColor:C.mint,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,flexShrink:0},
   trStrip:{gap:8,paddingRight:16,alignItems:'center'},
-  trChip:{flexDirection:'row',alignItems:'center',gap:7,paddingHorizontal:13,paddingVertical:10,borderRadius:14,backgroundColor:C.card,borderWidth:1,borderColor:C.line},
+  trChip:{flexDirection:'row',alignItems:'center',gap:7,paddingHorizontal:12,paddingVertical:12,borderRadius:16,backgroundColor:C.card,borderWidth:1,borderColor:C.line},
   trChipOn:{backgroundColor:C.green,borderColor:C.green},
   trChipNum:{color:C.muted,fontSize:11,fontFamily:'DMSans_700Bold'},
   trChipNumOn:{color:C.onAccent},
   trChipName:{color:C.ink,fontSize:13,fontFamily:'DMSans_600SemiBold',maxWidth:120},
   trChipNameOn:{color:C.onAccent},
   ramGuideGrid:{flexDirection:'row',flexWrap:'wrap',gap:12},
-  ramGuideCard:{flexGrow:1,flexBasis:'44%',minWidth:140,backgroundColor:C.card,borderRadius:20,padding:14,borderWidth:1,borderColor:C.line,...surface},
+  ramGuideCard:{flexGrow:1,flexBasis:'44%',minWidth:140,backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},
   ramGuideIcon:{width:56,height:56,borderRadius:16,backgroundColor:C.mint,alignItems:'center',justifyContent:'center',marginBottom:10},
   ramGuideTitle:{color:C.ink,fontSize:14,fontFamily:'DMSans_700Bold',lineHeight:18},
   ramGuideBody:{color:C.muted,fontSize:11,lineHeight:15,marginTop:5,fontFamily:'DMSans_400Regular'},
   langIndex:{color:C.muted,fontSize:10,fontFamily:'DMSans_400Regular',width:16,textAlign:'center'},
-  tsLangButton:{flexDirection:'row',alignItems:'center',gap:12,backgroundColor:C.mint,borderRadius:18,padding:14,borderWidth:1,borderColor:C.line,marginBottom:14},
+  tsLangButton:{flexDirection:'row',alignItems:'center',gap:12,backgroundColor:C.mint,borderRadius:16,padding:16,borderWidth:1,borderColor:C.line,marginBottom:14},
   sheetCancel:{alignItems:'center',paddingVertical:12,marginTop:4},
   sheetBtnBusy:{opacity:.55},
   sheetCancelText:{color:C.muted,fontFamily:'DMSans_600SemiBold',fontSize:13},
   sheetKicker:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10,letterSpacing:1.4,textAlign:'center',marginBottom:14},
   reflectArabic:{color:C.ink,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:25,lineHeight:44,textAlign:'right',direction:'rtl',writingDirection:'rtl'} as any,
   reflectProse:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:14,lineHeight:22,marginTop:14},
-  reflectSource:{backgroundColor:C.bg,borderRadius:18,padding:14,marginTop:18,borderWidth:1,borderColor:C.line},
+  reflectSource:{backgroundColor:C.bg,borderRadius:16,padding:16,marginTop:18,borderWidth:1,borderColor:C.line},
   reflectSourceHead:{color:C.muted,fontFamily:'DMSans_700Bold',fontSize:10,letterSpacing:1.2,marginBottom:10},
   reflectScroll:{maxHeight:260},
-  reportQuote:{backgroundColor:C.bg,borderRadius:14,padding:12,marginTop:12,borderWidth:1,borderColor:C.line},
+  reportQuote:{backgroundColor:C.bg,borderRadius:16,padding:12,marginTop:12,borderWidth:1,borderColor:C.line},
   reportQuoteAr:{color:C.ink,fontFamily:'IBMPlexSansArabic_400Regular',fontSize:16,lineHeight:28,textAlign:'right',direction:'rtl',writingDirection:'rtl'} as any,
   reportQuoteEn:{color:C.muted,fontSize:12,lineHeight:18,marginTop:6},
   reportOptions:{gap:8,marginBottom:4},
-  reportOption:{flexDirection:'row',alignItems:'center',gap:10,paddingVertical:10,paddingHorizontal:12,borderRadius:12,borderWidth:1,borderColor:C.line,backgroundColor:C.card},
+  reportOption:{flexDirection:'row',alignItems:'center',gap:10,paddingVertical:12,paddingHorizontal:12,borderRadius:12,borderWidth:1,borderColor:C.line,backgroundColor:C.card},
   reportOptionOn:{borderColor:C.green,backgroundColor:C.mint},
   reportDot:{width:16,height:16,borderRadius:8,borderWidth:1.6,borderColor:C.line,alignItems:'center',justifyContent:'center'},
   reportDotOn:{borderColor:C.green},
   reportOptionText:{color:C.ink,fontSize:13,flex:1},
-  reportInput:{backgroundColor:C.bg,borderRadius:14,borderWidth:1,borderColor:C.line,padding:12,minHeight:76,color:C.ink,fontSize:13,textAlignVertical:'top',marginVertical:12},
+  reportInput:{backgroundColor:C.bg,borderRadius:16,borderWidth:1,borderColor:C.line,padding:12,minHeight:76,color:C.ink,fontSize:13,textAlignVertical:'top',marginVertical:12},
   reportNote:{color:C.muted,fontSize:11,lineHeight:16,marginBottom:10},reflectRow:{flexDirection:'row',gap:10,marginBottom:8,alignItems:'flex-start'},
   reflectLabel:{color:C.muted,fontSize:11,fontFamily:'DMSans_600SemiBold',width:104,flexShrink:0},
   reflectValue:{color:C.ink,fontSize:12,lineHeight:18,flex:1},
   noteSheetHead:{flexDirection:'row',alignItems:'center',gap:12,marginBottom:14},
   noteSheetArabic:{color:C.ink,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:17,lineHeight:30,textAlign:'right',marginBottom:12,direction:'rtl',writingDirection:'rtl'} as any,
-  noteSheetInput:{minHeight:104,maxHeight:200,backgroundColor:C.bg,borderRadius:18,padding:14,textAlignVertical:'top',fontFamily:'DMSans_400Regular',fontSize:14,color:C.ink,borderWidth:1,borderColor:C.line,outlineStyle:'none'} as any,
+  noteSheetInput:{minHeight:104,maxHeight:200,backgroundColor:C.bg,borderRadius:16,padding:16,textAlignVertical:'top',fontFamily:'DMSans_400Regular',fontSize:14,color:C.ink,borderWidth:1,borderColor:C.line,outlineStyle:'none'} as any,
   noteSheetActions:{flexDirection:'row',alignItems:'center',gap:9,marginTop:14},
 mushafFrame:{backgroundColor:themeDark?mix(BRAND.midnightInk,BRAND.lavender,.12):brandHex('#FCFAF6'),borderRadius:8,borderWidth:MUSHAF_FRAME_BORDER,borderColor:C.gold,padding:MUSHAF_FRAME_PAD,marginTop:4,...soft,overflow:'hidden'},
 mushafFrameInner:{borderRadius:4,borderWidth:MUSHAF_INNER_BORDER,borderColor:C.gold,borderStyle:'solid',opacity:.999,paddingHorizontal:MUSHAF_INNER_PAD_H,paddingVertical:MUSHAF_INNER_PAD_V},
@@ -14749,17 +15007,17 @@ mushafCornerDiamond:{width:11,height:11,borderWidth:1.2,borderColor:C.gold,trans
 mushafCornerDot:{position:'absolute',width:3.5,height:3.5,borderRadius:2,backgroundColor:C.gold},
 mushafSurahBand:{alignItems:'center',marginBottom:7,marginTop:2},
 mushafBandRule:{height:1,width:'62%',backgroundColor:C.gold,opacity:.5},
-mushafSurahName:{color:C.green,fontFamily:'Newsreader_700Bold',fontSize:16,textAlign:'center',paddingVertical:5,paddingHorizontal:14,letterSpacing:.3},
+mushafSurahName:{color:C.green,fontFamily:'Newsreader_700Bold',fontSize:16,textAlign:'center',paddingVertical:4,paddingHorizontal:16,letterSpacing:.3},
 mushafOrnamentRow:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:10,marginVertical:16},
 mushafOrnamentRule:{height:1,flex:1,maxWidth:96},
 mushafPageNoRow:{alignItems:'center',marginTop:6},
-mushafPageNo:{width:30,height:30,borderRadius:15,borderWidth:1.2,borderColor:C.gold,alignItems:'center',justifyContent:'center',backgroundColor:C.mint},
+mushafPageNo:{width:30,height:30,borderRadius:16,borderWidth:1.2,borderColor:C.gold,alignItems:'center',justifyContent:'center',backgroundColor:C.mint},
 mushafPageNoText:{color:C.green,fontFamily:'Newsreader_700Bold',fontSize:16},mushafAyah:{paddingVertical:12,borderBottomWidth:1,borderColor:C.line},mushafSurah:{textAlign:'center',color:C.green,fontFamily:'Newsreader_600SemiBold',fontSize:20,backgroundColor:C.mint,borderRadius:16,paddingVertical:8,marginBottom:12},verseMarker:{color:C.gold,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:17,writingDirection:'rtl'},mushafTranslation:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:12,lineHeight:18,marginTop:8},sectionMarker:{flexDirection:'row',alignItems:'center',gap:10,marginTop:18,marginBottom:6},sectionRule:{flex:1,height:1,backgroundColor:C.line},sectionMarkerText:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10,textTransform:'uppercase',letterSpacing:1},mushafPageLine:{color:C.ink,textAlign:'center',writingDirection:'rtl'},
   /* Set flush to both edges. This is the single biggest difference between a
      page that has been typeset and a column of centred text: centring leaves a
      ragged edge down the inside of every line, justifying closes it, so the
      block of script takes the straight-sided shape a printed page has. */
-  mushafPageLineJustified:{textAlign:'justify'},topicGrid:{flexDirection:'row',flexWrap:'wrap',gap:12},topicWrap:{width:'48%'},topicCard:{minHeight:190,backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},vocabStats:{backgroundColor:C.mint,borderRadius:20,padding:16,marginBottom:12,flexDirection:'row',justifyContent:'space-between',alignItems:'center'},flashcard:{minHeight:330,backgroundColor:C.white,borderRadius:28,padding:24,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,...shadow},flashIndex:{position:'absolute',top:18,right:18,color:C.muted,fontFamily:'DMSans_600SemiBold',fontSize:10},flashArabic:{color:C.ink,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:58,lineHeight:86,textAlign:'center',writingDirection:'rtl'},flashTransliteration:{color:C.green,fontFamily:'Newsreader_600SemiBold',fontSize:28,marginTop:12},flashMeaning:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:18,marginVertical:8,textAlign:'center'},flashHint:{color:C.muted,fontFamily:'DMSans_600SemiBold',fontSize:11,marginTop:16},tajweedPractice:{backgroundColor:C.card,borderRadius:24,padding:20,marginTop:16,borderWidth:1,borderColor:C.line,...surface},tajweedRule:{minHeight:72,flexDirection:'row',alignItems:'center',gap:12,padding:12,borderBottomWidth:1,borderColor:C.line},tajweedSwatch:{width:18,height:44,borderRadius:9},compareCard:{backgroundColor:C.card,borderRadius:20,padding:16,marginBottom:12,borderWidth:1,borderColor:C.line,...surface},
+  mushafPageLineJustified:{textAlign:'justify'},topicGrid:{flexDirection:'row',flexWrap:'wrap',gap:12},topicWrap:{width:'48%'},topicCard:{minHeight:190,backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},vocabStats:{backgroundColor:C.mint,borderRadius:20,padding:16,marginBottom:12,flexDirection:'row',justifyContent:'space-between',alignItems:'center'},flashcard:{minHeight:330,backgroundColor:C.white,borderRadius:24,padding:24,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,...shadow},flashIndex:{position:'absolute',top:18,right:18,color:C.muted,fontFamily:'DMSans_600SemiBold',fontSize:10},flashArabic:{color:C.ink,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:58,lineHeight:86,textAlign:'center',writingDirection:'rtl'},flashTransliteration:{color:C.green,fontFamily:'Newsreader_600SemiBold',fontSize:28,marginTop:12},flashMeaning:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:18,marginVertical:8,textAlign:'center'},flashHint:{color:C.muted,fontFamily:'DMSans_600SemiBold',fontSize:11,marginTop:16},tajweedPractice:{backgroundColor:C.card,borderRadius:24,padding:20,marginTop:16,borderWidth:1,borderColor:C.line,...surface},tajweedRule:{minHeight:72,flexDirection:'row',alignItems:'center',gap:12,padding:12,borderBottomWidth:1,borderColor:C.line},tajweedSwatch:{width:18,height:44,borderRadius:8},compareCard:{backgroundColor:C.card,borderRadius:20,padding:16,marginBottom:12,borderWidth:1,borderColor:C.line,...surface},
   tcRefBar:{flexDirection:'row',alignItems:'center',gap:10,marginBottom:14},
   tcVerse:{backgroundColor:C.mint,borderRadius:20,padding:16,marginTop:14,borderWidth:1,borderColor:C.line},
   tcSectionLabel:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.2,marginTop:20,marginBottom:8},
@@ -14770,7 +15028,7 @@ mushafPageNoText:{color:C.green,fontFamily:'Newsreader_700Bold',fontSize:16},mus
   tcCard:{backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},
   tcCardHead:{flexDirection:'row',alignItems:'center',gap:8,paddingBottom:10,marginBottom:10,borderBottomWidth:1,borderColor:C.line},
   tcCardName:{flex:1,color:C.ink,fontSize:13,fontFamily:'DMSans_700Bold'},
-  tcCardLang:{color:C.muted,fontSize:10,fontFamily:'DMSans_700Bold'},juzGrid:{flexDirection:'row',flexWrap:'wrap',gap:8},juzCard:{width:'22.8%',aspectRatio:1,backgroundColor:C.card,borderRadius:16,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,...surface},juzNo:{color:C.green,fontFamily:'Newsreader_600SemiBold',fontSize:23},preloadScore:{backgroundColor:C.white,borderRadius:24,padding:20,borderWidth:1,borderColor:C.line},cacheUsage:{color:C.green,fontFamily:'DMSans_600SemiBold',fontSize:10,marginTop:8},preloadTrack:{height:9,borderRadius:4,backgroundColor:C.mint,overflow:'hidden',marginVertical:12},preloadFill:{height:'100%',backgroundColor:C.green,borderRadius:4},planGrid:{flexDirection:'row',flexWrap:'wrap',gap:12},planCard:{width:'48%',minHeight:130,backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},planDays:{color:C.green,fontFamily:'Newsreader_600SemiBold',fontSize:36},planToday:{backgroundColor:C.white,borderRadius:20,padding:16,marginTop:16,flexDirection:'row',alignItems:'center',justifyContent:'space-between',borderWidth:1,borderColor:C.line},practiceLaunch:{backgroundColor:C.mint,borderRadius:20,padding:16,marginBottom:16,flexDirection:'row',alignItems:'center',justifyContent:'space-between',borderWidth:1,borderColor:C.line},recallCard:{minHeight:340,backgroundColor:C.white,borderRadius:28,padding:20,borderWidth:1,borderColor:C.line,...shadow},recallPrompt:{color:C.ink,fontFamily:'Newsreader_600SemiBold',fontSize:21,lineHeight:29,marginTop:28,textAlign:'center'},recallArabic:{color:C.green,fontFamily:'KFGQPCUthmanicHafs',fontSize:32,lineHeight:58,textAlign:'right',marginTop:24,paddingTop:20,borderTopWidth:1,borderColor:C.line,writingDirection:'rtl'},revealArea:{flex:1,minHeight:110,alignItems:'center',justifyContent:'center',gap:8,marginTop:20,borderTopWidth:1,borderColor:C.line},hifzStatus:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10,textTransform:'uppercase'},intro:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:14,lineHeight:19,marginTop:0,marginBottom:20},exploreGrid:{flexDirection:'row',flexWrap:'wrap',gap:12},exploreCard:{flexGrow:1,flexBasis:'31%',minWidth:150},exploreCardInner:{minHeight:164,backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},exploreTitle:{color:C.ink,fontSize:16,fontFamily:'DMSans_700Bold',marginTop:12},exploreBody:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:11,lineHeight:15,marginTop:4,flex:1},exploreArrow:{width:29,height:29,borderRadius:16,backgroundColor:C.mint,alignItems:'center',justifyContent:'center',alignSelf:'flex-end'},apiPanel:{backgroundColor:C.deep,borderRadius:24,padding:20,marginTop:12},apiTitle:{color:C.onAccent,fontSize:14,fontFamily:'DMSans_700Bold',marginTop:16},apiText:{color:C.onAccent,fontSize:10,marginTop:4},dataProvider:{color:C.onAccent,fontSize:10.5,fontFamily:'DMSans_600SemiBold',marginTop:3,opacity:.72,letterSpacing:.2},
+  tcCardLang:{color:C.muted,fontSize:10,fontFamily:'DMSans_700Bold'},juzGrid:{flexDirection:'row',flexWrap:'wrap',gap:8},juzCard:{width:'22.8%',aspectRatio:1,backgroundColor:C.card,borderRadius:16,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,...surface},juzNo:{color:C.green,fontFamily:'Newsreader_600SemiBold',fontSize:23},preloadScore:{backgroundColor:C.white,borderRadius:24,padding:20,borderWidth:1,borderColor:C.line},cacheUsage:{color:C.green,fontFamily:'DMSans_600SemiBold',fontSize:10,marginTop:8},preloadTrack:{height:9,borderRadius:4,backgroundColor:C.mint,overflow:'hidden',marginVertical:12},preloadFill:{height:'100%',backgroundColor:C.green,borderRadius:4},planGrid:{flexDirection:'row',flexWrap:'wrap',gap:12},planCard:{width:'48%',minHeight:130,backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},planDays:{color:C.green,fontFamily:'Newsreader_600SemiBold',fontSize:36},planToday:{backgroundColor:C.white,borderRadius:20,padding:16,marginTop:16,flexDirection:'row',alignItems:'center',justifyContent:'space-between',borderWidth:1,borderColor:C.line},practiceLaunch:{backgroundColor:C.mint,borderRadius:20,padding:16,marginBottom:16,flexDirection:'row',alignItems:'center',justifyContent:'space-between',borderWidth:1,borderColor:C.line},recallCard:{minHeight:340,backgroundColor:C.white,borderRadius:24,padding:20,borderWidth:1,borderColor:C.line,...shadow},recallPrompt:{color:C.ink,fontFamily:'Newsreader_600SemiBold',fontSize:21,lineHeight:29,marginTop:28,textAlign:'center'},recallArabic:{color:C.green,fontFamily:'KFGQPCUthmanicHafs',fontSize:32,lineHeight:58,textAlign:'right',marginTop:24,paddingTop:20,borderTopWidth:1,borderColor:C.line,writingDirection:'rtl'},revealArea:{flex:1,minHeight:110,alignItems:'center',justifyContent:'center',gap:8,marginTop:20,borderTopWidth:1,borderColor:C.line},hifzStatus:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10,textTransform:'uppercase'},intro:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:14,lineHeight:19,marginTop:0,marginBottom:20},exploreGrid:{flexDirection:'row',flexWrap:'wrap',gap:12},exploreCard:{flexGrow:1,flexBasis:'31%',minWidth:150},exploreCardInner:{minHeight:164,backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},exploreTitle:{color:C.ink,fontSize:16,fontFamily:'DMSans_700Bold',marginTop:12},exploreBody:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:11,lineHeight:15,marginTop:4,flex:1},exploreArrow:{width:29,height:29,borderRadius:16,backgroundColor:C.mint,alignItems:'center',justifyContent:'center',alignSelf:'flex-end'},apiPanel:{backgroundColor:C.deep,borderRadius:24,padding:20,marginTop:12},apiTitle:{color:C.onAccent,fontSize:14,fontFamily:'DMSans_700Bold',marginTop:16},apiText:{color:C.onAccent,fontSize:10,marginTop:4},dataProvider:{color:C.onAccent,fontSize:10.5,fontFamily:'DMSans_600SemiBold',marginTop:3,opacity:.72,letterSpacing:.2},
  toolPage:{width:'100%',maxWidth:780,alignSelf:'center',alignItems:'center',padding:24,paddingTop:24,paddingBottom:BOTTOM_RESERVE},toolPageScroll:{flexGrow:1},toolEyebrow:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.2,marginTop:20},compass:{width:260,height:260,borderRadius:130,backgroundColor:C.white,borderWidth:12,borderColor:C.line,alignItems:'center',justifyContent:'center',marginTop:32,...shadow},compassRose:{position:'absolute',width:'100%',height:'100%',alignItems:'center',justifyContent:'center'},compassLive:{fontFamily:'DMSans_600SemiBold',fontSize:11,color:C.green,marginTop:8},compassHint:{color:C.muted,fontSize:11,marginTop:4,textAlign:'center'},north:{position:'absolute',top:12,color:C.coral,fontSize:10,fontFamily:'DMSans_700Bold'},compassArrow:{alignItems:'center',justifyContent:'center'},/* The cube used to be a plain square with a gold stripe under it. It is the
    Kaaba now, drawn in `KaabaMark`; the sheet only puts it on the dial. */
 kaaba:{position:'absolute',right:43,bottom:47,width:31,height:31,alignItems:'center',justifyContent:'center'},direction:{color:C.ink,fontSize:31,fontFamily:'DMSans_700Bold',marginTop:24},directionText:{color:C.muted,fontSize:11,marginTop:4},primary:{backgroundColor:C.accent,paddingHorizontal:20,paddingVertical:12,minHeight:48,alignItems:'center',justifyContent:'center',borderRadius:16,marginTop:20},primaryText:{color:C.onAccentInk,fontSize:11,fontFamily:'DMSans_700Bold'},tasbihAr:{color:C.ink,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:32,marginTop:16,writingDirection:'rtl'},counter:{width:205,height:205,borderRadius:103,backgroundColor:C.accent,alignItems:'center',justifyContent:'center',borderWidth:12,borderColor:C.line,marginVertical:32,...shadow},counterNo:{color:C.onAccent,fontSize:58,fontFamily:'DMSans_700Bold'},counterGoal:{color:C.onAccent,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.3},secondary:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:8,minHeight:44,backgroundColor:C.white,paddingHorizontal:16,paddingVertical:12,borderRadius:16,borderWidth:1,borderColor:C.line,marginHorizontal:4},secondaryText:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold'},
@@ -14788,11 +15046,11 @@ kaaba:{position:'absolute',right:43,bottom:47,width:31,height:31,alignItems:'cen
   /* Explains the choice rather than describing the control. Sits tight under
      the pills it belongs to and well clear of the rule that follows, so it
      reads as a note on the group above it and not as part of the next one. */
-  rsHint:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:11,lineHeight:16,marginTop:10,marginBottom:0},fieldRow:{flexDirection:'row',gap:12},textField:{backgroundColor:C.bg,borderWidth:1,borderColor:C.line,borderRadius:16,padding:12,fontSize:13,color:C.ink,marginTop:8,outlineStyle:'none'} as any,dangerButton:{padding:16,alignItems:'center',marginTop:12},dangerText:{color:C.coral,fontFamily:'DMSans_700Bold',fontSize:11},healthCard:{flexDirection:'row',alignItems:'center',gap:12,backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,marginBottom:16,...surface},healthDot:{width:10,height:10,borderRadius:5},actionRow:{flexDirection:'row',alignItems:'center',flexWrap:'wrap',gap:8,marginTop:4},audioPreview:{backgroundColor:C.deep,borderRadius:24,padding:16,flexDirection:'row',alignItems:'center',gap:12},audioPlay:{width:48,height:48,borderRadius:24,backgroundColor:C.accent,alignItems:'center',justifyContent:'center'},guideGrid:{flexDirection:'row',flexWrap:'wrap',gap:12},guideCard:{flexGrow:1,flexBasis:'30%',minWidth:150},guideCardInner:{minHeight:180,backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},guideHero:{borderRadius:24,padding:22,marginTop:16,alignItems:'center'},guideHeroKicker:{color:C.onHero,fontFamily:'DMSans_700Bold',fontSize:10,letterSpacing:1.4,textTransform:'uppercase',marginBottom:14},guideHeroArabic:{color:C.onAccent,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:26,lineHeight:46,textAlign:'center',writingDirection:'rtl'},guideStep:{flexDirection:'row',gap:14,paddingVertical:16,paddingHorizontal:16,borderBottomWidth:1,borderColor:C.line,alignItems:'flex-start'},guideStepLast:{borderBottomWidth:0},stepNo:{width:28,height:28,borderRadius:14,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},stepNoText:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10},guideStepText:{flex:1,color:C.ink,fontFamily:'DMSans_400Regular',fontSize:13.5,lineHeight:21},guideNote:{backgroundColor:C.yellow,borderRadius:20,padding:16,marginTop:20},referenceRow:{minHeight:54,backgroundColor:C.white,borderRadius:16,paddingHorizontal:16,marginBottom:8,flexDirection:'row',alignItems:'center',justifyContent:'space-between',borderWidth:1,borderColor:C.line},evidenceCard:{backgroundColor:C.card,borderRadius:18,padding:15,marginBottom:11,borderWidth:1,borderColor:C.line},evidenceLabel:{color:C.green,fontSize:11,fontFamily:'DMSans_700Bold',letterSpacing:.4,marginBottom:9},evidenceArabic:{color:C.ink,fontSize:17,fontFamily:'NotoNaskhArabic_400Regular',lineHeight:31,marginBottom:8,writingDirection:'rtl',textAlign:'right'},evidenceBody:{color:C.body,fontSize:13,fontFamily:'DMSans_400Regular',lineHeight:20},evidenceVerse:{marginBottom:11},evidenceFoot:{flexDirection:'row',alignItems:'center',marginTop:10,paddingTop:10,borderTopWidth:1,borderTopColor:C.line},evidenceLink:{flex:1,color:C.green,fontSize:12,fontFamily:'DMSans_600SemiBold'},emptyWrap:{alignItems:'center',justifyContent:'center',paddingVertical:60,gap:10,paddingHorizontal:24},emptyTitle:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:16,textAlign:'center'},emptyBody:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:13,lineHeight:20,textAlign:'center'},
+  rsHint:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:11,lineHeight:16,marginTop:10,marginBottom:0},fieldRow:{flexDirection:'row',gap:12},textField:{backgroundColor:C.bg,borderWidth:1,borderColor:C.line,borderRadius:16,padding:12,fontSize:13,color:C.ink,marginTop:8,outlineStyle:'none'} as any,dangerButton:{padding:16,alignItems:'center',marginTop:12},dangerText:{color:C.coral,fontFamily:'DMSans_700Bold',fontSize:11},healthCard:{flexDirection:'row',alignItems:'center',gap:12,backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,marginBottom:16,...surface},healthDot:{width:10,height:10,borderRadius:5},actionRow:{flexDirection:'row',alignItems:'center',flexWrap:'wrap',gap:8,marginTop:4},audioPreview:{backgroundColor:C.deep,borderRadius:24,padding:16,flexDirection:'row',alignItems:'center',gap:12},audioPlay:{width:48,height:48,borderRadius:24,backgroundColor:C.accent,alignItems:'center',justifyContent:'center'},guideGrid:{flexDirection:'row',flexWrap:'wrap',gap:12},guideCard:{flexGrow:1,flexBasis:'30%',minWidth:150},guideCardInner:{minHeight:180,backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},guideHero:{borderRadius:24,padding:20,marginTop:16,alignItems:'center'},guideHeroKicker:{color:C.onHero,fontFamily:'DMSans_700Bold',fontSize:10,letterSpacing:1.4,textTransform:'uppercase',marginBottom:14},guideHeroArabic:{color:C.onAccent,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:26,lineHeight:46,textAlign:'center',writingDirection:'rtl'},guideStep:{flexDirection:'row',gap:14,paddingVertical:16,paddingHorizontal:16,borderBottomWidth:1,borderColor:C.line,alignItems:'flex-start'},guideStepLast:{borderBottomWidth:0},stepNo:{width:28,height:28,borderRadius:16,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},stepNoText:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10},guideStepText:{flex:1,color:C.ink,fontFamily:'DMSans_400Regular',fontSize:13.5,lineHeight:21},guideNote:{backgroundColor:C.yellow,borderRadius:20,padding:16,marginTop:20},referenceRow:{minHeight:54,backgroundColor:C.white,borderRadius:16,paddingHorizontal:16,marginBottom:8,flexDirection:'row',alignItems:'center',justifyContent:'space-between',borderWidth:1,borderColor:C.line},evidenceCard:{backgroundColor:C.card,borderRadius:16,padding:16,marginBottom:11,borderWidth:1,borderColor:C.line},evidenceLabel:{color:C.green,fontSize:11,fontFamily:'DMSans_700Bold',letterSpacing:.4,marginBottom:9},evidenceArabic:{color:C.ink,fontSize:17,fontFamily:'NotoNaskhArabic_400Regular',lineHeight:31,marginBottom:8,writingDirection:'rtl',textAlign:'right'},evidenceBody:{color:C.body,fontSize:13,fontFamily:'DMSans_400Regular',lineHeight:20},evidenceVerse:{marginBottom:11},evidenceFoot:{flexDirection:'row',alignItems:'center',marginTop:10,paddingTop:10,borderTopWidth:1,borderTopColor:C.line},evidenceLink:{flex:1,color:C.green,fontSize:12,fontFamily:'DMSans_600SemiBold'},emptyWrap:{alignItems:'center',justifyContent:'center',paddingVertical:60,gap:10,paddingHorizontal:24},emptyTitle:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:16,textAlign:'center'},emptyBody:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:13,lineHeight:20,textAlign:'center'},
   inboxEmpty:{alignItems:'center',paddingVertical:40,gap:8},inboxHead:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginBottom:10},
-  inboxRow:{flexDirection:'row',gap:12,padding:14,borderBottomWidth:1,borderColor:C.line,alignItems:'flex-start'},inboxDot:{width:8,height:8,borderRadius:4,marginTop:6},
+  inboxRow:{flexDirection:'row',gap:12,padding:16,borderBottomWidth:1,borderColor:C.line,alignItems:'flex-start'},inboxDot:{width:8,height:8,borderRadius:4,marginTop:6},
   inboxKind:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:9,letterSpacing:.8},inboxTime:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:11,marginTop:2},dataPage:{width:'100%',maxWidth:860,alignSelf:'center',padding:20,paddingBottom:BOTTOM_RESERVE},empty:{backgroundColor:C.white,borderRadius:24,padding:24,alignItems:'center',borderWidth:1,borderColor:C.line},dataTitle:{color:C.ink,fontSize:29,fontFamily:'Newsreader_600SemiBold',letterSpacing:-.5,marginTop:16,marginBottom:8},dataCard:{backgroundColor:C.card,borderRadius:20,padding:16,marginBottom:12,borderWidth:1,borderColor:C.line,...surface},bookmarkMain:{flex:1},bookmarkRemove:{paddingStart:10,paddingVertical:4,justifyContent:'center'},dataArabic:{color:C.green,fontFamily:'KFGQPCUthmanicHafs',fontSize:27,lineHeight:48,textAlign:'right',writingDirection:'rtl'},dataName:{color:C.ink,fontSize:14,fontFamily:'DMSans_700Bold',marginTop:4},dataBody:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:13,lineHeight:18,marginTop:4},dataMeta:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold',marginTop:12,textTransform:'uppercase'},inputLabel:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.2,marginTop:12},moneyInput:{backgroundColor:C.white,borderWidth:1,borderColor:C.line,borderRadius:20,padding:16,fontSize:24,fontFamily:'DMSans_700Bold',color:C.ink,marginTop:8,outlineStyle:'none'} as any,zakatResult:{borderRadius:24,padding:20,marginTop:12},zakatNo:{color:C.onAccent,fontSize:34,fontFamily:'DMSans_700Bold',marginTop:8},
- profileName:{color:C.onAccent,fontSize:18,fontFamily:'DMSans_700Bold'},profileSub:{color:C.onHero,fontSize:10,marginTop:4},privacyHero:{borderRadius:24,padding:20,flexDirection:'row',alignItems:'center',gap:12,...shadow},privacyPoints:{flexDirection:'row',gap:8,marginTop:12},privacyPoint:{flex:1,backgroundColor:C.card,borderRadius:16,paddingVertical:12,alignItems:'center',gap:4,borderWidth:1,borderColor:C.line},privacyPointText:{color:C.ink,fontSize:10,fontFamily:'DMSans_700Bold',textAlign:'center'},preferencePanel:{backgroundColor:C.card,borderRadius:24,padding:16,borderWidth:1,borderColor:C.line,...surface},preferenceHead:{flexDirection:'row',alignItems:'center',gap:12,marginBottom:16},prefIconTile:{width:54,height:54,borderRadius:18,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},choiceGrid:{flexDirection:'row',flexWrap:'wrap',gap:8},choiceRow:{flexDirection:'row',gap:8},
+ profileName:{color:C.onAccent,fontSize:18,fontFamily:'DMSans_700Bold'},profileSub:{color:C.onHero,fontSize:10,marginTop:4},privacyHero:{borderRadius:24,padding:20,flexDirection:'row',alignItems:'center',gap:12,...shadow},privacyPoints:{flexDirection:'row',gap:8,marginTop:12},privacyPoint:{flex:1,backgroundColor:C.card,borderRadius:16,paddingVertical:12,alignItems:'center',gap:4,borderWidth:1,borderColor:C.line},privacyPointText:{color:C.ink,fontSize:10,fontFamily:'DMSans_700Bold',textAlign:'center'},preferencePanel:{backgroundColor:C.card,borderRadius:24,padding:16,borderWidth:1,borderColor:C.line,...surface},preferenceHead:{flexDirection:'row',alignItems:'center',gap:12,marginBottom:16},prefIconTile:{width:54,height:54,borderRadius:16,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},choiceGrid:{flexDirection:'row',flexWrap:'wrap',gap:8},choiceRow:{flexDirection:'row',gap:8},
   hadithPick:{marginTop:4,marginBottom:20},hadithSearch:{marginBottom:0},hadithResults:{marginBottom:10},
   nameShare:{width:40,height:40,borderRadius:20,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,flexShrink:0},
   trackGrid:{flexDirection:'row',gap:3,alignItems:'flex-start'},trackWeek:{gap:3},trackCell:{width:13,height:13,borderRadius:3},trackCellOpen:{borderWidth:2,borderColor:C.ink},
@@ -14815,30 +15073,30 @@ kaaba:{position:'absolute',right:43,bottom:47,width:31,height:31,alignItems:'cen
   zHeadAction:{color:C.gold,fontFamily:'DMSans_600SemiBold',fontSize:11,flexShrink:1,textAlign:'right'},
   zBody:{paddingTop:16},
   crashScreen:{flex:1,backgroundColor:C.bg,alignItems:'center',justifyContent:'center',padding:24},
-  crashCard:{backgroundColor:C.card,borderRadius:24,padding:22,borderWidth:1,borderColor:C.line,gap:10,maxWidth:420,width:'100%'},
+  crashCard:{backgroundColor:C.card,borderRadius:24,padding:20,borderWidth:1,borderColor:C.line,gap:10,maxWidth:420,width:'100%'},
   crashTitle:{color:C.ink,fontFamily:'Newsreader_600SemiBold',fontSize:20},
   crashBody:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:13.5,lineHeight:20},
   crashDetail:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:11,lineHeight:16,marginTop:2},
-  liveFrame:{height:211,borderRadius:18,overflow:'hidden',backgroundColor:'#000',marginTop:12,borderWidth:1,borderColor:C.line},
+  liveFrame:{height:211,borderRadius:16,overflow:'hidden',backgroundColor:'#000',marginTop:12,borderWidth:1,borderColor:C.line},
   liveWeb:{flex:1,backgroundColor:'#000'},
   liveFallback:{position:'absolute',top:0,left:0,right:0,bottom:0,alignItems:'center',justifyContent:'center',padding:20},
   liveFallbackText:{color:C.onAccent,fontFamily:'DMSans_400Regular',fontSize:12,textAlign:'center'},
-  liveBar:{position:'absolute',left:0,right:0,bottom:0,flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingHorizontal:12,paddingVertical:10},
+  liveBar:{position:'absolute',left:0,right:0,bottom:0,flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingHorizontal:12,paddingVertical:12},
   livePulse:{width:6,height:6,borderRadius:3,backgroundColor:C.coral},
   liveBadgeText:{color:C.onAccent,fontFamily:'DMSans_700Bold',fontSize:9,letterSpacing:1.2},
   liveSurface:{flex:1},
   liveScrim:{position:'absolute',top:0,left:0,right:0,bottom:0,justifyContent:'flex-end',backgroundColor:'rgba(0,0,0,0.28)'},
-  liveFallbackButton:{marginTop:12,paddingHorizontal:14,paddingVertical:8,borderRadius:999,backgroundColor:C.onAccent},
+  liveFallbackButton:{marginTop:12,paddingHorizontal:16,paddingVertical:8,borderRadius:999,backgroundColor:C.onAccent},
   liveFallbackAction:{color:C.deep,fontFamily:'DMSans_700Bold',fontSize:12},
   liveControls:{flexDirection:'row',alignItems:'center',gap:8},
   liveButton:{width:32,height:32,borderRadius:16,backgroundColor:'rgba(0,0,0,0.5)',alignItems:'center',justifyContent:'center'},
-  livePlay:{width:38,height:38,borderRadius:19,backgroundColor:C.onAccent,alignItems:'center',justifyContent:'center'},
-  vocabRow:{flexDirection:'row',alignItems:'center',gap:12,padding:14,borderBottomWidth:1,borderColor:C.line},
+  livePlay:{width:38,height:38,borderRadius:20,backgroundColor:C.onAccent,alignItems:'center',justifyContent:'center'},
+  vocabRow:{flexDirection:'row',alignItems:'center',gap:12,padding:16,borderBottomWidth:1,borderColor:C.line},
   vocabSave:{padding:4},
   vocabWord:{color:C.ink,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:22,lineHeight:34,textAlign:'right',writingDirection:'rtl'},
-  vocabKnown:{backgroundColor:C.mint,borderRadius:10,paddingHorizontal:8,paddingVertical:3},
+  vocabKnown:{backgroundColor:C.mint,borderRadius:12,paddingHorizontal:8,paddingVertical:4},
   vocabKnownText:{color:C.green,fontFamily:'DMSans_600SemiBold',fontSize:10},
-  letterGrid:{flexDirection:'row',flexWrap:'wrap',gap:10},letterCell:{width:42,height:42,borderRadius:12,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,backgroundColor:C.white},letterCellWide:{width:58},letterCellActive:{backgroundColor:C.accent,borderColor:C.accent},letterCellEmpty:{opacity:.4},letterText:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:13},letterTextActive:{color:C.onAccent},letterTextDim:{color:C.muted},  settingsRow:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingHorizontal:16,paddingVertical:14,borderBottomWidth:1,borderColor:C.line},choicePill:{minHeight:44,justifyContent:'center',minWidth:44,alignItems:'center',paddingHorizontal:12,paddingVertical:8,borderRadius:12,backgroundColor:C.bg,borderWidth:1,borderColor:C.line},choicePillActive:{backgroundColor:C.accent,borderColor:C.accent},choiceText:{color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:10},choiceTextActive:{color:C.onAccent},preferenceLabel:{color:C.muted,fontFamily:'DMSans_700Bold',fontSize:10,letterSpacing:1.1,marginTop:16,marginBottom:8},settings:{backgroundColor:C.card,borderRadius:24,overflow:'hidden',borderWidth:1,borderColor:C.line,...surface},setting:{minHeight:69,flexDirection:'row',alignItems:'center',gap:12,paddingHorizontal:12,borderBottomWidth:1,borderColor:C.line},settingName:{color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:13},
+  letterGrid:{flexDirection:'row',flexWrap:'wrap',gap:10},letterCell:{width:42,height:42,borderRadius:12,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,backgroundColor:C.white},letterCellWide:{width:58},letterCellActive:{backgroundColor:C.accent,borderColor:C.accent},letterCellEmpty:{opacity:.4},letterText:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:13},letterTextActive:{color:C.onAccent},letterTextDim:{color:C.muted},  settingsRow:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingHorizontal:16,paddingVertical:16,borderBottomWidth:1,borderColor:C.line},choicePill:{minHeight:44,justifyContent:'center',minWidth:44,alignItems:'center',paddingHorizontal:12,paddingVertical:8,borderRadius:12,backgroundColor:C.bg,borderWidth:1,borderColor:C.line},choicePillActive:{backgroundColor:C.accent,borderColor:C.accent},choiceText:{color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:10},choiceTextActive:{color:C.onAccent},preferenceLabel:{color:C.muted,fontFamily:'DMSans_700Bold',fontSize:10,letterSpacing:1.1,marginTop:16,marginBottom:8},settings:{backgroundColor:C.card,borderRadius:24,overflow:'hidden',borderWidth:1,borderColor:C.line,...surface},setting:{minHeight:69,flexDirection:'row',alignItems:'center',gap:12,paddingHorizontal:12,borderBottomWidth:1,borderColor:C.line},settingName:{color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:13},
  locationGate:{flexDirection:'row',gap:16,alignItems:'flex-start',backgroundColor:C.card,borderRadius:24,padding:20,borderWidth:1,borderColor:C.line,...soft},locationGateNarrow:{flexDirection:'column',alignItems:'stretch'},locationGateTitle:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:16},locationGateBody:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:12,lineHeight:18,marginTop:4},locationActions:{flexDirection:'row',flexWrap:'wrap',gap:8,marginTop:16},locationActionsNarrow:{flexDirection:'column',alignItems:'stretch'},primarySmall:{backgroundColor:C.accent,paddingHorizontal:16,paddingVertical:12,borderRadius:12,minHeight:44,justifyContent:'center'},ghostSmall:{backgroundColor:C.mint,paddingHorizontal:16,paddingVertical:12,borderRadius:12,minHeight:44,justifyContent:'center'},ghostText:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:11},
  prayerTools:{flexDirection:'row',flexWrap:'wrap',gap:8},prayerToolsTwo:{flexDirection:'row',gap:12,marginBottom:8},prayerToolTwo:{flex:1},prayerTool:{flexGrow:1,flexBasis:'30%',minWidth:220},prayerToolInner:{minHeight:86,flexDirection:'row',alignItems:'center',gap:12,backgroundColor:C.white,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line},prayerToolText:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:12,flex:1},
  libraryKicker:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10,letterSpacing:1.7,marginTop:24},libraryHeading:{color:C.ink,fontFamily:'Newsreader_600SemiBold',fontSize:23,marginTop:4,marginBottom:12},
@@ -14857,11 +15115,11 @@ eventDotEid:{backgroundColor:C.gold},
 eventDotNight:{backgroundColor:C.gold},
 eventDotHajj:{backgroundColor:C.teal},
 eventDotNewyear:{backgroundColor:C.green},
-eventCountdown:{backgroundColor:C.mint,borderRadius:11,paddingVertical:4,paddingHorizontal:10,borderWidth:1,borderColor:C.line},
+eventCountdown:{backgroundColor:C.mint,borderRadius:12,paddingVertical:4,paddingHorizontal:12,borderWidth:1,borderColor:C.line},
 eventCountdownText:{color:C.green,fontFamily:'DMSans_600SemiBold',fontSize:11},
 dayDetail:{backgroundColor:C.card,borderRadius:20,borderWidth:1,borderColor:C.line,padding:16,...soft},
 dayDetailHijri:{color:C.ink,fontFamily:'Newsreader_600SemiBold',fontSize:19,textAlign:'center'},
-dayDetailEvent:{backgroundColor:C.mint,borderRadius:14,padding:12,gap:4},
+dayDetailEvent:{backgroundColor:C.mint,borderRadius:16,padding:12,gap:4},
 dayDetailEventTitle:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:14},
 dayDetailPrayers:{marginTop:14,gap:7},
 dayDetailPrayer:{flexDirection:'row',alignItems:'center',justifyContent:'space-between'},
@@ -14877,7 +15135,7 @@ legendDot:{width:8,height:8,borderRadius:4,backgroundColor:C.green},
  miniArt:{width:40,height:40,borderRadius:16,backgroundColor:C.mint,alignItems:'center',justifyContent:'center',overflow:'hidden'},
  miniTitle:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:12},
  miniMeta:{color:C.muted,fontSize:10,marginTop:2},
- miniBtn:{width:44,height:44,borderRadius:22,backgroundColor:C.accent,alignItems:'center',justifyContent:'center',marginLeft:8},
+ miniBtn:{width:44,height:44,borderRadius:20,backgroundColor:C.accent,alignItems:'center',justifyContent:'center',marginLeft:8},
  miniGhost:{width:34,height:34,borderRadius:17,alignItems:'center',justifyContent:'center',marginLeft:2},
  audioRow:{flexDirection:'row',alignItems:'center',borderBottomWidth:1,borderColor:C.line},
  audioRowMain:{flex:1,flexDirection:'row',alignItems:'center',gap:12,paddingVertical:12},
@@ -14887,14 +15145,14 @@ legendDot:{width:8,height:8,borderRadius:4,backgroundColor:C.green},
  audioHeroKicker:{color:C.onHero,fontFamily:'DMSans_700Bold',fontSize:10,letterSpacing:1.2},
  audioHeroTitle:{color:C.onAccent,fontFamily:'DMSans_700Bold',fontSize:13,marginTop:4},
  audioHeroMeta:{color:C.onAccent,fontSize:10,marginTop:2},
- playerArt:{backgroundColor:C.deep,borderRadius:28,padding:24,alignItems:'center',...shadow},
-playerHero:{borderRadius:30,padding:26,alignItems:'center',overflow:'hidden',...shadow},
+ playerArt:{backgroundColor:C.deep,borderRadius:24,padding:24,alignItems:'center',...shadow},
+playerHero:{borderRadius:30,padding:24,alignItems:'center',overflow:'hidden',...shadow},
 playerAura:{position:'absolute',width:300,height:300,top:-90,borderRadius:150,opacity:.5},
 playerArtRing:{width:150,height:150,borderRadius:75,alignItems:'center',justifyContent:'center',backgroundColor:'rgba(255,255,255,.13)',borderWidth:1,borderColor:'rgba(255,255,255,.28)'},
 playerTranslationRow:{flexDirection:'row',alignItems:'center',gap:12,backgroundColor:C.card,borderRadius:16,borderWidth:1,borderColor:C.line,padding:12,marginTop:16,...soft},
 playerTranslationList:{backgroundColor:C.card,borderRadius:16,borderWidth:1,borderColor:C.line,marginTop:8,overflow:'hidden'},
-playerTranslationOption:{flexDirection:'row',alignItems:'center',gap:12,paddingVertical:14,paddingHorizontal:14,borderBottomWidth:1,borderColor:C.line},
-  playerTranslationOptionLast:{flexDirection:'row',alignItems:'center',gap:12,paddingVertical:14,paddingHorizontal:14},
+playerTranslationOption:{flexDirection:'row',alignItems:'center',gap:12,paddingVertical:16,paddingHorizontal:16,borderBottomWidth:1,borderColor:C.line},
+  playerTranslationOptionLast:{flexDirection:'row',alignItems:'center',gap:12,paddingVertical:16,paddingHorizontal:16},
 playerTranslationOptionOn:{backgroundColor:C.mint},
   playerRow:{flexDirection:'row',alignItems:'center',gap:10,marginTop:20},
   playerSeek:{marginTop:10},
@@ -14906,7 +15164,7 @@ playerTranslationOptionOn:{backgroundColor:C.mint},
  playerArabic:{color:C.ink,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:26,lineHeight:46,textAlign:'right',marginTop:24,direction:'rtl',writingDirection:'rtl'} as any,
  audioTimes:{flexDirection:'row',justifyContent:'space-between',marginTop:28},
  audioControls:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:16,marginTop:24},
- audioControlBtn:{width:52,height:52,borderRadius:26,backgroundColor:C.white,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,...soft},
+ audioControlBtn:{width:52,height:52,borderRadius:24,backgroundColor:C.white,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,...soft},
  audioControlMain:{width:72,height:72,borderRadius:36,backgroundColor:C.accent,alignItems:'center',justifyContent:'center',...shadow},
  rateText:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10,marginTop:0},
  queueRow:{flexDirection:'row',alignItems:'center',gap:12,paddingVertical:12,borderBottomWidth:1,borderColor:C.line},
@@ -14948,43 +15206,43 @@ playerTranslationOptionOn:{backgroundColor:C.mint},
 hadithBreadcrumb:{alignItems:'center',marginBottom:14},
 hadithCrumbMain:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:11,letterSpacing:1.2,textAlign:'center'},
 hadithCrumbSub:{color:C.muted,fontSize:11,marginTop:4,textAlign:'center'},
-hadithPage:{backgroundColor:themeDark?mix(BRAND.midnightInk,BRAND.lavender,.12):brandHex('#FCFAF6'),borderRadius:10,borderWidth:1.6,borderColor:C.gold,padding:12,...soft},
+hadithPage:{backgroundColor:themeDark?mix(BRAND.midnightInk,BRAND.lavender,.12):brandHex('#FCFAF6'),borderRadius:12,borderWidth:1.6,borderColor:C.gold,padding:12,...soft},
 hadithPageInner:{borderRadius:5,borderWidth:.8,borderColor:C.gold,paddingHorizontal:16,paddingVertical:20},
 hadithPageAr:{color:C.ink,fontFamily:'NotoNaskhArabic_400Regular',fontSize:24,lineHeight:46,textAlign:'right',direction:'rtl',writingDirection:'rtl'} as any,
-hadithPageNo:{alignSelf:'center',marginTop:-1,marginBottom:-22,width:36,height:36,borderRadius:18,borderWidth:1.3,borderColor:C.gold,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},
+hadithPageNo:{alignSelf:'center',marginTop:-1,marginBottom:-22,width:36,height:36,borderRadius:16,borderWidth:1.3,borderColor:C.gold,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},
 hadithPageNoText:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:12},
 hadithReaderEn:{color:C.ink,fontSize:15.5,lineHeight:27,marginTop:26},
-cityCurrent:{flexDirection:'row',alignItems:'center',gap:12,backgroundColor:C.mint,borderRadius:16,padding:14,borderWidth:1,borderColor:C.line,marginTop:12},
+cityCurrent:{flexDirection:'row',alignItems:'center',gap:12,backgroundColor:C.mint,borderRadius:16,padding:16,borderWidth:1,borderColor:C.line,marginTop:12},
 cityCurrentLabel:{color:C.muted,fontSize:10,letterSpacing:1.1,fontFamily:'DMSans_700Bold'},
 cityCurrentName:{color:C.ink,fontSize:15,fontFamily:'DMSans_700Bold',marginTop:3},
 cityResults:{gap:8,marginTop:10},
-cityResultRow:{flexDirection:'row',alignItems:'center',gap:10,backgroundColor:C.card,borderRadius:14,paddingVertical:12,paddingHorizontal:13,borderWidth:1,borderColor:C.line},
+cityResultRow:{flexDirection:'row',alignItems:'center',gap:10,backgroundColor:C.card,borderRadius:16,paddingVertical:12,paddingHorizontal:12,borderWidth:1,borderColor:C.line},
 cityResultName:{color:C.ink,fontSize:14,fontFamily:'DMSans_600SemiBold'},
-citySourceTag:{backgroundColor:C.bg,borderRadius:8,paddingHorizontal:7,paddingVertical:3,borderWidth:1,borderColor:C.line},
+citySourceTag:{backgroundColor:C.bg,borderRadius:8,paddingHorizontal:8,paddingVertical:4,borderWidth:1,borderColor:C.line},
 citySourceText:{color:C.muted,fontSize:9,letterSpacing:.8},
 cityFootnote:{color:C.muted,fontSize:11,lineHeight:16,marginTop:10,marginBottom:2},
-reportCard:{backgroundColor:C.card,borderRadius:16,padding:14,borderWidth:1,borderColor:C.line,marginTop:10},
+reportCard:{backgroundColor:C.card,borderRadius:16,padding:16,borderWidth:1,borderColor:C.line,marginTop:10},
 reportRef:{color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:13.5},
 reportFlag:{color:C.green,fontSize:11,letterSpacing:.6,marginTop:3},
 reportBodyText:{color:C.ink,fontSize:12.5,lineHeight:19,marginTop:8},
 reportMeta:{color:C.muted,fontSize:11,marginTop:4},
 reportActions:{flexDirection:'row',alignItems:'center',gap:8,marginTop:12},
-reportBtnSmall:{paddingVertical:8,paddingHorizontal:12,borderRadius:11,borderWidth:1,borderColor:C.line},
+reportBtnSmall:{paddingVertical:8,paddingHorizontal:12,borderRadius:12,borderWidth:1,borderColor:C.line},
 reportBtnSmallText:{color:C.ink,fontSize:12,fontFamily:'DMSans_600SemiBold'},
-reportBtn:{flex:1,paddingVertical:9,paddingHorizontal:12,borderRadius:11,backgroundColor:C.green,alignItems:'center'},
+reportBtn:{flex:1,paddingVertical:8,paddingHorizontal:12,borderRadius:12,backgroundColor:C.green,alignItems:'center'},
 reportBtnText:{color:'#fff',fontSize:12.5,fontFamily:'DMSans_600SemiBold'},
-reportBtnGhost:{paddingVertical:8,paddingHorizontal:12,borderRadius:11},
+reportBtnGhost:{paddingVertical:8,paddingHorizontal:12,borderRadius:12},
 reportBtnGhostText:{color:C.coral,fontSize:12,fontFamily:'DMSans_600SemiBold'},
 
 
-onbChosen:{flexDirection:'row',alignItems:'center',gap:9,backgroundColor:C.mint,borderRadius:14,padding:12,marginBottom:12,borderWidth:1,borderColor:C.line},
+onbChosen:{flexDirection:'row',alignItems:'center',gap:9,backgroundColor:C.mint,borderRadius:16,padding:12,marginBottom:12,borderWidth:1,borderColor:C.line},
 onbChosenText:{color:C.ink,fontSize:13,flex:1},
 onbNote:{backgroundColor:C.bg,borderRadius:12,padding:12,marginTop:8,borderWidth:1,borderColor:C.line},
 onbNoteText:{color:C.muted,fontSize:11,lineHeight:17,marginTop:10},
-onbPromise:{flexDirection:'row',gap:12,backgroundColor:C.card,borderRadius:16,padding:14,borderWidth:1,borderColor:C.line,marginBottom:10},
+onbPromise:{flexDirection:'row',gap:12,backgroundColor:C.card,borderRadius:16,padding:16,borderWidth:1,borderColor:C.line,marginBottom:10},
 onbPromiseTitle:{color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:13.5},
 onbPromiseBody:{color:C.muted,fontSize:11.5,lineHeight:17,marginTop:3},
-locationBanner:{flexDirection:'row',alignItems:'center',gap:11,backgroundColor:C.card,borderRadius:14,padding:12,borderWidth:1,borderColor:C.line,marginVertical:8,...surface},
+locationBanner:{flexDirection:'row',alignItems:'center',gap:11,backgroundColor:C.card,borderRadius:16,padding:12,borderWidth:1,borderColor:C.line,marginVertical:8,...surface},
 locationBannerIcon:{width:34,height:34,borderRadius:17,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},
 locationBannerTitle:{color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:12.5},
 sleepHadith:{backgroundColor:C.mint,borderRadius:16,padding:16,borderWidth:1,borderColor:C.line,marginBottom:12},
@@ -15002,21 +15260,21 @@ rateRow:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:22,
 rateValue:{color:C.ink,fontSize:22,fontFamily:'DMSans_700Bold',minWidth:74,textAlign:'center'},
 rangeRow:{flexDirection:'row',gap:14,marginTop:6},
 rangeEnd:{flex:1},
-stepperSmall:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:6,marginTop:4,backgroundColor:C.bg,borderRadius:11,paddingHorizontal:6,paddingVertical:3,borderWidth:1,borderColor:C.line},
+stepperSmall:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:6,marginTop:4,backgroundColor:C.bg,borderRadius:12,paddingHorizontal:8,paddingVertical:4,borderWidth:1,borderColor:C.line},
 rangeNumber:{color:C.ink,fontSize:14,fontFamily:'DMSans_600SemiBold'},
 stepButtonSmall:{padding:4},
-mushafCrash:{width:'100%',minHeight:220,borderRadius:20,borderWidth:1,borderColor:C.line,backgroundColor:C.card,padding:20,justifyContent:'center',gap:10},mushafCrashTitle:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:14,textAlign:'center'},mushafCrashBody:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:12,lineHeight:18,textAlign:'center'},mushafPageStack:{alignItems:'center',paddingVertical:6},
+mushafCrash:{width:'100%',minHeight:220,borderRadius:20,borderWidth:1,borderColor:C.line,backgroundColor:C.card,padding:20,justifyContent:'center',gap:10},mushafCrashTitle:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:14,textAlign:'center'},mushafCrashBody:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:12,lineHeight:18,textAlign:'center'},mushafPageStack:{alignItems:'center',paddingVertical:8},
 mushafPageOuter:{overflow:'hidden'},
 mushafMarkerBand:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:6,marginVertical:5},
 mushafMarkerRule:{height:1,backgroundColor:C.gold,opacity:.55},
 mushafMarkerName:{color:C.gold,fontSize:11,fontFamily:'NotoNaskhArabic_600SemiBold',writingDirection:'rtl'},
 mushafMarkerNum:{color:C.gold,fontSize:11,fontFamily:'NotoNaskhArabic_400Regular',writingDirection:'rtl'},
-mushafConnection:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:5,paddingVertical:5,paddingHorizontal:10,alignSelf:'center',backgroundColor:C.card,borderRadius:11,borderWidth:1,borderColor:C.line,marginVertical:3},
+mushafConnection:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:5,paddingVertical:4,paddingHorizontal:12,alignSelf:'center',backgroundColor:C.card,borderRadius:12,borderWidth:1,borderColor:C.line,marginVertical:3},
 mushafConnectionText:{color:C.muted,fontSize:10.5,fontFamily:'DMSans_600SemiBold'},
 mushafConnectionTextCut:{color:C.gold},
 mushafConnectionCut:{borderColor:C.gold,backgroundColor:C.mint},
 mushafPageTranslation:{color:C.muted,lineHeight:19,marginTop:5,marginBottom:2},
-onbGhostWide:{alignItems:'center',paddingVertical:11,borderRadius:12,marginTop:10},
+onbGhostWide:{alignItems:'center',paddingVertical:12,borderRadius:12,marginTop:10},
 locationBannerBody:{color:C.muted,fontSize:11,lineHeight:15,marginTop:2},
   recentChipWide:{minWidth:150,backgroundColor:C.white,borderRadius:16,padding:12,borderWidth:1,borderColor:C.line,...soft},
   recentChipTitle:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:12,marginTop:4},
@@ -15033,7 +15291,7 @@ locationBannerBody:{color:C.muted,fontSize:11,lineHeight:15,marginTop:2},
   duaCategoryName:{color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:12,marginTop:4},
   offlineNote:{backgroundColor:C.mint,borderRadius:16,padding:12,marginBottom:12,borderWidth:1,borderColor:C.line},
   offlineNoteText:{color:C.green,fontSize:11,fontFamily:'DMSans_600SemiBold'},
-  tasbihCard:{backgroundColor:C.card,borderRadius:20,padding:16,alignItems:'center',marginTop:16,borderWidth:1,borderColor:C.line,...surface},sunnahList:{backgroundColor:C.card,borderRadius:20,padding:12,borderWidth:1,borderColor:C.line,gap:8,...surface},sunnahRow:{borderRadius:14,paddingVertical:13,paddingHorizontal:12,backgroundColor:C.mint,borderWidth:1,borderColor:C.line},sunnahRowOn:{backgroundColor:C.accent,borderColor:C.accent},sunnahRowName:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:13},tasbihRow:{paddingVertical:4,marginTop:16},tasbihGoalRow:{marginTop:2},timeField:{marginTop:12},timeFieldLabel:{color:C.muted,fontFamily:'DMSans_700Bold',fontSize:10,letterSpacing:1.1,marginBottom:7},timeFieldButton:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',minHeight:48,backgroundColor:C.white,paddingHorizontal:16,borderRadius:16,borderWidth:1,borderColor:C.line},timeFieldValue:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:16,direction:'ltr'},clockScrim:{flex:1,backgroundColor:'rgba(11,8,20,0.55)',alignItems:'center',justifyContent:'center',padding:24},clockSheet:{width:'100%',maxWidth:360,backgroundColor:C.bg,borderRadius:24,padding:20,borderWidth:1,borderColor:C.line,...shadow},clockTitle:{color:C.ink,fontSize:18,fontFamily:'Newsreader_600SemiBold',textAlign:'center'},clockPreview:{color:C.green,fontSize:28,fontFamily:'DMSans_700Bold',textAlign:'center',marginTop:6,direction:'ltr'},clockWheels:{flexDirection:'row',justifyContent:'center',alignItems:'center',gap:4,marginTop:14,direction:'ltr'},clockBand:{position:'absolute',top:CLOCK_ROW*2,left:0,right:0,height:CLOCK_ROW,borderRadius:12,backgroundColor:C.mint,borderWidth:1,borderColor:C.line},clockItem:{height:CLOCK_ROW,alignItems:'center',justifyContent:'center'},clockItemText:{color:C.ink,fontSize:19,fontFamily:'DMSans_600SemiBold'},clockActions:{flexDirection:'row',gap:8,marginTop:18},toast:{position:'absolute',left:24,right:24,bottom:BOTTOM_RESERVE+8,flexDirection:'row',alignItems:'center',gap:10,backgroundColor:C.white,borderRadius:16,paddingHorizontal:16,paddingVertical:13,borderWidth:1,borderColor:C.line,...shadow},toastText:{flex:1,color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:12,lineHeight:17},
+  tasbihCard:{backgroundColor:C.card,borderRadius:20,padding:16,alignItems:'center',marginTop:16,borderWidth:1,borderColor:C.line,...surface},sunnahList:{backgroundColor:C.card,borderRadius:20,padding:12,borderWidth:1,borderColor:C.line,gap:8,...surface},sunnahRow:{borderRadius:16,paddingVertical:12,paddingHorizontal:12,backgroundColor:C.mint,borderWidth:1,borderColor:C.line},sunnahRowOn:{backgroundColor:C.accent,borderColor:C.accent},sunnahRowName:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:13},tasbihRow:{paddingVertical:4,marginTop:16},tasbihGoalRow:{marginTop:2},timeField:{marginTop:12},timeFieldLabel:{color:C.muted,fontFamily:'DMSans_700Bold',fontSize:10,letterSpacing:1.1,marginBottom:7},timeFieldButton:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',minHeight:48,backgroundColor:C.white,paddingHorizontal:16,borderRadius:16,borderWidth:1,borderColor:C.line},timeFieldValue:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:16,direction:'ltr'},clockScrim:{flex:1,backgroundColor:'rgba(11,8,20,0.55)',alignItems:'center',justifyContent:'center',padding:24},clockSheet:{width:'100%',maxWidth:360,backgroundColor:C.bg,borderRadius:24,padding:20,borderWidth:1,borderColor:C.line,...shadow},clockTitle:{color:C.ink,fontSize:18,fontFamily:'Newsreader_600SemiBold',textAlign:'center'},clockPreview:{color:C.green,fontSize:28,fontFamily:'DMSans_700Bold',textAlign:'center',marginTop:6,direction:'ltr'},clockWheels:{flexDirection:'row',justifyContent:'center',alignItems:'center',gap:4,marginTop:14,direction:'ltr'},clockBand:{position:'absolute',top:CLOCK_ROW*2,left:0,right:0,height:CLOCK_ROW,borderRadius:12,backgroundColor:C.mint,borderWidth:1,borderColor:C.line},clockItem:{height:CLOCK_ROW,alignItems:'center',justifyContent:'center'},clockItemText:{color:C.ink,fontSize:19,fontFamily:'DMSans_600SemiBold'},clockActions:{flexDirection:'row',gap:8,marginTop:18},toast:{position:'absolute',left:24,right:24,bottom:BOTTOM_RESERVE+8,flexDirection:'row',alignItems:'center',gap:10,backgroundColor:C.white,borderRadius:16,paddingHorizontal:16,paddingVertical:12,borderWidth:1,borderColor:C.line,...shadow},toastText:{flex:1,color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:12,lineHeight:17},
   nameOfDayCard:{backgroundColor:C.deep,borderRadius:24,padding:20,alignItems:'center',marginTop:16,...shadow,borderTopColor:depth.edge},
   namesArabicLarge:{color:C.onAccent,fontFamily:'Amiri_400Regular',fontSize:38,marginTop:8,textAlign:'center',writingDirection:'rtl'},
   namesTransliteration:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:12,marginTop:8},
@@ -15041,7 +15299,7 @@ locationBannerBody:{color:C.muted,fontSize:11,lineHeight:15,marginTop:2},
   nameRow:{flexDirection:'row',alignItems:'flex-start',gap:12,paddingVertical:12,borderBottomWidth:1,borderColor:C.line},
   nameNumber:{width:56,alignItems:'flex-end'},
 backRow:{marginBottom:4,flexDirection:'row'},
-  sectionLink:{paddingVertical: 16,marginVertical:-15,paddingHorizontal:12,marginHorizontal:-12},markLink:{flexDirection:'row',alignItems:'center',gap:5,paddingVertical:16,marginVertical:-15,paddingHorizontal:12,marginHorizontal:-12},stopButton:{width:44,height:44,alignItems:'center',justifyContent:'center'},verseAction:{width:31,height:31,alignItems:'center',justifyContent:'center'},verseActionGlow:{position:'absolute',width:26,height:26,borderRadius:13,backgroundColor:C.mint},verseActionOn:{position:'absolute',width:25,height:25,borderRadius:13,backgroundColor:mix(BRAND.pearl,BRAND.radiantGold,.14),borderWidth:1,borderColor:mix(BRAND.radiantGold,BRAND.pearl,.45)},searchGo:{width:44,height:44,alignItems:'center',justifyContent:'center'},
+  sectionLink:{paddingVertical: 16,marginVertical:-15,paddingHorizontal:12,marginHorizontal:-12},markLink:{flexDirection:'row',alignItems:'center',gap:5,paddingVertical:16,marginVertical:-15,paddingHorizontal:12,marginHorizontal:-12},stopButton:{width:44,height:44,alignItems:'center',justifyContent:'center'},verseAction:{width:31,height:31,alignItems:'center',justifyContent:'center'},verseActionGlow:{position:'absolute',width:26,height:26,borderRadius:12,backgroundColor:C.mint},verseActionOn:{position:'absolute',width:25,height:25,borderRadius:12,backgroundColor:mix(BRAND.pearl,BRAND.radiantGold,.14),borderWidth:1,borderColor:mix(BRAND.radiantGold,BRAND.pearl,.45)},searchGo:{width:44,height:44,alignItems:'center',justifyContent:'center'},
 pinPage:{flexGrow:1,alignItems:'center',paddingHorizontal:24,paddingTop:4,paddingBottom:BOTTOM_RESERVE},pinPageBare:{flex:1,alignItems:'center',paddingHorizontal:24,paddingTop:4,paddingBottom:24},
 pinDots:{flexDirection:'row',gap: 12,marginTop:24},
 pinDot:{width:14,height:14,borderRadius:7,borderWidth:1.5,borderColor:C.line},
@@ -15061,7 +15319,7 @@ statValue:{color:C.ink,fontFamily:'Newsreader_600SemiBold',fontSize:22,marginTop
 guideBlock:{padding:16,borderBottomWidth:1,borderColor:C.line},
 guideTitle:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:13,marginBottom:6},
 purityRow:{flexDirection:'row',flexWrap:'wrap',gap:8},
-purityChip:{width:44,height:52,borderRadius:14,backgroundColor:C.bg,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line},
+purityChip:{width:44,height:52,borderRadius:16,backgroundColor:C.bg,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line},
 purityDay:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:13},
 purityLabel:{color:C.muted,fontFamily:'DMSans_600SemiBold',fontSize:9,marginTop:2},
 purityFlow:{backgroundColor:C.card,borderColor:C.gold},
@@ -15071,7 +15329,7 @@ purityToday:{borderColor:C.green,borderWidth:1.5},
 dayStepper:{flexDirection:'row',alignItems:'center',gap:12,marginTop:4},
 
 assetRow:{minHeight:69,alignItems:'center',paddingHorizontal:12,borderBottomWidth:1,borderColor:C.line},
-assetInput:{width:120,backgroundColor:C.bg,borderWidth:1,borderColor:C.line,borderRadius:14,paddingHorizontal:12,paddingVertical:8,fontSize:15,fontFamily:'DMSans_700Bold',color:C.ink,textAlign:'right',outlineStyle:'none'} as any,
+assetInput:{width:120,backgroundColor:C.bg,borderWidth:1,borderColor:C.line,borderRadius:16,paddingHorizontal:12,paddingVertical:8,fontSize:15,fontFamily:'DMSans_700Bold',color:C.ink,textAlign:'right',outlineStyle:'none'} as any,
 metalRow:{alignItems:'center',minHeight:56,borderBottomWidth:1,borderColor:C.line},
 memHero:{backgroundColor:C.deep,borderRadius:24,padding:20,flexDirection:'row',alignItems:'center',gap:16,...shadow},
 memScore:{color:C.onAccent,fontSize:38,fontFamily:'DMSans_700Bold'},
@@ -15097,32 +15355,32 @@ memRowMain:{flex:1},
 memRowRight:{alignItems:'flex-end',minWidth:56},
 memKey:{color:C.ink,fontFamily:'DMSans_600SemiBold',fontSize:13},
 memConf:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:11},
-memFlag:{backgroundColor:C.yellow,borderRadius:8,paddingHorizontal:7,paddingVertical:2,marginTop:4},
+memFlag:{backgroundColor:C.yellow,borderRadius:8,paddingHorizontal:8,paddingVertical:4,marginTop:4},
 memFlagText:{color:BRAND.bronze,fontSize:9,fontFamily:'DMSans_700Bold'},
 memMiniBar:{height:4,borderRadius:2,backgroundColor:C.mint,overflow:'hidden',marginTop:6},
 memMiniFill:{height:'100%',borderRadius:2,backgroundColor:C.green},
 memStepper:{flexDirection:'row',alignItems:'center',gap:10,marginTop:8},
-memStepButton:{width:38,height:38,borderRadius:14,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},
+memStepButton:{width:38,height:38,borderRadius:16,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},
 memStepValue:{color:C.ink,fontSize:17,fontFamily:'DMSans_700Bold',minWidth:26,textAlign:'center'},
-memChip:{backgroundColor:C.mint,borderRadius:12,paddingHorizontal:10,paddingVertical:6,borderWidth:1,borderColor:C.line},
+memChip:{backgroundColor:C.mint,borderRadius:12,paddingHorizontal:12,paddingVertical:8,borderWidth:1,borderColor:C.line},
 memChipText:{color:C.green,fontSize:10,fontFamily:'DMSans_600SemiBold'},
 memChipWrap:{flexDirection:'row',flexWrap:'wrap',gap:8,marginTop:10},
 memSpacer:{width:1,height:1},
-backupHero:{backgroundColor:C.deep,borderRadius:24,padding:18,flexDirection:'row',alignItems:'center',gap:14,...shadow},
+backupHero:{backgroundColor:C.deep,borderRadius:24,padding:20,flexDirection:'row',alignItems:'center',gap:14,...shadow},
 backupHeroTitle:{color:C.onAccent,fontSize:15,fontFamily:'DMSans_700Bold'},
 backupHeroText:{color:C.onAccent,fontSize:11,lineHeight:16,marginTop:3},
-backupNotice:{backgroundColor:mix(BRAND.bronze,BRAND.pearl,.90),borderRadius:16,padding:14,marginTop:12,borderWidth:1,borderColor:mix(BRAND.bronze,BRAND.pearl,.72)},
+backupNotice:{backgroundColor:mix(BRAND.bronze,BRAND.pearl,.90),borderRadius:16,padding:16,marginTop:12,borderWidth:1,borderColor:mix(BRAND.bronze,BRAND.pearl,.72)},
 backupNoticeText:{color:BRAND.bronze,fontSize:12,lineHeight:17},
 backupNoticeGood:{backgroundColor:C.mint,borderColor:C.line},
 backupNoticeGoodText:{color:C.green,fontSize:12,lineHeight:17},
 backupBusy:{flexDirection:'row',alignItems:'center',gap:10,marginTop:14},
-backupInput:{backgroundColor:C.bg,borderWidth:1,borderColor:C.line,borderRadius:16,padding:14,fontSize:14,color:C.ink,marginTop:8,outlineStyle:'none'} as any,
-backupPaste:{backgroundColor:C.bg,borderWidth:1,borderColor:C.line,borderRadius:16,padding:14,fontSize:11,color:C.ink,minHeight:120,textAlignVertical:'top',marginTop:8,outlineStyle:'none'} as any,
-backupLink:{alignSelf:'flex-start',paddingVertical:10},
+backupInput:{backgroundColor:C.bg,borderWidth:1,borderColor:C.line,borderRadius:16,padding:16,fontSize:14,color:C.ink,marginTop:8,outlineStyle:'none'} as any,
+backupPaste:{backgroundColor:C.bg,borderWidth:1,borderColor:C.line,borderRadius:16,padding:16,fontSize:11,color:C.ink,minHeight:120,textAlignVertical:'top',marginTop:8,outlineStyle:'none'} as any,
+backupLink:{alignSelf:'flex-start',paddingVertical:12},
 backupLinkText:{color:C.green,fontSize:11,fontFamily:'DMSans_600SemiBold'},
 backupActions:{flexDirection:'row',flexWrap:'wrap',alignItems:'center',gap:8,marginTop:12},
 homeReflectTabs:{flexDirection:'row',backgroundColor:C.mint,borderRadius:16,padding:4,marginBottom:12,borderWidth:1,borderColor:C.line},
-homeReflectTab:{flex:1,alignItems:'center',justifyContent:'center',paddingVertical:10,paddingHorizontal:6,borderRadius:12},
+homeReflectTab:{flex:1,alignItems:'center',justifyContent:'center',paddingVertical:12,paddingHorizontal:8,borderRadius:12},
 homeReflectTabOn:{backgroundColor:C.card,borderWidth:1,borderColor:C.line},
 homeReflectTabText:{color:C.muted,fontFamily:'DMSans_600SemiBold',fontSize:12},
 homeReflectTabTextOn:{color:C.green,fontFamily:'DMSans_700Bold'},
@@ -15132,18 +15390,18 @@ homeReflectName:{color:C.green,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSi
 homeReflectBody:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:13.5,lineHeight:21,marginTop:10},
 homeReflectFoot:{flexDirection:'row',alignItems:'center',gap:6,marginTop:16,paddingTop:14,borderTopWidth:1,borderTopColor:C.line},
 homeReflectFootText:{color:C.green,fontFamily:'DMSans_600SemiBold',fontSize:12,flex:1},
-dayToolIcon:{width:52,height:52,borderRadius:26,backgroundColor:C.mint,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,marginRight:12},
+dayToolIcon:{width:52,height:52,borderRadius:24,backgroundColor:C.mint,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,marginRight:12},
   /* Transliteration: the Arabic on top, sounded out underneath. */
   trStepRow:{flexDirection:'row',alignItems:'center',gap:8,marginTop:16,marginBottom:4},
-  trStep:{width:40,height:40,borderRadius:14,backgroundColor:C.card,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line},
+  trStep:{width:40,height:40,borderRadius:16,backgroundColor:C.card,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line},
   trSurahName:{color:C.ink,fontSize:20,fontFamily:'Newsreader_600SemiBold',textAlign:'center'},
-  trEdition:{flexDirection:'row',alignItems:'center',gap:6,paddingHorizontal:14,paddingVertical:9,borderRadius:14,backgroundColor:C.card,borderWidth:1,borderColor:C.line},
+  trEdition:{flexDirection:'row',alignItems:'center',gap:6,paddingHorizontal:16,paddingVertical:8,borderRadius:16,backgroundColor:C.card,borderWidth:1,borderColor:C.line},
   trEditionOn:{backgroundColor:C.green,borderColor:C.green},
   trEditionText:{color:C.muted,fontSize:12,fontFamily:'DMSans_600SemiBold'},
   trEditionTextOn:{color:C.onAccent},
-  trVerse:{marginBottom:10,padding:14},
+  trVerse:{marginBottom:10,padding:16},
   trVerseTop:{flexDirection:'row',alignItems:'flex-start',gap:10},
-  trNum:{width:26,height:26,borderRadius:13,backgroundColor:C.mint,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,marginTop:6},
+  trNum:{width:26,height:26,borderRadius:12,backgroundColor:C.mint,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,marginTop:6},
   trNumText:{color:C.green,fontSize:11,fontFamily:'DMSans_700Bold'},
   trArabic:{flex:1,color:C.ink,fontFamily:'KFGQPCUthmanicHafs',fontSize:24,lineHeight:46,textAlign:'right',writingDirection:'rtl'} as any,
   trTranslit:{color:C.muted,fontSize:14,lineHeight:22,marginTop:10,fontFamily:'DMSans_400Regular'},
@@ -15162,7 +15420,7 @@ dayToolIcon:{width:52,height:52,borderRadius:26,backgroundColor:C.mint,alignItem
   onbProgressTrack:{flex:1,height:6,borderRadius:3,backgroundColor:C.mint,overflow:'hidden'},
   onbProgressFill:{height:6,borderRadius:3,backgroundColor:C.green},
   onbProgressText:{color:C.muted,fontSize:11.5,fontFamily:'DMSans_600SemiBold',minWidth:64,textAlign:'right'},
-  onbCancel:{paddingHorizontal:10,paddingVertical:5,borderRadius:10,borderWidth:1,borderColor:C.line,backgroundColor:C.card},
+  onbCancel:{paddingHorizontal:12,paddingVertical:4,borderRadius:12,borderWidth:1,borderColor:C.line,backgroundColor:C.card},
   onbCancelText:{color:C.ink,fontSize:11,fontFamily:'DMSans_600SemiBold'},
   /* Onboarding permission: the ask, and somewhere to go if it is not shown. */
   
@@ -15179,14 +15437,14 @@ dayToolIcon:{width:52,height:52,borderRadius:26,backgroundColor:C.mint,alignItem
     ramArabic:{color:C.onHero,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:30,writingDirection:'rtl'},
     ramStatus:{color:C.onAccent,fontFamily:'DMSans_700Bold',fontSize:12},
     ramTodayTimes:{flexDirection:'row',gap:10,marginTop:16},
-    ramTimeBlock:{flex:1,backgroundColor:'rgba(255,255,255,.15)',borderRadius:14,padding:11},
+    ramTimeBlock:{flex:1,backgroundColor:'rgba(255,255,255,.15)',borderRadius:16,padding:12},
     ramTimeLabel:{color:C.onAccent,fontFamily:'DMSans_700Bold',fontSize:9,letterSpacing:.8,opacity:.85},
     ramTimeValue:{color:C.onAccent,fontFamily:'DMSans_700Bold',fontSize:20,marginTop:3},
     ramCountRow:{flexDirection:'row',alignItems:'center',gap:7,marginTop:14},
     ramCountValue:{color:C.onAccent,fontFamily:'DMSans_600SemiBold',fontSize:12.5},
     ramMonth:{backgroundColor:C.card,borderRadius:24,borderWidth:1,borderColor:C.line,padding:12,...surface},
     ramWeekRow:{flexDirection:'row',gap:6},
-    ramWeekCell:{flex:1,alignItems:'center',paddingVertical:5},
+    ramWeekCell:{flex:1,alignItems:'center',paddingVertical:4},
     ramWeekText:{color:C.muted,fontFamily:'DMSans_700Bold',fontSize:10},
     ramGrid:{flexDirection:'row',flexWrap:'wrap',gap:6},
     ramCellSpacer:{flexGrow:1,flexShrink:1,flexBasis:'13%',height:64},

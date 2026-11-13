@@ -14,3 +14,9 @@ screenshots/
 # Python bytecode
 __pycache__/
 *.pyc
+
+# Working artefacts, not source: screenshots kept as evidence and files
+# dropped in for reference. They belong in the workspace, not the repo.
+uploads/
+*-shots/
+.tmpsh/

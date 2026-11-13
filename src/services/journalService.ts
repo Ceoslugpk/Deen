@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { writeText } from './storage';
 import { useEffect, useState } from 'react';
 
 /**
@@ -43,7 +44,7 @@ function emit(next: JournalState) {
 
 async function persist(next: JournalState) {
   emit(next);
-  await AsyncStorage.setItem(KEY, JSON.stringify(next)).catch(() => undefined);
+  await writeText(KEY, JSON.stringify(next));
 }
 
 export function subscribeJournal(listener: (next: JournalState) => void) {

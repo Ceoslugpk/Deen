@@ -1,7 +1,10 @@
 import { Platform, Linking } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { writeText } from './storage';
 import * as Notifications from 'expo-notifications';
 import { arNoun, clockTime, prayerName } from './arabicCopy';
+import { getAyahForDate, getDailyHadith } from './api';
+import { loadQuranPreferences } from './quranState';
 import type { PrayerSnapshot } from './api';
 import type { WorshipSettings } from './localState';
 import { ADHAN_TRACKS, FAJR_TRACKS, adhanSoundName, adhanTrack, type AdhanTrack } from './adhanCatalog';
@@ -34,10 +37,10 @@ import { createSerialQueue } from './scheduleQueue';
  * The adhan voices that can sound from a notification.
  *
  * Only what is actually compiled into the app can play from a notification, so
- * this is the bundled catalogue: every file named `adhan-*.mp3` or
- * `fajr-*.mp3` in `assets/audio` is copied by the `withAdhanSounds` plugin
- * under the filename with punctuation turned into underscores, and that
- * resource name is what the system is asked to play.
+ * this is the bundled catalogue: the clips in `assets/sounds/` are named in
+ * `app.json` under the `expo-notifications` plugin's `sounds` array, which is
+ * what copies them into the bundle, and the `clip` field of a track names one
+ * of them without its extension.
  *
  * Adding another recording is a matter of dropping the file in and naming it
  * in the catalogue. If a named sound is somehow missing the system tone plays
@@ -546,7 +549,7 @@ export async function ensureNotificationChannels(rtl: string | boolean = false) 
     for (const id of [CHANNEL_ADHAN, CHANNEL_ADHAN_SILENT, CHANNEL_REMINDERS, CHANNEL_DAILY]) {
       await Notifications.deleteNotificationChannelAsync(id).catch(() => undefined);
     }
-    try { await AsyncStorage.setItem(CHANNEL_SCHEMA_KEY, String(CHANNEL_SCHEMA)); } catch { /* next time */ }
+    try { await writeText(CHANNEL_SCHEMA_KEY, String(CHANNEL_SCHEMA)); } catch { /* next time */ }
   }
 
   await Notifications.setNotificationChannelAsync(CHANNEL_ADHAN, {
@@ -615,7 +618,7 @@ export async function requestNotificationPermission(rtl: string | boolean = fals
 /** Opens the app's own page in the system settings, where permission can be granted after a refusal. */
 export async function openNotificationSettings() {
   if (Platform.OS === 'web') return;
-  await Linking.openSettings().catch(() => undefined);
+  await Linking.openSettings();
 }
 
 /**
@@ -708,6 +711,59 @@ const NO_AUDIO: AdhanAudio = { willPlay: false, reason: 'web-unsupported', sched
  * Kept in one place so each call site stays a single, readable call.
  */
 let pending: PendingEntry[] = [];
+
+/**
+ * When a repeating daily reminder will next go off.
+ *
+ * The same clock time, today if it is still ahead and tomorrow if it has
+ * gone by — which is the ordinary case, since the pass that schedules it
+ * tends to run hours after the time itself.
+ */
+function nextDailyFire(hour: number, minute: number): Date {
+  const at = new Date();
+  at.setHours(hour, minute, 0, 0);
+  if (at.getTime() <= Date.now()) at.setDate(at.getDate() + 1);
+  return at;
+}
+
+/** A body short enough to be taken in at a glance, since it cannot be tapped. */
+function clipForTray(text: string): string {
+  const MAX = 150;
+  const flat = text.replace(/\s+/g, ' ').trim();
+  return flat.length > MAX ? `${flat.slice(0, MAX - 1).trimEnd()}…` : flat;
+}
+
+/**
+ * The words under the title of the daily verse or hadith.
+ *
+ * The verse is asked for in the translation the reader has chosen, and falls
+ * back to the Arabic when that edition is not to hand. The Arabic is bundled
+ * with the app, so it is available offline and on a first run before anything
+ * has been fetched — and a verse in a script the reader may not read is
+ * better than a reminder that says nothing at all.
+ *
+ * Nothing here is allowed to fail the scheduling pass: a reading that cannot
+ * be fetched costs the body of one notification, while a throw would cost
+ * every reminder behind it.
+ */
+async function dailyReadingBody(kind: string, fireAt: Date): Promise<string> {
+  try {
+    if (kind === 'daily-verse') {
+      const prefs = await loadQuranPreferences().catch(() => null);
+      const ayah = await getAyahForDate(fireAt, prefs?.translationEdition || undefined);
+      const text = (ayah.translation || '').trim() || (ayah.arabic || '').trim();
+      return clipForTray(text ? `${ayah.reference} — ${text}` : '');
+    }
+    if (kind === 'daily-hadith') {
+      const hadith = await getDailyHadith();
+      return clipForTray((hadith.text || '').trim());
+    }
+  } catch {
+    /* The title still arrives, and the reading is on the home screen when
+       it is opened. */
+  }
+  return '';
+}
 
 /**
  * Schedules a notification and notes it for the history in the same step.
@@ -883,22 +939,40 @@ async function rebuildSchedule(
   }
 
   // ---- 4. one verse or hadith each morning ----------------------------
-  const daily = (on: boolean | undefined, raw: string, kind: string, title: string, route: string) => {
-    if (!on) return;
+  /**
+   * Scheduled with the reading already inside it.
+   *
+   * A notification's words are fixed when it is laid down, not when it
+   * appears — by then the system is showing it and the app may not be
+   * running. So the day's verse has to be fetched now and written in.
+   *
+   * It was scheduled with an empty body, which arrived as a title with
+   * nothing under it: a reminder that said there was an ayah of the day
+   * without saying what it was.
+   *
+   * The reading wanted is the one for the day it will *next* fire, not
+   * today's — a reminder set for 08:00 and scheduled at noon is next going
+   * off tomorrow morning.
+   */
+  const daily = async (on: boolean | undefined, raw: string, kind: string, title: string, route: string) => {
+    if (!on) return false;
     const at = atTime(raw);
-    if (!at) return;
-    return scheduleAndLog({
-      content: { title, body: '', sound: 'default', data: { route, kind } },
+    if (!at) return false;
+    const body = await dailyReadingBody(kind, nextDailyFire(at.getHours(), at.getMinutes()));
+    await scheduleAndLog({
+      content: { title, body, sound: 'default', data: { route, kind } },
       trigger: dailyTrigger(at.getHours(), at.getMinutes(), CHANNEL_DAILY),
     });
+    return true;
   };
 
-  if (settings.dailyVerseReminder) {
-    await daily(true, settings.dailyVerseTime || '08:00', 'daily-verse', c.verseTitle, 'Home');
+  /* Counted only when something was actually laid down. The old code counted
+     the reminder whether or not its time parsed, so the number the settings
+     screen showed was a claim rather than a count. */
+  if (await daily(settings.dailyVerseReminder, settings.dailyVerseTime || '08:00', 'daily-verse', c.verseTitle, 'Home')) {
     scheduled++;
   }
-  if (settings.dailyHadithReminder) {
-    await daily(true, settings.dailyHadithTime || '09:00', 'daily-hadith', c.hadithTitle, 'Home');
+  if (await daily(settings.dailyHadithReminder, settings.dailyHadithTime || '09:00', 'daily-hadith', c.hadithTitle, 'Home')) {
     scheduled++;
   }
 

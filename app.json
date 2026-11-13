@@ -89,6 +89,8 @@
       "./plugins/withAdhanAlarm.js",
       "./plugins/withUnusedPermissions.js",
       "./plugins/withHaramainCleartext.js",
+      "./plugins/widgets/withWidgets.js",
+      "@bacons/apple-targets",
       "expo-sharing",
       "expo-video"
     ]

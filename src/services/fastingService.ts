@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { writeText } from './storage';
 
 /**
  * Phase 4 — fasting record and Qada ledger.
@@ -132,7 +133,7 @@ function emit(next: FastingState) {
 
 async function persist(next: FastingState) {
   emit(next);
-  await AsyncStorage.setItem(KEY, JSON.stringify(next)).catch(() => undefined);
+  await writeText(KEY, JSON.stringify(next));
 }
 
 

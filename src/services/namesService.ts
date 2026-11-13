@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { writeText } from './storage';
 import { DivineName, getNameOfDay, getNames } from './api';
 import { getCachedJson, setCachedJson } from './contentCache';
 
@@ -65,5 +66,5 @@ export async function loadNameLanguage() {
 }
 
 export async function saveNameLanguage(code: string) {
-  await AsyncStorage.setItem(LANGUAGE_KEY, code).catch(() => undefined);
+  await writeText(LANGUAGE_KEY, code);
 }

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { writeText } from './storage';
 
 /**
  * Phase 4 — the women's area: cycle, purity, post-natal bleeding and the
@@ -84,7 +85,7 @@ function emit(next: WomensState) {
 
 async function persist(next: WomensState) {
   emit(next);
-  await AsyncStorage.setItem(KEY, JSON.stringify(next)).catch(() => undefined);
+  await writeText(KEY, JSON.stringify(next));
 }
 
 

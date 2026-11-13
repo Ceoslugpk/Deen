@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { writeText } from './storage';
 
 /**
  * Phase 4 — Zakat across assets and currencies.
@@ -155,7 +156,7 @@ function emitMarket(next: MarketData) {
 
 async function persist(next: ZakatState) {
   emit(next);
-  await AsyncStorage.setItem(KEY, JSON.stringify(next)).catch(() => undefined);
+  await writeText(KEY, JSON.stringify(next));
 }
 
 
@@ -238,7 +239,7 @@ export async function refreshMarket() {
       fetchedAt: Date.now(),
     };
     emitMarket(next);
-    await AsyncStorage.setItem(RATES_KEY, JSON.stringify(next)).catch(() => undefined);
+    await writeText(RATES_KEY, JSON.stringify(next));
     return next;
   } catch {
     return market;

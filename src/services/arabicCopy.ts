@@ -50,6 +50,7 @@ const COPY_LOADERS: Record<string, () => Record<string, string>> = {
   bs: () => require('./bosnianCopy').BS,
   bg: () => require('./bulgarianCopy').BG,
   si: () => require('./sinhalaCopy').SI,
+  ps: () => require('./pashtoCopy').PS,
 };
 
 const AR: Record<string, string> = {
@@ -2922,7 +2923,13 @@ const PRAYERS_SI: Record<string, string> = {
 const PRAYERS_UZ: Record<string, string> = {
   Fajr: 'Бомдод', Sunrise: 'Қуёш чиқиши', Dhuhr: 'Пешин', Asr: 'Аср', Maghrib: 'Шом', Isha: 'Хуфтон',
 };
-const PRAYER_TABLES: Record<'ar' | 'ur' | 'tr' | 'fa' | 'id' | 'hi' | 'ml' | 'ru' | 'fr' | 'bn' | 'ms' | 'ta' | 'uz' | 'zh' | 'kk' | 'vi' | 'az' | 'bs' | 'bg' | 'si', Record<string, string>> = {
+/* Pashto keeps the Arabic names for the five, as its prayer-time pages do.
+   Only Sunrise is written in Pashto, because the sun rising is a thing
+   Pashto already has a word for. */
+const PRAYERS_PS: Record<string, string> = {
+  Fajr: 'فجر', Sunrise: 'لمر خاته', Dhuhr: 'ظهر', Asr: 'عصر', Maghrib: 'مغرب', Isha: 'عشا',
+};
+const PRAYER_TABLES: Record<'ar' | 'ur' | 'tr' | 'fa' | 'id' | 'hi' | 'ml' | 'ru' | 'fr' | 'bn' | 'ms' | 'ta' | 'uz' | 'zh' | 'kk' | 'vi' | 'az' | 'bs' | 'bg' | 'si' | 'ps', Record<string, string>> = {
   ar: PRAYERS_AR,
   ur: PRAYERS_UR,
   tr: PRAYERS_TR,
@@ -2943,6 +2950,7 @@ const PRAYER_TABLES: Record<'ar' | 'ur' | 'tr' | 'fa' | 'id' | 'hi' | 'ml' | 'ru
   bs: PRAYERS_BS,
   bg: PRAYERS_BG,
   si: PRAYERS_SI,
+  ps: PRAYERS_PS,
 };
 
 export function prayerName(code: string | boolean, name: string): string {
@@ -2957,7 +2965,7 @@ export function prayerName(code: string | boolean, name: string): string {
    * `null` means English: the screens were written in it, so the source text
    * is already the right answer and there is nothing to look up.
    */
-  function tableFor(code: string | boolean): 'ar' | 'ur' | 'tr' | 'fa' | 'id' | 'hi' | 'ml' | 'ru' | 'fr' | 'bn' | 'ms' | 'ta' | 'uz' | 'zh' | 'kk' | 'vi' | 'az' | 'bs' | 'bg' | 'si' | null {
+  function tableFor(code: string | boolean): 'ar' | 'ur' | 'tr' | 'fa' | 'id' | 'hi' | 'ml' | 'ru' | 'fr' | 'bn' | 'ms' | 'ta' | 'uz' | 'zh' | 'kk' | 'vi' | 'az' | 'bs' | 'bg' | 'si' | 'ps' | null {
     if (typeof code === 'boolean') return code ? 'ar' : null;
     if (code === 'ar') return 'ar';
     if (code === 'ur') return 'ur';
@@ -2979,6 +2987,7 @@ export function prayerName(code: string | boolean, name: string): string {
     if (code === 'bs') return 'bs';
     if (code === 'bg') return 'bg';
     if (code === 'si') return 'si';
+    if (code === 'ps') return 'ps';
     return null;
   }
 

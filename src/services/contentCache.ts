@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
+import { registerEvictor } from './storage';
 
 export type CacheNamespace = 'quran' | 'tafsir' | 'hadith' | 'daily' | 'audio-meta';
 type CacheEntry = {
@@ -362,3 +363,38 @@ export async function getCacheUsage(){
     constrained,
   };
 }
+
+/**
+ * Offer the caches back when the disk is full.
+ *
+ * Cached surahs, tafsir and hadith can all be fetched again, so they are the
+ * only thing here that may be given up to make room for a write that
+ * matters — a marked prayer, a saved verse, a chosen language. Nothing in
+ * these namespaces is a record of what a person did; it is all a copy of
+ * something the network still has.
+ *
+ * The smallest useful amount is freed and then it stops: hadith first,
+ * because it is usually the largest, and only one namespace unless that one
+ * was already empty. Freeing everything at once would empty the offline Quran
+ * to save a few bytes.
+ *
+ * Nothing else registers as expendable. The reader's own records — prayers,
+ * fasts, counts, notes, journal entries — are never evicted, whatever the
+ * pressure.
+ */
+registerEvictor({
+  name: 'content cache',
+  free: async () => {
+    let freed = 0;
+    for (const namespace of ['hadith', 'tafsir', 'quran'] as CacheNamespace[]) {
+      const index = await ensureIndex();
+      const held = index.filter((entry) => entry.namespace === namespace);
+      const bytes = held.reduce((total, entry) => total + entry.bytes, 0);
+      if (!bytes) continue;
+      await clearCacheNamespace(namespace);
+      freed += bytes;
+      break;
+    }
+    return freed;
+  },
+});

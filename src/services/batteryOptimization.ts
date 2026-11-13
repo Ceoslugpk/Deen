@@ -22,6 +22,7 @@ import { Platform } from 'react-native';
  * web. Those report `notNeeded` so the interface can simply not mention it.
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { writeText } from './storage';
 import * as IntentLauncher from 'expo-intent-launcher';
 import Constants from 'expo-constants';
 
@@ -50,7 +51,7 @@ let asked: boolean | null = null;
 
 export async function markBatteryExemptionAsked(): Promise<void> {
   asked = true;
-  await AsyncStorage.setItem(ASKED_KEY, '1').catch(() => undefined);
+  await writeText(ASKED_KEY, '1');
 }
 
 export async function resetBatteryExemptionAsked(): Promise<void> {

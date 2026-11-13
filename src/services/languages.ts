@@ -14,6 +14,7 @@
 
 export type LanguageCode =
   | 'en' | 'ar' | 'ur' | 'fr' | 'tr' | 'ru' | 'zh' | 'fa' | 'uz' | 'kk' | 'my' | 'vi' | 'az' | 'bs' | 'bg' | 'si'
+  | 'ps'
   /* Below: languages the hadith corpus carries that the rest of the app does
      not offer yet — no Quran translation, no recitation voice, no interface
      copy. They exist so hadith can be read in them, not so the app can be. */
@@ -56,7 +57,12 @@ export type Language = {
   voice?: { identifier: string; name: string };
 };
 
-const RTL: LanguageCode[] = ['ar', 'ur', 'fa'];
+/**
+ * Pashto joins these three. It is written in a Perso-Arabic script and reads
+ * right to left, so it belongs here rather than being a special case handled
+ * by the flag on the language entry alone.
+ */
+const RTL: LanguageCode[] = ['ar', 'ur', 'fa', 'ps'];
 
 
 export const LANGUAGES: Language[] = [
@@ -388,6 +394,24 @@ export const LANGUAGES: Language[] = [
     code: 'my', native: 'မြန်မာ', english: 'Burmese', rtl: false, uiReady: false,
     text: { identifier: 'tr_my_translation_by_ghazi_muhammed_ha', name: 'Ghazi Muhammed Hashim', kind: 'translation' },
     voice: { identifier: 'my.hashimtinmyint', name: 'Hashim Tin Myint' },
+  },
+  {
+    /* The Quran text is Zakaria Abulsalam's Pashto rendering, which is the
+       fuller of the two the catalogue carries and the one whose surah files
+       all resolve. Abdul Wali's is a closer, more literal reading and stays
+       available from the Translations screen like every other edition.
+
+       No voice. Spoken Pashto is not published by any of the hosts the app
+       uses — the CDN carries no `ps` edition at all, and everyayah's
+       translation folders hold Azerbaijani, Bosnian, Persian and Urdu but
+       nothing in Pashto. The reader offers Pashto text with the Arabic
+       recitation alone, the same deliberate omission as Persian and Urdu
+       carried before theirs were found.
+
+       A tafsir exists as well (`tafsir_ps_pashto_pashto-mokhtasar`), so the
+       Tafsir & comparison screen has something to show in the language. */
+    code: 'ps', native: 'پښتو', english: 'Pashto', rtl: true, uiReady: true, uiPartial: false,
+    text: { identifier: 'tr_ps_zakaria_abulsalam', name: 'Zakaria Abulsalam', kind: 'translation' },
   },
 ];
 

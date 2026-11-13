@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { writeText } from './storage';
 import * as Crypto from 'expo-crypto';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { AppState } from 'react-native';
@@ -70,7 +71,7 @@ function emitSession() {
 
 async function persist(next: LockConfig) {
   emitConfig(next);
-  await AsyncStorage.setItem(KEY, JSON.stringify(next)).catch(() => undefined);
+  await writeText(KEY, JSON.stringify(next));
 }
 
 

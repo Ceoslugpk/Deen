@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { writeText } from './storage';
 import { getCachedJson, listCachedKeys, setCachedJson } from './contentCache';
 import { hadithLanguage } from './languages';
 import {
@@ -239,6 +240,30 @@ function toHadith(slug: string, row: HadithRecord, fallbackBookName: string | nu
 }
 
 /**
+ * Whether there is anything to show.
+ *
+ * A slice of the catalogue comes back with `text` empty, and almost all of
+ * those have no Arabic either — an audited run found 216 of them across the
+ * first sixteen books of seven collections, concentrated in the introduction
+ * books (Muslim book 0, Nasai book 0, Malik book 0). They are not a decoding
+ * mistake on our side: the record genuinely carries nothing.
+ *
+ * Rendered, they are a card with a number and no words, which reads as the app
+ * having failed rather than the source having a gap. Dropping them here means
+ * no blank card can reach a screen, and it is done on the way out of the cache
+ * as well as on the way in, so a device that already stored them is cleaned
+ * the next time the book is opened.
+ *
+ * A record with Arabic but no translation is kept: half a narration is still
+ * narration, and the reader chose the language.
+ */
+function hasContent(hadith: Hadith): boolean {
+  if (hadith.english) return true;
+  if (hadith.arabic) return true;
+  return false;
+}
+
+/**
  * Every hadith in one book, paged through the Worker.
  *
  * The server caps a page at 100 records and says how many are left, so a long
@@ -255,7 +280,13 @@ async function fetchBook(
   const cacheKey = `book-${slug}-${language}-${book.number}`;
   if (!force) {
     const cached = await getCachedJson<{ hadiths: Hadith[] }>('hadith', cacheKey).catch(() => null);
-    if (cached && Array.isArray(cached.hadiths) && cached.hadiths.length) return cached.hadiths;
+    if (cached && Array.isArray(cached.hadiths) && cached.hadiths.length) {
+      /* Re-filter on the way out as well. A book cached before blanks were
+         dropped still holds them, and reading it back filtered is what clears
+         an already-installed device without asking anyone to wipe anything. */
+      const clean = cached.hadiths.filter(hasContent);
+      if (clean.length) return clean;
+    }
   }
 
   const rows: Hadith[] = [];
@@ -264,12 +295,19 @@ async function fetchBook(
   for (;;) {
     /* eslint-disable no-await-in-loop */
     const page = await getHadithBook(slug, book.number, { language, limit, offset });
-    page.hadiths.forEach((row) => rows.push(toHadith(slug, row, book.name)));
+    page.hadiths.forEach((row) => {
+      const hadith = toHadith(slug, row, book.name);
+      if (hasContent(hadith)) rows.push(hadith);
+    });
     if (!page.page?.hasMore || page.hadiths.length === 0) break;
     offset += page.hadiths.length;
     /* A server that reports hasMore but returns nothing would spin forever. */
     if (offset > 20000) break;
   }
+
+  /* Nothing readable here: remember it, so the collection's list stops
+     offering this book. See markBookBlank. */
+  if (!rows.length) void markBookBlank(slug, language, book.number).catch(() => undefined);
 
   if (rows.length) void setCachedJson('hadith', cacheKey, { book, lang: language, hadiths: rows }).catch(() => undefined);
   return rows;
@@ -301,7 +339,7 @@ export async function loadHadithLanguage(): Promise<string> {
 export async function setHadithLanguage(code: string): Promise<void> {
   if (!hadithLanguage(code)) return;
   currentLanguage = code;
-  await AsyncStorage.setItem(HADITH_LANG_KEY, code).catch(() => undefined);
+  await writeText(HADITH_LANG_KEY, code);
   languageListeners.forEach((listener) => listener());
 }
 
@@ -385,6 +423,45 @@ export type HadithOutline = {
  * reader open Bukhari without waiting on 7,589 narrations — the numbers are
  * the table of contents, not the contents.
  */
+/* ==================== Books with nothing in them ==================== */
+
+/**
+ * Books the source lists but keeps no words for.
+ *
+ * Two of them are wholly empty — every narration in Nasai book 0 and Malik
+ * book 0 comes back with no text and no Arabic — and a handful more are partly
+ * so. The catalogue still counts them, so the book list offers "82 hadith" and
+ * opening it lands on a screen saying the book is empty.
+ *
+ * Which ones they are is a property of the source, not of the app, and the
+ * snapshot can change under us, so nothing is hardcoded. A book is recorded
+ * here the first time it is fetched and comes back with nothing in it, and
+ * dropped from the list from then on. The first visit still opens the empty
+ * screen; every visit after that no longer offers it.
+ */
+const BLANK_BOOKS_KEY = '@deen/hadith/blank-books/v1';
+let blankBooks: Record<string, number[]> = {};
+let blankBooksLoaded = false;
+
+async function loadBlankBooks(): Promise<void> {
+  if (blankBooksLoaded) return;
+  blankBooksLoaded = true;
+  try {
+    const raw = await AsyncStorage.getItem(BLANK_BOOKS_KEY);
+    blankBooks = raw ? (JSON.parse(raw) as Record<string, number[]>) : {};
+  } catch { blankBooks = {}; }
+}
+
+/** Remember that a book held nothing, for this collection in this language. */
+async function markBookBlank(slug: string, lang: string, bookNumber: number): Promise<void> {
+  await loadBlankBooks();
+  const key = `${slug}:${lang}`;
+  const list = blankBooks[key] || [];
+  if (list.includes(bookNumber)) return;
+  blankBooks[key] = [...list, bookNumber];
+  await writeText(BLANK_BOOKS_KEY, JSON.stringify(blankBooks));
+}
+
 export async function loadHadithOutline(
   slug: string,
   language: string = DEFAULT_HADITH_LANGUAGE,
@@ -416,17 +493,21 @@ export async function loadHadithOutline(
       count: Number(book.count ?? 0),
     }))
     .filter((book: HadithBook) => book.count > 0);
-  if (!books.length) throw new Error('The collection listed no books');
+
+  /* Books already seen to hold nothing are not offered. See markBookBlank. */
+  const knownBlank = (await loadBlankBooks().then(() => blankBooks[`${slug}:${lang}`]) as number[]) || [];
+  const offered = knownBlank.length ? books.filter((book) => !knownBlank.includes(book.number)) : books;
+  if (!offered.length) throw new Error('The collection listed no books');
 
   const available = await collectionLanguages(slug);
   const counts: Record<string, number> = (detail as any)?.counts || {};
   /* Editions disagree on the total - Russian Bukhari has one narration more
      than English - so the count is taken for the language actually in hand. */
-  const total = counts[lang] || books.reduce((sum, entry) => sum + entry.count, 0);
+  const total = counts[lang] || offered.reduce((sum, entry) => sum + entry.count, 0);
   const outline: HadithOutline = {
     slug,
     name: detail.collection?.name || known.name || slug,
-    books,
+    books: offered,
     loadedAt: Date.now(),
     source: `${ISLAMIC_DATA_BASE_URL}/hadith/collections/${slug}`,
     lang,
@@ -455,7 +536,10 @@ export async function loadHadithBook(
   const key = `book-${slug}-${lang}-${bookNumber}`;
   if (!force) {
     const cached = await getCachedJson<{ hadiths: Hadith[] }>('hadith', key).catch(() => null);
-    if (cached && Array.isArray(cached.hadiths) && cached.hadiths.length) return cached.hadiths;
+    if (cached && Array.isArray(cached.hadiths) && cached.hadiths.length) {
+      const clean = cached.hadiths.filter(hasContent);
+      if (clean.length) return clean;
+    }
   }
 
   const outline = await loadHadithOutline(slug, lang).catch(() => null);
@@ -467,12 +551,19 @@ export async function loadHadithBook(
   for (;;) {
     /* eslint-disable no-await-in-loop */
     const page = await getHadithBook(slug, bookNumber, { language: lang, limit, offset });
-    page.hadiths.forEach((row) => rows.push(toHadith(slug, row, bookName)));
+    page.hadiths.forEach((row) => {
+      const hadith = toHadith(slug, row, bookName);
+      if (hasContent(hadith)) rows.push(hadith);
+    });
     if (!page.page?.hasMore || page.hadiths.length === 0) break;
     offset += page.hadiths.length;
     /* A server that reports hasMore but returns nothing would spin forever. */
     if (offset > 20000) break;
   }
+
+  /* Nothing readable in a book the catalogue still counts: remember it, so the
+     book list stops offering it from here on. */
+  if (!rows.length) void markBookBlank(slug, lang, bookNumber).catch(() => undefined);
 
   if (rows.length) void setCachedJson('hadith', key, { bookNumber, lang, hadiths: rows }).catch(() => undefined);
   return rows;
@@ -517,6 +608,13 @@ export async function fetchHadithOne(
   const outline = await loadHadithOutline(slug, lang).catch(() => null);
   const bookName = outline?.books.find((book) => book.number === record.book)?.name || null;
   const hadith = toHadith(slug, record, bookName);
+  /* A record the source holds no words for is not a record anyone can read.
+     Failing here is better than handing back a card with a number and nothing
+     under it, because the screen already knows how to show "not available"
+     and does not know how to show a blank. */
+  if (!hasContent(hadith)) {
+    throw new Error('This narration is not available in the source for the language you have chosen.');
+  }
   void setCachedJson('hadith', key, { hadith }).catch(() => undefined);
   return hadith;
 }
@@ -547,7 +645,12 @@ export async function loadHadithCollection(
     let data: HadithCollectionData | null = null;
     if (!force) {
       const cached = await getCachedJson<HadithCollectionData>('hadith', `collection-${slug}`).catch(() => null);
-      if (cached && Array.isArray(cached.hadiths) && cached.hadiths.length) data = cached;
+      if (cached && Array.isArray(cached.hadiths) && cached.hadiths.length) {
+        /* Same reason as the book cache: a collection stored before blanks
+           were dropped is filtered here rather than shown as it was written. */
+        const clean = cached.hadiths.filter(hasContent);
+        if (clean.length) data = { ...cached, hadiths: clean };
+      }
     }
     if (!data) {
       const detail = await getHadithCollection(slug, lang);
@@ -704,7 +807,7 @@ export async function downloadCollection(
     if (!count) throw new Error('Nothing came back for this collection');
     const all = await downloadedCollections();
     all[slug] = { at: Date.now(), count };
-    await AsyncStorage.setItem(`hadith:${DOWNLOAD_MARKER}`, JSON.stringify(all)).catch(() => undefined);
+    await writeText(`hadith:${DOWNLOAD_MARKER}`, JSON.stringify(all));
     setProgress(slug, { phase: 'done', booksDone: books.length, booksTotal: books.length });
     emitDownloads();
     return count;
@@ -723,7 +826,7 @@ export async function downloadCollection(
 export async function removeDownloadedCollection(slug: string): Promise<void> {
   const all = await downloadedCollections();
   delete all[slug];
-  await AsyncStorage.setItem(`hadith:${DOWNLOAD_MARKER}`, JSON.stringify(all)).catch(() => undefined);
+  await writeText(`hadith:${DOWNLOAD_MARKER}`, JSON.stringify(all));
   /* Every language: the cache key carries the language, so removing one
      collection means clearing it in each tongue it was read in. */
   const keys = await listCachedKeys('hadith').catch(() => [] as string[]);
@@ -761,6 +864,9 @@ export async function searchDeviceHadith(query: string, limit = 60): Promise<Had
     );
     for (const group of groups) {
       for (const row of group?.hadiths || []) {
+        /* A record with no words cannot match anything, and a book cached
+           before blanks were dropped can still be holding them. */
+        if (!hasContent(row)) continue;
         if (seen.has(row.id)) continue;
         if ((row.english || '').toLowerCase().includes(needle) || (row.arabic || '').includes(query.trim())) {
           seen.add(row.id);
@@ -879,7 +985,7 @@ export async function loadHadithState() {
 
 async function persist(next: HadithUserState) {
   emit(next);
-  await AsyncStorage.setItem(STATE_KEY, JSON.stringify(next)).catch(() => undefined);
+  await writeText(STATE_KEY, JSON.stringify(next));
 }
 
 export function useHadithState(): HadithUserState {

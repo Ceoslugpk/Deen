@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { writeText } from './storage';
 import { engine } from './audioEngine';
 import { AudioEdition, getAudioEditions, getSurahAudio, getSurahReciters, SurahAudioAyah, SurahReciter } from './api';
 import { getCachedJson, setCachedJson } from './contentCache';
@@ -212,7 +213,7 @@ async function readJson<T>(key: string, fallback: T): Promise<T> {
 
 async function writeJson(key: string, value: unknown) {
   try {
-    await AsyncStorage.setItem(key, JSON.stringify(value));
+    await writeText(key, JSON.stringify(value));
   } catch {
     /* storage full or unavailable — playback continues without persistence */
   }
@@ -228,7 +229,7 @@ export async function loadAudioEditions(force = false): Promise<{ arabic: AudioE
   const stale = !editions || force || Date.now() - (cached?.savedAt || 0) > EDITION_TTL;
   if (stale || !editions) {
     editions = await getAudioEditions();
-    await setCachedJson('audio-meta', 'editions-v1', { savedAt: Date.now(), editions }).catch(() => undefined);
+    await setCachedJson('audio-meta', 'editions-v1', { savedAt: Date.now(), editions });
   }
   const arabic = editions.filter(
     (edition) => edition.language === 'ar' && (edition.type === 'versebyverse' || edition.type === 'translation'),

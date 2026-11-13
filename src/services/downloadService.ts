@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { writeText } from './storage';
 import * as FileSystem from 'expo-file-system/legacy';
 import { getSurahAudio, getSurahReciters } from './api';
 import { getCachedJson, setCachedJson } from './contentCache';
@@ -62,7 +63,7 @@ function emit(next: DownloadItem[]) {
 
 async function persist(next: DownloadItem[]) {
   emit(next);
-  await AsyncStorage.setItem(KEY, JSON.stringify(next)).catch(() => undefined);
+  await writeText(KEY, JSON.stringify(next));
 }
 
 function patch(id: string, changes: Partial<DownloadItem>) {

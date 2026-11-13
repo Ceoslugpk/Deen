@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { writeText } from './storage';
 import { useEffect, useState } from 'react';
 import { CURRENCIES } from './zakatService';
 
@@ -47,7 +48,7 @@ function emit(next: SadaqahState) {
 
 async function persist(next: SadaqahState) {
   emit(next);
-  await AsyncStorage.setItem(KEY, JSON.stringify(next)).catch(() => undefined);
+  await writeText(KEY, JSON.stringify(next));
 }
 
 export function subscribeSadaqah(listener: (next: SadaqahState) => void) {

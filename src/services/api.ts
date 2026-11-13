@@ -27,7 +27,41 @@ export type DivineName = { number: number; name: string; transliteration: string
 export type DailyAyah = { reference: string; arabicReference?: string; arabic: string; translation: string };
 export type QuranEdition = { identifier: string; language: string; englishName: string; name: string; type: string; direction?: string };
 export type QuranSearchResult = { verseKey: string; surahId: number; surahName: string; ayah: number; text: string; edition: string };
-export type AudioEdition = { identifier: string; language: string; englishName: string; name: string; type: string; direction?: string };
+/**
+ * A per-ayah audio track.
+ *
+ * `bitrate`, `audioBase` and `audioNaming` are the escape hatches for the two
+ * things that are not uniform across the catalogue. See `ayahAudioUrl` for why
+ * they exist and what happens when they are absent.
+ */
+export type AudioEdition = {
+  identifier: string;
+  language: string;
+  englishName: string;
+  name: string;
+  type: string;
+  direction?: string;
+  /**
+   * The bitrate this recording exists at, where it is not the default.
+   *
+   * Compulsory rather than cosmetic: the CDN only holds each recording at the
+   * rate it was encoded at, and asking for it at any other rate is a 403. The
+   * English, Farsi and Urdu spoken translations exist at 192, 40 and 64
+   * respectively and nowhere else — which is why a single fixed rate in the
+   * base URL silently excluded all three.
+   */
+  bitrate?: number;
+  /**
+   * A host and path this track lives outside the CDN, where it does.
+   *
+   * Two spoken translations — Azerbaijani and Bosnian — are not on the CDN at
+   * all. They are published on everyayah.com, which also names its files by
+   * surah and verse rather than by position in the whole book.
+   */
+  audioBase?: string;
+  /** `surahverse` names a file `001001.mp3` (surah 3 digits, verse 3 digits). */
+  audioNaming?: 'surahverse';
+};
 export type SurahAudioAyah = { numberInSurah: number; globalNumber: number; audio: string; text: string };
 export type SurahReciter = { id: number; name: string; letter: string; urlTemplate: string; moshaf: string; rewaya: string; surahTotal: number };
 
@@ -68,8 +102,17 @@ const AUDIO_EDITIONS: AudioEdition[] = AUDIO_TABLE.editions;
  * Raise the line below back to the Worker's base once it honours Range, and
  * the app moves off the CDN with nothing else to change.
  */
-const AUDIO_BASE = 'https://cdn.islamic.network/quran/audio/128';
-// const AUDIO_BASE = 'https://audio.islamicdata.uz/v1/audio/media/audio/128';
+/**
+ * The bitrate assumed for a recording that does not name one.
+ *
+ * Every edition already in the catalogue resolves at 128, so leaving them
+ * unnamed keeps the table honest about what is unusual rather than what is
+ * merely possible.
+ */
+const DEFAULT_AUDIO_BITRATE = 128;
+/** The bitrate is no longer part of the base — see `ayahAudioUrl`. */
+const AUDIO_BASE = 'https://cdn.islamic.network/quran/audio';
+// const AUDIO_BASE = 'https://audio.islamicdata.uz/v1/audio/media/audio';
 
 /** What the app calls its Arabic scripts when it has to name one. */
 const SCRIPT_NAMES: Record<string, string> = {
@@ -100,12 +143,49 @@ const SCRIPT_NAMES: Record<string, string> = {
  */
 const workerSurahCache = new Map<string, Map<string, string> | null>();
 
+/**
+ * How many surahs to hold in memory.
+ *
+ * A surah of Arabic is about 51 KB of UTF-16 once it is in memory, so all 114
+ * in one script is 5.7 MB and in a script plus five translations is 34 MB.
+ * Nothing here used to be evicted, which meant the map grew for the whole
+ * session and a phone that had been reading for an hour held every edition it
+ * had ever touched - the kind of growth that ends in the system killing the
+ * app on a device with half a gigabyte of memory.
+ *
+ * Ninety-six entries is roughly one script plus one translation across forty
+ * surahs, which is far more than a reading session touches in one sitting, and
+ * the surahs already on disk are a cache miss away rather than a request away.
+ *
+ * `Map` iterates in insertion order, so re-inserting on a read is all the
+ * bookkeeping an LRU needs.
+ */
+const WORKER_SURAH_CACHE_LIMIT = 96;
+
+function surahCacheGet(key: string): Map<string, string> | null | undefined {
+  const value = workerSurahCache.get(key);
+  if (value === undefined) return undefined;
+  /* Re-insert so the least recently used falls out first. */
+  workerSurahCache.delete(key);
+  workerSurahCache.set(key, value);
+  return value;
+}
+
+function surahCacheSet(key: string, value: Map<string, string> | null): void {
+  workerSurahCache.delete(key);
+  workerSurahCache.set(key, value);
+  if (workerSurahCache.size > WORKER_SURAH_CACHE_LIMIT) {
+    const oldest = workerSurahCache.keys().next();
+    if (!oldest.done) workerSurahCache.delete(oldest.value);
+  }
+}
+
 async function workerTexts(editionId: string, surahs: Iterable<string>): Promise<Map<string, string> | null> {
   if (!editionId) return null;
   const out = new Map<string, string>();
   for (const surah of new Set(surahs)) {
     const cacheKey = `${editionId}:${surah}`;
-    let rows = workerSurahCache.get(cacheKey);
+    let rows = surahCacheGet(cacheKey);
     if (rows === undefined) {
       try {
         const response = await getSurah('quran', editionId, Number(surah));
@@ -115,12 +195,12 @@ async function workerTexts(editionId: string, surahs: Iterable<string>): Promise
            other provider. Anything else - offline, timeout - is not an answer
            either way, so it is not cached as one. */
         if (error instanceof IslamicDataError && error.status === 404) {
-          workerSurahCache.set(cacheKey, null);
+          surahCacheSet(cacheKey, null);
           return null;
         }
         return null;
       }
-      workerSurahCache.set(cacheKey, rows);
+      surahCacheSet(cacheKey, rows);
     }
     if (rows === null) return null;
     for (const [key, value] of rows) out.set(key, value);
@@ -141,7 +221,7 @@ async function workerTexts(editionId: string, surahs: Iterable<string>): Promise
 async function scriptTexts(script: string, surah: number): Promise<Map<string, string> | null> {
   const editionId = scriptEditionId(script);
   const cacheKey = `script:${editionId}:${surah}`;
-  const cached = workerSurahCache.get(cacheKey);
+  const cached = surahCacheGet(cacheKey);
   if (cached !== undefined) return cached;
   try {
     const response = await getSurah('scripts', editionId, surah);
@@ -149,13 +229,13 @@ async function scriptTexts(script: string, surah: number): Promise<Map<string, s
     for (const row of response.rows) {
       rows.set(row.verseKey, isTajweedScript(editionId) ? convertTajweedMarkup(row.text) : row.text);
     }
-    workerSurahCache.set(cacheKey, rows);
+    surahCacheSet(cacheKey, rows);
     return rows;
   } catch (error) {
     /* A missing script is not a reason to blank the reader: fall back to
        Uthmani, which every surah has. */
     if (error instanceof IslamicDataError && error.status === 404) {
-      workerSurahCache.set(cacheKey, null);
+      surahCacheSet(cacheKey, null);
       return null;
     }
     return null;
@@ -860,6 +940,21 @@ export async function getDailyHadith(): Promise<DailyHadith> {
     } catch { /* the English already in hand is the fallback */ }
   }
 
+  /* The day's pick is made by the server, and a small share of the catalogue
+     carries no text — audited at 216 fully blank records, concentrated in the
+     introduction books. Left alone that is a quote card with nothing in it
+     about five days a year. Rather than publish a blank, walk to the next
+     narration that does have words; a handful of tries is plenty. */
+  if (!text.trim() && number) {
+    for (let step = 1; step <= 5 && !text.trim(); step += 1) {
+      const candidate = Number(number) + step;
+      try {
+        const next = await fetchHadithOne(slug, candidate, wanted === 'en' ? 'en' : wanted);
+        if (next?.english) { text = next.english; if (next.arabic) arabic = next.arabic; }
+      } catch { /* try the next one */ }
+    }
+  }
+
   return { collection: slug, number, text, arabic };
 }
 
@@ -1109,9 +1204,34 @@ export async function getSurahAudio(chapterId: number, edition: string): Promise
   return out;
 }
 
-/** Where one ayah of one recitation lives on the CDN. */
+/**
+ * Where one ayah of one recitation lives.
+ *
+ * Two things vary across the catalogue and both used to be assumed away.
+ *
+ * The bitrate comes first. The CDN holds each recording only at the rate it
+ * was encoded at, and answers any other rate with a 403 — so a single rate in
+ * the base URL made three whole languages (English, Farsi, Urdu) unreachable
+ * while they sat in the catalogue, listed and silent. Each edition now names
+ * its own.
+ *
+ * The second is the host and the file naming. Two spoken translations are not
+ * on the CDN at all: they are published on everyayah.com, whose files are
+ * named by surah and verse (`001001.mp3`) rather than by position in the book.
+ * The position is already what the caller has, and `ayahNumberToKey` turns it
+ * back into a surah and a verse, so the one number still serves both schemes.
+ */
 export function ayahAudioUrl(edition: string, globalAyahNumber: number): string {
-  return `${AUDIO_BASE}/${edition}/${globalAyahNumber}.mp3`;
+  const known = AUDIO_EDITIONS.find((entry) => entry.identifier === edition);
+  const bitrate = known?.bitrate ?? DEFAULT_AUDIO_BITRATE;
+
+  if (known?.audioBase && known.audioNaming === 'surahverse') {
+    const { surah, verse } = ayahNumberToKey(globalAyahNumber);
+    const pad = (n: number) => String(n).padStart(3, '0');
+    return `${known.audioBase}/${pad(surah)}${pad(verse)}.mp3`;
+  }
+
+  return `${AUDIO_BASE}/${bitrate}/${edition}/${globalAyahNumber}.mp3`;
 }
 
 /**

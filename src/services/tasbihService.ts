@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { writeText } from './storage';
 
 /**
  * Phase 3 — Tasbih.
@@ -122,7 +123,7 @@ function emit(next: TasbihState) {
 
 async function persist(next: TasbihState) {
   emit(next);
-  await AsyncStorage.setItem(KEY, JSON.stringify(next)).catch(() => undefined);
+  await writeText(KEY, JSON.stringify(next));
 }
 
 
@@ -187,6 +188,24 @@ export async function setTasbihGoal(goal: number) {
 
 export async function resetTasbihCount() {
   await persist({ ...state, count: 0 });
+}
+
+/**
+ * Sets the counter to an exact number rather than stepping it.
+ *
+ * Added for one caller: the home-screen widget. Tapping "+1" there changes a
+ * count the app cannot see, because the widget wrote it while the app was not
+ * running. This lets the app adopt that number rather than overwrite it —
+ * which, without this, is what would happen the next time the app published.
+ *
+ * It deliberately does not touch `days` or `rounds`. Those are the history of
+ * how the count was reached, and a count adopted from a widget has no history
+ * the app can reconstruct; inventing one would make the day's tally a lie.
+ */
+export async function setTasbihCount(count: number) {
+  const next = Math.max(0, Math.min(9999, Math.round(count)));
+  if (next === state.count) return;
+  await persist({ ...state, count: next });
 }
 
 /**

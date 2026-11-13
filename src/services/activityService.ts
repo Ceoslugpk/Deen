@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { writeText } from './storage';
 
 /**
  * Phase 3 — weekly summaries.
@@ -75,7 +76,7 @@ async function persist(next: Record<string, ActivityDay>) {
     trimmed[key] = next[key];
   });
   emit(trimmed);
-  await AsyncStorage.setItem(KEY, JSON.stringify(trimmed)).catch(() => undefined);
+  await writeText(KEY, JSON.stringify(trimmed));
 }
 
 
