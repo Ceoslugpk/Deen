@@ -57,6 +57,7 @@ import {
   getAyahForDate, getCalendarSpan, getGregorianCalendar, getNameOfDay, getNames, getPrayerCalendar, getPrayerSnapshot, getQibla, qiblaDistance, getRamadanCalendar,
   getHizbVerses, getJuzVerses, getPageVerses, getVerses, searchQuran, CalendarDay, Prayer, PrayerSnapshot, QuranEdition, QuranSearchResult, SurahReciter, Verse,
 } from './src/services/api';
+import { magneticDeclination, trueHeading } from './src/services/magneticDeclination';
 import {
   DEFAULT_DAY_TOOLS, DEFAULT_WORSHIP_SETTINGS, loadDailyContent, loadPrayerCache, loadPrayerCompletion, loadPrayerHistory, loadQuickTasbih, loadStoredLocation, loadWorshipSettings,
   saveDailyContent, savePrayerCache, savePrayerCompletion, saveQuickTasbih, saveStoredLocation, saveWorshipSettings,
@@ -286,6 +287,19 @@ const SCENE_PRAYER_ISLAMIC = require('./assets/prayer-card-scene.webp');
 const SCENE_PRAYER_ISLAMIC_DARK = require('./assets/prayer-card-scene-dark.webp');
 const SCENE_PRAYER_PALESTINE = require('./assets/scene-prayer-palestine.webp');
 const SCENE_PRAYER_PALESTINE_DARK = require('./assets/scene-prayer-palestine-dark.webp');
+
+/* The Kaaba that sits on the Qibla dial. Photographic, because it is the one
+   thing in the app that is a picture *of* something: the drawn mark it
+   replaced was a diagram of the building, and a diagram is a poorer thing to
+   aim a compass at than the building itself.
+
+   The crop and the format are deliberate. It is cut to a circle so it reads
+   as a bearing marker rather than a photograph pinned to the dial, and the
+   background is transparent so the dial shows through the corners instead of
+   a pale square sitting on it. Lossless WebP, as the tool icons are: at
+   256px it is 67KB, and the grain in stone and embroidery is exactly the
+   detail lossy compression smears first. */
+const KAABA_MEDALLION = require('./assets/kaaba-medallion.webp');
 const SCENE_QURAN_ISLAMIC = require('./assets/quran-scene.webp');
 const SCENE_QURAN_ISLAMIC_DARK = require('./assets/quran-scene-dark.webp');
 const SCENE_QURAN_PALESTINE = require('./assets/scene-quran-palestine-light.webp');
@@ -6340,38 +6354,111 @@ function ToolBar({title,navigation,tool}:any){const {rtl,language}=useLanguage()
 const COMPASS_POINTS = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
 const compassPoint = (bearing: number) => COMPASS_POINTS[Math.round(((bearing % 360) + 360) % 360 / 22.5) % 16];
 
+export type CompassQuality = 'unavailable' | 'settling' | 'good' | 'fair' | 'poor';
+export type CompassDisturbance = 'metal' | 'unsteady' | null;
+
+export type CompassState = {
+  /** Where the top of the device points, clockwise from TRUE north. */
+  heading: number | null;
+  quality: CompassQuality;
+  disturbance: CompassDisturbance;
+  /** The correction that was applied, in degrees. East positive. */
+  declination: number;
+  /** Field strength in microteslas, when a sensor reported one. */
+  strength: number | null;
+};
+
 /**
  * Which way the top of the device is pointing, in degrees clockwise from
- * magnetic north — or null when there is no magnetometer to ask, which
- * is the case on the web and on a device without one.
+ * true north.
  *
- * The Qibla screen used to draw its bearing once and leave it there. A
- * bearing is only half a compass: knowing Makkah is at 137° tells you
- * nothing about where to stand until you also know which way you are
- * facing, and that cannot be worked out from the coordinates — the
- * screen drew an arrow at a fixed angle and called it a direction.
+ * Two things have to be true of this number before it is worth drawing,
+ * and the version this replaced got both of them wrong.
  *
- * The heading is reconstructed the way Android's own SensorManager does
- * it, from the gravity vector and the geomagnetic vector: H is their
+ * The first is the reference. A magnetometer finds magnetic north; a qibla
+ * bearing is measured from true north. They are not the same direction, and
+ * the gap between them — the declination — is not a rounding error. It is
+ * about 2 degrees in Dubai and 12 in New York and 15 in Seattle and 22 in
+ * Sao Paulo, and it changes year by year. The old hook returned the raw
+ * magnetometer angle and the screen drew the true bearing against it, so
+ * the arrow was wrong by exactly the local declination — small enough in
+ * Britain to go unnoticed, large enough in the Americas to point at the
+ * wrong wall. The correction is applied here, from the World Magnetic Model,
+ * and the amount is handed back so the screen can show its working.
+ *
+ * The second is that a compass is only as good as its sensor, and a phone
+ * magnetometer is routinely terrible. It sits next to a speaker magnet,
+ * inside a case with a steel plate, on a desk with a monitor under it. So
+ * this also reports how much to trust the reading, from two things that can
+ * be measured without any special API: the total field strength (the
+ * earth's field runs 25 to 65 microteslas, and a reading outside that range
+ * means something in the room is adding to it) and how much the angle is
+ * jittering, which is what an uncalibrated or disturbed sensor looks like
+ * from the outside. Neither is a diagnosis the operating system hands over,
+ * so both are estimates, and the screen says so.
+ *
+ * The heading itself is reconstructed the way Android's own SensorManager
+ * does it, from the gravity vector and the geomagnetic vector: H is their
  * cross product, M is gravity crossed with H, and the azimuth is
- * atan2(Hy, My). Doing it that way rather than from the magnetometer
- * alone keeps it true when the phone is held up, which is how somebody
- * finding the Qibla will be holding it — a flat reading is only right
- * while the device is flat.
+ * atan2(Hy, My). Doing it that way rather than from the magnetometer alone
+ * keeps it true when the phone is held up, which is how somebody finding the
+ * Qibla will be holding it — a flat reading is only right while the device
+ * is flat.
  *
  * Readings are smoothed in vector space, on the circle, because a plain
  * average of two angles one either side of north comes out south.
  */
-function useCompass(active: boolean): number | null {
-  const [heading, setHeading] = useState<number | null>(null);
+function useQiblaCompass(
+  active: boolean,
+  latitude: number | null,
+  longitude: number | null,
+): CompassState {
+  const [state, setState] = useState<CompassState>({
+    heading: null,
+    quality: 'unavailable',
+    disturbance: null,
+    declination: 0,
+    strength: null,
+  });
+
+  /* Declination depends on where you are, not on the sensor, so it is
+     worked out once per place rather than per reading. */
+  const declination = useMemo(() => {
+    if (latitude == null || longitude == null) return 0;
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return 0;
+    try { return magneticDeclination(latitude, longitude); } catch { return 0; }
+  }, [latitude, longitude]);
+
   useEffect(() => {
-    if (!active) { setHeading(null); return; }
+    if (!active) {
+      setState((p) => (p.heading === null ? p : { ...p, heading: null, quality: 'unavailable' }));
+      return;
+    }
     let mag: { x: number; y: number; z: number } | null = null;
     let acc: { x: number; y: number; z: number } | null = null;
     let sx = 0;
     let sy = 0;
     let seeded = false;
     let alive = true;
+    let samples = 0;
+    /* Rolling windows. Short enough to notice a change within a second or
+       two, long enough not to trip over one bad sample. */
+    const WINDOW = 24;
+    const wobble: number[] = [];
+    const strengths: number[] = [];
+
+    const push = (value: number, into: number[]) => {
+      into.push(value);
+      if (into.length > WINDOW) into.shift();
+    };
+    const mean = (list: number[]) =>
+      list.length ? list.reduce((a, b) => a + b, 0) / list.length : 0;
+
+    /** Shortest way round, so 359 to 1 is two degrees and not three hundred. */
+    const angleGap = (a: number, b: number) => {
+      let d = Math.abs(a - b) % 360;
+      return d > 180 ? 360 - d : d;
+    };
 
     const compute = () => {
       if (!alive || !mag || !acc) return;
@@ -6393,12 +6480,48 @@ function useCompass(active: boolean): number | null {
       const wz = ax * hy - ay * hx;
       const wn = Math.hypot(wx, wy, wz);
       if (wn < 1e-6) return;
+
       const rad = Math.atan2(hy, wy / wn);
+      const rawDeg = ((rad * 180) / Math.PI + 360) % 360;
+
       if (!seeded) { sx = Math.cos(rad); sy = Math.sin(rad); seeded = true; }
       else { sx = sx * 0.82 + Math.cos(rad) * 0.18; sy = sy * 0.82 + Math.sin(rad) * 0.18; }
-      let deg = Math.atan2(sy, sx) * 180 / Math.PI;
-      if (deg < 0) deg += 360;
-      setHeading(deg);
+      const smoothDeg = ((Math.atan2(sy, sx) * 180) / Math.PI + 360) % 360;
+
+      /* Noise, measured two ways. The gap between the raw sample and the
+         smoothed line catches a signal that will not settle; the spread in
+         field strength catches a nearby magnet, which tends to push the
+         magnitude around as the phone moves rather than the angle. */
+      push(angleGap(rawDeg, smoothDeg), wobble);
+      const strength = Math.hypot(mx, my, mz);
+      push(strength, strengths);
+      samples += 1;
+
+      const meanWobble = mean(wobble);
+      const meanStrength = mean(strengths);
+      const spread = meanStrength > 0
+        ? (Math.max(...strengths) - Math.min(...strengths)) / meanStrength
+        : 0;
+
+      /* The earth's field is 25-65 microteslas. The band is drawn a little
+         wider than that because a perfectly ordinary room sits near the
+         edges of it, and a warning that fires in ordinary rooms is a
+         warning nobody believes. */
+      const offScale = meanStrength > 0 && (meanStrength < 22 || meanStrength > 68);
+      let quality: CompassQuality = 'good';
+      let disturbance: CompassDisturbance = null;
+      if (samples < 8) quality = 'settling';
+      else if (offScale) { quality = 'poor'; disturbance = 'metal'; }
+      else if (meanWobble > 9 || spread > 0.1) { quality = 'poor'; disturbance = 'unsteady'; }
+      else if (meanWobble > 4.5 || spread > 0.05) { quality = 'fair'; }
+
+      setState({
+        heading: trueHeading(smoothDeg, declination),
+        quality,
+        disturbance,
+        declination,
+        strength: meanStrength,
+      });
     };
 
     let magSub: any = null;
@@ -6410,67 +6533,251 @@ function useCompass(active: boolean): number | null {
       accSub = Accelerometer.addListener((d: any) => { acc = d; compute(); });
     } catch {
       /* No sensor to subscribe to — on the web, or on hardware without
-         one. The caller keeps showing the plain bearing instead. */
+         one. Stay 'unavailable' and let the screen say so plainly rather
+         than drawing an arrow that cannot move. */
+      setState((p) => ({ ...p, heading: null, quality: 'unavailable', disturbance: null, strength: null }));
       return;
     }
     return () => {
       alive = false;
       try { magSub?.remove?.(); accSub?.remove?.(); } catch {}
     };
-  }, [active]);
-  return heading;
+  }, [active, declination]);
+
+  /* The declination is a fact about the place, not about the sensor, so it
+     stands whether or not a magnetometer answered. Merged in here rather than
+     seeded into the state above, because the state is replaced wholesale on
+     every reading and would overwrite it. */
+  const merged = useMemo(() => ({ ...state, declination }), [state, declination]);
+  return merged;
 }
 
+/* The dial is measured once, here, because five separate numbers depend on it
+   and they must agree: the face, the ring the rose rotates inside, the radius
+   the Kaaba rides at, and the tick marks. Change DIAL and everything follows. */
+const DIAL = 280;          // the disc, rim included
+const DIAL_RIM = 12;       // the fixed rim round the edge
+/* Everything is laid out inside the rim, not inside the disc. That matters
+   more than it sounds: in React Native an absolutely positioned child sits
+   inside its parent's *padding* box, so a child given left:0 inside the
+   bordered disc lands 12px in and turns about a point 12px off the middle.
+   Measured: the arrow was rotating about (222, 297) while the disc's centre
+   was (210, 285), which put both the arrow and the Kaaba noticeably down and
+   to the right of where they belonged. So the rim lives on the outer disc and
+   the parts live in a plain box inside it, whose centre is the centre.
+
+   From here on everything is a radius measured out from the middle, which is
+   both easier to read and impossible to get that particular sum wrong. */
+const INNER = DIAL - DIAL_RIM * 2;   // 256
+const CENTER = INNER / 2;            // 128 — also the radius the rim clips at
+
+/* Bands, working outward from the middle: the hub to 7, the arrow from the
+   hub to its tip at 43, the ring the Kaaba rides 47-97, the cardinal letters
+   99-110, the ticks 114-124, and the rim from 128.
+
+   The arrow stops four short of the Kaaba on purpose. It is aiming at the
+   building, so it should end at it, not run under it. */
+const HUB_R = 7;
+const ARROW_TIP = 43;      // radius of the tip
+const ARROW_HEAD = 14;     // the head, measured back from the tip
+const ARROW_HALF = 9;      // half the head's width
+const ARROW_SHAFT = 5;
+const RIM_R = 72;          // the Kaaba marker's distance from the middle
+const MEDALLION = 50;      // the marker's own size
+const LETTER_TOP = 110;    // outer edge of the cardinal letters
+const LETTER_H = 11;
+const TICK_OUTER = 124;    // outer edge of the ticks
+const TICK_MINOR = 5;
+const TICK_MAJOR = 10;
+
 /**
- * The Kaaba, drawn rather than photographed.
+ * Where to put a mark that belongs at a given bearing on the dial.
  *
- * A depiction of one building, so it keeps the building's own colours: the
- * black kiswah, the gold band, the marble plinth. Those are not decoration
- * that can follow a palette — in the Palestine theme the "gold" is the flag's
- * green, and a green Kaaba would not be the Kaaba. Of everything in the app
- * this is the one thing that is a picture *of* something, so it is drawn as
- * that thing looks.
- *
- * What does follow the theme is the hairline round the cube. On the light
- * compass a black cube reads on its own; on the dark one black on near-black
- * disappears, so the outline is lifted from the ink, which is light in the
- * dark themes and dark in the light ones.
- *
- * Drawn rather than shipped as a PNG for the same reason the icons are: it
- * stays sharp at any size, and it costs nothing in the bundle.
+ * Screen angles run clockwise from straight up, which is how a compass reads,
+ * but a screen's y axis runs downward — hence the minus on the cosine.
  */
-function KaabaMark({ size = 31 }: { size?: number }) {
-  const GOLD = '#DFB163';      // Radiant Gold, fixed: the band is gold whatever the theme
-  const MARBLE = '#CFC7B8';    // the plinth the cube stands on
+function rimPosition(bearing: number, radius: number) {
+  const rad = (bearing * Math.PI) / 180;
+  return {
+    left: CENTER + radius * Math.sin(rad),
+    top: CENTER - radius * Math.cos(rad),
+  };
+}
+
+/* Every 15 degrees, with the four cardinals drawn heavier. Twenty-four marks
+   is the balance: enough to read a bearing off by eye, few enough that the
+   face stays quiet behind the Kaaba. */
+const DIAL_TICKS = Array.from({ length: 24 }, (_, i) => i * 15);
+
+/**
+ * The Qibla dial.
+ *
+ * The geometry is the ordinary compass one: the rose turns, the pointer does
+ * not. What rotates is the face carrying north and the Kaaba; what stays put
+ * is the mark at the top, which stands for the direction the top of your
+ * phone is pointing. You turn until the two meet, and then you are facing
+ * Makkah — which is the whole point of a qibla compass, and something a
+ * number in degrees cannot do for you.
+ *
+ * The rose turns by minus the heading, so each mark sits at its own bearing
+ * minus where you are facing: north is on the mark when you face north, the
+ * Kaaba is on the mark when you face Makkah, and the two arrive together.
+ *
+ * What changed is which north that heading is measured from. The rose used to
+ * be turned by the raw magnetometer angle while the Kaaba was placed at the
+ * true bearing, so the two were drawn against different references and the
+ * whole dial was twisted by however large the local declination happens to
+ * be — a couple of degrees in London, a twelfth of the circle in New York,
+ * more in parts of South America. The heading now arrives already corrected
+ * to true north, and the correction is shown on the screen rather than
+ * hidden, because a qibla compass that quietly disagrees with every other
+ * compass in the room is worse than one that explains itself.
+ *
+ * When there is no magnetometer to ask — on the web, or on hardware without
+ * one — the rose stops still and north sits at the top. The bearing is still
+ * right and still drawn at its true angle, which is a usable thing to hold
+ * up against a real compass or a shadow. What it is not allowed to do is
+ * pretend to be live.
+ */
+function QiblaDial({ bearing, heading, live }: { bearing: number; heading: number | null; live: boolean }) {
+  /* Where Makkah is on the screen: its bearing round from north, less the way
+     the phone is facing. Everything that points uses this one number, so the
+     arrow and the Kaaba cannot disagree. */
+  const facing = live && heading !== null ? heading : 0;
+  const toMakkah = (((bearing - facing) % 360) + 360) % 360;
+  const spin = -facing;
+  const mark = rimPosition(toMakkah, RIM_R);
   return (
-    <Svg width={size} height={size} viewBox="0 0 32 32">
-      <Rect x="4" y="25.6" width="24" height="3.6" rx="1.1" fill={MARBLE} />
-      {/* The rim is what makes a black cube visible on the dark dials, where
-          the fill alone measures 1.2:1 against the face and simply vanishes.
-          At 0.55 it clears 3:1 on every dial — 4.9:1 on the Islamic dark one —
-          and the width is what buys it a whole pixel at the 31 it is drawn at;
-          a 0.9 line inside a 32 box lands under one device pixel and reads as
-          nothing. In the light themes the ink is near-black like the cube, so
-          the rim disappears and does no harm. */}
-      <Rect x="7.5" y="5.4" width="17" height="20.4" rx="0.9"
-            fill={C.deep} stroke={C.ink} strokeOpacity="0.55" strokeWidth="1.3" />
-      {/* the hizam: the embroidered band across the upper third */}
-      <Rect x="7.5" y="11.2" width="17" height="4.2" fill={GOLD} />
-      {/* the door, gold-framed rather than solid, so it reads as a door */}
-      <Rect x="12.8" y="18.2" width="6.4" height="7.6" rx="0.8"
-            fill={C.deep} stroke={GOLD} strokeWidth="1.1" />
-    </Svg>
+    <View style={s.dial}>
+      <View style={s.dialFace} pointerEvents="none">
+        {/* The rose carries north and the points of the compass, and turns
+            with the phone. It carries no arrow: it is there to say which way
+            the phone is facing, not where to go. */}
+        <View style={[s.dialRose, { transform: [{ rotate: `${spin}deg` }] }]}>
+          {DIAL_TICKS.map((deg) => (
+            <View key={deg} style={[s.tickWrap, { transform: [{ rotate: `${deg}deg` }] }]}>
+              <View style={[s.tick, deg % 90 === 0 ? s.tickMajor : null]} />
+            </View>
+          ))}
+          {DIAL_TICKS.filter((d) => d % 45 === 0).map((deg) => (
+            <View key={`p${deg}`} style={[s.tickWrap, { transform: [{ rotate: `${deg}deg` }] }]}>
+              <Text style={[s.dialPoint, deg % 90 === 0 ? s.dialPointMajor : null]}>
+                {COMPASS_POINTS[(deg / 45) * 2]}
+              </Text>
+            </View>
+          ))}
+        </View>
+
+        {/* The arrow. It has exactly one job and it does not share the dial
+            with anything else that points: it points at Makkah. Its angle is
+            the same `toMakkah` the Kaaba is placed at, so the tip and the
+            building are the same direction by construction rather than by
+            two calculations happening to agree. */}
+        <View style={[s.arrowWrap, { transform: [{ rotate: `${toMakkah}deg` }] }]}>
+          <View style={s.arrowShaft} />
+          <View style={s.arrowHead} />
+        </View>
+
+        {/* The Kaaba sits where the arrow is pointing. It is placed on the
+            face rather than inside the rose, so it stays upright without a
+            counter-rotation, and so it draws over the arrow's tip — the
+            arrow stops at the building rather than running through it. */}
+        <View style={[s.rimMark, { left: mark.left, top: mark.top }]}>
+          <Image source={KAABA_MEDALLION} style={s.medallion} resizeMode="cover" />
+        </View>
+
+        <View style={s.dialHub} pointerEvents="none" />
+      </View>
+    </View>
   );
 }
 
-function QiblaScreen({navigation}:any){const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);const{location}=useAppLocation();const[direction,setDirection]=useState<number|null>(null);const[error,setError]=useState('');const heading=useCompass(direction!==null);const load=async()=>{if(!location)return;setDirection(null);setError('');try{setDirection(await getQibla(location.latitude,location.longitude))}catch(e:any){setError(T(e.message))}};useEffect(()=>{load()},[location?.latitude,location?.longitude]);return <Page><ToolBar title={T('Qibla direction')} navigation={navigation}/>{!location?<View style={s.dataPage}><LocationPrompt compact/></View>:<ScrollView keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} contentContainerStyle={s.toolPageScroll} showsVerticalScrollIndicator={false}><View style={s.toolPage}><Text style={s.toolEyebrow}>{T(location.label)}</Text>{error?<ErrorState message={error} retry={load}/>:direction===null?<SkeletonCard lines={3} />:<><View style={s.compass}><View style={[s.compassRose,{transform:[{rotate:`${-(heading ?? 0)}deg`}]}]}><Text style={s.north}>N</Text><View style={[s.compassArrow,{transform:[{rotate:`${direction}deg`}]}]}>{ico('navigate',74,C.green)}</View></View><View style={s.kaaba}><KaabaMark size={31}/></View></View><Text style={s.direction}>{direction.toFixed(1)}°</Text>
-        <Text style={s.directionText}>{compassPoint(direction)} · {T('clockwise from true north')}</Text>{heading!==null&&<><Text style={s.compassLive}>{T('Live')} · {Math.round(heading)}° {T('facing')}</Text><Text style={s.compassHint}>{T('Hold the phone flat, or in a figure of eight, if the arrow drifts.')}</Text></>}
+/** The quality chip. Coloured by how much the reading can be trusted. */
+function CompassBadge({ state, T }: { state: CompassState; T: (t: string) => string }) {
+  if (state.quality === 'unavailable') {
+    return (
+      <View style={[s.badge, s.badgeMuted]}>
+        <Text style={[s.badgeText, s.badgeTextMuted]}>{T('No compass in this device')}</Text>
+      </View>
+    );
+  }
+  const copy: Record<string, string> = {
+    settling: T('Reading the sensor…'),
+    good: T('Signal good'),
+    fair: T('Signal fair'),
+    poor:
+      state.disturbance === 'metal'
+        ? T('Magnetic interference — move away from metal')
+        : T('Signal unsteady — sweep the phone in a figure of eight'),
+  };
+  const tone =
+    state.quality === 'good' ? s.badgeGood
+      : state.quality === 'fair' ? s.badgeFair
+      : state.quality === 'settling' ? s.badgeMuted
+      : s.badgePoor;
+  const textTone =
+    state.quality === 'good' ? s.badgeTextGood
+      : state.quality === 'fair' ? s.badgeTextFair
+      : state.quality === 'settling' ? s.badgeTextMuted
+      : s.badgeTextPoor;
+  return (
+    <View style={[s.badge, tone]}>
+      <Text style={[s.badgeText, textTone]}>{copy[state.quality] ?? copy.fair}</Text>
+    </View>
+  );
+}
+
+function QiblaScreen({navigation}:any){const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);const{location}=useAppLocation();const[direction,setDirection]=useState<number|null>(null);const[error,setError]=useState('');const compass=useQiblaCompass(direction!==null,location?.latitude??null,location?.longitude??null);const live=compass.quality!=='unavailable'&&compass.heading!==null;const load=async()=>{if(!location)return;setDirection(null);setError('');try{setDirection(await getQibla(location.latitude,location.longitude))}catch(e:any){setError(T(e.message))}};useEffect(()=>{load()},[location?.latitude,location?.longitude]);
+/* How far the Kaaba is off the mark, shortest way round. Under about four
+   degrees the phone is, for this purpose, pointing at Makkah. */
+/* Within a couple of kilometres the bearing stops meaning anything: the
+   formula is dividing two nearly identical points, and the few hundred metres
+   between the stored city centre and the actual building swing the answer
+   through most of the circle. Makkah is the app's default place, so this is
+   the first state a new user sees, and a confident 205° there is worse than
+   no number at all. */
+const distanceKm = location ? qiblaDistance(location.latitude, location.longitude) : null;
+const atMakkah = distanceKm !== null && distanceKm < 2;
+const offBy = live && compass.heading !== null && direction !== null
+  ? Math.min(Math.abs(compass.heading - direction), 360 - Math.abs(compass.heading - direction))
+  : null;
+const aligned = offBy !== null && offBy <= 4;
+/* Which way round the circle is shorter: positive means Makkah is clockwise
+   from where the phone is pointing, which is to the right. */
+const turnRight = compass.heading !== null && direction !== null
+  ? ((direction - compass.heading + 540) % 360 - 180) > 0
+  : false;
+return <Page><ToolBar title={T('Qibla direction')} navigation={navigation}/>{!location?<View style={s.dataPage}><LocationPrompt compact/></View>:<ScrollView keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} contentContainerStyle={s.toolPageScroll} showsVerticalScrollIndicator={false}><View style={s.toolPage}><Text style={s.toolEyebrow}>{T(location.label)}</Text>{error?<ErrorState message={error} retry={load}/>:direction===null?<SkeletonCard lines={3} />:<>
+        {atMakkah ? <View style={s.atMakkah}><Text style={s.atMakkahTitle}>{T('You are in Makkah')}</Text><Text style={s.atMakkahBody}>{T('Every direction here is the Qibla. The bearing is only a number once you are far enough away for it to mean something.')}</Text></View> : <><QiblaDial bearing={direction} heading={compass.heading} live={live} />
+        <View style={s.badgeRow}><CompassBadge state={compass} T={T} /></View>
+        <Text style={s.direction}>{direction.toFixed(1)}°</Text>
+        <Text style={s.directionText}>{compassPoint(direction)} · {T('clockwise from true north')}</Text>
+        {live && offBy !== null && (
+          <Text style={[s.alignment, aligned ? s.alignmentOn : null]}>
+            {aligned
+              ? T('Facing Makkah')
+              : turnRight
+                ? T('Turn {{n}}° to your right').replace('{{n}}', String(Math.round(offBy)))
+                : T('Turn {{n}}° to your left').replace('{{n}}', String(Math.round(offBy)))}
+          </Text>
+        )}
+        {!live && (
+          <Text style={s.noSensorNote}>
+            {T('This device has no compass sensor, so the dial is drawn north-up. The bearing is still exact — hold it against a real compass, or find north from the sun, and turn that many degrees clockwise.')}
+          </Text>
+        )}
+        {live && compass.quality !== 'good' && compass.disturbance === null && (
+          <Text style={s.compassHint}>{T('Hold the phone flat, or sweep it in a figure of eight, if the dial drifts.')}</Text>
+        )}
+        </>}
         {!!location && <View style={s.trackStats}>
-          <View style={s.trackStat}><Text style={s.trackStatValue}>{Math.round(qiblaDistance(location.latitude, location.longitude)).toLocaleString('en-US')}</Text><Text style={s.trackStatLabel}>{T('km to Makkah')}</Text></View>
-          <View style={s.trackStat}><Text style={s.trackStatValue}>{compassPoint(direction)}</Text><Text style={s.trackStatLabel}>{T('Compass point')}</Text></View>
+          <View style={s.trackStat}><Text style={s.trackStatValue}>{Math.round(distanceKm ?? 0).toLocaleString('en-US')}</Text><Text style={s.trackStatLabel}>{T('km to Makkah')}</Text></View>
+          {!atMakkah && <View style={s.trackStat}><Text style={s.trackStatValue}>{compassPoint(direction)}</Text><Text style={s.trackStatLabel}>{T('Compass point')}</Text></View>}
+          <View style={s.trackStat}><Text style={s.trackStatValue}>{compass.declination >= 0 ? '+' : '−'}{Math.abs(compass.declination).toFixed(1)}°</Text><Text style={s.trackStatLabel}>{T('Magnetic correction')}</Text></View>
         </View>}
-        <Text style={s.intro}>{T('The bearing is measured on a great circle — the shortest way round the earth — which is why it can differ from the direction a flat map appears to show.')}</Text>
+        <Text style={s.intro}>{T('The bearing is measured on a great circle — the shortest way round the earth — which is why it can differ from the direction a flat map appears to show. It is given from true north, and the compass corrects for the gap between true north and the magnetic north a phone actually senses: {{d}}° here.').replace('{{d}}', Math.abs(compass.declination).toFixed(1))}</Text>
         <Tactile onPress={load} style={s.primary}><Text style={s.primaryText}>{T('Refresh direction')}</Text></Tactile></>}</View></ScrollView>}</Page>}
+
 /* A tasbih is a ring of beads, so the counter is one: the beads fill as the
    round goes round, and the one under your thumb is the one that moves. The
    number in the middle is there because you still want to know where you are,
@@ -15029,9 +15336,57 @@ mushafPageNoText:{color:C.green,fontFamily:'Newsreader_700Bold',fontSize:16},mus
   tcCardHead:{flexDirection:'row',alignItems:'center',gap:8,paddingBottom:10,marginBottom:10,borderBottomWidth:1,borderColor:C.line},
   tcCardName:{flex:1,color:C.ink,fontSize:13,fontFamily:'DMSans_700Bold'},
   tcCardLang:{color:C.muted,fontSize:10,fontFamily:'DMSans_700Bold'},juzGrid:{flexDirection:'row',flexWrap:'wrap',gap:8},juzCard:{width:'22.8%',aspectRatio:1,backgroundColor:C.card,borderRadius:16,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,...surface},juzNo:{color:C.green,fontFamily:'Newsreader_600SemiBold',fontSize:23},preloadScore:{backgroundColor:C.white,borderRadius:24,padding:20,borderWidth:1,borderColor:C.line},cacheUsage:{color:C.green,fontFamily:'DMSans_600SemiBold',fontSize:10,marginTop:8},preloadTrack:{height:9,borderRadius:4,backgroundColor:C.mint,overflow:'hidden',marginVertical:12},preloadFill:{height:'100%',backgroundColor:C.green,borderRadius:4},planGrid:{flexDirection:'row',flexWrap:'wrap',gap:12},planCard:{width:'48%',minHeight:130,backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},planDays:{color:C.green,fontFamily:'Newsreader_600SemiBold',fontSize:36},planToday:{backgroundColor:C.white,borderRadius:20,padding:16,marginTop:16,flexDirection:'row',alignItems:'center',justifyContent:'space-between',borderWidth:1,borderColor:C.line},practiceLaunch:{backgroundColor:C.mint,borderRadius:20,padding:16,marginBottom:16,flexDirection:'row',alignItems:'center',justifyContent:'space-between',borderWidth:1,borderColor:C.line},recallCard:{minHeight:340,backgroundColor:C.white,borderRadius:24,padding:20,borderWidth:1,borderColor:C.line,...shadow},recallPrompt:{color:C.ink,fontFamily:'Newsreader_600SemiBold',fontSize:21,lineHeight:29,marginTop:28,textAlign:'center'},recallArabic:{color:C.green,fontFamily:'KFGQPCUthmanicHafs',fontSize:32,lineHeight:58,textAlign:'right',marginTop:24,paddingTop:20,borderTopWidth:1,borderColor:C.line,writingDirection:'rtl'},revealArea:{flex:1,minHeight:110,alignItems:'center',justifyContent:'center',gap:8,marginTop:20,borderTopWidth:1,borderColor:C.line},hifzStatus:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10,textTransform:'uppercase'},intro:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:14,lineHeight:19,marginTop:0,marginBottom:20},exploreGrid:{flexDirection:'row',flexWrap:'wrap',gap:12},exploreCard:{flexGrow:1,flexBasis:'31%',minWidth:150},exploreCardInner:{minHeight:164,backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},exploreTitle:{color:C.ink,fontSize:16,fontFamily:'DMSans_700Bold',marginTop:12},exploreBody:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:11,lineHeight:15,marginTop:4,flex:1},exploreArrow:{width:29,height:29,borderRadius:16,backgroundColor:C.mint,alignItems:'center',justifyContent:'center',alignSelf:'flex-end'},apiPanel:{backgroundColor:C.deep,borderRadius:24,padding:20,marginTop:12},apiTitle:{color:C.onAccent,fontSize:14,fontFamily:'DMSans_700Bold',marginTop:16},apiText:{color:C.onAccent,fontSize:10,marginTop:4},dataProvider:{color:C.onAccent,fontSize:10.5,fontFamily:'DMSans_600SemiBold',marginTop:3,opacity:.72,letterSpacing:.2},
- toolPage:{width:'100%',maxWidth:780,alignSelf:'center',alignItems:'center',padding:24,paddingTop:24,paddingBottom:BOTTOM_RESERVE},toolPageScroll:{flexGrow:1},toolEyebrow:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.2,marginTop:20},compass:{width:260,height:260,borderRadius:130,backgroundColor:C.white,borderWidth:12,borderColor:C.line,alignItems:'center',justifyContent:'center',marginTop:32,...shadow},compassRose:{position:'absolute',width:'100%',height:'100%',alignItems:'center',justifyContent:'center'},compassLive:{fontFamily:'DMSans_600SemiBold',fontSize:11,color:C.green,marginTop:8},compassHint:{color:C.muted,fontSize:11,marginTop:4,textAlign:'center'},north:{position:'absolute',top:12,color:C.coral,fontSize:10,fontFamily:'DMSans_700Bold'},compassArrow:{alignItems:'center',justifyContent:'center'},/* The cube used to be a plain square with a gold stripe under it. It is the
-   Kaaba now, drawn in `KaabaMark`; the sheet only puts it on the dial. */
-kaaba:{position:'absolute',right:43,bottom:47,width:31,height:31,alignItems:'center',justifyContent:'center'},direction:{color:C.ink,fontSize:31,fontFamily:'DMSans_700Bold',marginTop:24},directionText:{color:C.muted,fontSize:11,marginTop:4},primary:{backgroundColor:C.accent,paddingHorizontal:20,paddingVertical:12,minHeight:48,alignItems:'center',justifyContent:'center',borderRadius:16,marginTop:20},primaryText:{color:C.onAccentInk,fontSize:11,fontFamily:'DMSans_700Bold'},tasbihAr:{color:C.ink,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:32,marginTop:16,writingDirection:'rtl'},counter:{width:205,height:205,borderRadius:103,backgroundColor:C.accent,alignItems:'center',justifyContent:'center',borderWidth:12,borderColor:C.line,marginVertical:32,...shadow},counterNo:{color:C.onAccent,fontSize:58,fontFamily:'DMSans_700Bold'},counterGoal:{color:C.onAccent,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.3},secondary:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:8,minHeight:44,backgroundColor:C.white,paddingHorizontal:16,paddingVertical:12,borderRadius:16,borderWidth:1,borderColor:C.line,marginHorizontal:4},secondaryText:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold'},
+ toolPage:{width:'100%',maxWidth:780,alignSelf:'center',alignItems:'center',padding:24,paddingTop:24,paddingBottom:BOTTOM_RESERVE},toolPageScroll:{flexGrow:1},toolEyebrow:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.2,marginTop:20},/* The Qibla dial. `QiblaDial` above owns the geometry; these own the look.
+   The face is a plain disc so the rose reads as a moving part inside a fixed
+   one, which is what makes it legible as a compass rather than as a picture
+   that happens to be turning. */
+dial:{width:DIAL,height:DIAL,borderRadius:DIAL/2,backgroundColor:C.white,borderWidth:DIAL_RIM,borderColor:C.line,alignItems:'center',justifyContent:'center',overflow:'hidden',marginTop:32,...shadow},
+dialFace:{width:INNER,height:INNER,alignItems:'center',justifyContent:'center'},
+dialRose:{position:'absolute',left:0,top:0,width:INNER,height:INNER,alignItems:'center',justifyContent:'center'},
+/* A full-size wrapper per tick, so each one rotates about the centre of the
+   dial rather than about itself. */
+tickWrap:{position:'absolute',left:0,top:0,width:INNER,height:INNER,alignItems:'center'},
+tick:{marginTop:CENTER-TICK_OUTER,width:1,height:TICK_MINOR,backgroundColor:C.line},
+tickMajor:{width:2,height:TICK_MAJOR,backgroundColor:C.muted},
+dialPoint:{marginTop:CENTER-LETTER_TOP,color:C.muted,fontSize:9,lineHeight:LETTER_H,fontFamily:'DMSans_600SemiBold'},
+dialPointMajor:{color:C.ink,fontSize:11,fontFamily:'DMSans_700Bold'},
+/* Positioned by its centre and pulled back by half its size, so `rimPosition`
+   can hand over a point on the circle and not have to know the marker's box. */
+rimMark:{position:'absolute',width:MEDALLION,height:MEDALLION,marginLeft:-MEDALLION/2,marginTop:-MEDALLION/2,alignItems:'center',justifyContent:'center'},
+/* The rim is not decoration. The kiswah is near-black, and on the dark dials
+   it measures 1.1:1 against the face — it vanishes into it. The ink is the
+   one colour that is light when the face is dark and dark when the face is
+   light, so a rim picked from it reads on every dial; on the light ones it
+   disappears into the cube instead, where the cube is already legible at
+   18:1. Two pixels is the least that survives being scaled down. */
+medallion:{width:MEDALLION,height:MEDALLION,borderRadius:MEDALLION/2,borderWidth:2,borderColor:C.ink},
+/* The arrow. A full-size wrapper so it turns about the centre of the dial,
+   with the head hung so its apex is the tip and the shaft running back down
+   to the hub. */
+arrowWrap:{position:'absolute',left:0,top:0,width:INNER,height:INNER},
+arrowHead:{position:'absolute',left:CENTER-ARROW_HALF,top:CENTER-ARROW_TIP,width:0,height:0,borderLeftWidth:ARROW_HALF,borderRightWidth:ARROW_HALF,borderBottomWidth:ARROW_HEAD,borderLeftColor:'transparent',borderRightColor:'transparent',borderBottomColor:C.green},
+arrowShaft:{position:'absolute',left:CENTER-ARROW_SHAFT/2,top:CENTER-ARROW_TIP+ARROW_HEAD,width:ARROW_SHAFT,height:ARROW_TIP-ARROW_HEAD,backgroundColor:C.green},
+dialHub:{position:'absolute',left:CENTER-HUB_R,top:CENTER-HUB_R,width:HUB_R*2,height:HUB_R*2,borderRadius:HUB_R,backgroundColor:C.green,borderWidth:2,borderColor:C.white},
+/* The quality chip. */
+badgeRow:{flexDirection:'row',justifyContent:'center',marginTop:14},
+badge:{paddingHorizontal:12,paddingVertical:6,borderRadius:999,alignItems:'center',justifyContent:'center',maxWidth:300},
+badgeMuted:{backgroundColor:C.mint,borderWidth:1,borderColor:C.line},
+badgeGood:{backgroundColor:C.mint,borderWidth:1,borderColor:C.line},
+badgeFair:{backgroundColor:C.peach,borderWidth:1,borderColor:C.gold},
+badgePoor:{backgroundColor:C.peach,borderWidth:1,borderColor:C.coral},
+badgeText:{fontSize:11,fontFamily:'DMSans_600SemiBold',textAlign:'center'},
+badgeTextMuted:{color:C.muted},
+badgeTextGood:{color:C.green},
+badgeTextFair:{color:C.deep},
+badgeTextPoor:{color:C.coral},
+alignment:{marginTop:10,fontSize:12,fontFamily:'DMSans_600SemiBold',color:C.muted,textAlign:'center'},
+alignmentOn:{color:C.green},
+noSensorNote:{color:C.muted,fontSize:11,lineHeight:17,marginTop:10,textAlign:'center',maxWidth:320},
+compassHint:{color:C.muted,fontSize:11,marginTop:8,textAlign:'center',maxWidth:320},
+atMakkah:{width:'100%',maxWidth:320,backgroundColor:C.mint,borderRadius:20,padding:24,alignItems:'center',marginTop:32,borderWidth:1,borderColor:C.line},
+atMakkahTitle:{color:C.ink,fontSize:20,fontFamily:'Newsreader_600SemiBold',textAlign:'center'},
+atMakkahBody:{color:C.muted,fontSize:12,lineHeight:19,textAlign:'center',marginTop:10},
+direction:{color:C.ink,fontSize:31,fontFamily:'DMSans_700Bold',marginTop:24},directionText:{color:C.muted,fontSize:11,marginTop:4},primary:{backgroundColor:C.accent,paddingHorizontal:20,paddingVertical:12,minHeight:48,alignItems:'center',justifyContent:'center',borderRadius:16,marginTop:20},primaryText:{color:C.onAccentInk,fontSize:11,fontFamily:'DMSans_700Bold'},tasbihAr:{color:C.ink,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:32,marginTop:16,writingDirection:'rtl'},counter:{width:205,height:205,borderRadius:103,backgroundColor:C.accent,alignItems:'center',justifyContent:'center',borderWidth:12,borderColor:C.line,marginVertical:32,...shadow},counterNo:{color:C.onAccent,fontSize:58,fontFamily:'DMSans_700Bold'},counterGoal:{color:C.onAccent,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.3},secondary:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:8,minHeight:44,backgroundColor:C.white,paddingHorizontal:16,paddingVertical:12,borderRadius:16,borderWidth:1,borderColor:C.line,marginHorizontal:4},secondaryText:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold'},
  summaryScore:{backgroundColor:C.deep,borderRadius:24,padding:20,flexDirection:'row',justifyContent:'space-between',...shadow,borderTopColor:depth.edge},summaryDay:{minHeight:66,flexDirection:'row',alignItems:'center',gap:12,paddingHorizontal:16,borderBottomWidth:1,borderColor:C.line},summaryDots:{flexDirection:'row',gap:4},summaryDot:{width:8,height:8,borderRadius:4,backgroundColor:C.mint},summaryDotDone:{backgroundColor:C.green},cityGrid:{flexDirection:'row',flexWrap:'wrap',gap:8},cityCard:{width:'48.5%',minHeight:76,backgroundColor:C.card,borderRadius:16,padding:12,borderWidth:1,borderColor:C.line,...surface},cityCardActive:{backgroundColor:C.mint,borderColor:C.line},cityName:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:12},formCard:{backgroundColor:C.card,borderRadius:20,padding:16,borderWidth:1,borderColor:C.line,...surface},
   rsEyebrow:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.2,marginBottom:10},
   rsPreview:{backgroundColor:C.card,borderRadius:24,padding:20,borderWidth:1,borderColor:C.line,...surface},
