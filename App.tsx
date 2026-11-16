@@ -6101,7 +6101,10 @@ function SurahPickerSheet({ rtl, T, chapters, selected, onPick, onClose }: {
 
   return <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
     <Pressable accessibilityRole="button" accessibilityLabel={T('Close')} onPress={onClose} style={s.sheetScrim} />
-    <Animated.View style={[s.verseSheet, {
+    /* langSheet is the height cap. Without a maxHeight this sheet grows to the
+       full height of 114 rows and the ScrollView inside it has nothing to
+       scroll: the list just runs off the top of the screen. */
+    <Animated.View style={[s.verseSheet, s.langSheet, {
       transform: [{ translateY: rise.interpolate({ inputRange: [0, 1], outputRange: [420, 0] }) }],
       opacity: rise,
     }]}>
