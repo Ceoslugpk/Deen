@@ -262,6 +262,8 @@ function createWebEngine(): AudioEngine {
  */
 function createNativeEngine(): AudioEngine {
   let playlist: AudioPlaylist | null = null;
+  let preparing: Promise<void> | null = null;
+  let playlistSources: { uri: string }[] | null = null;
   let listener: ((status: EngineStatus) => void) | null = null;
   let bound = false;
   let currentQueue: AudioTrack[] = [];
@@ -275,11 +277,13 @@ function createNativeEngine(): AudioEngine {
    * pressed next. Recent moves are ours and are ignored.
    */
   let selfDrivenAt = 0;
+  let selfDrivenMoves = 0;
   const QUIET_MS = 400;
-  const wasSelfDriven = () => selfDrivenAt !== 0 && Date.now() - selfDrivenAt < QUIET_MS;
+  const wasSelfDriven = () => selfDrivenMoves > 0 || (selfDrivenAt !== 0 && Date.now() - selfDrivenAt < QUIET_MS);
 
   async function selfDrive(action: () => void | Promise<void>) {
     selfDrivenAt = Date.now();
+    selfDrivenMoves += 1;
     try {
       await action();
     } catch {
@@ -288,6 +292,8 @@ function createNativeEngine(): AudioEngine {
          surface as an unhandled promise rather than a pause button that
          simply did nothing. */
     } finally {
+      selfDrivenMoves -= 1;
+      selfDrivenAt = Date.now();
       /* Not cleared immediately: the event for this move arrives
          asynchronously, and clearing the flag now would let it straight back
          in. */
@@ -351,26 +357,26 @@ function createNativeEngine(): AudioEngine {
    * and clearing and refilling a prepared playlist is ordinary.
    */
   async function prepare(sources: { uri: string }[] = []): Promise<void> {
-    if (playlist) return;
-    try {
-      /* Three separate things, and all three are needed.
-         `playsInSilentMode` so a recitation is not swallowed by the ringer
-         switch. `shouldPlayInBackground` so leaving for another app does not
-         cut the recitation off. `doNotMix` asks that other audio yield, so a
-         notification does not talk over the Quran — and it is also the mode
-         the lock screen controls require, without which the system may never
-         associate them with this playlist at all. */
-      await setAudioModeAsync({
-        playsInSilentMode: true,
-        shouldRouteThroughEarpiece: false,
-        shouldPlayInBackground: true,
-        interruptionMode: 'doNotMix',
-      });
-    } catch {
-      /* audio mode is best-effort on device */
+    // Binding the service must not prime a native playlist with no timeline.
+    if (playlist || !sources.length) return;
+    if (!preparing) {
+      preparing = (async () => {
+        try {
+          await setAudioModeAsync({
+            playsInSilentMode: true,
+            shouldRouteThroughEarpiece: false,
+            shouldPlayInBackground: true,
+            interruptionMode: 'doNotMix',
+          });
+        } catch {
+          /* audio mode is best-effort on device */
+        }
+        playlist = createAudioPlaylist({ sources, updateInterval: 500, loop: 'none' });
+        playlistSources = sources;
+        bindEvents();
+      })().finally(() => { preparing = null; });
     }
-    playlist = createAudioPlaylist({ sources, updateInterval: 500, loop: 'none' });
-    bindEvents();
+    await preparing;
   }
 
   function bindEvents() {
@@ -385,11 +391,18 @@ function createNativeEngine(): AudioEngine {
           position: status.currentTime,
           duration: status.duration,
           buffering: status.isBuffering,
-          endedIndex: status.didJustFinish ? index : null,
+          // Clear/initialisation events are not completed ayahs. Validate the
+          // event against the live timeline as well as the active operation.
+          // Unlike trackChanged, a real ended status after a near-end seek
+          // must not be swallowed by the 400ms self-driven quiet period.
+          endedIndex: status.didJustFinish && status.trackCount > 0 && selfDrivenMoves === 0
+            && status.currentIndex === playlist?.currentIndex ? status.currentIndex : null,
         });
       });
 
       playlist.addListener('trackChanged', (data) => {
+        // A delayed event from clear/add must not overwrite the selected index.
+        if (data.currentIndex !== playlist?.currentIndex) return;
         /* An ayah ended and the transport moved on by itself. The one that
            ended is the one we have left, not the one we have arrived at. */
         index = data.currentIndex;
@@ -431,20 +444,20 @@ function createNativeEngine(): AudioEngine {
          played, and the player sat at the bottom of the screen reporting
          buffering — on Android only, because web never took this path. */
       const sources = queue.map((track) => ({ uri: track.uri }));
-      const built = !playlist;
-      await prepare(sources);
-      currentQueue = queue;
-      index = startIndex;
-      await selfDrive(() => {
+      await selfDrive(async () => {
+        // Guard constructor events too, not just the later skip/play commands.
+        await prepare(sources);
         const p = playlist;
         if (!p) return;
-        /* Only a rebuild. On the first call the sources were handed to the
-           constructor, which prepared the transport with them in place;
-           clearing and re-adding here would throw that preparation away and
-           leave the player idle. */
-        if (!built) {
+        currentQueue = queue;
+        index = startIndex;
+        /* On first load the constructor already owns these sources. Compare
+           the actual source batch, not whether a playlist existed before an
+           await: another request may have finished preparing in the meantime. */
+        if (playlistSources !== sources) {
           p.clear();
           for (const source of sources) p.add(source);
+          playlistSources = sources;
         }
         /* Rate and volume belong to the player, not the track, and are lost
            when the queue is rebuilt. Re-applied here so a recitation does not

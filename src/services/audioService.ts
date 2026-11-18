@@ -440,6 +440,8 @@ let engineBound = false;
 /** Which surah the transport is holding, so a move within it is a skip
  *  rather than a reload. */
 let loadedQueueKey = '';
+/** A user selection or close supersedes any older asynchronous restore/load. */
+let playbackRevision = 0;
 let state: AudioState = {
   queue: [],
   index: 0,
@@ -517,19 +519,13 @@ function handleEngineStatus(status: {
   if (track) void rememberSession(status.position);
 }
 
-/** Bring the transport up, once, and point it at the handler above. */
+/** Bind once; loadQueue prepares the native transport with real sources. */
 async function ensurePlayer(): Promise<void> {
   if (engineBound) return;
+  engine.bind(handleEngineStatus);
   engineBound = true;
-  try {
-    engine.bind(handleEngineStatus);
-    await engine.prepare();
-  } catch {
-    /* Bringing the transport up is not something the app is allowed to fail
-       at. Everything downstream already tolerates a transport that answers
-       nothing, so this is caught here rather than left to surface as an
-       unhandled rejection from a call nobody awaited. */
-  }
+  // Do not call prepare() here: on Android that used to create an empty
+  // playlist before the tapped ayah's queue was available.
 }
 
 /** Identifies the surah the transport is holding. */
@@ -670,6 +666,7 @@ async function goToIndex(index: number, autoplay: boolean) {
   const safe = Math.max(0, Math.min(index, state.queue.length - 1));
   const track = state.queue[safe];
   await ensurePlayer();
+  if (state.queue[safe] !== track) return;
   emit({ index: safe, track, position: 0, duration: 0, buffering: true, error: null });
   intendedPlaying = autoplay;
   await applySource(track, autoplay);
@@ -679,13 +676,30 @@ async function goToIndex(index: number, autoplay: boolean) {
 
 export async function playQueue(queue: AudioTrack[], startIndex = 0) {
   if (!queue.length) return;
+  const revision = ++playbackRevision;
   await ensurePlayer();
+  if (revision !== playbackRevision) return;
   /* A different surah is being loaded, so whatever the transport is holding
      is now stale and has to be replaced — otherwise the first ayah would be
      skipped because the key happened to match. */
   loadedQueueKey = '';
   emit({ queue, index: Math.max(0, Math.min(startIndex, queue.length - 1)), error: null });
   await goToIndex(Math.max(0, Math.min(startIndex, queue.length - 1)), true);
+}
+
+/**
+ * A verse action always uses per-ayah tracks. A downloaded/full-Surah file
+ * contains no timing map, so treating it as an ayah queue silently plays
+ * verse 1. Keep whole-file playback in playChapter/buildQueueForChapter.
+ */
+export async function playVerse(chapterId: number, ayahNumber: number, chapterName = surahName(chapterId)) {
+  const revision = ++playbackRevision;
+  const queue = await buildSurahQueue(chapterId, chapterName, settings);
+  if (revision !== playbackRevision) return;
+  const index = queue.findIndex((track) => track.kind === 'arabic' && track.ayahNumber === ayahNumber);
+  if (index < 0) throw new Error('This reciter has no audio for this Surah.');
+  resetRepeatProgress();
+  await playQueue(queue, index);
 }
 
 /**
@@ -763,6 +777,7 @@ export async function stopPlayback() {
 }
 
 export async function clearQueue() {
+  playbackRevision += 1;
   await stopPlayback();
   emit({ queue: [], index: 0, track: null, duration: 0 });
   loadedQueueKey = '';
@@ -1002,8 +1017,9 @@ async function rememberSession(position: number) {
  */
 export async function restoreSavedSession(): Promise<boolean> {
   if (!settings.resumeOnStart) return false;
+  const revision = playbackRevision;
   const session = await loadAudioSession();
-  if (!session || state.queue.length) return false;
+  if (!session || state.queue.length || revision !== playbackRevision) return false;
 
   try {
     const queue = await buildQueueForChapter(session.chapterId, session.chapterName, {
@@ -1015,9 +1031,10 @@ export async function restoreSavedSession(): Promise<boolean> {
       sequential: session.sequential,
       translationAudioEnabled: session.sequential,
     });
-    if (!queue.length) return false;
+    if (!queue.length || state.queue.length || revision !== playbackRevision) return false;
 
     await ensurePlayer();
+    if (state.queue.length || revision !== playbackRevision) return false;
     const index = Math.max(0, Math.min(session.index, queue.length - 1));
     emit({ queue, index, error: null });
     await goToIndex(index, false);
@@ -1026,12 +1043,13 @@ export async function restoreSavedSession(): Promise<boolean> {
       const target = session.position;
       let attempts = 0;
       const trySeek = async (): Promise<void> => {
-        if (attempts++ > 12) return;
+        if (attempts++ > 12 || revision !== playbackRevision || state.queue !== queue) return;
         /* The duration is not known until the file has been probed, and a
            seek issued before then is silently dropped — the recitation would
            start from the beginning of the ayah instead of where it was left.
            So wait for the transport to know how long the ayah is. */
         const duration = await engine.getDuration().catch(() => 0);
+        if (revision !== playbackRevision || state.queue !== queue) return;
         if (!(duration > 0) && !(state.duration > 0)) {
           await new Promise((resolve) => setTimeout(resolve, 400));
           return trySeek();

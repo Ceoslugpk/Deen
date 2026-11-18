@@ -19,6 +19,8 @@ import {
   PanResponder, useColorScheme, useWindowDimensions, View, Modal, Dimensions, Keyboard
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
+import { SystemNavigationBoundary } from './src/components/SystemNavigationBoundary';
 import { WebView } from 'react-native-webview';
 import * as SplashScreen from 'expo-splash-screen';
 import { haptic, isHapticsSupported, setHapticsEnabled, withHaptic, type HapticKind } from './src/services/haptics';
@@ -105,7 +107,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 import * as Clipboard from 'expo-clipboard';
 import { getCacheUsage, getCachedJson, setCachedJson } from './src/services/contentCache';
-import { AudioSession, AudioSettings, AudioTrackKind, buildQueueForChapter, buildSurahQueue, loadSurahReciters, clearQueue, clearRecentPlays, deletePlaylist, formatClock, getAudioSettings, loadAudioEditions, loadAudioSession, loadAudioSettings, loadPlaylists, loadRecentPlays, nextTrack, playQueue, Playlist, previousTrack, RecentPlay, removeFromQueue, restoreSavedSession, saveAudioSettings, savePlaylist, seekTo, selectQueueItem, setAutoNextSurah, setRepeatCount, setRepeatMode, setRepeatRange, setResumeOnStart, setVolume, stepPlaybackRate, MAX_RATE, MIN_RATE, RATE_STEPS, REPEAT_COUNT_CHOICES, REPEAT_FOREVER, setPlaybackRate, reciterLabel, stopPlayback, syncAudioTranslationToLanguage, togglePlayback, useAudio } from './src/services/audioService';
+import { AudioSession, AudioSettings, AudioTrackKind, buildQueueForChapter, buildSurahQueue, loadSurahReciters, clearQueue, clearRecentPlays, deletePlaylist, formatClock, getAudioSettings, loadAudioEditions, loadAudioSession, loadAudioSettings, loadPlaylists, loadRecentPlays, nextTrack, playQueue, playVerse, Playlist, previousTrack, RecentPlay, removeFromQueue, restoreSavedSession, saveAudioSettings, savePlaylist, seekTo, selectQueueItem, setAutoNextSurah, setRepeatCount, setRepeatMode, setRepeatRange, setResumeOnStart, setVolume, stepPlaybackRate, MAX_RATE, MIN_RATE, RATE_STEPS, REPEAT_COUNT_CHOICES, REPEAT_FOREVER, setPlaybackRate, reciterLabel, stopPlayback, syncAudioTranslationToLanguage, togglePlayback, useAudio } from './src/services/audioService';
 import {DEFAULT_HADITH_LANGUAGE, deviceHadithCount, downloadCollection, fetchHadithOne, getHadith, getHadithLanguage, hadithDownloadProgress, searchDeviceHadith, useHadithLanguage, setHadithLanguage, hadithReference, hadithSourceLabel, HADITH_COLLECTIONS, Hadith, HadithOutline, isHadithSaved, loadHadithBook, loadHadithOutline, loadHadithState, markHadithRead, removeDownloadedCollection, removeHadithBookmark, subscribeHadithDownloads, toggleHadithSaved, useDownloadedCollections, useHadithState } from './src/services/hadithService';
 import { adhanTrack, ADHAN_TRACKS, AdhanTrack, DEFAULT_ADHAN_ID, DEFAULT_FAJR_ID, FAJR_TRACKS } from './src/services/adhanCatalog';
 import { adhanPlaybackSource, downloadAllAdhanTracks, getAdhanCacheState, isAdhanCached, refreshAdhanCache, subscribeAdhanCache, clearAdhanCache } from './src/services/adhanCache';
@@ -12581,21 +12583,11 @@ function MiniPlayer() {
 
 async function playFromReader(chapter: Chapter, verse: Verse, rtl = false) {
   try {
-    const settings = getAudioSettings();
-    const ayah = Number(String(verse.verse_key).split(':')[1] || 1);
-    let queue = await buildQueueForChapter(chapter.id, chapter.name_simple, settings);
-    let index = queue.findIndex((track) => track.kind === 'arabic' && track.ayahNumber === ayah);
-    // A full-Surah reciter is a single file covering the whole chapter, so it has no
-    // track for the tapped ayah. Fall back to per-ayah audio (verse mode) so tapping a
-    // verse plays that verse instead of restarting the Surah from the beginning.
-    if (index < 0) {
-      try {
-        const verseQueue = await buildQueueForChapter(chapter.id, chapter.name_simple, { ...settings, reciterMode: 'verse' });
-        const verseIndex = verseQueue.findIndex((track) => track.kind === 'arabic' && track.ayahNumber === ayah);
-        if (verseIndex >= 0) { queue = verseQueue; index = verseIndex; }
-      } catch { /* no per-ayah audio for this reciter — keep the queue we already have */ }
-    }
-    await playQueue(queue, index < 0 ? 0 : index);
+    // Juz/Hizb readers can contain several Surahs: the tapped verse key, not
+    // the reader's opening chapter, is the authority for both numbers.
+    const [chapterId, ayah] = String(verse.verse_key).split(':').map(Number);
+    const name = verse.surah_name || (chapterId === chapter.id ? chapter.name_simple : undefined);
+    await playVerse(chapterId, ayah, name);
   } catch (e: any) { Alert.alert(tx(getAppLanguage(),'Audio unavailable'),tx(getAppLanguage(),e.message)); }
 }
 
@@ -14903,14 +14895,14 @@ function AppShell() {
      right to left in here. Do not add `rtl ? 'row-reverse' : 'row'` to a
      child: the two cancel and the row comes out left to right again — which
      is what left the floating tab bar unmirrored. */
-  return <View style={[s.shellRoot,{direction:shellDirection(rtlNow)} as any]}>
+  return <SystemNavigationBoundary style={[s.shellRoot,{direction:shellDirection(rtlNow)} as any]}>
     {/* Nothing mounts until the saved language is known, so the very first
         frame is already in the right language and the right direction. The
         splash covers the read, which is a single storage lookup. */}
     {ready && <Root />}
     {splash && <View style={s.shellLayer}><Splash ready={bootSettled} progress={bootProgress} onDone={() => setSplash(false)} /></View>}
     {!splash && onboarding === true && <View style={s.shellLayer}><Onboarding onFinish={() => setOnboarding(false)} /></View>}
-  </View>;
+  </SystemNavigationBoundary>;
 }
 
 /**
@@ -14955,7 +14947,7 @@ void loadAudioSettings().then(() => new Promise<void>(resolve => setTimeout(reso
    up as an empty screen with nothing to explain it. From out here the crash
    card is drawn with the real message instead. It needs no context of its
    own: the copy comes from I18nManager and the styles from module scope. */
-return <ScreenBoundary><ThemeProvider key={restoreTick}><SkeletonProvider><LanguageProvider><QuranPreferencesProvider><WorshipSettingsProvider><LocationProvider><AppShell/></LocationProvider></WorshipSettingsProvider></QuranPreferencesProvider></LanguageProvider></SkeletonProvider></ThemeProvider></ScreenBoundary>}
+return <SafeAreaProvider initialMetrics={initialWindowMetrics}><ScreenBoundary><ThemeProvider key={restoreTick}><SkeletonProvider><LanguageProvider><QuranPreferencesProvider><WorshipSettingsProvider><LocationProvider><AppShell/></LocationProvider></WorshipSettingsProvider></QuranPreferencesProvider></LanguageProvider></SkeletonProvider></ThemeProvider></ScreenBoundary></SafeAreaProvider>}
 
 /**
  * The Arabic face used everywhere, once someone has chosen one.
