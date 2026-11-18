@@ -88,6 +88,7 @@
       "./plugins/withBatteryExemption.js",
       "./plugins/withAdhanAlarm.js",
       "./plugins/withUnusedPermissions.js",
+      "./plugins/withOptionalPortrait.js",
       "./plugins/withHaramainCleartext.js",
       "./plugins/widgets/withWidgets.js",
       "@bacons/apple-targets",
