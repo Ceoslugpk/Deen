@@ -19,4 +19,7 @@ __pycache__/
 # dropped in for reference. They belong in the workspace, not the repo.
 uploads/
 *-shots/
+# ...except the README gallery, which is documentation: the images are the
+# reason the feature list can be believed, so they ship with the README.
+!docs/screenshots/
 .tmpsh/

@@ -1,55 +1,338 @@
-# Islamic
+<div align="center">
+  <img src="branding/logo-mark.png" alt="Islamic" width="128" height="128" />
+  <h1>Islamic</h1>
+  <p><strong>A worship-first companion for prayer, Qur'an, remembrance and daily practice.</strong></p>
+  <p>
+    <img src="https://img.shields.io/badge/Expo-58-000020?logo=expo&logoColor=white" alt="Expo 58" />
+    <img src="https://img.shields.io/badge/React%20Native-0.88-61dafb?logo=react&logoColor=white" alt="React Native 0.88" />
+    <img src="https://img.shields.io/badge/React-19-087ea4?logo=react&logoColor=white" alt="React 19" />
+    <img src="https://img.shields.io/badge/TypeScript-6.0-3178c6?logo=typescript&logoColor=white" alt="TypeScript" />
+    <img src="https://img.shields.io/badge/platforms-iOS%20%C2%B7%20Android%20%C2%B7%20web-lightgrey" alt="platforms" />
+  </p>
+  <p>
+    <code>com.qashi.islamic</code> · version <code>2.0.0</code> · 77 screens · no account, no tracking
+  </p>
+</div>
 
-A polished Expo + React Native Islamic companion app for iOS, Android, and web.
+---
 
-## Included
+Islamic brings the five daily prayers, the whole Qur'an, authentic hadith, dhikr and the
+calculators a practising Muslim reaches for into one app that works offline, speaks 22
+languages, and keeps everything it learns about you on the device.
 
-- Location-aware prayer times using the AlAdhan public API
-- Quran chapter and Uthmani verse data using Quran.com API v4
-- Full Quran reader foundation with bookmarks and recitation controls
-- Qibla direction experience
-- Functional Tasbih counter with haptics
-- Duas, Hijri calendar, Zakat, Hadith, mosque, and Ramadan modules
-- English UI with Arabic Quran typography and RTL-ready preferences
-- Graceful local fallback data when APIs are unavailable
+- **Prayer times** for any city, with seven calculation methods and real adhan alarms
+- **A Qibla compass** that corrects for magnetic declination instead of pointing at magnetic north
+- **The complete Qur'an** — 114 surahs, 484 translations, four Arabic scripts, audio and transliteration
+- **Ten hadith collections**, the 99 Names, Hisn al-Muslim, adhkar and step-by-step worship guides
+- **Home-screen widgets** and an iOS Live Activity, all four drawn by the OS from pre-formatted data
+- **Everything private**: no sign-up, no analytics, no server-side profile
 
-## Build for Android and iOS
+---
 
-Everything needed to produce an APK, an AAB and a signed IPA — toolchain versions,
-accounts, store submission and troubleshooting — is in **[BUILD.md](./BUILD.md)**.
+## Screenshots
 
-In short, on Expo's build servers:
+Captured from the running app (web build, 414 × 896) — real screens, not mock-ups.
 
-```bash
-npm install
-npm install -g eas-cli && eas login
-eas build --platform android --profile preview      # APK to install
-eas build --platform android --profile production   # AAB for Google Play
-eas build --platform ios --profile production       # IPA for TestFlight
-```
+| | |
+| :--- | :--- |
+| <img src="docs/screenshots/01-home-light.png" alt="Home" width="260" /> <br /> **Home** — next prayer, today's five, ayah of the day | <img src="docs/screenshots/11-home-dark.png" alt="Home, dark" width="260" /> <br /> **Home in dark theme** |
+| <img src="docs/screenshots/02-prayer-times.png" alt="Prayer times" width="260" /> <br /> **Prayer times** — today's six with a live countdown | <img src="docs/screenshots/12-prayer-dark.png" alt="Prayer times, dark" width="260" /> <br /> **Prayer times in dark theme** |
+| <img src="docs/screenshots/03-quran-home.png" alt="Qur'an home" width="260" /> <br /> **Qur'an** — reader, juz, hizb, topics, tafsir, audio | <img src="docs/screenshots/04-quran-reader.png" alt="Qur'an reader" width="260" /> <br /> **Reader** — Uthmani text with translation |
+| <img src="docs/screenshots/05-transliteration.png" alt="Transliteration" width="260" /> <br /> **Transliteration** — how the Arabic sounds | <img src="docs/screenshots/06-surah-picker.png" alt="Surah picker" width="260" /> <br /> **Surah picker** — search all 114 |
+| <img src="docs/screenshots/07-library.png" alt="Library" width="260" /> <br /> **Library** — what you read, recite and remember | <img src="docs/screenshots/08-tools.png" alt="Tools" width="260" /> <br /> **Tools** — trackers and calculators |
+| <img src="docs/screenshots/09-qibla.png" alt="Qibla" width="260" /> <br /> **Qibla** — dial, Kaaba marker, sensor honesty | <img src="docs/screenshots/10-tasbih.png" alt="Tasbih" width="260" /> <br /> **Tasbih** — a quiet dhikr counter |
 
-## Run locally
+---
+
+## Features
+
+The app is organised into five tabs. Nothing in one tab is repeated in another: Prayer
+holds the times and everything derived from them, Library holds what you read and
+remember, Tools holds what you calculate, look up, travel for, or record. Settings opens
+from the control at the right of the shared header, alongside notifications and the theme
+toggle.
+
+### Home
+
+- A greeting that matches the time of day, and the next prayer with a live countdown
+- Today's five prayers at a glance, each markable as prayed
+- Streaks — current day streak and the week's tally against the target
+- **Ayah of the day**, openable into a full reflection and shareable as an image card
+- Quick actions straight to **Qur'an**, **Qibla**, **Tasbih** and **Audio**
+- Daily content surfaced for the day, and the worship tools you have chosen to keep here
+
+### Prayer
+
+- **Prayer times** for the city you choose — Fajr, Sunrise, Dhuhr, Asr, Maghrib and Isha — with the current and next prayer worked out for you
+- **Seven calculation methods**: UAE (IACAD, the default), Gulf Region, Umm al-Qura, Muslim World League, Egyptian Authority, Karachi and North America
+- **Adhan and reminders** — six adhan voices plus two Fajr calls, per-prayer toggles, scheduled ahead in a queue so they fire without a network
+- **Qibla** — see below; this is the part most compass apps get wrong
+- **Hijri calendar** with the month grid, and Gregorian conversion
+- **Ramadan** — suhoor and iftar timetable, a fasting record, and the guides
+- **Ramadan Planner** — which fasts your cycle may claim, and when they fall due
+- **Fasting** — Ramadan, voluntary and missed fasts in one record
+- **Qada Prayers** — what you owe and a pace to clear it
+- **Qada Fasts** — what you owe, and what you have made up
+- **Salah Tracker** — every day you have marked, on one map
+- **Sunnah Prayers** — Witr, Duha and Tahajjud, kept apart from the five
+- **These Days** — what stays open when the prayer and the fast are lifted
+- **Weekly Summary** — your past seven days at a glance
+- **Location** — search for a city or enter coordinates by hand. The app has no GPS permission and never asks for one
+
+#### Qibla, in detail
+
+A phone magnetometer finds **magnetic** north. A qibla bearing is measured from **true**
+north. The gap between them — magnetic declination — is about 2° in Dubai, 12° in New
+York, 15° in Seattle and 22° in São Paulo, and it changes year by year. An app that draws
+the true bearing against a raw magnetometer reading is wrong by exactly that amount:
+small enough in Britain to go unnoticed, large enough in the Americas to point at the
+wrong wall.
+
+This app ships the **World Magnetic Model 2025–2030** on the device and corrects for it,
+and shows the correction it applied. It also judges the sensor rather than trusting it:
+field strength outside the earth's 25–65 µT band means something in the room is adding to
+it, and a jittering angle means an uncalibrated sensor, so the screen says so and asks you
+to sweep the phone in a figure of eight. Where there is no magnetometer at all, the dial
+is drawn honestly north-up with the exact bearing instead of pretending to be live. In
+Makkah itself the dial is replaced by a short note: every direction here is the Qibla.
+
+### Qur'an
+
+- **Reader** — all 114 surahs in Uthmani script, verse by verse, with a translation beside the Arabic
+- **Four Arabic scripts** — Uthmani, Imla'i simple, IndoPak and Tajweed
+- **484 translations** and every tafsir; **Tafsir** on its own, and **Tafsir Compare** side by side
+- **Transliteration** — how the Arabic sounds, with a picker that searches all 114 surahs by number, Latin name, Arabic name or meaning
+- **Audio** — whole-surah reciters from a merged catalogue, played in the background
+- **Search** across the whole Qur'an
+- **Bookmarks** and **Notes** with a full note editor
+- **Memorize**, **Memorize Test** and **Hifz** for revision
+- **Khatam** — progress through a complete reading
+- **Reading Plans** to pace one
+- **Juz** and **Hizb** directories
+- **Qur'an Topics** with a topic detail view
+- **Qur'an Vocabulary** and **Tajweed Study**
+- **Reader Settings** — script, translation, fonts and sizes
+- **Downloads** and **Qur'an Preload**, so the text is on the device before you need it
+- **Share a verse** as a designed image card
+
+### Library
+
+- **Duas** — Hisn al-Muslim arranged by occasion, browsable by category
+- **Adhkar** — morning and evening remembrance
+- **99 Names** — Asma ul-Husna, with meanings (Arabic meanings written in, because the catalogue omits them)
+- **Prophet Names** — the twenty-five prophets named in the Qur'an
+- **Muslim Names** — boys' and girls' names with their meanings
+- **Hadith** — ten collections: Sahih al-Bukhari, Sahih Muslim, Sunan Abu Dawud, Jami' at-Tirmidhi, Sunan an-Nasa'i, Sunan Ibn Majah, Muwatta Malik, Forty Hadith of an-Nawawi, Forty Hadith Qudsi and Forty Hadith of Shah Waliullah — browsable by book, graded where the collection carries grades, with saved hadith and a shareable card
+- **Worship guides** — wudu, salah, janazah and more, step by step
+- **Purity** and **Ghusl** — the full washing, step by step
+- **Ramadan** reading for the month
+
+### Tools
+
+| | |
+| :--- | :--- |
+| **Salah Tracker** — every day you have marked, on one map | **Qada Prayers** — prayers you owe, and a pace to clear them |
+| **Fasting** — Ramadan, voluntary and missed fasts | **Zakat** — gold, silver, cash and investments |
+| **Sadaqah** — voluntary giving, recorded privately | **Sunnah Prayers** — Witr, Duha and Tahajjud |
+| **Tasbih** — a quiet, tactile dhikr counter | **Journal** — a private place to reflect |
+| **Weekly Summary** — your past seven days | **Qibla** — direction to the Ka'bah |
+| **Location** — search a city or set coordinates | **Hijri Calendar** — Islamic dates and the month grid |
+| **Prayer Reminders** — adhan alerts and toggles | **Umrah Resources** — a packing checklist you can tick off |
+| **Women's worship** — cycle, purity, the fasts you owe | **Cycle Tracker** — period logging and predictions |
+| **Istihada** — bleeding that is not a period | **Ramadan Planner** — which fasts your cycle may claim |
+| **These Days** — what stays open | **Qada Fasts** — what you owe and have made up |
+
+Also here: **Holy site channels** — live broadcasts from Makkah and Madinah (Quran TV,
+Alharamain, Sunnah TV and Makkah Live) — **Privacy Lock** (face, fingerprint or PIN in
+front of the app), **Backup** (encrypted, and yours to keep), **Storage**, **Data sources**
+(every service the app talks to, listed in plain words), **My Reports** and **Legal**.
+
+### Widgets and Live Activities
+
+Four widget families — **Prayer**, **Ayah**, **Hijri** and **Tasbih** — plus an iOS
+**Live Activity** for the next prayer. They are drawn by the operating system, not by the
+app, so everything they need arrives pre-formatted: times as strings in the user's clock
+style, the Hijri date already written, the palette named. A widget that recalculates
+anything will eventually disagree with the app, so none of them do. Data moves through the
+App Group `group.com.qashi.islamic`.
+
+### Languages
+
+The interface is fully translated into **22 languages**, with true right-to-left layouts
+for Arabic, Urdu, Persian and Pashto:
+
+English · العربية (Arabic) · اردو (Urdu) · Français · Türkçe · Русский · 中文 · فارسی ·
+Ўzbekcha · Қазақша · Tiếng Việt · Azərbaycan · Bosanski · Български · සිංහල · پښتو ·
+বাংলা · Bahasa Indonesia · தமிழ் · हिन्दी · മലയാളം · Bahasa Melayu
+
+Qur'an translations, tafsir and recitation voices are chosen separately from the interface
+language, so you can read an English interface with an Urdu translation and a Cairene
+reciter.
+
+### Privacy
+
+- **No account, no sign-up, no analytics, no tracking.** The app has no profile to build
+- Everything is stored on the device in AsyncStorage
+- Location is a city you choose. Precise location is never requested, stored or sent — with no location chosen the app uses Makkah rather than silently guessing
+- Notifications are scheduled on the device
+- Backups are **encrypted** before they leave, and restoring one is your choice
+
+### Design
+
+- **Light and dark themes**, plus a distinct visual treatment for the app's scenes
+- A **custom SVG icon system** (`src/components/CustomIcon.tsx`) with 396 tool and feature icons drawn as lossless WebP
+- **A shared motion system** (`src/design/motion`) — press depth, entrance springs and reduced-motion support handled in one place
+- **Typography bundled on the device**: DM Sans, Newsreader, Noto Naskh Arabic, Amiri, Amiri Quran, KFGQPC Uthmanic Hafs, Scheherazade New, IBM Plex Sans Arabic, Noto Kufi Arabic and Be Vietnam Pro
+- **Haptics** on the interactions that warrant them
+
+---
+
+## Branding
+
+The logo, wordmark and every app icon variant live in [`branding/`](./branding) so they can
+be found without hunting through `assets/`. They are the same files the build uses.
+
+<div align="center">
+  <img src="branding/logo-mark.png" alt="Logo mark" width="96" />
+  &nbsp;&nbsp;&nbsp;
+  <img src="branding/logo-mark-palestine.png" alt="Logo mark, Palestine" width="96" />
+  &nbsp;&nbsp;&nbsp;
+  <img src="branding/app-icon.png" alt="App icon" width="96" />
+</div>
+
+| File | Size | Used for |
+| :--- | :--- | :--- |
+| `logo-mark.png` | 256 × 256 | Primary logo mark |
+| `logo-mark-palestine.png` | 256 × 256 | Logo mark, Palestine variant |
+| `app-icon.png` | 1024 × 1024 | Default app icon |
+| `ios-icon-light.png` | 1024 × 1024 | iOS icon, light appearance |
+| `ios-icon-dark.png` | 1024 × 1024 | iOS icon, dark appearance |
+| `android-icon-foreground.png` | 1024 × 1024 | Android adaptive icon, foreground layer |
+| `android-icon-background.png` | 1024 × 1024 | Android adaptive icon, background layer |
+| `android-icon-monochrome.png` | 1024 × 1024 | Android themed (monochrome) icon |
+| `splash-icon.png` | 512 × 512 | Splash screen |
+| `favicon.png` | 96 × 96 | Web favicon |
+
+<div align="center">
+  <img src="branding/ios-icon-light.png" alt="iOS light" width="80" />
+  <img src="branding/ios-icon-dark.png" alt="iOS dark" width="80" />
+  <img src="branding/android-icon-foreground.png" alt="Android foreground" width="80" />
+  <img src="branding/android-icon-monochrome.png" alt="Android monochrome" width="80" />
+  <img src="branding/splash-icon.png" alt="Splash" width="80" />
+  <img src="branding/favicon.png" alt="Favicon" width="80" />
+</div>
+
+The brand colour is the deep indigo `#2D187D`, used for the splash and the Android
+adaptive-icon background.
+
+---
+
+## Getting started
+
+Requires **Node 22.13+** (the toolchain warns on anything older).
 
 ```bash
 npm install
 npx expo start
 ```
 
-Then press `i` for iOS, `a` for Android, or `w` for web. You can also scan the QR code with Expo Go.
+Then press `i` for iOS, `a` for Android, or `w` for web. You can also scan the QR code
+with Expo Go.
+
+| Script | What it does |
+| :--- | :--- |
+| `npm start` | Start the Expo dev server |
+| `npm run android` | Open on Android |
+| `npm run ios` | Open on iOS |
+| `npm run web` | Open in a browser |
+| `npm run build:web` | Export a static web build to `web-build/` |
+
+The first run asks for a prayer location. That is deliberate: there is no silent
+fallback and no guessed city.
+
+## Building for the stores
+
+The store builds run through **EAS**, configured outside this repository — there is no
+`eas.json` here on purpose. From this checkout:
+
+```bash
+npm install -g eas-cli && eas login
+eas build --platform android --profile preview      # APK to install
+eas build --platform android --profile production   # AAB for Google Play
+eas build --platform ios --profile production       # IPA for TestFlight
+```
+
+---
 
 ## Data sources
 
-- Prayer times: `https://api.aladhan.com/v1`
-- Quran: `https://api.quran.com/api/v4`
+| Source | Used for |
+| :--- | :--- |
+| **The app's own server** — `api.islamicdata.uz` | Every Arabic script — Uthmani, Imla'i simple, IndoPak and Tajweed — all 484 translations and every tafsir, the surah / juz / hizb structure, transliteration, Qur'an search, and the ten hadith collections. Overridable with `EXPO_PUBLIC_QURAN_API_BASE_URL` |
+| `audio.islamicdata.uz` | The full-surah reciter catalogue, and both adhan catalogues |
+| `cdn.islamic.network` | Kept verse-by-verse recitation audio |
+| The app's own price service | Spot gold and silver prices for the nisab threshold, daily exchange rates for Zakat, and city search |
+| `api.islamic.app` | Adhkar and duas (Hisn al-Muslim), and the Names catalogue |
+| YouTube and Makkah Live | Live broadcasts from the two holy mosques |
+| **On the device — no request at all** | Prayer times, the Hijri date, the Ramadan timetable, magnetic declination, the 604-page layout with its juz and hizb divisions, and every adhan recording |
 
-For production, review API terms, introduce persistent caching, add a dedicated translation/recitation selection flow, and verify prayer calculation defaults by region.
+Prayer times are **calculated on the device** by the `adhan` library, from the coordinates
+of the city you chose — there is no network request in the timetable you rely on, which is
+why it works on a plane. Magnetic declination is likewise computed on the device from the
+bundled World Magnetic Model. The adhan recordings ship inside the app, which is what lets
+the call sound at Fajr with no connection at all.
 
-## Visual system
+Every service the app talks to is also listed in-app, under **Tools → Data sources**.
 
-The interface uses a custom SVG icon system in `src/components/CustomIcon.tsx`, animated press states, and a multi-accent indigo, cyan, coral, saffron, and teal palette. The app has no account creation, profile, or tracking flow.
+---
 
-## Product architecture
+## Tech stack
 
-The app follows a five-tab worship-first information architecture: Home, Prayer, Quran, Library, and Tools. Prayer holds the times themselves together with Qibla, the call and its reminders, the location they are calculated from, the Hijri calendar, Ramadan, the fasts, and the weekly summary. Library holds what you read, recite and remember — adhkar, duas, the Names, hadith, and the step-by-step worship guides. Tools holds what you calculate, look up, travel for, or record — zakat, mosques, the pilgrimage journeys, the women's records, and the privacy lock. Nothing in one tab is repeated in another.
+| | |
+| :--- | :--- |
+| **Framework** | Expo ~58, React Native 0.88, React 19 |
+| **Language** | TypeScript 6 |
+| **Navigation** | React Navigation 7 (bottom tabs + native stacks) |
+| **Prayer times** | `adhan` 4.4 — computed on device |
+| **Compass** | `expo-sensors`, corrected with a bundled WMM 2025–2030 implementation |
+| **Audio** | `expo-audio`, background playback enabled |
+| **Notifications** | `expo-notifications`, scheduled by a device-side queue |
+| **Storage** | `@react-native-async-storage/async-storage` |
+| **Privacy lock** | `expo-local-authentication` |
+| **Widgets** | Native SwiftUI targets via `@bacons/apple-targets` |
+| **Web** | `react-native-web` — the same code runs in a browser |
 
-Settings is no longer a tab: it opens from the control at the right of the shared header, which also carries notifications and the theme toggle. The first run requires an explicit prayer location choice; there is no silent location fallback and no account system. Premium typography is bundled locally with DM Sans, Newsreader, and Noto Naskh Arabic.
+Native glue lives in `plugins/` (adhan alarms, battery exemption, permission trimming,
+widgets) and `modules/deen-widgets/`.
+
+---
+
+## Project layout
+
+```
+App.tsx                  the application: screens, navigation, styles
+index.ts                 entry point
+app.json                 Expo configuration, icons and splash
+assets/                  fonts, icons, scenes, adhan audio
+branding/                logo and app icon variants
+docs/
+  SOURCES.md             where every piece of content comes from
+  widgets.md             how the widgets and Live Activity are wired
+  audio-worker/          the audio catalogue worker
+  screenshots/           the screens shown above
+src/
+  components/            shared components (icon system, share cards)
+  content/               journeys, worship guides, names, study material
+  data/                  bundled datasets
+  design/                palette, type scale, motion system
+  services/              API clients, storage, prayer times, hadith, zakat, …
+plugins/                 Expo config plugins
+modules/deen-widgets/    native widget module (iOS + Android)
+targets/widgets/         SwiftUI widget and Live Activity sources
+```
+
+## Further reading
+
+- [`docs/SOURCES.md`](./docs/SOURCES.md) — where the content comes from, and how it is checked
+- [`docs/widgets.md`](./docs/widgets.md) — the widget contract and data flow
+- [`docs/audio-worker/`](./docs/audio-worker) — the recitation catalogue worker
