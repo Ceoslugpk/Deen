@@ -42,6 +42,10 @@ Captured from the running app (web build, 414 × 896) — real screens, not mock
 | <img src="docs/screenshots/07-library.png" alt="Library" width="260" /> <br /> **Library** — what you read, recite and remember | <img src="docs/screenshots/08-tools.png" alt="Tools" width="260" /> <br /> **Tools** — trackers and calculators |
 | <img src="docs/screenshots/09-qibla.png" alt="Qibla" width="260" /> <br /> **Qibla** — dial, Kaaba marker, sensor honesty | <img src="docs/screenshots/10-tasbih.png" alt="Tasbih" width="260" /> <br /> **Tasbih** — a quiet dhikr counter |
 
+**Large-screen assets:** [Download 24 tablet and unfolded-foldable screenshots](docs/store-assets/Islamic-tablet-foldable-screenshots.zip)
+(8 per category). These are independently rendered **web-build viewport captures**, not
+native Android emulator screenshots. [Sizes, provenance and reproduction steps](docs/store-assets/README.md).
+
 ---
 
 ## Features
