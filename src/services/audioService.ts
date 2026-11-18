@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { writeText } from './storage';
+import { readText, writeText } from './storage';
+import { translationAudioForLanguage } from './translationPreferences';
 import { engine } from './audioEngine';
 import { AudioEdition, getAudioEditions, getSurahAudio, getSurahReciters, SurahAudioAyah, SurahReciter } from './api';
 import { getCachedJson, setCachedJson } from './contentCache';
@@ -204,7 +205,7 @@ const EDITION_TTL = 7 * 24 * 60 * 60 * 1000;
 
 async function readJson<T>(key: string, fallback: T): Promise<T> {
   try {
-    const value = await AsyncStorage.getItem(key);
+    const value = await readText(key);
     return value ? ({ ...fallback, ...(JSON.parse(value) as object) } as T) : fallback;
   } catch {
     return fallback;
@@ -257,45 +258,27 @@ export function audioEditionForLanguage(
   return pool.find((edition) => edition.type === 'versebyverse') || pool[0];
 }
 
-/**
- * Point the spoken translation at the language being read.
- *
- * The player used to keep reciting English to someone reading Urdu, because
- * the choice lived only in the player: `translationEdition` was set once at
- * the default and then only ever changed by hand, mid-verse. Changing the
- * reading language never touched it.
- *
- * So the language being read now drives it. Where a voice exists in that
- * language it is selected; where none exists the spoken translation is
- * switched off and the recitation is left on its own, because reciting a
- * language the person is not reading is worse than reciting none. Whether
- * the spoken translation plays at all stays the person's own switch - this
- * only decides which voice it uses when it is on.
- */
+/** Select a real recording in the text-translation language, or English
+ * when none exists. This works offline from the verified shipped catalogue.
+ * Keep the person's audio switch, volumes and reciter. Only undo a mute that
+ * the old no-audio policy applied automatically, never an explicit mute. */
 export async function syncAudioTranslationToLanguage(language: string): Promise<AudioSettings> {
-  const code = (language || '').toLowerCase();
-  if (!code || settings.translationSyncedLanguage === code) return settings;
+  const revision = ++translationSyncRevision;
+  const code = (language || '').trim().toLowerCase();
+  if (!code) return settings;
+  if (!settingsLoaded || loadingSettings) await loadAudioSettings();
+  if (revision !== translationSyncRevision) return settings;
+  if (settings.translationSyncedLanguage === code && !settings.translationAutoMuted) return settings;
 
-  const { translation } = await loadAudioEditions()
-    .catch(() => ({ arabic: [] as AudioEdition[], translation: [] as AudioEdition[] }));
-  const match = audioEditionForLanguage(translation, code);
-  const patch: Partial<AudioSettings> = { translationSyncedLanguage: code };
-
-  if (match) {
-    patch.translationEdition = match.identifier;
-    patch.translationName = match.englishName;
-    /* Lift only a mute this app applied. One the person chose is theirs. */
-    if (settings.translationAutoMuted) {
-      patch.translationAudioEnabled = true;
-      patch.translationAutoMuted = false;
-    }
-  } else {
-    /* Nothing is spoken in this language, so play the Arabic alone rather
-       than a translation in one the person did not choose. */
-    patch.translationAudioEnabled = false;
-    patch.translationAutoMuted = true;
-  }
-  return saveAudioSettings(patch);
+  const match = translationAudioForLanguage(code);
+  if (!match) return settings;
+  return saveAudioSettings({
+    translationSyncedLanguage: code,
+    translationEdition: match.identifier,
+    translationName: match.englishName,
+    translationAutoMuted: false,
+    ...(settings.translationAutoMuted ? { translationAudioEnabled: true } : {}),
+  });
 }
 
 export async function loadSurahReciters(force = false): Promise<SurahReciter[]> {
@@ -457,6 +440,17 @@ let state: AudioState = {
 
 const listeners = new Set<(next: AudioState) => void>();
 let settings: AudioSettings = { ...DEFAULT_AUDIO_SETTINGS };
+let settingsLoaded = false;
+let loadingSettings: Promise<AudioSettings> | null = null;
+let translationSyncRevision = 0;
+const settingsListeners = new Set<(next: AudioSettings) => void>();
+function emitSettings() { settingsListeners.forEach((listener) => listener(settings)); }
+
+export function subscribeAudioSettings(listener: (next: AudioSettings) => void) {
+  settingsListeners.add(listener);
+  listener(settings);
+  return () => { settingsListeners.delete(listener); };
+}
 
 function emit(patch: Partial<AudioState>) {
   state = { ...state, ...patch, track: patch.queue ? (patch.queue[patch.index ?? state.index] ?? null) : state.track };
@@ -902,9 +896,16 @@ export function useAudio(): AudioState {
 /* ---------------------------------------------------------------- persistence */
 
 export async function loadAudioSettings(): Promise<AudioSettings> {
-  settings = await readJson<AudioSettings>(KEYS.settings, DEFAULT_AUDIO_SETTINGS);
-  emit({ repeat: settings.repeat, rate: settings.rate });
-  return settings;
+  if (!loadingSettings) {
+    loadingSettings = readJson<AudioSettings>(KEYS.settings, DEFAULT_AUDIO_SETTINGS).then((saved) => {
+      settings = saved;
+      settingsLoaded = true;
+      emitSettings();
+      emit({ repeat: settings.repeat, rate: settings.rate });
+      return settings;
+    }).finally(() => { loadingSettings = null; });
+  }
+  return loadingSettings;
 }
 
 export function getAudioSettings() {
@@ -912,7 +913,15 @@ export function getAudioSettings() {
 }
 
 export async function saveAudioSettings(patch: Partial<AudioSettings>) {
-  settings = { ...settings, ...patch };
+  // A manual voice choice supersedes a sync waiting for hydration. Merely
+  // toggling audio must not cancel matching the voice to the selected text.
+  if (patch.translationEdition !== undefined) translationSyncRevision += 1;
+  if (!settingsLoaded || loadingSettings) await loadAudioSettings();
+  settings = { ...settings, ...patch,
+    ...(patch.translationAudioEnabled !== undefined && patch.translationAutoMuted === undefined
+      ? { translationAutoMuted: false } : {}),
+  };
+  emitSettings();
   await writeJson(KEYS.settings, settings);
   return settings;
 }

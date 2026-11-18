@@ -25,7 +25,7 @@ function tracks(chapterId = 55, count = 7) {
 
 function createAudioHarness(options = {}) {
   const platform = options.platform || 'android';
-  const storage = new Map();
+  const storage = options.storage || new Map();
   const cache = new Map();
   const playlists = [];
   const plays = [];
@@ -97,7 +97,7 @@ function createAudioHarness(options = {}) {
   };
   const api = {
     getSurahAudio: options.getSurahAudio || (async () => ayahs()),
-    getAudioEditions: async () => [],
+    getAudioEditions: options.getAudioEditions || (async () => require('../../src/data/audio-editions.json').editions.map((entry) => ({ ...entry }))),
     getSurahReciters: async () => [{ id: 1, name: 'Test reciter', urlTemplate: 'https://example.test/full/{surahPadded3}.mp3' }],
   };
   const load = createLoader({
@@ -108,11 +108,14 @@ function createAudioHarness(options = {}) {
       createAudioPlayer: () => webPlayer,
     },
     '@react-native-async-storage/async-storage': {
-      getItem: async (key) => storage.get(key) ?? null,
+      getItem: async (key) => options.getItem ? options.getItem(key, storage) : storage.get(key) ?? null,
       setItem: async (key, value) => storage.set(key, value),
       removeItem: async (key) => storage.delete(key),
     },
-    './storage': { writeText: async (key, value) => storage.set(key, value) },
+    './storage': {
+      readText: async (key) => options.getItem ? options.getItem(key, storage) : storage.get(key) ?? null,
+      writeText: async (key, value) => storage.set(key, value),
+    },
     './api': api,
     './contentCache': {
       getCachedJson: async (group, key) => cache.get(`${group}/${key}`) ?? null,

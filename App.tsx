@@ -85,7 +85,9 @@ import { markerBetween, MARKER_KINDS, MARKER_LABELS, MARKER_NOTE, type MushafMar
 import { localizeGuide, WORSHIP_GUIDES, WorshipGuide } from './src/content/worshipGuides';
 import { GUIDE_HADITH, GUIDE_VERSES } from './src/content/guideSources';
 import { QURAN_TOPICS, QURAN_VOCABULARY, TAJWEED_RULES, topicTitle, topicDescription, topicCategory, tajweedName, tajweedDetail } from './src/content/quranStudy';
-import {addSearchHistory, clearSearchHistory, clearSurahCache, deleteNote, HifzStatus, loadBookmarks, loadHifz, loadNotes, loadPlan, loadQuranPreferences, loadReadingPosition, loadRecentSurahs, loadSearchHistory, loadSurahCache, readerCacheKey, loadSurahCacheIndex, DEFAULTS, loadVocabularyProgress, QuranBookmark, QuranNote, QuranPreferences, removeSearchHistory, saveHifz, saveNote, savePlan, saveQuranPreferences, saveReadingPosition, saveSurahCache, saveVocabularyProgress, toggleBookmark, ReadingPosition, VocabularyProgress} from './src/services/quranState';
+import {addSearchHistory, clearSearchHistory, clearSurahCache, deleteNote, HifzStatus, loadBookmarks, loadHifz, loadNotes, loadPlan, loadReadingPosition, loadRecentSurahs, loadSearchHistory, loadSurahCache, readerCacheKey, loadSurahCacheIndex, DEFAULTS, loadVocabularyProgress, QuranBookmark, QuranNote, QuranPreferences, removeSearchHistory, saveHifz, saveNote, savePlan, saveReadingPosition, saveSurahCache, saveVocabularyProgress, toggleBookmark, ReadingPosition, VocabularyProgress} from './src/services/quranState';
+import { createQuranPreferenceStore } from './src/services/quranPreferenceStore';
+import { translationAudioForLanguage, translationLanguageCode } from './src/services/translationPreferences';
 import { addSearchHistory as addRecentSearch, clearSearchHistory as clearRecentSearch, loadSearchHistory as loadSearchHistoryFor, removeSearchHistory as removeRecentSearch } from './src/services/searchHistory';
 import { syncWidgets } from './src/services/widgetSync';
 import { refreshWidgets } from './src/services/widgetBridge';
@@ -107,7 +109,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 import * as Clipboard from 'expo-clipboard';
 import { getCacheUsage, getCachedJson, setCachedJson } from './src/services/contentCache';
-import { AudioSession, AudioSettings, AudioTrackKind, buildQueueForChapter, buildSurahQueue, loadSurahReciters, clearQueue, clearRecentPlays, deletePlaylist, formatClock, getAudioSettings, loadAudioEditions, loadAudioSession, loadAudioSettings, loadPlaylists, loadRecentPlays, nextTrack, playQueue, playVerse, Playlist, previousTrack, RecentPlay, removeFromQueue, restoreSavedSession, saveAudioSettings, savePlaylist, seekTo, selectQueueItem, setAutoNextSurah, setRepeatCount, setRepeatMode, setRepeatRange, setResumeOnStart, setVolume, stepPlaybackRate, MAX_RATE, MIN_RATE, RATE_STEPS, REPEAT_COUNT_CHOICES, REPEAT_FOREVER, setPlaybackRate, reciterLabel, stopPlayback, syncAudioTranslationToLanguage, togglePlayback, useAudio } from './src/services/audioService';
+import { AudioSession, AudioSettings, AudioTrackKind, buildQueueForChapter, buildSurahQueue, loadSurahReciters, clearQueue, clearRecentPlays, deletePlaylist, formatClock, getAudioSettings, loadAudioEditions, loadAudioSession, loadAudioSettings, loadPlaylists, loadRecentPlays, nextTrack, playQueue, playVerse, Playlist, previousTrack, RecentPlay, removeFromQueue, restoreSavedSession, saveAudioSettings, savePlaylist, seekTo, selectQueueItem, setAutoNextSurah, setRepeatCount, setRepeatMode, setRepeatRange, setResumeOnStart, setVolume, stepPlaybackRate, MAX_RATE, MIN_RATE, RATE_STEPS, REPEAT_COUNT_CHOICES, REPEAT_FOREVER, setPlaybackRate, reciterLabel, stopPlayback, subscribeAudioSettings, syncAudioTranslationToLanguage, togglePlayback, useAudio } from './src/services/audioService';
 import {DEFAULT_HADITH_LANGUAGE, deviceHadithCount, downloadCollection, fetchHadithOne, getHadith, getHadithLanguage, hadithDownloadProgress, searchDeviceHadith, useHadithLanguage, setHadithLanguage, hadithReference, hadithSourceLabel, HADITH_COLLECTIONS, Hadith, HadithOutline, isHadithSaved, loadHadithBook, loadHadithOutline, loadHadithState, markHadithRead, removeDownloadedCollection, removeHadithBookmark, subscribeHadithDownloads, toggleHadithSaved, useDownloadedCollections, useHadithState } from './src/services/hadithService';
 import { adhanTrack, ADHAN_TRACKS, AdhanTrack, DEFAULT_ADHAN_ID, DEFAULT_FAJR_ID, FAJR_TRACKS } from './src/services/adhanCatalog';
 import { adhanPlaybackSource, downloadAllAdhanTracks, getAdhanCacheState, isAdhanCached, refreshAdhanCache, subscribeAdhanCache, clearAdhanCache } from './src/services/adhanCache';
@@ -152,24 +154,8 @@ import {
 } from './src/services/islamicDataApi';
 import { languageFlag, languageLabel, languagesOf, type LanguageEntry } from './src/services/languageFlags';
 
-/**
- * The language a Quran edition is written in, as a short code the flag can
- * draw. Preference stores two things and neither alone is reliable: the
- * edition identifier carries the code (`en.sahih` -> `en`) but is empty before
- * a translation has ever been picked, while `translationLanguage` is a display
- * name like "English". Try the identifier first, then the name.
- */
-const LANGUAGE_NAME_TO_CODE: Record<string, string> = {
-  english: 'en', arabic: 'ar', urdu: 'ur', french: 'fr', turkish: 'tr',
-  indonesian: 'id', russian: 'ru', chinese: 'zh', persian: 'fa',
-  uzbek: 'uz', kazakh: 'kk', malay: 'my', german: 'de', spanish: 'es',
-  dutch: 'nl', italian: 'it', portuguese: 'pt', bengali: 'bn', hindi: 'hi'
-};
-const languageOf = (identifier?: string, language?: string) => {
-  const fromId = (identifier || '').split('.')[0];
-  if (fromId && /^[a-z]{2,3}$/.test(fromId)) return fromId;
-  return LANGUAGE_NAME_TO_CODE[(language || '').toLowerCase()] || (language || '');
-};
+// Resolve both Worker and older edition ids before the catalogue is ready.
+const languageOf = translationLanguageCode;
 
 /**
  * Share a card as a picture on native.
@@ -807,7 +793,7 @@ const Stack = createNativeStackNavigator();
  */
 const VERSE_VIEWABILITY = { itemVisiblePercentThreshold: 10, minimumViewTime: 350 };
 
-type QuranPreferencesState={preferences:QuranPreferences;hydrated:boolean;update:(patch:Partial<QuranPreferences>)=>Promise<void>;fontTick:number};
+type QuranPreferencesState={preferences:QuranPreferences;hydrated:boolean;update:(patch:Partial<QuranPreferences>)=>Promise<void>;getPreferences:()=>QuranPreferences;fontTick:number};
 /**
  * Whether the reading chrome is currently hidden.
  *
@@ -955,8 +941,18 @@ function settlePreferences(value:QuranPreferences):QuranPreferences{
   if(!settled)return value;
   return {...value,scriptEdition:settled,scriptName:SETTLED_NAMES[settled]||'Uthmani'};
 }
-const QuranPreferencesContext=createContext<QuranPreferencesState>({preferences:DEFAULT_QURAN_PREFERENCES,hydrated:false,update:async()=>{},fontTick:0});
-function QuranPreferencesProvider({children}:{children:React.ReactNode}){const[preferences,setPreferences]=useState(DEFAULT_QURAN_PREFERENCES);const[hydrated,setHydrated]=useState(false);useEffect(()=>{loadQuranPreferences().then(value=>{setPreferences(settlePreferences(value));setHydrated(true)})},[]);
+const QuranPreferencesContext=createContext<QuranPreferencesState>({preferences:DEFAULT_QURAN_PREFERENCES,hydrated:false,update:async()=>{},getPreferences:()=>DEFAULT_QURAN_PREFERENCES,fontTick:0});
+function QuranPreferencesProvider({children}:{children:React.ReactNode}){
+  const { language: appLanguage } = useLanguage();
+  const appLanguageRef = useRef(appLanguage);
+  appLanguageRef.current = appLanguage;
+  const [store] = useState(() => createQuranPreferenceStore(settlePreferences));
+  const [{ preferences, hydrated }, setSnapshot] = useState(store.getSnapshot);
+  useEffect(() => {
+    const unsubscribe = store.subscribe(setSnapshot);
+    void store.hydrate();
+    return unsubscribe;
+  }, [store]);
   /* The chosen face is fetched on demand, so it may not be there yet. Once it
      is, the sheet is rebuilt with it and everyone wearing it re-renders. */
   useEffect(()=>{
@@ -971,10 +967,15 @@ function QuranPreferencesProvider({children}:{children:React.ReactNode}){const[p
     return ()=>{alive=false};
   },[preferences.arabicFont]);
   const [fontTick,setFontTick]=useState(0);
-  const update=useCallback(async(patch:Partial<QuranPreferences>)=>{const next=settlePreferences({...preferences,...patch});setPreferences(next);await saveQuranPreferences(next)},[preferences]);
+  const update = useCallback((patch: Partial<QuranPreferences>) => store.update({
+    ...patch,
+    ...(patch.translationEdition && patch.translationAppLanguage === undefined
+      ? { translationAppLanguage: appLanguageRef.current } : {}),
+  }), [store]);
+  const getPreferences = useCallback(() => store.getSnapshot().preferences, [store]);
   /* Stable object, for the same reason as the language value: 30 components
      read this context, and a fresh literal each render rebuilds all of them. */
-  const value=useMemo(()=>({preferences,hydrated,update,fontTick}),[preferences,hydrated,update,fontTick]);
+  const value=useMemo(()=>({preferences,hydrated,update,getPreferences,fontTick}),[preferences,hydrated,update,getPreferences,fontTick]);
   return <QuranPreferencesContext.Provider value={value}>{children}</QuranPreferencesContext.Provider>}
 function useQuranPreferences(){return useContext(QuranPreferencesContext)}
 type WorshipSettingsState={settings:WorshipSettings;hydrated:boolean;update:(patch:Partial<WorshipSettings>)=>Promise<void>};
@@ -5163,9 +5164,9 @@ function TranslationScreen({navigation}:any){const{preferences,update}=useQuranP
      alphabetical order, so the screen opens with one control: what language
      am I reading. The editions of that language sit underneath it. */
   const languages=useMemo(()=>languagesOf(editions),[editions]);
-  const currentCode=(editions.find(e=>e.id===preferences.translationEdition)?.language)||'en';
-  const current=useMemo(()=>languages.find(l=>l.code===currentCode),[languages,currentCode]);
+  const currentCode=translationLanguageCode(preferences.translationEdition,preferences.translationLanguage,editions)||'en';
   const[language,setLanguage]=useState(currentCode);
+  const current=useMemo(()=>languages.find(l=>l.code===language),[languages,language]);
   useEffect(()=>{setLanguage(currentCode)},[currentCode]);
 
   /* The rows are built here rather than inside the sheet's render callback.
@@ -5190,7 +5191,7 @@ function TranslationScreen({navigation}:any){const{preferences,update}=useQuranP
     <Text style={s.dataTitle}>{T('Choose a translation')}</Text>
     <Text style={s.intro}>{T('Translations explain meaning and do not replace the Arabic Quran. Edition attribution remains visible in the reader.')}</Text>
 
-    <Pressable accessibilityRole="button" accessibilityState={{expanded:picking}} accessibilityLabel={`${T('Language')}: ${current?current.label:currentCode}`}
+    <Pressable accessibilityRole="button" accessibilityState={{expanded:picking}} accessibilityLabel={`${T('Language')}: ${current?.label||languageLabel(language)}`}
       onPress={()=>setPicking(true)} style={s.tsLangButton}>
       <Text style={s.langFlag}>{languageFlag(language)}</Text>
       <View style={{flex:1}}>
@@ -5355,9 +5356,9 @@ function ReaderSettingsScreen({navigation}:any){
   const previewSize=Math.min(preferences.fontSize,32);
 
   const languages=useMemo(()=>languagesOf(editions),[editions]);
-  const currentCode=(editions.find(e=>e.id===preferences.translationEdition)?.language)||'en';
-  const current=useMemo(()=>languages.find(l=>l.code===currentCode),[languages,currentCode]);
+  const currentCode=translationLanguageCode(preferences.translationEdition,preferences.translationLanguage,editions)||'en';
   const[language,setLanguage]=useState(currentCode);
+  const current=useMemo(()=>languages.find(l=>l.code===language),[languages,language]);
   useEffect(()=>{setLanguage(currentCode)},[currentCode]);
   /* Built in the body, not at the point of use: the sheet below is rendered
      conditionally, so a `useMemo` written inside that expression would be
@@ -5431,7 +5432,7 @@ function ReaderSettingsScreen({navigation}:any){
                 onPress={()=>update({showTranslation:!preferences.showTranslation})}/>
             </View>
             {!!preferences.showTranslation && <>
-              <Pressable accessibilityRole="button" accessibilityState={{expanded:picking==='translation'}} accessibilityLabel={`${T('Language')}: ${current?current.label:currentCode}`}
+              <Pressable accessibilityRole="button" accessibilityState={{expanded:picking==='translation'}} accessibilityLabel={`${T('Language')}: ${current?.label||languageLabel(language)}`}
                 onPress={()=>setPicking('translation')} style={s.tsLangButton}>
                 <Text style={s.langFlag}>{languageFlag(language)}</Text>
                 <View style={{flex:1}}>
@@ -12603,6 +12604,7 @@ function AudioCenterScreen({ navigation }: any) { const recents=useRecentSearche
   const T = (text: string) => tx(language, text);
   const ar = language === 'ar';
   const [settings, setSettings] = useState<AudioSettings>(getAudioSettings());
+  useEffect(() => subscribeAudioSettings(setSettings), []);
   const [editions, setEditions] = useState<{ arabic: AudioEdition[]; translation: AudioEdition[] }>({ arabic: [], translation: [] });
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [recent, setRecent] = useState<RecentPlay[]>([]);
@@ -12824,6 +12826,7 @@ function AudioPlayerScreen({ navigation }: any) {
      and the range are settings that persist, and `useAudio` only carries what
      is true of the playback at this instant. */
   const [settings, setSettingsState] = useState<AudioSettings>(getAudioSettings());
+  useEffect(() => subscribeAudioSettings(setSettingsState), []);
   useEffect(() => { void loadAudioSettings().then(setSettingsState); }, []);
   useEffect(() => { void loadPlaylists().then(setPlaylists); }, []);
   useEffect(() => { loadAudioEditions().then((list) => setAudioEditions(list.translation)).catch(() => undefined); }, []);
@@ -13946,7 +13949,7 @@ function Onboarding({ onFinish }: { onFinish: () => void }) {
   const [step, setStep] = useState(0);
   const [app, setApp] = useState<LanguageCode>(language);
   const [text, setText] = useState<string>(language);
-  const [voice, setVoice] = useState<LanguageCode>(language);
+  const [voice, setVoice] = useState<LanguageCode>(() => (translationAudioForLanguage(language)?.language || 'en') as LanguageCode);
   const [busy, setBusy] = useState(false);
   const { location } = useAppLocation();
   const slide = useRef(new Animated.Value(0)).current;
@@ -14088,7 +14091,11 @@ function Onboarding({ onFinish }: { onFinish: () => void }) {
   }, [step]);
 
   // One choice moves the rest with it.
-  const chooseApp = (code: LanguageCode) => { setApp(code); setLanguage(code); setText(code); setVoice(code); };
+  const chooseText = (code: string) => {
+    setText(code);
+    setVoice((translationAudioForLanguage(code)?.language || 'en') as LanguageCode);
+  };
+  const chooseApp = (code: LanguageCode) => { setApp(code); setLanguage(code); chooseText(code); };
   /* Only the language screen picks from a list now. The two folded pickers
      compare against `text` and `voice` themselves, so they are not routed
      through here. */
@@ -14129,7 +14136,7 @@ function Onboarding({ onFinish }: { onFinish: () => void }) {
      was a screen of its own. */
   const appHint = (entry: Language) => (entry.uiReady ? null : T('Interface stays in English'));
   const textHint = (entry: Language) => (!entry.text ? T('Text stays in English') : entry.text.kind === 'tafsir' ? T('A tafsir, not a translation') : null);
-  const voiceHint = (entry: Language) => (entry.voice ? null : T('Recitation only'));
+  const voiceHint = (entry: Language) => (translationAudioForLanguage(entry.code, false) ? null : T('Recitation only'));
 
   /**
    * Whether the two extra pickers are open.
@@ -14173,7 +14180,7 @@ function Onboarding({ onFinish }: { onFinish: () => void }) {
     try {
       if (skipSleep) await updateWorship({ sleepReminderEnabled: false });
       setLanguage(app);
-      const voiceEntry = languageByCode(voice);
+      const voiceEdition = translationAudioForLanguage(voice, false);
       /* The edition for the chosen language. Most languages have several, so
          it is read from the server's own list rather than from the short list
          this app keeps for its interface. */
@@ -14181,12 +14188,17 @@ function Onboarding({ onFinish }: { onFinish: () => void }) {
         translationEdition: textEdition.id,
         translationName: editionDisplayName(textEdition),
         translationLanguage: languageLabel(textEdition.language || text),
+        translationAppLanguage: app,
       });
-      // The voice heard under the recitation. Arabic has none: for Arabic the
-      // audio *is* the recitation.
-      await saveAudioSettings(voiceEntry?.voice
-        ? { reciter: DEFAULT_RECITER.identifier, reciterName: DEFAULT_RECITER.name, translationAudioEnabled: true, translationEdition: voiceEntry.voice.identifier, translationName: voiceEntry.voice.name }
-        : { reciter: DEFAULT_RECITER.identifier, reciterName: DEFAULT_RECITER.name, translationAudioEnabled: false });
+      // Text selection seeds a matching voice or English. A deliberate voice
+      // override made afterwards in this same step remains the person's choice.
+      await saveAudioSettings({
+        reciter: DEFAULT_RECITER.identifier, reciterName: DEFAULT_RECITER.name,
+        translationSyncedLanguage: textEdition?.language || 'en', translationAutoMuted: false,
+        ...(voiceEdition
+          ? { translationAudioEnabled: true, translationEdition: voiceEdition.identifier, translationName: voiceEdition.englishName }
+          : { translationAudioEnabled: false }),
+      });
       await saveOnboarding({ completed: true, app, text, voice, locationAsked: true, notificationsAsked: true, at: Date.now() });
       /* Everything marked for offline starts arriving now, along with the
          Arabic the plan always adds. Marking a language only recorded the
@@ -14327,7 +14339,7 @@ function Onboarding({ onFinish }: { onFinish: () => void }) {
           const saved = hasLanguage(entry.code);
           const downloading = dl?.code === entry.code;
           return <RiseIn key={entry.code} delay={Math.min(index, 14) * 26}>
-            <MotionPress style={[s.onbCard, selected && s.onbCardOn]} onPress={() => setText(entry.code)}>
+            <MotionPress style={[s.onbCard, selected && s.onbCardOn]} onPress={() => chooseText(entry.code)}>
               <View style={s.onbCardTop}>
                 <Text style={s.onbFlag}>{languageFlag(entry.code)}</Text>
                 <View style={s.onbCardText}>
@@ -14427,19 +14439,6 @@ function Onboarding({ onFinish }: { onFinish: () => void }) {
  * so the first screen is warm by the time it is uncovered.
  */
 /**
- * The language a translation edition is written in, read from its identifier.
- *
- * Editions are named `tr_<language>_<translator>` — `tr_ur_abul_ala_maududi`,
- * say — so the language is the second part. It is parsed rather than looked
- * up in the catalogue because this has to work on the very first launch,
- * before any catalogue has been fetched.
- */
-function languageFromEditionId(editionId: string): string {
-  const match = /^(?:tr|tafsir)_([a-z]{2,3})_/.exec(String(editionId || '').toLowerCase());
-  return match ? match[1] : '';
-}
-
-/**
  * Keeps the spoken translation in step with the language being read.
  *
  * Someone who switched the app to Urdu kept hearing the translation recited
@@ -14449,15 +14448,13 @@ function languageFromEditionId(editionId: string): string {
  *
  * So the reading language drives it now, from wherever that language was
  * chosen — onboarding, the Translation screen, or Reading settings — because
- * all three write the same preference. Where a voice exists in that language
- * it is selected; where none does, the spoken translation is turned off and
- * the recitation plays alone. Whether it plays at all remains the person's
- * own switch: this decides which voice, not whether.
+ * all three write the same preference. A matching real voice is selected,
+ * or English when that language has no translation recording. The person's
+ * audio on/off choice is kept: this chooses the voice, not whether to play.
  */
 function useAudioLanguageSync() {
-  const { language: appLanguage } = useLanguage();
   const { preferences, hydrated } = useQuranPreferences();
-  const language = languageFromEditionId(preferences.translationEdition);
+  const language = translationLanguageCode(preferences.translationEdition, preferences.translationLanguage);
   useEffect(() => {
     if (!hydrated || !language) return;
     void syncAudioTranslationToLanguage(language).catch(() => undefined);
@@ -14595,7 +14592,7 @@ function bestEditionFor(editions: IslamicEdition[], language: string): IslamicEd
  */
 function useContentLanguageSync() {
   const { language, ready } = useLanguage();
-  const { preferences, update, hydrated } = useQuranPreferences();
+  const { getPreferences, update, hydrated } = useQuranPreferences();
 
   /* Hadith. It serves nine languages of its own, which is not the app's
      list, so an app language it does not carry lands on English. */
@@ -14606,30 +14603,37 @@ function useContentLanguageSync() {
     void setHadithLanguage(wanted);
   }, [language, ready]);
 
-  /* The reading translation. One catalog read per change of language,
-     cached by the service for six hours, and used both to see whether the
-     current choice is already in this language and to find the one to
-     move it to. */
+  /* Follow an actual interface-language change, NOT every preference render.
+     The old dependency on translationEdition/update undid a manual Urdu pick
+     whenever the interface was English. Adopt older saved choices as-is on
+     first hydration; the persisted marker keeps that override on relaunch. */
   useEffect(() => {
     if (!ready || !hydrated) return;
+    const before = getPreferences();
+    if (before.translationAppLanguage === language) return;
+    if (!before.translationAppLanguage) {
+      void update({ translationAppLanguage: language });
+      return;
+    }
     let alive = true;
     void (async () => {
       const editions = await getEditions('quran').catch(() => [] as IslamicEdition[]);
-      if (!alive || !editions.length) return;
-      const current = editions.find((e) => e.id === preferences.translationEdition);
-      /* Already reading this language — whether we put it there or the
-         reader did — so leave it. */
-      if (current && (current.language || '').toLowerCase() === language.toLowerCase()) return;
-      const pick = bestEditionFor(editions, language) ?? bestEditionFor(editions, 'en');
-      if (!alive || !pick || pick.id === preferences.translationEdition) return;
+      const latest = getPreferences();
+      if (!alive || !editions.length || latest.translationEdition !== before.translationEdition
+        || latest.translationAppLanguage === language) return;
+      const current = editions.find((e) => e.id === latest.translationEdition);
+      const pick = current?.language?.toLowerCase() === language.toLowerCase()
+        ? current : bestEditionFor(editions, language) ?? bestEditionFor(editions, 'en');
+      if (!pick) return;
       await update({
         translationEdition: pick.id,
         translationName: editionDisplayName(pick),
         translationLanguage: languageLabel(pick.language || 'en'),
+        translationAppLanguage: language,
       });
     })();
     return () => { alive = false; };
-  }, [language, ready, hydrated, preferences.translationEdition, update]);
+  }, [language, ready, hydrated, getPreferences, update]);
 }
 
 function AppShell() {

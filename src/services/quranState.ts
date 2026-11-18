@@ -1,10 +1,14 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { clearCacheNamespace, getCachedJson, listCachedKeys, setCachedJson } from './contentCache';
+import { readJson as readStoredJson, writeJson as writeStoredJson } from './storage';
 
 export type QuranPreferences = {
   translationEdition: string;
   translationName: string;
   translationLanguage: string;
+  /** Last interface language handled by content sync. A manual translation
+   * remains selected across launches until the interface language changes. */
+  translationAppLanguage: string | null;
   /**
    * A transliteration is the Arabic sounded out in Latin letters. It is not a
    * translation and does not replace one: someone learning to recite wants it
@@ -130,6 +134,7 @@ export const WORKER_DEFAULT_TRANSLATION: {
 export const DEFAULT_TRANSLATION_EDITION = WORKER_DEFAULT_TRANSLATION.translationEdition;
 
 export const DEFAULTS: QuranPreferences = {
+  translationAppLanguage: null,
   focusMode: false,
   mushafMarkers: { juz: true, hizb: true, rub: true, nisf: true, thuluth: true },
   showVerseConnections: true,
@@ -143,43 +148,18 @@ export const DEFAULTS: QuranPreferences = {
 async function read<T>(key:string,fallback:T):Promise<T>{try{const v=await AsyncStorage.getItem(key);return v?JSON.parse(v):fallback}catch{return fallback}}
 const write=(key:string,value:unknown)=>AsyncStorage.setItem(key,JSON.stringify(value));
 
-/**
- * One-time move onto the Worker's edition ids.
- *
- * The stored preference used to hold a third-party identifier such as
- * `en.sahih`. Those ids do not exist on the app's own server, so leaving them
- * in place would have every reader quietly asking for an edition the server
- * has never heard of. The choice made here is the plain one: put everyone on
- * the default translation and let them pick again.
- *
- * It runs once, by flag, rather than by inspecting the id. Guessing at the
- * shape of an id is how a migration ends up running twice on one person's
- * device and not at all on another's, and the flag cannot be got wrong -
- * either it has run or it has not.
- */
-const MOVED_TO_WORKER_EDITIONS_KEY = '@deen/quran/moved-to-worker-editions/v1';
-
+/** Reading preferences must never reset an existing translation. The former
+ * migration replaced even valid saved Urdu editions with English when its
+ * flag was absent. Preserve all saved choices and only fill missing defaults;
+ * the API already knows how to resolve Worker and older edition identifiers.
+ * The shared storage layer retries reads and serialises/validates writes. */
 export async function loadQuranPreferences(): Promise<QuranPreferences> {
-  const stored = await read<Partial<QuranPreferences>>(K.prefs, {});
-  const merged = { ...DEFAULTS, ...stored };
-  try {
-    const moved = await AsyncStorage.getItem(MOVED_TO_WORKER_EDITIONS_KEY);
-    if (!moved) {
-      await AsyncStorage.setItem(MOVED_TO_WORKER_EDITIONS_KEY, '1');
-      /* Only write back when there was something to move. A fresh install has
-         the Worker defaults already, and touching storage there is pointless. */
-      if (stored.translationEdition) {
-        const next = { ...merged, ...WORKER_DEFAULT_TRANSLATION };
-        await write(K.prefs, next);
-        return next;
-      }
-    }
-  } catch {
-    /* A migration that cannot record itself must not stop the app reading. */
-  }
-  return merged;
+  const stored = await readStoredJson<Partial<QuranPreferences>>(K.prefs, {});
+  return { ...DEFAULTS, ...stored };
 }
-export async function saveQuranPreferences(value:QuranPreferences){return write(K.prefs,value)}
+export async function saveQuranPreferences(value: QuranPreferences) {
+  return writeStoredJson(K.prefs, value);
+}
 export async function loadBookmarks(){return read<QuranBookmark[]>(K.bookmarks,[])}
 export async function toggleBookmark(bookmark:QuranBookmark){const all=await loadBookmarks();const exists=all.some(x=>x.verseKey===bookmark.verseKey);const next=exists?all.filter(x=>x.verseKey!==bookmark.verseKey):[bookmark,...all];await write(K.bookmarks,next);return next}
 export async function loadNotes(){return read<QuranNote[]>(K.notes,[])}

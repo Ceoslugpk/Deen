@@ -101,17 +101,17 @@ export default function EditionPicker({
   });
   const [query, setQuery] = useState('');
 
-  /* `initialLanguage` is only a seed. Without this the list would stay on the
-     language chosen at mount, so picking a new language from the sheet above
-     would change the label but never the editions underneath it. Follow the
-     prop while it differs, and leave the internal row free to move on its own
-     in between: it only writes to local state, which never re-fires this. */
+  /* Follow external choices/catalogue hydration, not the language state we
+     just set by tapping a pill. Depending on that local state put the picker
+     straight back on its initial English pill after a different-language tap.
+     A hidden row follows its parent's browsing language; the full picker
+     starts from the selected edition when that selection arrives. */
   useEffect(() => {
-    if (!initialLanguage) return;
-    if (initialLanguage === language) return;
-    if (!languages.some((l) => l.code === initialLanguage)) return;
-    setLanguage(initialLanguage);
-  }, [initialLanguage, language, languages]);
+    const wanted = hideLanguageRow ? initialLanguage
+      : pool.find((edition) => edition.id === selectedId)?.language || initialLanguage;
+    if (!wanted || !languages.some((entry) => entry.code === wanted)) return;
+    setLanguage(wanted);
+  }, [initialLanguage, selectedId, hideLanguageRow, languages, pool]);
 
   const flagFor = useMemo(() => {
     const map = new Map(languages.map((l) => [l.code, l.flag]));
