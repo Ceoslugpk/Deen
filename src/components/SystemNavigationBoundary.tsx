@@ -1,27 +1,49 @@
-import React, { type ReactNode } from 'react';
+import React, { createContext, useContext, useState, type ReactNode } from 'react';
 import { Platform, View, type StyleProp, type ViewStyle } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaFrame, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { systemContentFrame, type ContentFrame } from '../services/systemLayout';
 
 const FILL = { flex: 1 };
+const CONTENT: ViewStyle = { flex: 1, minWidth: 0, minHeight: 0, overflow: 'hidden' };
+const ContentFrameContext = createContext<ContentFrame | null>(null);
+
+/** Bars and height caps use their actual safe parent, including nested
+ * windows/panes, rather than assuming the whole device display is available. */
+export function useSafeContentFrame(): ContentFrame {
+  const measured = useContext(ContentFrameContext);
+  const frame = useSafeAreaFrame();
+  const insets = useSafeAreaInsets();
+  return measured ?? systemContentFrame(frame, insets, Platform.OS);
+}
 
 /**
- * Android draws edge-to-edge, including behind Back/Home/Recents. Reserve the
- * measured system inset once for the entire shell, not a guessed button-bar
- * height on each screen. The inner View is essential: absolute-positioned tabs,
- * the mini-player and sheets must anchor to the safe content box, not the outer
- * padded view. Insets update when navigation mode or window geometry changes.
+ * Android draws edge-to-edge, including behind the status bar and system
+ * navigation. Reserve all four measured insets once for the entire shell;
+ * never guess which navigation mode the device is using or cache its height.
+ * The inner View is essential: absolute tabs, the mini-player and sheets must
+ * anchor to the safe content box, not the outer padded view. Native insets
+ * update when navigation mode, cutouts or window geometry change.
  *
  * iOS keeps its existing per-screen safe areas; web keeps its existing layout.
- * Top/status-bar spacing is deliberately unchanged.
  */
 export function SystemNavigationBoundary({ children, style }: {
   children: ReactNode;
   style?: StyleProp<ViewStyle>;
 }) {
+  const frame = useSafeAreaFrame();
+  const insets = useSafeAreaInsets();
+  const [measured, setMeasured] = useState<ContentFrame | null>(null);
+  const content = measured ?? systemContentFrame(frame, insets, Platform.OS);
   return <SafeAreaView
-    edges={Platform.OS === 'android' ? ['left', 'right', 'bottom'] : []}
+    testID="system-window-boundary"
+    edges={Platform.OS === 'android' ? ['top', 'left', 'right', 'bottom'] : []}
     style={[FILL, style]}
   >
-    <View style={FILL}>{children}</View>
+    <View testID="system-safe-content" style={CONTENT} onLayout={({ nativeEvent: { layout } }) => {
+      setMeasured((current) => current?.width === layout.width && current?.height === layout.height
+        ? current : { width: layout.width, height: layout.height });
+    }}>
+      <ContentFrameContext.Provider value={content}>{children}</ContentFrameContext.Provider>
+    </View>
   </SafeAreaView>;
 }

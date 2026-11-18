@@ -16,11 +16,13 @@ import {
   AccessibilityInfo, ActivityIndicator, Alert, Animated, AppState, BackHandler, Easing, FlatList, Image, ImageBackground, Linking, Platform,
   Pressable as BarePressable,
   I18nManager, RefreshControl, SafeAreaView, ScrollView, Share, StatusBar, StyleSheet, Switch, Text, TextInput,
-  PanResponder, useColorScheme, useWindowDimensions, View, Modal, Dimensions, Keyboard
+  PanResponder, useColorScheme, useWindowDimensions, View, Dimensions, Keyboard
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
-import { SystemNavigationBoundary } from './src/components/SystemNavigationBoundary';
+import { SystemNavigationBoundary, useSafeContentFrame } from './src/components/SystemNavigationBoundary';
+import { SystemModal as Modal } from './src/components/SystemModal';
+import { floatingTabBarWidth, FLOAT_BAR_PADDING } from './src/services/systemLayout';
 import { WebView } from 'react-native-webview';
 import * as SplashScreen from 'expo-splash-screen';
 import { haptic, isHapticsSupported, setHapticsEnabled, withHaptic, type HapticKind } from './src/services/haptics';
@@ -2216,7 +2218,7 @@ function AppHeader() {
   /* Six screens wear this header, and some of them are reached by pushing
      onto a stack. Without this the only way out of those was the tab bar. */
   const canGoBack = useCanGoBack();
-  return <View style={s.appHeader}>
+  return <View testID="app-header" style={s.appHeader}>
     {canGoBack
       ? <IconButton name={rtl ? 'arrow-forward' : 'arrow-back'} label={tx(language,'Back')} onPress={() => goBackOrHome(navigation)} />
       : <View style={s.appHeaderBrand}>
@@ -3081,10 +3083,10 @@ function DayToolSheet({ initialSlot, chosen, rtl, T, onReplace, onClose, onSeeAl
   onClose: () => void;
   onSeeAll: () => void;
 }) {
-  const { height: windowH } = useWindowDimensions();
+  const { height: windowH } = useSafeContentFrame();
   const rise = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    Animated.spring(rise, { toValue: 1, friction: 9, tension: 130, useNativeDriver: true }).start();
+    Animated.spring(rise, { toValue: 1, friction: 9, tension: 130, overshootClamping: true, useNativeDriver: true }).start();
   }, [rise]);
 
   /* Which slot is being replaced lives here rather than in the Home screen.
@@ -3100,7 +3102,7 @@ function DayToolSheet({ initialSlot, chosen, rtl, T, onReplace, onClose, onSeeAl
   return <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
     <Pressable accessibilityRole="button" accessibilityLabel={T('Close')} onPress={onClose} style={s.sheetScrim} />
     <Animated.View style={[s.verseSheet, { maxHeight: Math.round(windowH * 0.86) }, {
-      transform: [{ translateY: rise.interpolate({ inputRange: [0, 1], outputRange: [420, 0] }) }],
+      transform: [{ translateY: rise.interpolate({ inputRange: [0, 1], outputRange: [420, 0], extrapolate: 'clamp' }) }],
       opacity: rise
     }]}>
       <ScrollView keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} showsVerticalScrollIndicator={false} bounces={false}>
@@ -3727,7 +3729,7 @@ const compactStats=[{label:'Bookmarks',title:T('Bookmarks'),value:String(bookmar
 function ReaderScreen({route,navigation}:any){
   /* Below this the header cannot hold both the step arrows and a readable
      title, so the arrows - reachable from the list anyway - stand down. */
-  const narrow=(useWindowDimensions().width)<360;
+  const narrow=(useSafeContentFrame().width)<360;
   const chapter:Chapter|undefined=route.params?.chapter;
   const section:'surah'|'juz'|'hizb'|'page'=route.params?.section||'surah';
   const juz:number=Math.max(1,Math.min(30,Number(route.params?.juz||1)));
@@ -4021,7 +4023,7 @@ function ReaderScreen({route,navigation}:any){
     },90);
   },[]);
 
-  return <Page><Animated.View style={[s.readerBar,{transform:[{translateY:chromeY}]}]}><IconButton name={rtl?'arrow-forward':'arrow-back'} onPress={()=>goBackOrHome(navigation)}/>{!narrow&&(canStep(-1)?<Pressable accessibilityLabel={T('Previous section')} onPress={()=>step(-1)} style={s.surahStep}>{ico(rtl?'chevron-forward':'chevron-back',19,C.ink)}</Pressable>:<View style={s.surahStep}/>)}<View style={{alignItems:'center',flex:1}}><Text style={s.readerName} numberOfLines={1}>{title}</Text><Text style={s.meta} numberOfLines={1}>{subtitle}</Text></View>{!narrow&&(canStep(1)?<Pressable accessibilityLabel={T('Next section')} onPress={()=>step(1)} style={s.surahStep}>{ico(rtl?'chevron-back':'chevron-forward',19,C.ink)}</Pressable>:<View style={s.surahStep}/>)}<View style={s.readerHeaderActions}>{section==='surah'&&<Pressable accessibilityLabel={T('Play this Surah')} onPress={()=>{void playSurahFromReader(full,rtl)}} style={s.readerIconBtn}>{ico('play-circle',20,C.ink)}</Pressable>}{section==='surah'&&<Pressable accessibilityLabel={T('Keep this Surah for offline')} onPress={()=>navigation.navigate('Downloads',{chapterId,surahName:full.name_simple})} style={s.readerIconBtn}>{ico('download-outline',20,C.ink)}</Pressable>}<Pressable accessibilityRole="switch" accessibilityState={{checked:focusOn}} accessibilityLabel={`${T('Focus mode')}: ${focusOn?T('On'):T('Off')}`} onPress={()=>update({focusMode:!focusOn})} style={s.readerIconBtn}>{ico(focusOn?'eye':'eye-outline',20,focusOn?C.gold:C.ink)}</Pressable><Pressable accessibilityLabel={T('Reader settings')} onPress={()=>navigation.navigate('Reader Settings')} style={s.readerIconBtn}>{ico('options-outline',20,C.ink)}</Pressable></View></Animated.View><View style={s.readerProgress}><Animated.View style={[s.preloadFill,{width:progressWidth as any}]}/></View>
+  return <Page><Animated.View testID="reader-header" style={[s.readerBar,{transform:[{translateY:chromeY}]}]}><IconButton name={rtl?'arrow-forward':'arrow-back'} onPress={()=>goBackOrHome(navigation)}/>{!narrow&&(canStep(-1)?<Pressable accessibilityLabel={T('Previous section')} onPress={()=>step(-1)} style={s.surahStep}>{ico(rtl?'chevron-forward':'chevron-back',19,C.ink)}</Pressable>:<View style={s.surahStep}/>)}<View style={{alignItems:'center',flex:1,minWidth:0,overflow:'hidden'}}><Text style={s.readerName} numberOfLines={1}>{title}</Text><Text style={s.meta} numberOfLines={1}>{subtitle}</Text></View>{!narrow&&(canStep(1)?<Pressable accessibilityLabel={T('Next section')} onPress={()=>step(1)} style={s.surahStep}>{ico(rtl?'chevron-back':'chevron-forward',19,C.ink)}</Pressable>:<View style={s.surahStep}/>)}<View style={s.readerHeaderActions}>{section==='surah'&&<Pressable accessibilityLabel={T('Play this Surah')} onPress={()=>{void playSurahFromReader(full,rtl)}} style={s.readerIconBtn}>{ico('play-circle',20,C.ink)}</Pressable>}{section==='surah'&&<Pressable accessibilityLabel={T('Keep this Surah for offline')} onPress={()=>navigation.navigate('Downloads',{chapterId,surahName:full.name_simple})} style={s.readerIconBtn}>{ico('download-outline',20,C.ink)}</Pressable>}<Pressable accessibilityRole="switch" accessibilityState={{checked:focusOn}} accessibilityLabel={`${T('Focus mode')}: ${focusOn?T('On'):T('Off')}`} onPress={()=>update({focusMode:!focusOn})} style={s.readerIconBtn}>{ico(focusOn?'eye':'eye-outline',20,focusOn?C.gold:C.ink)}</Pressable><Pressable accessibilityLabel={T('Reader settings')} onPress={()=>navigation.navigate('Reader Settings')} style={s.readerIconBtn}>{ico('options-outline',20,C.ink)}</Pressable></View></Animated.View><View style={s.readerProgress}><Animated.View style={[s.preloadFill,{width:progressWidth as any}]}/></View>
   {isMushaf
     ? <ScrollView keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} ref={scrollRef} contentContainerStyle={s.readerScroll} showsVerticalScrollIndicator={false}>
 isMushaf?<MushafPageView page={page||1} verses={verses} error={error} cached={cached} retry={load} preferences={preferences} rtl={rtl} T={T} language={language} input={input} setInput={setInput} goPage={goPage} navigation={navigation} arStyle={arStyle} bookmarks={bookmarks} savedPosition={savedPosition} onBookmark={(v:any)=>{void bookmark(v)}} onMark={(v:any)=>{void mark(v)}} onPlay={(v:any)=>{void playFromReader(full,v,rtl)}} onNote={(v:any)=>setNoteVerse(v)}/>
@@ -4225,10 +4227,10 @@ function CorrectionSheet({ target, rtl, T, appLanguage, onClose }: {
   const [sent, setSent] = useState(false);
   const [noMail, setNoMail] = useState(false);
   const [busy, setBusy] = useState(false);
-  const { height: windowH } = useWindowDimensions();
+  const { height: windowH } = useSafeContentFrame();
   const rise = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    Animated.spring(rise, { toValue: 1, friction: 9, tension: 130, useNativeDriver: true }).start();
+    Animated.spring(rise, { toValue: 1, friction: 9, tension: 130, overshootClamping: true, useNativeDriver: true }).start();
   }, [rise]);
 
   const send = async () => {
@@ -4278,7 +4280,7 @@ function CorrectionSheet({ target, rtl, T, appLanguage, onClose }: {
   return <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
     <Pressable accessibilityRole="button" accessibilityLabel={T('Close')} onPress={onClose} style={s.sheetScrim} />
     <Animated.View style={[s.verseSheet, { maxHeight: Math.round(windowH * 0.86) }, {
-      transform: [{ translateY: rise.interpolate({ inputRange: [0, 1], outputRange: [420, 0] }) }],
+      transform: [{ translateY: rise.interpolate({ inputRange: [0, 1], outputRange: [420, 0], extrapolate: 'clamp' }) }],
       opacity: rise
     }]}>
       {/* Without `keyboardShouldPersistTaps` the first tap on Send only puts the
@@ -4347,7 +4349,7 @@ function ReflectionDetail({ kind, data, rtl, T, translationName, onClose, onOpen
 }) {
   const rise = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    Animated.spring(rise, { toValue: 1, friction: 9, tension: 130, useNativeDriver: true }).start();
+    Animated.spring(rise, { toValue: 1, friction: 9, tension: 130, overshootClamping: true, useNativeDriver: true }).start();
   }, [rise]);
 
   /* A verse reference arrives as "Aal-i-Imraan 3:10" - the name first, then the
@@ -4400,7 +4402,7 @@ function ReflectionDetail({ kind, data, rtl, T, translationName, onClose, onOpen
   return <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
     <Pressable accessibilityRole="button" accessibilityLabel={T('Close')} onPress={onClose} style={s.sheetScrim} />
     <Animated.View style={[s.verseSheet, {
-      transform: [{ translateY: rise.interpolate({ inputRange: [0, 1], outputRange: [420, 0] }) }],
+      transform: [{ translateY: rise.interpolate({ inputRange: [0, 1], outputRange: [420, 0], extrapolate: 'clamp' }) }],
       opacity: rise
     }]}>
       <View style={s.sheetGrip} />
@@ -4480,7 +4482,7 @@ function VerseNoteSheet({ verse, chapter, rtl, T, onClose }: {
     };
   }, []);
   useEffect(() => {
-    Animated.spring(rise, { toValue: 1, friction: 9, tension: 130, useNativeDriver: true }).start();
+    Animated.spring(rise, { toValue: 1, friction: 9, tension: 130, overshootClamping: true, useNativeDriver: true }).start();
     let live = true;
     loadNotes().then((all) => {
       if (!live) return;
@@ -4516,7 +4518,7 @@ function VerseNoteSheet({ verse, chapter, rtl, T, onClose }: {
     <Pressable accessibilityRole="button" accessibilityLabel={T('Close')} onPress={onClose} style={s.sheetScrim} />
     <Animated.View ref={sheet} style={[s.verseSheet, {
       bottom: lift,
-      transform: [{ translateY: rise.interpolate({ inputRange: [0, 1], outputRange: [340, 0] }) }],
+      transform: [{ translateY: rise.interpolate({ inputRange: [0, 1], outputRange: [340, 0], extrapolate: 'clamp' }) }],
       opacity: rise
     }]}>
       <View style={s.sheetGrip} />
@@ -4565,7 +4567,7 @@ function VerseShareSheet({ verse, chapter, rtl, T, onClose }: {
   const [busy, setBusy] = useState(false);
   const rise = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    Animated.spring(rise, { toValue: 1, friction: 9, tension: 130, useNativeDriver: true }).start();
+    Animated.spring(rise, { toValue: 1, friction: 9, tension: 130, overshootClamping: true, useNativeDriver: true }).start();
   }, [rise]);
 
   const cardData = {
@@ -4608,7 +4610,7 @@ function VerseShareSheet({ verse, chapter, rtl, T, onClose }: {
     </View>}
     <Pressable accessibilityRole="button" accessibilityLabel={T('Close')} onPress={onClose} style={s.sheetScrim} />
     <Animated.View style={[s.verseSheet, {
-      transform: [{ translateY: rise.interpolate({ inputRange: [0, 1], outputRange: [340, 0] }) }],
+      transform: [{ translateY: rise.interpolate({ inputRange: [0, 1], outputRange: [340, 0], extrapolate: 'clamp' }) }],
       opacity: rise
     }]}>
       <View style={s.sheetGrip} />
@@ -5075,7 +5077,7 @@ function LanguagePickerSheet({ rtl, T, rows, selected, onPick, onClose }: {
   const rise = useRef(new Animated.Value(0)).current;
   const [query, setQuery] = useState('');
   useEffect(() => {
-    Animated.spring(rise, { toValue: 1, friction: 9, tension: 130, useNativeDriver: true }).start();
+    Animated.spring(rise, { toValue: 1, friction: 9, tension: 130, overshootClamping: true, useNativeDriver: true }).start();
   }, [rise]);
 
   /* One flat list, A to Z. Nothing is grouped or given priority, because the
@@ -5102,7 +5104,7 @@ function LanguagePickerSheet({ rtl, T, rows, selected, onPick, onClose }: {
   return <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
     <Pressable accessibilityRole="button" accessibilityLabel={T('Close')} onPress={onClose} style={s.sheetScrim} />
     <Animated.View style={[s.verseSheet, s.langSheet, {
-      transform: [{ translateY: rise.interpolate({ inputRange: [0, 1], outputRange: [420, 0] }) }],
+      transform: [{ translateY: rise.interpolate({ inputRange: [0, 1], outputRange: [420, 0], extrapolate: 'clamp' }) }],
       opacity: rise,
     }]}>
       <View style={s.sheetGrip} />
@@ -5331,7 +5333,7 @@ function ReaderSettingsScreen({navigation}:any){
   const[catalogError,setCatalogError]=useState('');
   const[catalogAttempt,setCatalogAttempt]=useState(0);
 
-  useEffect(()=>{ Animated.spring(rise,{toValue:1,friction:9,tension:130,useNativeDriver:true}).start(); },[rise]);
+  useEffect(()=>{ Animated.spring(rise,{toValue:1,friction:9,tension:130,overshootClamping:true,useNativeDriver:true}).start(); },[rise]);
   /* The catalogue is ~200KB. When that first fetch failed the rejection was
      swallowed and "Loading live data…" stayed on screen for good, with no way
      to recover short of leaving the screen and coming back. Report it instead,
@@ -5388,7 +5390,7 @@ function ReaderSettingsScreen({navigation}:any){
     <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
       <Pressable accessibilityRole="button" accessibilityLabel={T('Close')} onPress={close} style={s.sheetScrim}/>
       <Animated.View style={[s.verseSheet,s.langSheet,{
-        transform:[{translateY:rise.interpolate({inputRange:[0,1],outputRange:[520,0]})}],
+        transform:[{translateY:rise.interpolate({inputRange:[0,1],outputRange:[520,0],extrapolate:'clamp'})}],
         opacity:rise,
       }]}>
         <View style={s.sheetGrip}/>
@@ -5511,14 +5513,14 @@ function VerseActionsSheet({ verse, chapter, rtl, T, navigation, onClose, langua
   const { preferences } = useQuranPreferences();
   /* A card that leaves the app wears the theme it was made in. */
   const { theme: cardTheme } = useTheme();
-  const { height } = useWindowDimensions();
+  const { height } = useSafeContentFrame();
   const [bookmarked, setBookmarked] = useState(false);
   const [reporting, setReporting] = useState(false);
   const [busy, setBusy] = useState(false);
   const cardRef = useRef<any>(null);
   const rise = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    Animated.spring(rise, { toValue: 1, friction: 9, tension: 130, useNativeDriver: true }).start();
+    Animated.spring(rise, { toValue: 1, friction: 9, tension: 130, overshootClamping: true, useNativeDriver: true }).start();
   }, [rise]);
   useEffect(() => {
     let live = true;
@@ -5580,7 +5582,7 @@ function VerseActionsSheet({ verse, chapter, rtl, T, navigation, onClose, langua
     </View>}
     <Pressable accessibilityRole="button" accessibilityLabel={T('Close')} onPress={onClose} style={s.sheetScrim} />
     <Animated.View style={[s.verseSheet, {
-      transform: [{ translateY: rise.interpolate({ inputRange: [0, 1], outputRange: [420, 0] }) }],
+      transform: [{ translateY: rise.interpolate({ inputRange: [0, 1], outputRange: [420, 0], extrapolate: 'clamp' }) }],
       opacity: rise
     }]}>
       <View style={s.sheetGrip} />
@@ -6088,7 +6090,7 @@ function SurahPickerSheet({ rtl, T, chapters, selected, onPick, onClose }: {
   const rise = useRef(new Animated.Value(0)).current;
   const [query, setQuery] = useState('');
   useEffect(() => {
-    Animated.spring(rise, { toValue: 1, friction: 9, tension: 130, useNativeDriver: true }).start();
+    Animated.spring(rise, { toValue: 1, friction: 9, tension: 130, overshootClamping: true, useNativeDriver: true }).start();
   }, [rise]);
 
   const shown = useMemo(() => {
@@ -6108,7 +6110,7 @@ function SurahPickerSheet({ rtl, T, chapters, selected, onPick, onClose }: {
        full height of 114 rows and the ScrollView inside it has nothing to
        scroll: the list just runs off the top of the screen. */
     <Animated.View style={[s.verseSheet, s.langSheet, {
-      transform: [{ translateY: rise.interpolate({ inputRange: [0, 1], outputRange: [420, 0] }) }],
+      transform: [{ translateY: rise.interpolate({ inputRange: [0, 1], outputRange: [420, 0], extrapolate: 'clamp' }) }],
       opacity: rise,
     }]}>
       <View style={s.sheetGrip} />
@@ -6352,7 +6354,7 @@ function ExploreHome({navigation}:any){
    `goBackOrHome` rather than calling `goBack()` itself: a screen that passes
    no navigator — or one sitting at the bottom of its stack — used to leave
    this arrow pointing at nothing. */
-function ToolBar({title,navigation,tool}:any){const {rtl,language}=useLanguage();return <View style={[s.readerBar,s.toolBar]}><IconButton name={rtl?'arrow-forward':'arrow-back'} label={tx(language,'Back')} onPress={()=>goBackOrHome(navigation)}/><Text numberOfLines={1} style={s.readerName}>{title}</Text>{tool?<ToolGraphic tool={tool} size={30}/>:<View style={{width:44}}/>}</View>}
+function ToolBar({title,navigation,tool}:any){const {rtl,language}=useLanguage();return <View testID="screen-header" style={[s.readerBar,s.toolBar]}><IconButton name={rtl?'arrow-forward':'arrow-back'} label={tx(language,'Back')} onPress={()=>goBackOrHome(navigation)}/><Text numberOfLines={1} style={s.readerName}>{title}</Text>{tool?<ToolGraphic tool={tool} size={30}/>:<View style={{width:44}}/>}</View>}
 /* Sixteen points, the usual navigational set. Left as the Latin abbreviations
    in both languages: they are the standard notation on a compass rather than
    prose, and an invented Arabic for "north-north-east" would be a guess
@@ -12569,10 +12571,10 @@ function MiniPlayer() {
   if (!audio.track) return null;
   const bottom = MINI_PLAYER_BOTTOM;
   const open = () => { if (navigationRef.isReady()) (navigationRef as any).navigate('Quran', { screen: 'Audio Player' }); };
-  return <View style={[s.miniPlayer, { bottom, flexDirection: 'row' }]}>
+  return <View testID="mini-player" style={[s.miniPlayer, { bottom, flexDirection: 'row' }]}>
     <Pressable accessibilityRole="button" accessibilityLabel={tx(language,'Open the audio player')} onPress={open} style={s.miniBody}>
       <View style={s.miniArt}>{audio.buffering ? <ActivityIndicator color={C.green} /> : <ToolGraphic tool="Recitations" size={38} />}</View>
-      <View style={{ flex: 1 }}>
+      <View style={{ flex: 1, minWidth: 0 }}>
         <Text numberOfLines={1} style={s.miniTitle}>{audio.track.title}</Text>
         <Text numberOfLines={1} style={s.miniMeta}>{audio.track.performer}{audio.buffering ? ' · buffering' : audio.playing ? ' · playing' : ''}</Text>
       </View>
@@ -13096,7 +13098,7 @@ const TAB_SPRING = { stiffness: 420, damping: 40, mass: 0.7, useNativeDriver: tr
 
 /** The bar's own horizontal padding. The indicator measures its slot from
     this, so the two have to agree — change one and the other follows. */
-const FLOAT_BAR_PAD = 8;
+const FLOAT_BAR_PAD = FLOAT_BAR_PADDING;
 
 /** The menu floats above the content as a single capsule, always in reach. */
 /**
@@ -13121,7 +13123,8 @@ function TabButton({ route, focused, navigation, resolved, rtl, language, state,
   const iconOpacity = on.interpolate({ inputRange: [0, 1], outputRange: [0.5, 1] });
   const iconScale = on.interpolate({ inputRange: [0, 1], outputRange: [0.94, 1] });
   return <Animated.View style={[s.floatItem, { transform: [{ scale: press.scale }] }]}>
-    <Pressable accessibilityRole="button" accessibilityState={{ selected: focused }} accessibilityLabel={label}
+    <Pressable testID={`navigation-${route.name.toLowerCase()}`} style={s.floatTabTarget}
+      accessibilityRole="button" accessibilityState={{ selected: focused }} accessibilityLabel={label}
       onPressIn={press.onPressIn} onPressOut={press.onPressOut}
       onPress={() => {
         const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
@@ -13177,12 +13180,15 @@ function TabButton({ route, focused, navigation, resolved, rtl, language, state,
  * a sibling drawn after the navigator, not a child of it.
  */
 function FloatingTabBar({ state, navigation }: any) {
-  const { width } = useWindowDimensions();
+  const { width } = useSafeContentFrame();
+  const [measuredWidth, setMeasuredWidth] = useState<number | null>(null);
   const still = useCalmMotion();
   const { rtl , language }=useLanguage();
   const { resolved, dark } = useTheme();
   const hidden = useChromeHidden();
-  const barWidth = Math.min(Math.max(width - 32, 300), 460);
+  // The navigator's actual safe parent can be narrower than the display
+  // (side navigation keys, a cutout, split-screen or a folded cover display).
+  const barWidth = floatingTabBarWidth(Math.min(measuredWidth ?? width, width), state.routes.length);
   const glass = dark ? GLASS.dark : GLASS.light;
   const drop = useRef(new Animated.Value(1)).current;
   useEffect(() => {
@@ -13193,7 +13199,7 @@ function FloatingTabBar({ state, navigation }: any) {
      that appears and disappears. The difference is that a shared one can
      be seen travelling, and the travel is the whole effect. */
   const slots = Math.max(state.routes.length, 1);
-  const slot = (barWidth - FLOAT_BAR_PAD * 2) / slots;
+  const slot = Math.max(0, barWidth - FLOAT_BAR_PAD * 2 - 2) / slots;
   /* `at` is the tab the indicator is over, as a fraction rather than an
      index, so an interruption mid-flight starts from wherever it is. */
   const at = useRef(new Animated.Value(state.index)).current;
@@ -13206,7 +13212,8 @@ function FloatingTabBar({ state, navigation }: any) {
     Animated.spring(at, { toValue: state.index, ...TAB_SPRING }).start();
   }, [state.index, at, still]);
 
-  return <Animated.View pointerEvents="box-none" style={[s.floatBarWrap, {
+  return <Animated.View testID="floating-navigation" pointerEvents="box-none"
+    onLayout={(event) => setMeasuredWidth(event.nativeEvent.layout.width)} style={[s.floatBarWrap, {
     opacity: drop,
     transform: [{ translateY: drop.interpolate({ inputRange: [0, 1], outputRange: [110, 0] }) }]
   }]}>
@@ -13214,7 +13221,7 @@ function FloatingTabBar({ state, navigation }: any) {
         clips to its own bounds — that is how it keeps the blur inside the
         capsule — and a shadow sitting on that same view would be clipped
         away with it. */}
-    <View style={[s.floatBarShadow, { width: barWidth }]}>
+    <View testID="floating-navigation-bar" style={[s.floatBarShadow, { width: barWidth }]}>
       <BlurView
         intensity={dark ? GLASS_INTENSITY.bar.dark : GLASS_INTENSITY.bar.light}
         tint={dark ? 'dark' : 'light'}
@@ -13234,7 +13241,7 @@ function FloatingTabBar({ state, navigation }: any) {
             as selected is that it is more of the material, not a different
             material: a stronger fill, its own sheen, and a hairline. */}
         <Animated.View pointerEvents="none" style={[s.floatIndicator, {
-          width: slot - 6,
+          width: Math.max(0, slot - 6),
           transform: [
             { translateX: at.interpolate({ inputRange: [0, slots - 1], outputRange: [0, (slots - 1) * slot] }) },
           ],
@@ -14240,7 +14247,7 @@ function Onboarding({ onFinish }: { onFinish: () => void }) {
 
   return <View style={s.safe}>
     <StatusBar barStyle={dark ? 'light-content' : 'dark-content'} />
-    <View style={s.onbTop}>
+    <View testID="onboarding-header" style={s.onbTop}>
       <Image source={logoMark(resolved)} resizeMode="contain" style={s.appLogo} />
     </View>
     <ScrollView keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} contentContainerStyle={s.onbScroll} showsVerticalScrollIndicator={false}>
@@ -14415,7 +14422,7 @@ function Onboarding({ onFinish }: { onFinish: () => void }) {
         </View>}
       </View> : step === 1 ? <OnboardingLocation/> : <View key="reminders"><OnboardingNotifications/><OnboardingSleep/></View>}
     </ScrollView>
-    <View style={s.onbFoot}>
+    <View testID="onboarding-footer" style={s.onbFoot}>
       <View style={s.onbDots}>{steps.map((_, index) => <View key={index} style={[s.onbDot, index === step && s.onbDotOn]} />)}</View>
       <View style={s.onbActions}>
         {step > 0 && <MotionPress style={s.onbGhost} onPress={() => setStep(step - 1)}><Text style={s.onbGhostText}>{T('Back')}</Text></MotionPress>}
@@ -14899,7 +14906,7 @@ function AppShell() {
      right to left in here. Do not add `rtl ? 'row-reverse' : 'row'` to a
      child: the two cancel and the row comes out left to right again — which
      is what left the floating tab bar unmirrored. */
-  return <SystemNavigationBoundary style={[s.shellRoot,{direction:shellDirection(rtlNow)} as any]}>
+  return <SystemNavigationBoundary style={[s.shellRoot,{backgroundColor:splash?C.heroA:C.bg,direction:shellDirection(rtlNow)} as any]}>
     {/* Nothing mounts until the saved language is known, so the very first
         frame is already in the right language and the right direction. The
         splash covers the read, which is a single storage lookup. */}
@@ -15086,12 +15093,12 @@ function makeStyles() {
   dataSourceRow:{marginTop:8},
   floatBarWrap:{position:'absolute',left:0,right:0,bottom:0,alignItems:'center',paddingBottom:Platform.OS==='ios'?24:16,pointerEvents:'box-none'},
   /* The shadow, split out onto its own wrapper: see FloatingTabBar. */
-  floatBarShadow:{height:66,borderRadius:33,...shadow},
+  floatBarShadow:{height:66,maxWidth:'100%',borderRadius:33,...shadow},
   /* The material. Its blur is clipped to this box already, and the tint
      comes from expo-blur plus the wash painted inside it, so there is no
      backgroundColor here — setting one would sit under the tint and
      deaden the glass. */
-  floatBar:{height:66,borderRadius:33,overflow:'hidden',alignItems:'center',justifyContent:'space-between',paddingHorizontal:FLOAT_BAR_PAD,
+  floatBar:{height:66,maxWidth:'100%',borderRadius:33,overflow:'hidden',alignItems:'center',justifyContent:'space-between',paddingHorizontal:FLOAT_BAR_PAD,
     /* Four hairlines rather than one. Bright along the top where the light
        falls, dim along the bottom: that gradient across the edge is most of
        what makes the capsule read as something with thickness rather than as
@@ -15104,15 +15111,16 @@ function makeStyles() {
   /* The indicator is measured, not laid out: it is absolutely placed and
      moved with a transform, so nothing about it can reflow the bar. */
   floatIndicator:{position:'absolute',left:FLOAT_BAR_PAD+3,top:6,height:54,borderRadius:24},
-  floatItem:{flex:1,alignItems:'center',justifyContent:'center',minHeight:54,borderRadius:24},
-  floatPill:{alignItems:'center',justifyContent:'center',borderRadius:24,paddingHorizontal:12,paddingVertical:8,minWidth:58},
+  floatItem:{flex:1,minWidth:0,alignItems:'stretch',justifyContent:'center',minHeight:54,borderRadius:24},
+  floatTabTarget:{alignSelf:'stretch',minWidth:0},
+  floatPill:{alignItems:'center',justifyContent:'center',borderRadius:24,paddingHorizontal:4,paddingVertical:8,minHeight:54},
   /* The selected tab is lifted out of the material rather than painted on
      top of it: a brighter piece of the same glass, with its own hairline. */
-  floatLabelWrap:{marginTop:4,height:13,alignItems:'center',justifyContent:'center'},
+  floatLabelWrap:{marginTop:4,height:13,width:'100%',minWidth:0,alignItems:'center',justifyContent:'center'},
   floatLabel:{color:C.muted,fontFamily:'DMSans_600SemiBold',fontSize:10,letterSpacing:.2},
   floatLabelActive:{color:C.green},
   floatLabelOver:{position:'absolute',left:0,right:0,textAlign:'center'},
- safe:{flex:1,backgroundColor:C.bg,overflow:'hidden',paddingTop:Platform.OS==='android'?StatusBar.currentHeight:0},page:{flex:1,backgroundColor:C.bg},pageWide:{width:'100%',maxWidth:1180,alignSelf:'center'},scroll:{width:'100%',maxWidth:980,alignSelf:'center',paddingHorizontal:20,paddingTop:20,paddingBottom:BOTTOM_RESERVE},row:{flexDirection:'row',alignItems:'center'},press:{opacity:.72,transform:[{scale:.98}]},loading:{padding:44,alignItems:'center',gap:12},loadingText:{color:C.muted,fontSize:12},error:{backgroundColor:C.card,padding:24,borderRadius:24,alignItems:'center',marginVertical:12},errorIcon:{width:48,height:48,borderRadius:16,backgroundColor:C.yellow,alignItems:'center',justifyContent:'center'},errorTitle:{color:C.ink,fontSize:16,fontFamily:'DMSans_600SemiBold',marginTop:12},errorText:{color:C.muted,textAlign:'center',fontSize:12,lineHeight:18,marginTop:4},retry:{backgroundColor:C.ink,paddingHorizontal:16,paddingVertical:8,borderRadius:12,marginTop:12},retryText:{color:C.onAccent,fontSize:11,fontFamily:'DMSans_600SemiBold'},
+ safe:{flex:1,minWidth:0,minHeight:0,backgroundColor:C.bg,overflow:'hidden'},page:{flex:1,backgroundColor:C.bg},pageWide:{width:'100%',maxWidth:1180,alignSelf:'center'},scroll:{width:'100%',maxWidth:980,alignSelf:'center',paddingHorizontal:20,paddingTop:20,paddingBottom:BOTTOM_RESERVE},row:{flexDirection:'row',alignItems:'center'},press:{opacity:.72,transform:[{scale:.98}]},loading:{padding:44,alignItems:'center',gap:12},loadingText:{color:C.muted,fontSize:12},error:{backgroundColor:C.card,padding:24,borderRadius:24,alignItems:'center',marginVertical:12},errorIcon:{width:48,height:48,borderRadius:16,backgroundColor:C.yellow,alignItems:'center',justifyContent:'center'},errorTitle:{color:C.ink,fontSize:16,fontFamily:'DMSans_600SemiBold',marginTop:12},errorText:{color:C.muted,textAlign:'center',fontSize:12,lineHeight:18,marginTop:4},retry:{backgroundColor:C.ink,paddingHorizontal:16,paddingVertical:8,borderRadius:12,marginTop:12},retryText:{color:C.onAccent,fontSize:11,fontFamily:'DMSans_600SemiBold'},
  topbar:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginBottom:20},
  appHeader:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginBottom:20},
  /* The next-prayer pill. It floats over the page, so it carries its own
@@ -15127,11 +15135,11 @@ nextPillDot:{color:C.muted,fontFamily:'DMSans_600SemiBold',fontSize:13},
    read. This is the palette's own gold-family token for text on a light
    ground, and it clears 4.5:1 in all four. */
 nextPillTime:{color:C.successInk,fontFamily:'DMSans_700Bold',fontSize:14,fontVariant:['tabular-nums']},
-appHeaderBrand:{flexDirection:'row',alignItems:'center',gap:10,flexShrink:1},
- appLogo:{width:36,height:36},
+appHeaderBrand:{flex:1,minWidth:0,flexDirection:'row',alignItems:'center',gap:10,marginEnd:8,flexShrink:1},
+ appLogo:{width:36,height:36,flexShrink:0},
  appName:{color:C.ink,fontSize:20,fontFamily:'Newsreader_600SemiBold',letterSpacing:-.5,flexShrink:1},
- appHeaderActions:{flexDirection:'row',alignItems:'center',gap:6},
- headerBtn:{width:40,height:40,borderRadius:16},overline:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.8,marginBottom:4},h1:{color:C.ink,fontSize:32,fontFamily:'Newsreader_600SemiBold',letterSpacing:-.8},iconBtn:{width:44,height:44,borderRadius:16,backgroundColor:C.white,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,...soft},iconBtnDark:{backgroundColor:C.card,borderColor:C.line},section:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginTop:28,marginBottom:16},h2:{color:C.ink,fontSize:22,fontFamily:'Newsreader_600SemiBold',letterSpacing:-.35},sectionAction:{color:C.green,fontFamily:'DMSans_600SemiBold',fontSize:11},
+ appHeaderActions:{flexDirection:'row',alignItems:'center',gap:6,flexShrink:0},
+ headerBtn:{width:40,height:40,borderRadius:16},overline:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold',letterSpacing:1.8,marginBottom:4},h1:{color:C.ink,fontSize:32,fontFamily:'Newsreader_600SemiBold',letterSpacing:-.8},iconBtn:{width:44,height:44,flexShrink:0,borderRadius:16,backgroundColor:C.white,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,...soft},iconBtnDark:{backgroundColor:C.card,borderColor:C.line},section:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginTop:28,marginBottom:16},h2:{color:C.ink,fontSize:22,fontFamily:'Newsreader_600SemiBold',letterSpacing:-.35},sectionAction:{color:C.green,fontFamily:'DMSans_600SemiBold',fontSize:11},
  graphicFrame:{alignItems:'center',justifyContent:'center',overflow:'hidden'},motionGlyph:{width:49,height:49,borderRadius:16,backgroundColor:C.mint,borderWidth:1,borderColor:C.line,alignItems:'center',justifyContent:'center'},motionGlyphInverse:{backgroundColor:'rgba(255,255,255,.14)',borderColor:'rgba(255,255,255,.22)'},glyphDot:{position:'absolute',right:6,top:6,width:5,height:5,borderRadius:4,backgroundColor:C.gold},greeting:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginBottom:16},salam:{color:C.green,fontSize:10,fontFamily:'DMSans_600SemiBold',letterSpacing:1.2,marginBottom:4},greetingTitle:{color:C.ink,fontSize:29,fontFamily:'Newsreader_600SemiBold',letterSpacing:-.6},prayerHeader:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginTop:6,marginBottom:16},prayerOverline:{color:C.muted,fontSize:10,fontFamily:'DMSans_600SemiBold',letterSpacing:1.2,marginBottom:5},prayerTitle:{color:C.ink,fontSize:27,fontFamily:'Newsreader_600SemiBold',letterSpacing:-.6},
  aura:{position:'absolute',top:'-30%',left:'-20%',right:'-20%',height:'160%'},auraAlt:{position:'absolute',top:'-20%',left:'10%',right:'-25%',height:'140%',opacity:.8},heroSheen:{position:'absolute',top:'-20%',bottom:'-20%',width:'38%',left:'31%',opacity:.5},hero:{height:285,borderRadius:24,overflow:'hidden',padding:20,...shadow},/* Poster artwork: the <Image> is always nested inside a StyleSheet.absoluteFill
    wrapper (see the home hero, continue-reading card, prayer next-card and Quran
@@ -15218,7 +15226,7 @@ toolBar:{gap:12},surahStep:{width:32,height:32,alignItems:'center',justifyConten
      read back as nothing at all - the picture comes out empty. Being off the
      top of the screen is what hides it, so the opacity has to stay at 1 and
      the position is what keeps it unseen. */
-  offscreenCard:{position:'absolute',top:-100000,left:0,opacity:1},readerName:{flex:1,color:C.ink,fontSize:16,fontFamily:'DMSans_700Bold'},readerProgress:{height:4,backgroundColor:C.mint,overflow:'hidden'},readerScroll:{width:'100%',maxWidth:860,alignSelf:'center',padding:16,paddingBottom:BOTTOM_RESERVE},surahHead:{borderRadius:24,padding:24,alignItems:'center',...shadow},surahHeadAr:{color:C.onAccent,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:38,marginTop:16,writingDirection:'rtl'},surahHeadEn:{color:C.onAccent,fontSize:10,marginTop:4},bismillah:{color:C.onAccent,fontFamily:'KFGQPCUthmanicHafs',fontSize:22,marginTop:24,writingDirection:'rtl'},ayahContinuous:{marginTop:4,borderRadius:4,borderBottomWidth:1,shadowOpacity:0,elevation:0},ayahSelected:{borderColor:C.gold,borderWidth:2,backgroundColor:C.card},ayahActions:{flexDirection:'row',alignItems:'center',gap:6,marginLeft:-4},ayahFooter:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginTop:12},ayah:{backgroundColor:C.white,borderRadius:24,padding:20,marginTop:12,borderWidth:1,borderColor:C.line,...soft},ayahTop:{flexDirection:'row',alignItems:'center',justifyContent:'space-between'},ayahNo:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold',backgroundColor:C.mint,paddingHorizontal:8,paddingVertical:8,borderRadius:12},ayahAr:{color:C.ink,textAlign:'right',fontFamily:'KFGQPCUthmanicHafs',fontSize:30,lineHeight:58,marginTop:16,writingDirection:'rtl'},ayahTranslation:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:14,lineHeight:20,marginTop:16,paddingTop:16,borderTopWidth:1,borderColor:C.line},ayahMeta:{color:C.muted,fontSize:10,marginTop:12},
+  offscreenCard:{position:'absolute',top:-100000,left:0,opacity:1},readerName:{flex:1,minWidth:0,flexShrink:1,color:C.ink,fontSize:16,fontFamily:'DMSans_700Bold'},readerProgress:{height:4,backgroundColor:C.mint,overflow:'hidden'},readerScroll:{width:'100%',maxWidth:860,alignSelf:'center',padding:16,paddingBottom:BOTTOM_RESERVE},surahHead:{borderRadius:24,padding:24,alignItems:'center',...shadow},surahHeadAr:{color:C.onAccent,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:38,marginTop:16,writingDirection:'rtl'},surahHeadEn:{color:C.onAccent,fontSize:10,marginTop:4},bismillah:{color:C.onAccent,fontFamily:'KFGQPCUthmanicHafs',fontSize:22,marginTop:24,writingDirection:'rtl'},ayahContinuous:{marginTop:4,borderRadius:4,borderBottomWidth:1,shadowOpacity:0,elevation:0},ayahSelected:{borderColor:C.gold,borderWidth:2,backgroundColor:C.card},ayahActions:{flexDirection:'row',alignItems:'center',gap:6,marginLeft:-4},ayahFooter:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginTop:12},ayah:{backgroundColor:C.white,borderRadius:24,padding:20,marginTop:12,borderWidth:1,borderColor:C.line,...soft},ayahTop:{flexDirection:'row',alignItems:'center',justifyContent:'space-between'},ayahNo:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold',backgroundColor:C.mint,paddingHorizontal:8,paddingVertical:8,borderRadius:12},ayahAr:{color:C.ink,textAlign:'right',fontFamily:'KFGQPCUthmanicHafs',fontSize:30,lineHeight:58,marginTop:16,writingDirection:'rtl'},ayahTranslation:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:14,lineHeight:20,marginTop:16,paddingTop:16,borderTopWidth:1,borderColor:C.line},ayahMeta:{color:C.muted,fontSize:10,marginTop:12},
  translationRow:{minHeight:67,flexDirection:'row',alignItems:'center',gap:12,paddingHorizontal:12,borderBottomWidth:1,borderColor:C.line},languageBadge:{width:52,height:34,borderRadius:12,backgroundColor:C.mint,alignItems:'center',justifyContent:'center',flexDirection:'row',gap:4},languageFlag:{fontSize:12},languageBadgeText:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10},historyHead:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginBottom:10},historyWrap:{flexDirection:'row',flexWrap:'wrap',gap:8},historyChip:{backgroundColor:C.mint,borderRadius:16,paddingHorizontal:12,paddingVertical:8,maxWidth:220},historyChipText:{color:C.ink,fontFamily:'DMSans_400Regular',fontSize:13,lineHeight:18},historyBlock:{marginBottom:16},searchResult:{backgroundColor:C.white,borderRadius:20,padding:16,marginBottom:8,borderWidth:1,borderColor:C.line},noteText:{color:C.ink,fontFamily:'Newsreader_600SemiBold',fontSize:17,lineHeight:24,marginVertical:8},noteInput:{minHeight:180,backgroundColor:C.white,borderRadius:20,padding:16,textAlignVertical:'top',fontFamily:'DMSans_400Regular',fontSize:14,color:C.ink,borderWidth:1,borderColor:C.line,outlineStyle:'none'} as any,stepper:{backgroundColor:C.white,borderRadius:20,padding:12,flexDirection:'row',alignItems:'center',justifyContent:'space-between',borderWidth:1,borderColor:C.line},stepButton:{width:44,height:44,borderRadius:16,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},fontPreview:{backgroundColor:C.mint,borderRadius:20,padding:16,marginTop:12,borderWidth:1,borderColor:C.line},fontPreviewText:{color:C.ink,textAlign:'right',lineHeight:52,includeFontPadding:false},previewArabic:{color:C.ink,fontFamily:'KFGQPCUthmanicHafs',writingDirection:'rtl'},referenceNavigator:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:12,marginBottom:12},referenceInput:{width:100,textAlign:'center',backgroundColor:C.white,borderWidth:1,borderColor:C.line,borderRadius:16,padding:12,color:C.ink,fontFamily:'DMSans_700Bold',outlineStyle:'none'} as any,comparisonHelp:{color:C.muted,fontSize:10,lineHeight:15,marginTop:8},editionPicker:{gap:8,marginTop:12},editionChip:{minHeight:58,backgroundColor:C.white,borderRadius:16,paddingHorizontal:12,flexDirection:'row',alignItems:'center',gap:12,borderWidth:1,borderColor:C.line},editionChipActive:{borderColor:C.green,backgroundColor:C.mint},editionFlag:{fontSize:20},arabicReference:{backgroundColor:C.yellow,borderRadius:24,padding:20,marginTop:16,borderWidth:1,borderColor:C.gold},comparisonColumns:{gap:12,paddingVertical:12,paddingRight:20},comparisonText:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:13,lineHeight:20,marginTop:12},mushafPage:{width:'100%',maxWidth:900,alignSelf:'center',paddingHorizontal:20,paddingTop:22,paddingBottom:BOTTOM_RESERVE},mushafNav:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:12},mushafNavFoot:{marginTop:18},pageJump:{flex:1,minWidth:0,alignItems:'center'},pageInput:{minWidth:74,textAlign:'center',color:C.ink,fontFamily:'Newsreader_600SemiBold',fontSize:28,borderBottomWidth:1,borderColor:C.line,paddingVertical:4,outlineStyle:'none'} as any,pageProgress:{height:5,borderRadius:4,backgroundColor:C.mint,overflow:'hidden',marginVertical:16},mushafSheet:{backgroundColor:C.card,borderRadius:24,padding:20,borderWidth:1,borderColor:C.gold,...soft},
   /* long-press verse menu: sits entirely above the verse it belongs to, so it
      never covers the line you are reading */
@@ -15485,12 +15493,12 @@ legendDot:{width:8,height:8,borderRadius:4,backgroundColor:C.green},
  seekFill:{position:'absolute',left:0,height:5,borderRadius:4,backgroundColor:C.green},
  seekKnob:{position:'absolute',top:7,width:13,height:13,borderRadius:8,backgroundColor:C.white,borderWidth:2,borderColor:C.green,marginLeft:-6},
  miniPlayer:{position:'absolute',left:12,right:12,backgroundColor:C.card,borderRadius:20,paddingHorizontal:12,paddingVertical:8,alignItems:'center',borderWidth:1,borderColor:C.line,...shadow},
- miniBody:{flex:1,flexDirection:'row',alignItems:'center',gap:12},
- miniArt:{width:40,height:40,borderRadius:16,backgroundColor:C.mint,alignItems:'center',justifyContent:'center',overflow:'hidden'},
+ miniBody:{flex:1,minWidth:0,flexDirection:'row',alignItems:'center',gap:12},
+ miniArt:{width:40,height:40,flexShrink:0,borderRadius:16,backgroundColor:C.mint,alignItems:'center',justifyContent:'center',overflow:'hidden'},
  miniTitle:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:12},
  miniMeta:{color:C.muted,fontSize:10,marginTop:2},
- miniBtn:{width:44,height:44,borderRadius:20,backgroundColor:C.accent,alignItems:'center',justifyContent:'center',marginLeft:8},
- miniGhost:{width:34,height:34,borderRadius:17,alignItems:'center',justifyContent:'center',marginLeft:2},
+ miniBtn:{width:44,height:44,flexShrink:0,borderRadius:20,backgroundColor:C.accent,alignItems:'center',justifyContent:'center',marginLeft:8},
+ miniGhost:{width:34,height:34,flexShrink:0,borderRadius:17,alignItems:'center',justifyContent:'center',marginLeft:2},
  audioRow:{flexDirection:'row',alignItems:'center',borderBottomWidth:1,borderColor:C.line},
  audioRowMain:{flex:1,flexDirection:'row',alignItems:'center',gap:12,paddingVertical:12},
  audioRowAction:{width:46,height:46,alignItems:'center',justifyContent:'center'},
@@ -15527,7 +15535,7 @@ playerTranslationOptionOn:{backgroundColor:C.mint},
  heroActions:{flexDirection:'row',alignItems:'center',gap:8,marginTop:16},
  ghostHeroButton:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:8,minHeight:44,borderWidth:1,borderColor:'rgba(255,255,255,.42)',paddingHorizontal:12,paddingVertical:12,borderRadius:16},
  ghostHeroText:{color:C.onAccent,fontSize:10,fontFamily:'DMSans_700Bold'},
- readerHeaderActions:{flexDirection:'row',alignItems:'center',gap:2},readerIconBtn:{width:36,height:36,borderRadius:12,backgroundColor:C.white,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,...soft},
+ readerHeaderActions:{flexDirection:'row',alignItems:'center',gap:2,flexShrink:0},readerIconBtn:{width:36,height:36,flexShrink:0,borderRadius:12,backgroundColor:C.white,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:C.line,...soft},
  audioEntryInner:{flexDirection:'row',alignItems:'center',gap:12,backgroundColor:C.card,borderRadius:24,padding:16,borderWidth:1,borderColor:C.line,...surface},
  surahNo:{width:40,height:40,borderRadius:16,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},
  surahNoText:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:12},
