@@ -153,7 +153,9 @@ async function scenario(browser, savedUrdu = false) {
     assert.equal(urduAfterReload.preferences.translationEdition, urdu.preferences.translationEdition);
     await back(page);
 
-    await clickText(page, 'Start reading');
+    // Minimal scrolling here: centering the text fights the hero's scroll-
+    // driven height and can keep its bounds moving during an otherwise valid tap.
+    await page.getByText('Start reading', { exact: true }).click();
     await page.getByText('55:1', { exact: true }).waitFor();
     await page.locator('[aria-label="Reader settings"]').last().click();
     await page.getByText('Reading settings', { exact: true }).waitFor();

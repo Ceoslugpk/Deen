@@ -25,6 +25,11 @@ export function translationLanguageCode(
   return Object.entries(LANGUAGE_NAMES).find(([, name]) => name.toLowerCase() === label)?.[0] || '';
 }
 
+/** Only shipped, playable spoken translations can enter the live queue. */
+export function translationAudioEdition(identifier: string): AudioEdition | null {
+  return AUDIO.find(entry => entry.identifier === identifier && entry.language !== 'ar') || null;
+}
+
 /** Match only a real translation recording; Arabic reciters are separate.
  * English is the fallback, not a fabricated voice for an unsupported language.
  * `fallbackToEnglish=false` is used when describing actual availability. */

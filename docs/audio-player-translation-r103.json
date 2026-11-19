@@ -1,0 +1,677 @@
+{
+  "revision": "R103",
+  "baseCommit": "a371e8836e4ab06ab413c936d82a32eccc54d324",
+  "scope": "Audio player persisted translation On/Off and immediate same-ayah spoken-language changes. No unrelated reader or Quran resource changes.",
+  "implementation": {
+    "newVoicePolicy": "Stop the old translated recording before replacement; start the new language at zero in the same ayah, without a second Play tap.",
+    "arabicPolicy": "Preserve current Arabic source/position. Web does not replace/re-play unchanged Arabic; native rebuild restores position but may briefly pause/seek and is not device-validated.",
+    "pausedPolicy": "A paused selection remains paused. A future language choice does not override explicit Off.",
+    "offPolicy": "Remove translated tracks and follow existing repeat/range/end policy. Translation-only queues may clear.",
+    "untimedPolicy": "Do not rewrite untimed whole-Surah or downloaded recordings; show the verse-by-verse availability hint.",
+    "lastChoiceWins": true,
+    "sharedControls": [
+      "Now playing",
+      "Audio Center",
+      "Automatic language sync"
+    ],
+    "preserve": [
+      "Arabic reciter/source",
+      "Live custom queue order",
+      "Current ayah on voice change",
+      "Playback rate",
+      "Independent volumes",
+      "Repeat settings",
+      "Reader text preferences and user data"
+    ],
+    "sessionIdentity": [
+      "actual translation presence",
+      "track kind",
+      "ayah number",
+      "legacy session fallback"
+    ]
+  },
+  "unit": {
+    "command": "node --test tests/*.test.cjs plugins/__tests__/*.test.js",
+    "passed": 219,
+    "failed": 0,
+    "skipped": 0,
+    "newAudioTranslationChecks": 35,
+    "nativeTransportTests": "Modeled Android/iOS expo-audio contracts with fixture URLs; not device tests."
+  },
+  "typeScript": {
+    "command": "tsc --noEmit",
+    "exitCode": 0
+  },
+  "productionWeb": {
+    "runner": "tests/verify-audio-translation-web.cjs",
+    "contexts": 30,
+    "realMediaObservations": 22,
+    "method": "Real Expo production WEB, actual streamed MP3 playback and advancing media clocks. Native engine-contract tests are separate, not installed-device QA. Offline mode is an explicitly simulated network failure, not mocked successful audio.",
+    "livePlayer": {
+      "name": "live-player",
+      "media": [
+        {
+          "uri": "https://cdn.islamic.network/quran/audio/128/ar.alafasy/262.mp3",
+          "position": 0.518103,
+          "duration": 51.917982,
+          "paused": false
+        },
+        {
+          "uri": "https://cdn.islamic.network/quran/audio/128/ar.alafasy/262.mp3",
+          "position": 5.050653,
+          "duration": 51.917982,
+          "paused": false
+        },
+        {
+          "uri": "https://cdn.islamic.network/quran/audio/64/ur.khan/262.mp3",
+          "position": 0.477501,
+          "duration": 40.411375,
+          "paused": false
+        },
+        {
+          "uri": "https://cdn.islamic.network/quran/audio/128/fr.leclerc/262.mp3",
+          "position": 0.5906,
+          "duration": 44.6955,
+          "paused": false
+        },
+        {
+          "uri": "https://cdn.islamic.network/quran/audio/128/fr.leclerc/262.mp3",
+          "position": 0.386536,
+          "duration": 44.6955,
+          "paused": false
+        },
+        {
+          "uri": "https://cdn.islamic.network/quran/audio/64/ur.khan/262.mp3",
+          "position": 0.676417,
+          "duration": 40.411375,
+          "paused": false
+        },
+        {
+          "uri": "https://cdn.islamic.network/quran/audio/128/ar.alafasy/263.mp3",
+          "position": 0.152263,
+          "duration": 25.123764,
+          "paused": false
+        }
+      ],
+      "sourceChangeDelaysMs": [
+        833
+      ],
+      "errors": {
+        "page": [],
+        "console": [],
+        "http": [],
+        "requests": [],
+        "expectedCancellations": [],
+        "expectedOffline": []
+      }
+    },
+    "audioCenter": {
+      "name": "shared-audio-center-controls",
+      "first": {
+        "uri": "https://cdn.islamic.network/quran/audio/192/en.walk/262.mp3",
+        "position": 0.65364,
+        "duration": 40.933515,
+        "paused": false
+      },
+      "switched": {
+        "uri": "https://cdn.islamic.network/quran/audio/64/ur.khan/262.mp3",
+        "position": 0.246769,
+        "duration": 40.411375,
+        "paused": false
+      },
+      "arabic": {
+        "uri": "https://cdn.islamic.network/quran/audio/128/ar.alafasy/263.mp3",
+        "position": 0.223013,
+        "duration": 25.123764,
+        "paused": false
+      },
+      "errors": {
+        "page": [],
+        "console": [],
+        "http": [],
+        "requests": [],
+        "expectedCancellations": [],
+        "expectedOffline": []
+      }
+    },
+    "allElevenRecordings": {
+      "name": "all-eleven-real-recordings",
+      "observations": [
+        {
+          "edition": "fr.leclerc",
+          "uri": "https://cdn.islamic.network/quran/audio/128/fr.leclerc/262.mp3",
+          "position": 0.351735,
+          "duration": 44.6955,
+          "paused": false
+        },
+        {
+          "edition": "kk.khalifahaltai-audio",
+          "uri": "https://cdn.islamic.network/quran/audio/128/kk.khalifahaltai-audio/262.mp3",
+          "position": 0.337647,
+          "duration": 40,
+          "paused": false
+        },
+        {
+          "edition": "ru.kuliev-audio",
+          "uri": "https://cdn.islamic.network/quran/audio/128/ru.kuliev-audio/262.mp3",
+          "position": 0.280539,
+          "duration": 33.725147,
+          "paused": false
+        },
+        {
+          "edition": "tr.vakfi-audio",
+          "uri": "https://cdn.islamic.network/quran/audio/128/tr.vakfi-audio/262.mp3",
+          "position": 0.328873,
+          "duration": 32.879456,
+          "paused": false
+        },
+        {
+          "edition": "uz.sodik-audio",
+          "uri": "https://cdn.islamic.network/quran/audio/128/uz.sodik-audio/262.mp3",
+          "position": 0.353113,
+          "duration": 37.059048,
+          "paused": false
+        },
+        {
+          "edition": "zh.chinese",
+          "uri": "https://cdn.islamic.network/quran/audio/128/zh.chinese/262.mp3",
+          "position": 0.304087,
+          "duration": 42.927188,
+          "paused": false
+        },
+        {
+          "edition": "en.walk",
+          "uri": "https://cdn.islamic.network/quran/audio/192/en.walk/262.mp3",
+          "position": 0.279766,
+          "duration": 40.933515,
+          "paused": false
+        },
+        {
+          "edition": "fa.hedayatfarfooladvand",
+          "uri": "https://cdn.islamic.network/quran/audio/40/fa.hedayatfarfooladvand/262.mp3",
+          "position": 0.319891,
+          "duration": 57.0248,
+          "paused": false
+        },
+        {
+          "edition": "ur.khan",
+          "uri": "https://cdn.islamic.network/quran/audio/64/ur.khan/262.mp3",
+          "position": 0.241799,
+          "duration": 40.411375,
+          "paused": false
+        },
+        {
+          "edition": "az.balayev",
+          "uri": "https://everyayah.com/data/translations/azerbaijani/balayev/002255.mp3",
+          "position": 0.434334,
+          "duration": 61.7535,
+          "paused": false
+        },
+        {
+          "edition": "bs.korkut",
+          "uri": "https://everyayah.com/data/translations/bosnian/besim_korkut_ajet_po_ajet_audio/002255.mp3",
+          "position": 0.263674,
+          "duration": 49.529909,
+          "paused": false
+        }
+      ],
+      "errors": {
+        "page": [],
+        "console": [],
+        "http": [],
+        "requests": [],
+        "expectedCancellations": [
+          "https://everyayah.com/data/translations/azerbaijani/balayev/002255.mp3 net::ERR_ABORTED"
+        ],
+        "expectedOffline": []
+      }
+    },
+    "explicitOfflineFailureAndRetry": {
+      "name": "explicit-offline-failure-and-user-retry",
+      "retried": {
+        "uri": "https://cdn.islamic.network/quran/audio/64/ur.khan/262.mp3",
+        "position": 0.214652,
+        "duration": 40.411375,
+        "paused": false
+      },
+      "errors": {
+        "page": [],
+        "console": [
+          "Failed to load resource: net::ERR_INTERNET_DISCONNECTED"
+        ],
+        "http": [],
+        "requests": [],
+        "expectedCancellations": [],
+        "expectedOffline": [
+          "https://cdn.islamic.network/quran/audio/64/ur.khan/262.mp3 net::ERR_INTERNET_DISCONNECTED"
+        ]
+      }
+    },
+    "normalUnexpectedErrors": {
+      "page": 0,
+      "console": 0,
+      "http": 0,
+      "requests": 0
+    },
+    "sourceChangeMeasurementCaveat": "Pre-click automation timestamp to actual play() call; includes scrolling/tap scheduling. Not a decoding-time or physical-device performance benchmark.",
+    "layouts": [
+      {
+        "language": "en",
+        "width": 280,
+        "height": 660,
+        "dark": false,
+        "choices": 11,
+        "renderedLabelsUnclipped": true
+      },
+      {
+        "language": "ar",
+        "width": 280,
+        "height": 660,
+        "dark": false,
+        "choices": 11,
+        "renderedLabelsUnclipped": true
+      },
+      {
+        "language": "ur",
+        "width": 280,
+        "height": 660,
+        "dark": false,
+        "choices": 11,
+        "renderedLabelsUnclipped": true
+      },
+      {
+        "language": "fa",
+        "width": 280,
+        "height": 660,
+        "dark": false,
+        "choices": 11,
+        "renderedLabelsUnclipped": true
+      },
+      {
+        "language": "ps",
+        "width": 280,
+        "height": 660,
+        "dark": false,
+        "choices": 11,
+        "renderedLabelsUnclipped": true
+      },
+      {
+        "language": "fr",
+        "width": 280,
+        "height": 660,
+        "dark": false,
+        "choices": 11,
+        "renderedLabelsUnclipped": true
+      },
+      {
+        "language": "tr",
+        "width": 280,
+        "height": 660,
+        "dark": false,
+        "choices": 11,
+        "renderedLabelsUnclipped": true
+      },
+      {
+        "language": "ru",
+        "width": 280,
+        "height": 660,
+        "dark": false,
+        "choices": 11,
+        "renderedLabelsUnclipped": true
+      },
+      {
+        "language": "uz",
+        "width": 280,
+        "height": 660,
+        "dark": false,
+        "choices": 11,
+        "renderedLabelsUnclipped": true
+      },
+      {
+        "language": "kk",
+        "width": 280,
+        "height": 660,
+        "dark": false,
+        "choices": 11,
+        "renderedLabelsUnclipped": true
+      },
+      {
+        "language": "zh",
+        "width": 280,
+        "height": 660,
+        "dark": false,
+        "choices": 11,
+        "renderedLabelsUnclipped": true
+      },
+      {
+        "language": "vi",
+        "width": 280,
+        "height": 660,
+        "dark": false,
+        "choices": 11,
+        "renderedLabelsUnclipped": true
+      },
+      {
+        "language": "az",
+        "width": 280,
+        "height": 660,
+        "dark": false,
+        "choices": 11,
+        "renderedLabelsUnclipped": true
+      },
+      {
+        "language": "bs",
+        "width": 280,
+        "height": 660,
+        "dark": false,
+        "choices": 11,
+        "renderedLabelsUnclipped": true
+      },
+      {
+        "language": "bg",
+        "width": 280,
+        "height": 660,
+        "dark": false,
+        "choices": 11,
+        "renderedLabelsUnclipped": true
+      },
+      {
+        "language": "si",
+        "width": 280,
+        "height": 660,
+        "dark": false,
+        "choices": 11,
+        "renderedLabelsUnclipped": true
+      },
+      {
+        "language": "bn",
+        "width": 280,
+        "height": 660,
+        "dark": false,
+        "choices": 11,
+        "renderedLabelsUnclipped": true
+      },
+      {
+        "language": "hi",
+        "width": 280,
+        "height": 660,
+        "dark": false,
+        "choices": 11,
+        "renderedLabelsUnclipped": true
+      },
+      {
+        "language": "id",
+        "width": 280,
+        "height": 660,
+        "dark": false,
+        "choices": 11,
+        "renderedLabelsUnclipped": true
+      },
+      {
+        "language": "ms",
+        "width": 280,
+        "height": 660,
+        "dark": false,
+        "choices": 11,
+        "renderedLabelsUnclipped": true
+      },
+      {
+        "language": "ta",
+        "width": 280,
+        "height": 660,
+        "dark": false,
+        "choices": 11,
+        "renderedLabelsUnclipped": true
+      },
+      {
+        "language": "ml",
+        "width": 280,
+        "height": 660,
+        "dark": false,
+        "choices": 11,
+        "renderedLabelsUnclipped": true
+      },
+      {
+        "language": "en",
+        "width": 240,
+        "height": 600,
+        "dark": false,
+        "choices": 11,
+        "renderedLabelsUnclipped": true
+      },
+      {
+        "language": "ar",
+        "width": 330,
+        "height": 700,
+        "dark": true,
+        "choices": 11,
+        "renderedLabelsUnclipped": true
+      },
+      {
+        "language": "en",
+        "width": 844,
+        "height": 280,
+        "dark": false,
+        "choices": 11,
+        "renderedLabelsUnclipped": true
+      },
+      {
+        "language": "ml",
+        "width": 600,
+        "height": 320,
+        "dark": true,
+        "choices": 11,
+        "renderedLabelsUnclipped": true
+      }
+    ],
+    "languagesAt280px": 22,
+    "additionalProfiles": 4,
+    "labelMeasurement": "Actual text-range bounds within row/text parent, scrollWidth/clientWidth and scrollHeight/clientHeight; no line clipping. All 11 voice choices plus On/Off/picker checked.",
+    "scenarios": [
+      "Toggle during Arabic",
+      "Voice change during Arabic without source/play-call reset",
+      "Live same-ayah Urdu/French/English changes",
+      "Rapid successive choices",
+      "Confirmed Pause then language change with no autoplay",
+      "Disabled translation progresses to Arabic",
+      "Language choice respects Off",
+      "Paused reload restores same ayah and Off",
+      "Independent reader text/notes/IndoPak storage",
+      "Shared Audio Center live changes",
+      "All 11 actual recording URLs advance",
+      "Explicit browser-offline error stops old voice and auto-resume attempts",
+      "Explicit retry reloads chosen source"
+    ]
+  },
+  "regressions": {
+    "indopakPlayback": {
+      "runner": "tests/verify-indopak-playback-web.cjs",
+      "contexts": 3,
+      "realMediaObservations": 21,
+      "checks": {
+        "focusKeepsAudioPlayingWithoutRestart": {
+          "beforeFocus": {
+            "uri": "https://cdn.islamic.network/quran/audio/128/ar.alafasy/4906.mp3",
+            "position": 0.089278,
+            "duration": 6.266463,
+            "paused": false
+          },
+          "duringFocus": {
+            "uri": "https://cdn.islamic.network/quran/audio/128/ar.alafasy/4906.mp3",
+            "position": 0.658005,
+            "duration": 6.266463,
+            "paused": false
+          }
+        },
+        "naturalNextAyah": true,
+        "pauseResume": true,
+        "selectionIsSeparate": true,
+        "repeatOne": true,
+        "activeGestureDefersPageFollow": true,
+        "focusCrossPageFollow": true,
+        "crossPageFollow": true,
+        "manualBrowseDoesNotSnapBack": true,
+        "landscapeReveal": {
+          "bounds": {
+            "x": 147.8975067138672,
+            "y": 183.751220703125,
+            "width": 38.8314208984375,
+            "height": 72.1754150390625,
+            "right": 186.7289276123047,
+            "bottom": 255.9266357421875
+          },
+          "viewport": {
+            "x": 0,
+            "y": 110,
+            "width": 844,
+            "height": 226,
+            "right": 844,
+            "bottom": 336
+          }
+        },
+        "focusLandscapePlayback": {
+          "bounds": {
+            "x": 338.03070068359375,
+            "y": 330.6495361328125,
+            "width": 11.895721435546875,
+            "height": 22.11041259765625,
+            "right": 349.9264221191406,
+            "bottom": 352.75994873046875
+          },
+          "viewport": {
+            "x": 0,
+            "y": 0,
+            "width": 844,
+            "height": 430,
+            "right": 844,
+            "bottom": 430
+          }
+        },
+        "splitVerseStaysOnLaterPage": true,
+        "focusGatedFollow": true,
+        "readingMarkBookmarksAndOriginalReaderUntouched": true,
+        "closeClearsOnlyAudioHighlight": true,
+        "urduDarkFollow": true,
+        "realSequentialTranslationStaysOnSameAyah": true
+      },
+      "expectedMediaCancellations": [
+        "https://cdn.islamic.network/quran/audio/128/ar.alafasy/2249.mp3 net::ERR_ABORTED",
+        "https://cdn.islamic.network/quran/audio/128/ar.alafasy/2250.mp3 net::ERR_ABORTED",
+        "https://cdn.islamic.network/quran/audio/128/ar.alafasy/2250.mp3 net::ERR_ABORTED",
+        "https://cdn.islamic.network/quran/audio/128/ar.alafasy/32.mp3 net::ERR_ABORTED"
+      ],
+      "unexpectedErrors": {
+        "page": 0,
+        "console": 0,
+        "http": 0,
+        "requests": 0
+      }
+    },
+    "originalReaderAudio": {
+      "runner": "tests/verify-hotfix-web.cjs",
+      "contexts": 2,
+      "passed": true,
+      "profiles": [
+        "phone",
+        "tablet"
+      ],
+      "checks": [
+        "First tap",
+        "Repeated same-ayah tap",
+        "Changed ayah",
+        "Real media clock progress",
+        "Mini-player/navigation bounds"
+      ]
+    },
+    "textTranslationPreferences": {
+      "runner": "tests/verify-translation-selection-web.cjs",
+      "contexts": 2,
+      "passed": true,
+      "checks": [
+        "New Urdu selection",
+        "Reloaded Urdu selection",
+        "Saved Urdu hydration",
+        "Tamil uses real English audio fallback",
+        "Explicit audio Off and volume preserved",
+        "Independent English UI"
+      ],
+      "runnerStabilityCorrection": "Use minimal scrolling for Start reading; centering text fights the hero scroll-height layout. No app reader change."
+    }
+  },
+  "exports": {
+    "web": {
+      "passed": true,
+      "bundle": "index-d3d3d856f3cbe1b60056c2b5ad42d031.js",
+      "bundleBytes": 24172608,
+      "gzipBytes": 6641056,
+      "sha256": "1239bd00a48eb3ff9ac52ec7378c070eb03fd092565bd4e08dc86afc4b80143b",
+      "originalFontCopies": [
+        "assets/assets/fonts/IndopakNastaleeq.51aff7449ae51ff5b54ea98eed919504.ttf"
+      ]
+    },
+    "android": {
+      "passed": true,
+      "bundle": "index-98d6434ea62154933306fa889282b458.hbc",
+      "bundleBytes": 29051641,
+      "gzipBytes": 8473813,
+      "sha256": "9c15c84c9c587301119a35486558fdb48643982a4b6d24108379f9d1b61729cf",
+      "originalFontCopies": [
+        "assets/51aff7449ae51ff5b54ea98eed919504"
+      ]
+    },
+    "ios": {
+      "passed": true,
+      "bundle": "index-63f832c4da8443d974e81154ee0aba74.hbc",
+      "bundleBytes": 29039915,
+      "gzipBytes": 8468311,
+      "sha256": "80c0dd1dc8f49e17038ad57373d662db71a194bbfa3c2cc099d5416b04a704fb",
+      "originalFontCopies": [
+        "assets/51aff7449ae51ff5b54ea98eed919504"
+      ]
+    }
+  },
+  "webBundleDeltaFromR102": {
+    "rawBytes": 14318,
+    "gzipBytes": 5196,
+    "caveat": "Bundle transfer figures, not installed app size or runtime RAM."
+  },
+  "integrity": {
+    "protectedTrackedPathsChecked": 63,
+    "protectedDiffEmpty": true,
+    "fontBytes": 310912,
+    "fontSha256": "a6463e24e36651404e9eff52dae26e18e9ef0718eb620636a66a20026a75c563",
+    "structureSha256": "e2122e25248fe70acf68ea8fca566560524e14797aa493b0d2a84dc4fa0d6c40",
+    "unchanged": [
+      "All tracked IndoPak reader components/services/data/resources",
+      "Original supplied font and outlines",
+      "Reader text/user-data storage",
+      "app.json",
+      "package.json",
+      "package-lock.json"
+    ]
+  },
+  "runtimeSourceSha256": {
+    "App.tsx": "a4ecceecb30db8a66a4eced8f645c4eab0c45ae2b958efbe277d069c677f5b21",
+    "src/services/audioEngine.ts": "08a99d8d3933ff37727b44796b6e69f686ee1fbfb1948d560bde27c38aa37210",
+    "src/services/audioService.ts": "fac49ba60ce8c6deaf6506ae28246656a66a4dc122edf8adb303416682fb4028",
+    "src/services/audioTranslation.ts": "ba76c2198d12be505725b11976e061cf7014f4199f2b23463577432ef3fa2a97",
+    "src/services/audioPlayerCopy.ts": "96e50e785b10ac498bfedf11298f420dd1b5ea11e880e61fab42dcb4e0a00303",
+    "src/services/translationPreferences.ts": "c4c633064170478ceb82420196acb340a5130f857cd7acc2338f7e76f006d2a5"
+  },
+  "screenshots": {
+    "type": "Unaltered production Expo WEB / Chromium, not native screenshots",
+    "files": [
+      "docs/screenshots/audio-player-translation-on.png",
+      "docs/screenshots/audio-player-translation-off.png",
+      "docs/screenshots/audio-player-translation-ar-dark.png"
+    ]
+  },
+  "limitations": [
+    "No installed Android/iOS/device/screen-reader QA. Native exports and contract models are not native playback proof.",
+    "Native playlist rebuild may briefly pause/seek; verify continuity and delayed native events on devices.",
+    "Network/provider startup time varies; immediate source replacement is not a zero-latency stream guarantee.",
+    "Untimed whole-Surah/local recordings stay unchanged; no ayah timing map is invented.",
+    "Browser storage, text bounds and clocks do not establish native font scaling, OS navigation or background/lock-screen behavior.",
+    "No new artwork, dependency, Quran typography/data, deployment, store release or native release setting."
+  ]
+}

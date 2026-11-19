@@ -31,6 +31,7 @@ function createAudioHarness(options = {}) {
   const plays = [];
   const seeks = [];
   const localCalls = [];
+  const pauses = [], replacements = [];
   let snapshot;
   class FakePlaylist {
     constructor({ sources }) {
@@ -81,21 +82,31 @@ function createAudioHarness(options = {}) {
       plays.push({ index: this.currentIndex, uri: this.sources[this.currentIndex]?.uri, metadata: this.metadata });
       this.status();
     }
-    pause() { this.playing = false; }
-    async seekTo(position) { this.currentTime = position; seeks.push(position); }
+    pause() { this.playing = false; pauses.push({ uri: this.sources[this.currentIndex]?.uri }); }
+    async seekTo(position) {
+      this.currentTime = position; seeks.push(position);
+      if (options.beforeSeek) await options.beforeSeek(position);
+    }
     setActiveForLockScreen(_active, metadata) { this.metadata = metadata; }
     updateLockScreenMetadata(metadata) { this.metadata = metadata; }
     clearLockScreenControls() {}
     destroy() {}
   }
   const webPlayer = {
-    currentTime: 0, duration: 30, volume: 1, uri: '',
-    addListener() {}, setPlaybackRate() {},
-    replace(source) { this.uri = typeof source === 'string' ? source : source.uri; },
-    play() { plays.push({ uri: this.uri }); }, pause() {},
-    async seekTo(position) { seeks.push(position); },
+    currentTime: 0, duration: 30, volume: 1, uri: '', playing: false,
+    listener: null,
+    addListener(_name, listener) { this.listener = listener; }, setPlaybackRate() {},
+    replace(source) {
+      this.uri = typeof source === 'string' ? source : source.uri;
+      this.currentTime = 0; replacements.push(this.uri);
+    },
+    status(patch = {}) { this.listener?.({ playing: this.playing, currentTime: this.currentTime, duration: this.duration, isBuffering: false, didJustFinish: false, ...patch }); },
+    play() { this.playing = true; plays.push({ uri: this.uri }); this.status(); },
+    pause() { this.playing = false; pauses.push({ uri: this.uri }); },
+    async seekTo(position) { this.currentTime = position; seeks.push(position); },
   };
   const api = {
+    ayahAudioUrl: (edition, number) => `https://example.test/${edition}/${number}.mp3`,
     getSurahAudio: options.getSurahAudio || (async () => ayahs()),
     getAudioEditions: options.getAudioEditions || (async () => require('../../src/data/audio-editions.json').editions.map((entry) => ({ ...entry }))),
     getSurahReciters: async () => [{ id: 1, name: 'Test reciter', urlTemplate: 'https://example.test/full/{surahPadded3}.mp3' }],
@@ -127,7 +138,7 @@ function createAudioHarness(options = {}) {
   const service = load('src/services/audioService.ts');
   const { engine } = load('src/services/audioEngine.ts');
   service.subscribeAudio((value) => { snapshot = value; });
-  return { service, engine, api, storage, playlists, plays, seeks, localCalls, snapshot: () => snapshot };
+  return { service, engine, api, storage, playlists, plays, seeks, localCalls, pauses, replacements, webPlayer, snapshot: () => snapshot };
 }
 
 module.exports = { ayahs, tracks, tick, deferred, createAudioHarness };

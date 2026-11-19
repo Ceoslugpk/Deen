@@ -107,7 +107,7 @@ Makkah itself the dial is replaced by a short note: every direction here is the 
 - **Four Arabic scripts** — Uthmani, Imla'i simple, IndoPak and Tajweed
 - **484 translations** and every tafsir; **Tafsir** on its own, and **Tafsir Compare** side by side
 - **Transliteration** — how the Arabic sounds, with a picker that searches all 114 surahs by number, Latin name, Arabic name or meaning
-- **Audio** — whole-surah reciters from a merged catalogue, played in the background
+- **Audio** — background listening with whole-surah reciters and verse-by-verse playback; the player has a persisted **Translation audio On/Off** switch and all **11 spoken translations**. Choosing a new voice switches the active translated ayah immediately, without another Play tap, while keeping reader text translation independent. [Behavior, real-browser checks and native-validation limits](docs/audio-player-translation-r103.md).
 - **Search** across the whole Qur'an
 - **Bookmarks** and **Notes** with a full note editor
 - **Memorize**, **Memorize Test** and **Hifz** for revision

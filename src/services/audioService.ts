@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { readText, writeText } from './storage';
 import { translationAudioForLanguage } from './translationPreferences';
-import { engine } from './audioEngine';
+import { translatedQueue } from './audioTranslation';
+import { engine, type EngineStatus } from './audioEngine';
 import { AudioEdition, getAudioEditions, getSurahAudio, getSurahReciters, SurahAudioAyah, SurahReciter } from './api';
 import { getCachedJson, setCachedJson } from './contentCache';
 import { localAudioUri } from './downloadService';
@@ -162,7 +163,10 @@ export type AudioSession = {
   surahReciterId: number | null;
   edition: string;
   translationEdition: string;
+  translationAudioEnabled?: boolean;
   sequential: boolean;
+  trackKind?: AudioTrackKind;
+  ayahNumber?: number;
   index: number;
   position: number;
   savedAt: number;
@@ -339,10 +343,9 @@ export async function buildSurahQueue(
    * The spoken translation is an accompaniment, so a voice that turns out to
    * have no audio for this Surah must not take the recitation down with it.
    *
-   * It is reachable: the default is a text edition (`en.walk`) which has no
-   * recording, and `loadSurahAudio` throws rather than returning nothing. So
-   * the failure is caught here and the Arabic is offered alone, which is the
-   * same answer the language switch already gives when no voice exists.
+   * The default (`en.walk`) is a real shipped 192 kbps recording. A provider
+   * failure or an older saved text-only identifier can still fail to load,
+   * so the Arabic remains playable rather than taking the whole queue down.
    */
   const translated = await loadSurahAudio(chapterId, settings.translationEdition).catch(() => [] as SurahAudioAyah[]);
   if (!translated.length) return queue;
@@ -420,11 +423,13 @@ export async function buildQueueForChapter(chapterId: number, chapterName: strin
 
 /** Whether the transport has been bound to this service's status handler. */
 let engineBound = false;
-/** Which surah the transport is holding, so a move within it is a skip
- *  rather than a reload. */
-let loadedQueueKey = '';
+/** Queue identity includes every translation source, not just the first Arabic
+ * edition and length: two languages otherwise looked like the same timeline. */
+let loadedQueue: AudioTrack[] | null = null;
 /** A user selection or close supersedes any older asynchronous restore/load. */
 let playbackRevision = 0;
+/** Last transport command wins, including rapid voice choices and pause/stop. */
+let transportRevision = 0;
 let state: AudioState = {
   queue: [],
   index: 0,
@@ -467,14 +472,16 @@ function emit(patch: Partial<AudioState>) {
  * One handler for both transports, so the rules about what happens when an
  * ayah ends live in exactly one place no matter which of them is running.
  */
-function handleEngineStatus(status: {
-  playing: boolean;
-  position: number;
-  duration: number;
-  buffering: boolean;
-  endedIndex: number | null;
-}) {
+function handleEngineStatus(status: EngineStatus) {
   const track = state.track;
+  if (status.error) {
+    intendedPlaying = false;
+    loadedQueue = null;
+    clearResume();
+    emit({ playing: false, buffering: false, error: track?.kind === 'translation'
+      ? 'This translation audio is unavailable.' : 'Audio unavailable' });
+    return;
+  }
 
   /* An ayah finished. Which one is given, because what happens next depends
      on it — and the rules for that are kept pure in `nextIndexAfterFinish`. */
@@ -524,13 +531,6 @@ async function ensurePlayer(): Promise<void> {
   engineBound = true;
   // Do not call prepare() here: on Android that used to create an empty
   // playlist before the tapped ayah's queue was available.
-}
-
-/** Identifies the surah the transport is holding. */
-function queueKeyFor(queue: AudioTrack[]): string {
-  const first = queue[0];
-  if (!first) return '';
-  return `${first.chapterId}:${first.kind}:${first.edition}:${queue.length}`;
 }
 
 /**
@@ -648,28 +648,84 @@ function volumeFor(track: AudioTrack | null, settings: AudioSettings) {
  * the transport. The queue is only rebuilt when the surah has actually
  * changed; moving to another ayah within it is a skip.
  */
-async function applySource(track: AudioTrack | null, autoplay: boolean) {
-  if (!track) return;
-  const key = queueKeyFor(state.queue);
-  if (key !== loadedQueueKey) {
-    loadedQueueKey = key;
-    await engine.loadQueue(state.queue, state.index, autoplay, state.rate, volumeFor(track, settings));
+async function applySource(track: AudioTrack, autoplay: boolean, queue: AudioTrack[], index: number) {
+  if (queue !== loadedQueue) {
+    loadedQueue = queue;
+    await engine.loadQueue(queue, index, autoplay, state.rate, volumeFor(track, settings));
     return;
   }
-  await engine.skipTo(state.index, autoplay, state.rate, volumeFor(track, settings));
+  await engine.skipTo(index, autoplay, state.rate, volumeFor(track, settings));
 }
 
 async function goToIndex(index: number, autoplay: boolean) {
   if (!state.queue.length) return;
-  const safe = Math.max(0, Math.min(index, state.queue.length - 1));
-  const track = state.queue[safe];
+  const revision = ++transportRevision, queue = state.queue;
+  const safe = Math.max(0, Math.min(index, queue.length - 1));
+  const track = queue[safe];
   await ensurePlayer();
-  if (state.queue[safe] !== track) return;
-  emit({ index: safe, track, position: 0, duration: 0, buffering: true, error: null });
+  if (revision !== transportRevision || state.queue !== queue) return;
+  emit({ index: safe, track, position: 0, duration: 0, buffering: autoplay, error: null });
   intendedPlaying = autoplay;
-  await applySource(track, autoplay);
+  await applySource(track, autoplay, queue, safe);
+  if (revision !== transportRevision) return;
   void rememberRecent(track);
   void rememberSession(0);
+}
+
+/** Apply a voice/on-off change to the timeline already in the transport, not
+ * just the next Surah. Pure URL remapping avoids a text/network round-trip.
+ * Switching a translated ayah starts its NEW recording at zero: recordings
+ * in different languages do not have interchangeable second offsets. */
+async function updateActiveTranslation(previous: AudioSettings, next: AudioSettings): Promise<void> {
+  if (!state.track || !state.queue.length) return;
+  let replacement: ReturnType<typeof translatedQueue>;
+  try { replacement = translatedQueue(state.queue, previous, next); }
+  catch (error) {
+    emit({ error: error instanceof Error ? error.message : 'This translation audio is unavailable.' });
+    return;
+  }
+  const { queue, origins } = replacement;
+  if (queue.length === state.queue.length && queue.every((track, i) => track === state.queue[i])) return;
+  if (!queue.length) { await clearQueue(); return; }
+  const oldTrack = state.track, oldIndex = state.index;
+  let index = origins.indexOf(oldIndex), autoplay = intendedPlaying || state.playing;
+  if (index < 0) {
+    // The translation under the finger was switched off. Continue according
+    // to the existing repeat/range/end policy, never leave a muted old voice.
+    let before = -1;
+    origins.forEach((origin, i) => { if (origin >= 0 && origin < oldIndex) before = i; });
+    const plan = before < 0 ? { next: 0, advanceCount: false } : nextIndexAfterFinish(queue, before, next, timesPlayed);
+    if (plan.advanceCount) timesPlayed += 1;
+    index = plan.next ?? Math.max(0, before);
+    if (plan.next === null) autoplay = false;
+  }
+  const track = queue[index], preserve = track.uri === oldTrack.uri;
+  const revision = ++transportRevision;
+  playbackRevision += 1;
+  clearResume();
+  // Call pause before the first await, so an old language cannot keep speaking
+  // while its replacement is being prepared. Arabic itself is not interrupted.
+  if (!preserve) void engine.pause().catch(() => undefined);
+  intendedPlaying = autoplay;
+  emit({ queue, index, position: preserve ? state.position : 0, duration: preserve ? state.duration : 0,
+    playing: preserve && state.playing, buffering: !preserve && autoplay, error: null });
+  try {
+    await ensurePlayer();
+    if (revision !== transportRevision) return;
+    await engine.updateQueue(queue, index, autoplay, state.rate, volumeFor(track, settings));
+    if (revision !== transportRevision || state.error) return;
+    loadedQueue = queue;
+    clearResume();
+    void rememberRecent(track);
+    void rememberSession(state.position, true);
+  } catch {
+    if (revision !== transportRevision) return;
+    loadedQueue = null;
+    intendedPlaying = false;
+    clearResume();
+    void engine.pause().catch(() => undefined);
+    emit({ playing: false, buffering: false, error: 'This translation audio is unavailable.' });
+  }
 }
 
 export async function playQueue(queue: AudioTrack[], startIndex = 0) {
@@ -680,7 +736,7 @@ export async function playQueue(queue: AudioTrack[], startIndex = 0) {
   /* A different surah is being loaded, so whatever the transport is holding
      is now stale and has to be replaced — otherwise the first ayah would be
      skipped because the key happened to match. */
-  loadedQueueKey = '';
+  loadedQueue = null;
   emit({ queue, index: Math.max(0, Math.min(startIndex, queue.length - 1)), error: null });
   await goToIndex(Math.max(0, Math.min(startIndex, queue.length - 1)), true);
 }
@@ -721,19 +777,33 @@ export async function playTrack(track: AudioTrack) {
 }
 
 export async function resume() {
+  const revision = ++transportRevision;
   await ensurePlayer();
-  if (!state.track) return;
+  if (!state.track || revision !== transportRevision) return;
   intendedPlaying = true;
   clearResume();
-  await engine.play();
+  emit({ error: null });
+  try {
+    if (loadedQueue !== state.queue) {
+      const queue = state.queue;
+      await engine.updateQueue(queue, state.index, true, state.rate, volumeFor(state.track, settings));
+      if (revision === transportRevision && !state.error) loadedQueue = queue;
+    } else await engine.play();
+  } catch {
+    if (revision !== transportRevision) return;
+    void engine.pause().catch(() => undefined);
+    handleEngineStatus({ playing: false, buffering: false, position: state.position, duration: state.duration,
+      endedIndex: null, error: 'Source unavailable' });
+  }
 }
 
 export async function pause() {
   /* Said out loud, so an unasked-for stop is not mistaken for this. */
+  const revision = ++transportRevision;
   intendedPlaying = false;
   clearResume();
   await engine.pause().catch(() => undefined);
-  emit({ playing: false });
+  if (revision === transportRevision) emit({ playing: false, buffering: false });
 }
 
 export async function togglePlayback() {
@@ -743,11 +813,13 @@ export async function togglePlayback() {
 }
 
 export async function nextTrack() {
+  playbackRevision += 1;
   if (!state.queue.length) return;
   await goToIndex((state.index + 1) % state.queue.length, true);
 }
 
 export async function previousTrack() {
+  playbackRevision += 1;
   if (!state.queue.length) return;
   /* A few seconds into an ayah, "previous" means the start of this one, not
      the ayah before it — otherwise going back is impossible once you have
@@ -768,18 +840,22 @@ export async function seekTo(seconds: number) {
 }
 
 export async function stopPlayback() {
+  playbackRevision += 1;
+  const revision = ++transportRevision;
   intendedPlaying = false;
   clearResume();
   await engine.stop().catch(() => undefined);
-  emit({ playing: false, position: 0 });
+  if (revision === transportRevision) emit({ playing: false, buffering: false, position: 0 });
 }
 
 export async function clearQueue() {
-  playbackRevision += 1;
-  await stopPlayback();
+  const stopping = stopPlayback(), revision = transportRevision;
+  await stopping;
+  if (revision !== transportRevision) return;
   emit({ queue: [], index: 0, track: null, duration: 0 });
-  loadedQueueKey = '';
+  loadedQueue = null;
   await engine.reset().catch(() => undefined);
+  if (revision !== transportRevision) return;
   await AsyncStorage.removeItem(KEYS.session).catch(() => undefined);
 }
 
@@ -807,6 +883,7 @@ export function removeFromQueue(index: number) {
 }
 
 export async function selectQueueItem(index: number) {
+  playbackRevision += 1;
   await goToIndex(index, true);
 }
 
@@ -924,12 +1001,20 @@ export async function saveAudioSettings(patch: Partial<AudioSettings>) {
   // toggling audio must not cancel matching the voice to the selected text.
   if (patch.translationEdition !== undefined) translationSyncRevision += 1;
   if (!settingsLoaded || loadingSettings) await loadAudioSettings();
+  const previous = settings;
   settings = { ...settings, ...patch,
     ...(patch.translationAudioEnabled !== undefined && patch.translationAutoMuted === undefined
       ? { translationAutoMuted: false } : {}),
   };
   emitSettings();
-  await writeJson(KEYS.settings, settings);
+  const next = settings;
+  const translationChanged = previous.translationAudioEnabled !== next.translationAudioEnabled
+    || previous.translationEdition !== next.translationEdition || previous.translationName !== next.translationName
+    || previous.sequential !== next.sequential;
+  // Playback never waits for disk. Both the center and player use this path,
+  // including automatic language sync; UI-only selection cannot leave old audio.
+  const playback = translationChanged ? updateActiveTranslation(previous, next) : Promise.resolve();
+  await Promise.all([writeJson(KEYS.settings, next), playback]);
   return settings;
 }
 
@@ -996,20 +1081,23 @@ export async function loadAudioSession(): Promise<AudioSession | null> {
 }
 
 let lastSessionWrite = 0;
-async function rememberSession(position: number) {
+async function rememberSession(position: number, force = false) {
   const track = state.track;
   if (!track) return;
   const now = Date.now();
-  if (now - lastSessionWrite < 4000) return;
+  if (!force && now - lastSessionWrite < 4000) return;
   lastSessionWrite = now;
   const session: AudioSession = {
     chapterId: track.chapterId,
     chapterName: track.chapterName,
-    reciterMode: settings.reciterMode,
+    reciterMode: track.globalNumber > 0 ? 'verse' : settings.reciterMode,
     surahReciterId: settings.surahReciterId,
     edition: track.kind === 'arabic' ? track.edition : settings.reciter,
     translationEdition: settings.translationEdition,
+    translationAudioEnabled: state.queue.some(item => item.kind === 'translation'),
     sequential: settings.sequential,
+    trackKind: track.kind,
+    ayahNumber: track.ayahNumber,
     index: state.index,
     position,
     savedAt: now,
@@ -1045,13 +1133,15 @@ export async function restoreSavedSession(): Promise<boolean> {
       reciter: session.edition,
       translationEdition: session.translationEdition,
       sequential: session.sequential,
-      translationAudioEnabled: session.sequential,
+      translationAudioEnabled: session.translationAudioEnabled ?? session.sequential,
     });
     if (!queue.length || state.queue.length || revision !== playbackRevision) return false;
 
     await ensurePlayer();
     if (state.queue.length || revision !== playbackRevision) return false;
-    const index = Math.max(0, Math.min(session.index, queue.length - 1));
+    const matching = session.trackKind && session.ayahNumber
+      ? queue.findIndex(track => track.kind === session.trackKind && track.ayahNumber === session.ayahNumber) : -1;
+    const index = matching >= 0 ? matching : Math.max(0, Math.min(session.index, queue.length - 1));
     emit({ queue, index, error: null });
     await goToIndex(index, false);
 

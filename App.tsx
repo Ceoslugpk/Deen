@@ -93,6 +93,7 @@ import { QURAN_TOPICS, QURAN_VOCABULARY, TAJWEED_RULES, topicTitle, topicDescrip
 import {addSearchHistory, clearSearchHistory, clearSurahCache, deleteNote, HifzStatus, loadBookmarks, loadHifz, loadNotes, loadPlan, loadReadingPosition, loadRecentSurahs, loadSearchHistory, loadSurahCache, readerCacheKey, loadSurahCacheIndex, DEFAULTS, loadVocabularyProgress, QuranBookmark, QuranNote, QuranPreferences, removeSearchHistory, saveHifz, saveNote, savePlan, saveReadingPosition, saveSurahCache, saveVocabularyProgress, toggleBookmark, ReadingPosition, VocabularyProgress} from './src/services/quranState';
 import { createQuranPreferenceStore } from './src/services/quranPreferenceStore';
 import { translationAudioForLanguage, translationLanguageCode } from './src/services/translationPreferences';
+import { audioPlayerLanguage, audioPlayerText } from './src/services/audioPlayerCopy';
 import { addSearchHistory as addRecentSearch, clearSearchHistory as clearRecentSearch, loadSearchHistory as loadSearchHistoryFor, removeSearchHistory as removeRecentSearch } from './src/services/searchHistory';
 import { syncWidgets } from './src/services/widgetSync';
 import { refreshWidgets } from './src/services/widgetBridge';
@@ -12516,16 +12517,6 @@ function goBackOrHome(navigation?: any) {
   /* Reached when the navigator was missing or already at its root. */
   try { navigateWhenReady('Main'); } catch { /* the navigator is not ready */ }
 }
-const AUDIO_LANGUAGES: Record<string, string> = {
-  en: 'English', ur: 'Urdu', zh: 'Chinese', fr: 'French', ru: 'Russian',
-  kk: 'Kazakh', tr: 'Turkish', fa: 'Persian', uz: 'Uzbek', my: 'Burmese'
-};
-const AUDIO_LANGUAGES_AR: Record<string, string> = {
-  en: 'الإنجليزية', ur: 'الأردية', zh: 'الصينية', fr: 'الفرنسية', ru: 'الروسية',
-  kk: 'الكازاخية', tr: 'التركية', fa: 'الفارسية', uz: 'الأوزبكية', my: 'البورمية'
-};
-const languageName = (code: string, rtl: boolean) =>
-  (rtl ? AUDIO_LANGUAGES_AR : AUDIO_LANGUAGES)[code] || code;
 
 /**
  * A level from nothing to full, dragged with the thumb.
@@ -12687,9 +12678,10 @@ function AudioCenterScreen({ navigation }: any) { const recents=useRecentSearche
         reciter: session.edition,
         translationEdition: session.translationEdition,
         sequential: session.sequential,
-        translationAudioEnabled: session.sequential
+        translationAudioEnabled: session.translationAudioEnabled ?? session.sequential
       });
-      await playQueue(queue, session.index);
+      const matching = session.trackKind && session.ayahNumber ? queue.findIndex(track => track.kind === session.trackKind && track.ayahNumber === session.ayahNumber) : -1;
+      await playQueue(queue, matching >= 0 ? matching : session.index);
       if (session.position > 1) await seekTo(session.position);
       await refreshLibrary();
     } catch (e: any) { Alert.alert(T('Could not resume'),T(e.message)); } finally { setBusy(''); }
@@ -12703,7 +12695,7 @@ function AudioCenterScreen({ navigation }: any) { const recents=useRecentSearche
 
   const needle = query.trim().toLowerCase();
   const reciters = editions.arabic.filter((edition) => `${edition.englishName} ${edition.identifier}`.toLowerCase().includes(needle));
-  const translations = editions.translation.filter((edition) => `${edition.englishName} ${languageName(edition.language, rtl)}`.toLowerCase().includes(needle));
+  const translations = editions.translation.filter((edition) => `${edition.englishName} ${audioPlayerLanguage(language, edition.language)} ${audioPlayerLanguage('en', edition.language)}`.toLowerCase().includes(needle));
   const shownChapters = chapters.filter((chapter) => `${chapter.id} ${chapter.name_simple} ${chapter.translated_name?.name || ''}`.toLowerCase().includes(needle));
   const selectedReciter = editions.arabic.find((edition) => edition.identifier === settings.reciter);
 
@@ -12767,7 +12759,7 @@ function AudioCenterScreen({ navigation }: any) { const recents=useRecentSearche
           <View style={s.setting}>
             <MotionGlyph name="language-outline" size={19} />
             <View style={{ flex: 1 }}><Text style={s.settingName}>{T('Translation audio')}</Text><Text style={s.meta}>{T('Play the meaning after each verse')}</Text></View>
-            <View style={{ direction: 'ltr' } as any}><Switch value={settings.translationAudioEnabled} onValueChange={(value) => { void update({ translationAudioEnabled: value }); }} trackColor={{ true: C.green }} /></View>
+            <View style={{ direction: 'ltr' } as any}><Switch testID="audio-center-translation-toggle" accessibilityLabel={T('Translation audio')} value={settings.translationAudioEnabled} onValueChange={(value) => { void update({ translationAudioEnabled: value }); }} trackColor={{ true: C.green }} /></View>
           </View>
           {settings.translationAudioEnabled && <View style={s.setting}>
             <MotionGlyph name="layers-outline" size={19} />
@@ -12777,12 +12769,12 @@ function AudioCenterScreen({ navigation }: any) { const recents=useRecentSearche
         </View>
         <Text style={s.preferenceLabel}>{T('AVAILABLE LANGUAGES')}</Text>
         <View style={s.settings}>{translations.map((edition) => <View key={edition.identifier} style={s.audioRow}>
-          <Pressable accessibilityRole="radio" accessibilityState={{ selected: settings.translationEdition === edition.identifier }} onPress={() => { void update({ translationEdition: edition.identifier, translationName: edition.englishName }); }} style={s.audioRowMain}>
+          <Pressable testID={`audio-center-translation-${edition.identifier}`} accessibilityRole="radio" accessibilityState={{ checked: settings.translationEdition === edition.identifier }} aria-checked={settings.translationEdition === edition.identifier} onPress={() => { void update({ translationEdition: edition.identifier, translationName: edition.englishName }); }} style={s.audioRowMain}>
             <ToolGraphic tool="Translations" size={47} />
-            <View style={{ flex: 1 }}><Text style={s.settingName}>{languageName(edition.language, rtl)}</Text><Text style={s.meta}>{edition.englishName}</Text></View>
+            <View style={{ flex: 1 }}><Text style={s.settingName}>{audioPlayerLanguage(language, edition.language)}</Text><Text style={s.meta}>{edition.englishName}</Text></View>
             {ico(settings.translationEdition === edition.identifier ? 'checkmark-circle' : 'ellipse', 20, settings.translationEdition === edition.identifier ? C.green : C.muted)}
           </Pressable>
-          <Pressable accessibilityLabel={`${T('Play a sample in')} ${(rtl ? AUDIO_LANGUAGES_AR : AUDIO_LANGUAGES)[edition.language] || edition.language}`} onPress={() => { void sample(edition, 'translation'); }} style={s.audioRowAction}>{busy === `sample-${edition.identifier}` ? <ActivityIndicator color={C.green} /> : ico('play-circle', 22, C.green)}</Pressable>
+          <Pressable accessibilityLabel={`${T('Play a sample in')} ${audioPlayerLanguage(language, edition.language)}`} onPress={() => { void sample(edition, 'translation'); }} style={s.audioRowAction}>{busy === `sample-${edition.identifier}` ? <ActivityIndicator color={C.green} /> : ico('play-circle', 22, C.green)}</Pressable>
         </View>)}</View>
         <View style={s.sourceCard}>{ico('information-circle', 21, C.green)}<View style={{ flex: 1 }}><Text style={s.sourceTitle}>{T('Languages come from the source')}</Text><Text style={s.sourceBody}>{T('Only languages that are published are listed. Others are not shown rather than faked.')}</Text></View></View>
       </>}
@@ -12835,7 +12827,6 @@ function AudioPlayerScreen({ navigation }: any) {
   const { rtl , language }=useLanguage();
   const ar = language === 'ar';
   const T = (text: string) => tx(language, text);
-  const { preferences, update } = useQuranPreferences();
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [name, setName] = useState('');
   /* The translations that can actually be *played*. They are not the
@@ -12859,7 +12850,8 @@ function AudioPlayerScreen({ navigation }: any) {
      It points at the *audio* translation, which is a different thing from the
      text beside the Arabic and is stored separately. Changing it here changes
      what you hear; the words on the page are left alone. */
-  const shownEditions = audioEditions.slice(0, 8);
+  const shownEditions = audioEditions;
+  const translationLanguage = languageOf(settings.translationEdition, '');
 
   if (!track) return <Page><ToolBar title={T('Audio player')} navigation={navigation} /><View style={s.dataPage}>
     <ToolGraphic tool="Recitations" size={87} />
@@ -12874,30 +12866,44 @@ function AudioPlayerScreen({ navigation }: any) {
     <LinearGradient colors={[C.heroA, C.green]} style={s.playerHero}>
       <PlayerAura />
       <View style={s.playerArtRing}><ToolGraphic tool="Recitations" size={110} /></View>
-      <Text style={s.playerTitle}>{track.title}</Text>
-      <Text style={s.playerPerformer}>{track.performer}</Text>
-      <View style={s.trackBadge}><Text style={s.trackBadgeText}>{track.kind === 'translation' ? 'TRANSLATION' : 'ARABIC RECITATION'}</Text></View>
+      <Text testID="audio-player-track-title" style={s.playerTitle}>{track.title}</Text>
+      <Text testID="audio-player-source" style={s.playerPerformer}>{track.performer}</Text>
+      <View style={s.trackBadge}><Text style={s.trackBadgeText}>{T(track.kind === 'translation' ? 'TRANSLATION' : 'ARABIC RECITATION')}</Text></View>
     </LinearGradient>
 
     {!!track.text && <Text style={s.playerArabic}>{track.text}</Text>}
 
-    <Pressable accessibilityRole="button" accessibilityState={{ expanded: pickingTranslation }}
-      accessibilityLabel={`${T('Translation')}: ${settings.translationName}`}
-      onPress={() => setPickingTranslation((v) => !v)} style={s.playerTranslationRow}>
-      <Flag code={languageOf(settings.translationEdition, '')} size={18} />
-      <View style={{ flex: 1 }}>
+    <Tactile testID="audio-translation-toggle" accessibilityRole="switch"
+      accessibilityLabel={T('Translation audio')} accessibilityState={{ checked: settings.translationAudioEnabled }} aria-checked={settings.translationAudioEnabled}
+      onPress={() => { void saveAudioSettings({ translationAudioEnabled: !getAudioSettings().translationAudioEnabled }); }}
+      style={s.playerTranslationRow}>
+      {ico('language', 21, C.green)}
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text style={s.settingName}>{T('Translation audio')}</Text>
+        <Text testID="audio-translation-status" style={s.meta}>{T(settings.translationAudioEnabled ? 'On' : 'Off')}</Text>
+      </View>
+      <View pointerEvents="none" accessible={false} style={[s.playerTranslationSwitch, { backgroundColor: settings.translationAudioEnabled ? C.green : C.muted }]}>
+        <View style={[s.playerTranslationThumb, { alignSelf: settings.translationAudioEnabled ? 'flex-end' : 'flex-start' }]} />
+      </View>
+    </Tactile>
+    <Pressable testID="audio-translation-picker" accessibilityRole="button" accessibilityState={{ expanded: pickingTranslation }} aria-expanded={pickingTranslation}
+      accessibilityLabel={`${T('Translation')}: ${audioPlayerLanguage(language, translationLanguage)} · ${settings.translationName}`}
+      onPress={() => setPickingTranslation((v) => !v)} style={[s.playerTranslationRow, { marginTop: 8 }]}>
+      <Flag code={translationLanguage} size={18} />
+      <View style={{ flex: 1, minWidth: 0 }}>
         <Text style={s.settingName}>{T('Translation')}</Text>
-        <Text style={s.meta} numberOfLines={1}>{settings.translationName}</Text>
+        <Text style={s.meta}>{audioPlayerLanguage(language, translationLanguage)} · {settings.translationName}</Text>
       </View>
       {ico(pickingTranslation ? 'chevron-up' : 'chevron-down', 18, C.green)}
     </Pressable>
-    {!!pickingTranslation && <View style={s.playerTranslationList}>
-      {shownEditions.map((e) => <Pressable key={e.identifier}
-        accessibilityRole="radio" accessibilityState={{ checked: settings.translationEdition === e.identifier }}
-        onPress={() => { void saveAudioSettings({ translationEdition: e.identifier, translationName: e.englishName, translationAudioEnabled: true }).then(setSettingsState); setPickingTranslation(false); }}
+    {track.globalNumber === 0 && <Text testID="audio-translation-whole-surah-hint" style={s.meta}>{audioPlayerText(language, 'wholeSurah')}</Text>}
+    {!!pickingTranslation && <View testID="audio-translation-options" style={s.playerTranslationList}>
+      {shownEditions.map((e) => <Pressable key={e.identifier} testID={`audio-translation-${e.identifier}`}
+        accessibilityRole="radio" accessibilityState={{ checked: settings.translationEdition === e.identifier }} aria-checked={settings.translationEdition === e.identifier}
+        onPress={() => { void saveAudioSettings({ translationEdition: e.identifier, translationName: e.englishName }); setPickingTranslation(false); }}
         style={[s.playerTranslationOption, settings.translationEdition === e.identifier && s.playerTranslationOptionOn]}>
         <Flag code={languageOf(e.identifier, e.language)} size={16} />
-        <Text style={[s.settingName, { flex: 1 }]} numberOfLines={1}>{e.englishName}</Text>
+        <View style={{ flex: 1, minWidth: 0 }}><Text style={s.settingName}>{audioPlayerLanguage(language, e.language)}</Text><Text style={s.meta}>{e.englishName}</Text></View>
         {settings.translationEdition === e.identifier && ico('checkmark-circle', 18, C.green)}
       </Pressable>)}
       <Pressable accessibilityRole="button" accessibilityLabel={T('All translations')}
@@ -12907,16 +12913,17 @@ function AudioPlayerScreen({ navigation }: any) {
       </Pressable>
     </View>}
 
+    {!!audio.error && <Text testID="audio-player-error" accessibilityRole="alert" style={[s.meta, { color: C.coral }]}>{audio.error === 'This translation audio is unavailable.' ? audioPlayerText(language, 'unavailable') : T(audio.error)}</Text>}
     <View style={s.audioTimes}>
       <Text style={s.meta}>{formatClock(audio.position)}</Text>
-      <Text style={s.meta}>{audio.buffering ? 'Buffering…' : formatClock(audio.duration)}</Text>
+      <Text style={s.meta}>{audio.buffering ? T('Buffering…') : formatClock(audio.duration)}</Text>
     </View>
     <View style={s.playerSeek}><SeekBar position={audio.position} duration={audio.duration} onSeek={(value) => { void seekTo(value); }} /></View>
 
     <View style={s.audioControls}>
-      <Pressable accessibilityLabel={T('Previous verse')} onPress={() => { void previousTrack(); }} style={s.audioControlBtn}>{ico('play-skip-back', 20, C.green)}</Pressable>
-      <Pressable accessibilityLabel={audio.playing ? 'Pause' : 'Play'} onPress={() => { void togglePlayback(); }} style={s.audioControlMain}>{audio.playing ? ico('pause', 28, C.white) : ico('play', 28, C.white)}</Pressable>
-      <Pressable accessibilityLabel={T('Next verse')} onPress={() => { void nextTrack(); }} style={s.audioControlBtn}>{ico('play-skip-forward', 20, C.green)}</Pressable>
+      <Pressable testID="audio-player-previous" accessibilityRole="button" accessibilityLabel={T('Previous verse')} onPress={() => { void previousTrack(); }} style={s.audioControlBtn}>{ico('play-skip-back', 20, C.green)}</Pressable>
+      <Pressable testID="audio-player-play-pause" accessibilityRole="button" accessibilityLabel={T(audio.playing ? 'Pause' : 'Play')} onPress={() => { void togglePlayback(); }} style={s.audioControlMain}>{audio.playing ? ico('pause', 28, C.white) : ico('play', 28, C.white)}</Pressable>
+      <Pressable testID="audio-player-next" accessibilityRole="button" accessibilityLabel={T('Next verse')} onPress={() => { void nextTrack(); }} style={s.audioControlBtn}>{ico('play-skip-forward', 20, C.green)}</Pressable>
       <Pressable accessibilityLabel={`${T('Repeat mode')}: ${T(audio.repeat === 'one' ? 'Repeat one' : audio.repeat === 'all' ? 'Repeat all' : 'Repeat off')}`} onPress={() => setRepeatMode(audio.repeat === 'none' ? 'all' : audio.repeat === 'all' ? 'one' : 'none')} style={s.audioControlBtn}>{ico('repeat', 19, audio.repeat === 'none' ? C.muted : C.green)}<Text style={s.rateText}>{audio.repeat === 'one' ? '1' : audio.repeat === 'all' ? '∞' : '—'}</Text></Pressable>
     </View>
 
@@ -13021,7 +13028,9 @@ function AudioPlayerScreen({ navigation }: any) {
     </View>
 
     <Section title={`Queue · ${audio.queue.length} tracks`} />
-    {audio.queue.map((item, index) => <Pressable key={`${item.id}-${index}`} onPress={() => { void selectQueueItem(index); }} style={[s.queueRow, index === audio.index && s.queueRowActive]}>
+    {audio.queue.map((item, index) => <Pressable key={`${item.id}-${index}`} testID={`audio-queue-${index}`}
+      accessibilityRole="button" accessibilityLabel={`${T(item.kind === 'translation' ? 'Translation' : 'Verse')} ${item.chapterId}:${item.ayahNumber} · ${item.performer}`}
+      onPress={() => { void selectQueueItem(index); }} style={[s.queueRow, index === audio.index && s.queueRowActive]}>
       <Text style={s.queueIndex}>{index + 1}</Text>
       <View style={{ flex: 1 }}><Text numberOfLines={1} style={s.settingName}>{item.title}</Text><Text style={s.meta}>{item.performer}</Text></View>
       <Pressable accessibilityLabel={`${T('Remove from the queue')} ${item.title}`} onPress={() => removeFromQueue(index)} style={s.audioRowAction}>{ico('close', 16, C.muted)}</Pressable>
@@ -15543,9 +15552,11 @@ legendDot:{width:8,height:8,borderRadius:4,backgroundColor:C.green},
 playerHero:{borderRadius:30,padding:24,alignItems:'center',overflow:'hidden',...shadow},
 playerAura:{position:'absolute',width:300,height:300,top:-90,borderRadius:150,opacity:.5},
 playerArtRing:{width:150,height:150,borderRadius:75,alignItems:'center',justifyContent:'center',backgroundColor:'rgba(255,255,255,.13)',borderWidth:1,borderColor:'rgba(255,255,255,.28)'},
-playerTranslationRow:{flexDirection:'row',alignItems:'center',gap:12,backgroundColor:C.card,borderRadius:16,borderWidth:1,borderColor:C.line,padding:12,marginTop:16,...soft},
+playerTranslationRow:{minHeight:60,flexDirection:'row',alignItems:'center',gap:12,backgroundColor:C.card,borderRadius:16,borderWidth:1,borderColor:C.line,padding:12,marginTop:16,...soft},
+playerTranslationSwitch:{width:44,height:26,borderRadius:13,padding:3,justifyContent:'center',flexShrink:0,direction:'ltr'},
+playerTranslationThumb:{width:20,height:20,borderRadius:10,backgroundColor:'#fff'},
 playerTranslationList:{backgroundColor:C.card,borderRadius:16,borderWidth:1,borderColor:C.line,marginTop:8,overflow:'hidden'},
-playerTranslationOption:{flexDirection:'row',alignItems:'center',gap:12,paddingVertical:16,paddingHorizontal:16,borderBottomWidth:1,borderColor:C.line},
+playerTranslationOption:{minHeight:52,flexDirection:'row',alignItems:'center',gap:12,paddingVertical:16,paddingHorizontal:16,borderBottomWidth:1,borderColor:C.line},
   playerTranslationOptionLast:{flexDirection:'row',alignItems:'center',gap:12,paddingVertical:16,paddingHorizontal:16},
 playerTranslationOptionOn:{backgroundColor:C.mint},
   playerRow:{flexDirection:'row',alignItems:'center',gap:10,marginTop:20},

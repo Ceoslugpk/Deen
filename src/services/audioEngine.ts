@@ -54,6 +54,8 @@ export type EngineStatus = {
    * next depends on which ayah ended.
    */
   endedIndex: number | null;
+  /** A failed source is not an interruption to auto-resume indefinitely. */
+  error?: string | null;
 };
 
 export type AudioEngine = {
@@ -75,6 +77,8 @@ export type AudioEngine = {
     rate: number,
     volume: number,
   ): Promise<void>;
+  /** Replace the accompaniment while retaining the current source/time when unchanged. */
+  updateQueue(queue: AudioTrack[], index: number, autoplay: boolean, rate: number, volume: number): Promise<void>;
   /** Move to another ayah in the surah already loaded. */
   skipTo(index: number, autoplay: boolean, rate: number, volume: number): Promise<void>;
   play(): Promise<void>;
@@ -107,8 +111,10 @@ function createWebEngine(): AudioEngine {
   let player: AudioPlayer | null = null;
   let listener: ((status: EngineStatus) => void) | null = null;
   let currentUri = '';
+  let sourceFailed = false;
   let currentQueue: AudioTrack[] = [];
   let index = 0;
+  let commandRevision = 0;
 
   async function prepare(): Promise<void> {
     if (player) return;
@@ -132,12 +138,14 @@ function createWebEngine(): AudioEngine {
        re-establish it, which is what makes a resume stutter or start late. */
     player = createAudioPlayer(null, { updateInterval: 500, keepAudioSessionActive: true });
     player.addListener('playbackStatusUpdate', (status) => {
+      if (status.error) sourceFailed = true;
       listener?.({
         playing: status.playing,
         position: status.currentTime,
         duration: status.duration,
         buffering: status.isBuffering,
         endedIndex: status.didJustFinish ? index : null,
+        error: status.error,
       });
     });
   }
@@ -145,8 +153,11 @@ function createWebEngine(): AudioEngine {
   async function apply(uri: string, autoplay: boolean, rate: number, volume: number) {
     const instance = player;
     if (!instance) return;
-    if (currentUri !== uri) {
+    if (currentUri !== uri || sourceFailed) {
+      // Silence the old voice before loading its replacement, even on slow networks.
+      instance.pause();
       currentUri = uri;
+      sourceFailed = false;
       instance.replace(uri);
     }
     /* Rate and volume have to be re-applied on every source change, not only
@@ -164,12 +175,15 @@ function createWebEngine(): AudioEngine {
       /* volume is unavailable in some browsers until playback starts */
     }
     if (autoplay) instance.play();
+    else instance.pause();
   }
 
   return {
     prepare,
     async loadQueue(queue, startIndex, autoplay, rate, volume) {
+      const revision = ++commandRevision;
       await prepare();
+      if (revision !== commandRevision) return;
       currentQueue = queue;
       index = startIndex;
       currentUri = '';
@@ -177,8 +191,27 @@ function createWebEngine(): AudioEngine {
       if (!track) return;
       await apply(track.uri, autoplay, rate, volume);
     },
-    async skipTo(nextIndex, autoplay, rate, volume) {
+    async updateQueue(queue, nextIndex, autoplay, rate, volume) {
+      const revision = ++commandRevision;
       await prepare();
+      if (revision !== commandRevision) return;
+      const track = queue[nextIndex];
+      if (!track) return;
+      currentQueue = queue;
+      index = nextIndex;
+      if (currentUri === track.uri && !sourceFailed) {
+        // Editing future translations must not replace, rewind or replay Arabic.
+        try { player?.setPlaybackRate(rate, 'high'); } catch { /* optional */ }
+        try { if (player) player.volume = volume; } catch { /* optional */ }
+        if (!autoplay) player?.pause();
+        return;
+      }
+      await apply(track.uri, autoplay, rate, volume);
+    },
+    async skipTo(nextIndex, autoplay, rate, volume) {
+      const revision = ++commandRevision;
+      await prepare();
+      if (revision !== commandRevision) return;
       index = nextIndex;
       const track = currentQueue[nextIndex];
       if (!track) return;
@@ -188,12 +221,14 @@ function createWebEngine(): AudioEngine {
       player?.play();
     },
     async pause() {
+      commandRevision += 1;
       player?.pause();
     },
     async seek(seconds: number) {
       await player?.seekTo(Math.max(0, seconds));
     },
     async stop() {
+      commandRevision += 1;
       player?.pause();
       if (player) await player.seekTo(0);
     },
@@ -270,6 +305,7 @@ function createNativeEngine(): AudioEngine {
   let index = 0;
   let lastPosition = 0;
   let lastDuration = 0;
+  let commandRevision = 0;
 
   /**
    * The transport reports our own moves back to us as though an ayah had
@@ -281,12 +317,13 @@ function createNativeEngine(): AudioEngine {
   const QUIET_MS = 400;
   const wasSelfDriven = () => selfDrivenMoves > 0 || (selfDrivenAt !== 0 && Date.now() - selfDrivenAt < QUIET_MS);
 
-  async function selfDrive(action: () => void | Promise<void>) {
+  async function selfDrive(action: () => void | Promise<void>, propagate = false) {
     selfDrivenAt = Date.now();
     selfDrivenMoves += 1;
     try {
       await action();
-    } catch {
+    } catch (error) {
+      if (propagate) throw error;
       /* The transport did not do it. Reported rather than thrown: every
          caller of this is a listener's own move, and a rejection here would
          surface as an unhandled promise rather than a pause button that
@@ -443,10 +480,12 @@ function createNativeEngine(): AudioEngine {
          queue stayed empty. Nothing was ever added, nothing was ever
          played, and the player sat at the bottom of the screen reporting
          buffering — on Android only, because web never took this path. */
+      const revision = ++commandRevision;
       const sources = queue.map((track) => ({ uri: track.uri }));
       await selfDrive(async () => {
         // Guard constructor events too, not just the later skip/play commands.
         await prepare(sources);
+        if (revision !== commandRevision) return;
         const p = playlist;
         if (!p) return;
         currentQueue = queue;
@@ -470,10 +509,42 @@ function createNativeEngine(): AudioEngine {
            nothing for the system to show, and nothing to skip between. */
         p.setActiveForLockScreen(true, metadataFor(queue[startIndex]), LOCK_OPTIONS);
         if (autoplay) p.play();
+        else p.pause();
       });
     },
+    async updateQueue(queue, nextIndex, autoplay, rate, volume) {
+      const revision = ++commandRevision;
+      const sources = queue.map(track => ({ uri: track.uri }));
+      await selfDrive(async () => {
+        await prepare(sources);
+        if (revision !== commandRevision) return;
+        const p = playlist;
+        if (!p || !queue[nextIndex]) return;
+        const sameSource = currentQueue[index]?.uri === queue[nextIndex].uri;
+        const position = sameSource ? p.currentTime : 0;
+        // iOS insert/remove can reconstruct the current AVPlayerItem too. Do
+        // one guarded rebuild and seek, rather than repeatedly resetting it.
+        p.pause();
+        currentQueue = queue;
+        index = nextIndex;
+        p.clear();
+        for (const source of sources) p.add(source);
+        playlistSources = sources;
+        p.skipTo(nextIndex);
+        applyRate(rate);
+        applyVolume(volume);
+        p.setActiveForLockScreen(true, metadataFor(queue[nextIndex]), LOCK_OPTIONS);
+        if (position > 0) await p.seekTo(position);
+        // A newer language, pause, stop or queue selection wins over this seek.
+        if (revision !== commandRevision) return;
+        if (autoplay) p.play();
+        else p.pause();
+      }, true);
+    },
     async skipTo(nextIndex, autoplay, rate, volume) {
+      const revision = ++commandRevision;
       await prepare(currentQueue.map((track) => ({ uri: track.uri })));
+      if (revision !== commandRevision) return;
       index = nextIndex;
       await selfDrive(() => {
         const p = playlist;
@@ -483,12 +554,14 @@ function createNativeEngine(): AudioEngine {
         p.skipTo(nextIndex);
         p.updateLockScreenMetadata(metadataFor(currentQueue[nextIndex]));
         if (autoplay) p.play();
+        else p.pause();
       });
     },
     async play() {
       try { playlist?.play(); } catch { /* nothing to play on */ }
     },
     async pause() {
+      commandRevision += 1;
       try { playlist?.pause(); } catch { /* nothing to pause */ }
     },
     async seek(seconds: number) {
@@ -497,12 +570,14 @@ function createNativeEngine(): AudioEngine {
       });
     },
     async stop() {
+      commandRevision += 1;
       await selfDrive(async () => {
         playlist?.pause();
         await playlist?.seekTo(0);
       });
     },
     async reset() {
+      commandRevision += 1;
       await selfDrive(() => {
         playlist?.clear();
         playlist?.clearLockScreenControls();
