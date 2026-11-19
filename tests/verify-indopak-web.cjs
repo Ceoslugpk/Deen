@@ -7,7 +7,7 @@ const path = require('node:path');
 const { chromium } = require('playwright');
 const meta = require('../src/data/indopak16/meta.json');
 const url = process.env.INDOPAK_URL || 'http://127.0.0.1:8106';
-const output = process.env.INDOPAK_ARTIFACTS_DIR || '/tmp/islamic-r97-web-smoke';
+const output = process.env.INDOPAK_ARTIFACTS_DIR || '/tmp/islamic-r98-web-smoke';
 const key = '@deen/quran/indopak-taj-16/state/v1';
 const originalKeys = ['@deen/quran/preferences/v1', '@deen/quran/position/v1', '@deen/quran/bookmarks/v1', '@deen/quran/notes/v1'];
 const pause = page => page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
@@ -196,7 +196,8 @@ async function insets(page, values) {
   }, values); await pause(page);
 }
 
-(async () => {
+module.exports = { makePage, box, pause, layout, gotoPage, expectPage, touchSwipe, insets };
+if (require.main === module) (async () => {
   fs.mkdirSync(output, { recursive: true });
   const browser = await chromium.launch();
   const report = { method: 'Running production Expo WEB with bundled source assets, simulated insets; not a native Android/iOS device test', url, pages: [], profiles: [], insets: [], errors: [] };
@@ -223,7 +224,7 @@ async function insets(page, values) {
     await touchSwipe(page,{dx:-155}); await expectPage(page,1);
     assert.equal(await page.evaluate(k=>localStorage.getItem(k),key),null,'An outward boundary swipe does not save defaults');
     await touchSwipe(page,{dx:150,word:true}); await expectPage(page,2);
-    assert.equal(await page.getByTestId('indopak-verse-panel').count(),0,'Swipe starting on a verse must not open a verse modal');
+    assert.equal(await page.getByTestId('indopak-ayah-popover').count(),0,'Swipe starting on a verse must not open a verse modal');
     assert.equal(await page.evaluate(()=>window.__indopakOutgoingAdds),0,'Reduced motion creates no animated outgoing layer'); report.reducedMotion = true;
     await touchSwipe(page,{dx:155}); await expectPage(page,3);
     await touchSwipe(page,{dx:-155}); await expectPage(page,2);
@@ -234,8 +235,8 @@ async function insets(page, values) {
     await touchSwipe(page,{dx:28}); await expectPage(page,2);
     await page.waitForTimeout(380);
     await page.getByTestId('indopak-page-svg').locator('rect[data-testid^="indopak-word-"]').first().tap();
-    await page.getByTestId('indopak-verse-panel').waitFor();
-    await page.getByTestId('indopak-verse-panel').getByRole('button',{name:'Close',exact:true}).click();
+    await page.getByTestId('indopak-ayah-popover').waitFor();
+    await page.keyboard.press('Escape');
     await zoomIcon(page,true); await page.getByTestId('indopak-zoom').click(); await zoomIcon(page,true);
     const beforePan = await page.getByTestId('indopak-horizontal-scroll').evaluate(e=>e.scrollLeft);
     await touchSwipe(page,{dx:145}); await expectPage(page,2);
@@ -309,16 +310,15 @@ async function insets(page, values) {
     report.modals = [];
     for (const viewport of [{width:320,height:568},{width:844,height:390}]) {
       await page.setViewportSize(viewport); await insets(page, {});
-      for (const kind of ['page','surah','juz','bookmarks','sources','verse-list','verse-panel']) {
+      for (const kind of ['page','surah','juz','bookmarks','sources','verse-list']) {
         if (kind === 'surah' || kind === 'juz' || kind === 'sources') await page.getByTestId(`indopak-${kind}`).click();
         else if (kind === 'page' || kind === 'bookmarks') {
           await page.getByTestId('indopak-page-select').click();
           if (kind === 'bookmarks') await page.getByTestId('indopak-navigator').getByRole('button',{name:'Bookmarks',exact:true}).click();
         } else {
           await page.getByRole('button',{name:'Verse',exact:true}).click();
-          if (kind === 'verse-panel') await page.locator('[data-testid^="indopak-jump-verse-"]').first().click();
         }
-        const panel = page.getByTestId(kind === 'verse-panel' ? 'indopak-verse-panel' : 'indopak-navigator');
+        const panel = page.getByTestId('indopak-navigator');
         // Android has a separate SystemModal boundary; the web portal intentionally
         // does not. Simulate that separate window on the modal root, NOT on the
         // unrelated app boundary behind the portal.
@@ -362,9 +362,9 @@ async function insets(page, values) {
     const word55 = await page.getByTestId('indopak-page-svg').locator('rect').filter({ hasText: /^$/ }).count(); assert.ok(word55 > 0);
     // Accessibility alternative to tiny word targets, then an actual word hit target.
     await page.getByRole('button', { name: 'Verse', exact: true }).click();
-    await page.getByTestId('indopak-jump-verse-55:5').click(); await page.getByTestId('indopak-verse-panel').waitFor();
+    await page.getByTestId('indopak-jump-verse-55:5').click(); await page.getByTestId('indopak-ayah-popover').waitFor();
     assert.equal(await page.evaluate(() => window.__indopakPlays.length), 0, 'Cold player: no earlier audio plays');
-    await page.getByTestId('indopak-play-verse').click(); await page.getByTestId('mini-player').waitFor();
+    await page.getByTestId('indopak-ayah-play').click(); await page.getByTestId('mini-player').waitFor();
     await page.waitForFunction(() => window.__indopakMedia.some(a => (a.currentSrc || a.src).includes('/ar.alafasy/4906.mp3') && !a.paused && a.currentTime > .2));
     assert.ok((await page.evaluate(() => window.__indopakPlays[0])).endsWith('/ar.alafasy/4906.mp3'));
     const media = await page.evaluate(() => window.__indopakMedia.map(a => ({ url:a.currentSrc || a.src,paused:a.paused,readyState:a.readyState,position:a.currentTime })).filter(a=>a.url.includes('/4906.mp3')));
@@ -389,7 +389,7 @@ async function insets(page, values) {
     await page.getByTestId('floating-navigation-bar').waitFor({state:'detached'}); await layout(page);
     report.audioScreenMenuRestored = true;
     await page.getByRole('button', { name: 'Verse', exact: true }).click(); await page.getByTestId('indopak-jump-verse-55:5').click();
-    await page.getByTestId('indopak-open-verse').click(); await page.getByTestId('reader-header').waitFor();
+    await page.getByTestId('indopak-ayah-translation').click(); await page.getByTestId('reader-header').waitFor();
     await page.getByText('55:5', { exact:true }).waitFor(); report.existingReader = true;
     await page.getByTestId('floating-navigation-bar').waitFor();
     await page.getByTestId('reader-header').getByRole('button',{name:'Go back',exact:true}).click();
@@ -405,7 +405,7 @@ async function insets(page, values) {
       await next.page.setViewportSize({width:280,height:720}); await layout(next.page,274);
       await next.page.setViewportSize({width:390,height:844}); await pause(next.page);
       const firstWord = next.page.getByTestId('indopak-page-svg').locator('rect[data-testid^="indopak-word-"]').first();
-      await firstWord.click(); await next.page.getByTestId('indopak-verse-panel').waitFor();
+      await firstWord.click(); await next.page.getByTestId('indopak-ayah-popover').waitFor();
       await next.page.screenshot({path:path.join(output,`${language}-${dark?'dark':'rtl'}-verse.png`),animations:'disabled'});
       await next.context.close();
     }

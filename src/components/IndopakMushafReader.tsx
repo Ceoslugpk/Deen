@@ -1,18 +1,20 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, Easing, FlatList, PanResponder, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type ViewStyle } from 'react-native';
+import { AccessibilityInfo, ActivityIndicator, Animated, Easing, FlatList, PanResponder, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type GestureResponderEvent, type ViewStyle } from 'react-native';
 import { SystemModal } from './SystemModal';
 import { IndopakPageCanvas } from './IndopakPageCanvas';
 import { IndopakPageFold } from './IndopakPageFold';
+import { IndopakAyahPopover } from './IndopakAyahPopover';
+import { INDOPAK_HOLD_MS, indopakAyahSegments, indopakPopoverLayout, indopakRevealOffset, indopakStationaryPress, indopakWordAnchor, type IndopakSelection } from '../services/indopakSelection';
 import { useCalmMotion } from '../design/useCalmMotion';
 import { useSafeContentFrame } from './SystemNavigationBoundary';
 import { tx } from '../services/arabicCopy';
 import { indopakText } from '../services/indopakCopy';
 import { captureIndopakSwipe, indopakSwipePage, indopakTurnPlan, indopakZoomControl } from '../services/indopakInteraction';
 import { ensureIndopakFont } from '../services/indopakFont';
-import { defaultIndopakState, loadIndopakState, saveIndopakState, type IndopakState } from '../services/indopakState';
+import { defaultIndopakState, loadIndopakState, saveIndopakState, normalizeIndopakReadingPoint, type IndopakReadingPoint, type IndopakState } from '../services/indopakState';
 import {
-  fitIndopakPage, INDOPAK_FONT, INDOPAK_PAGE_COUNT, indopakMeta, indopakPage,
-  indopakVerseKey, indopakVerseWords, parseIndopakPage, validIndopakPage, type IndopakChapter,
+  fitIndopakPage, INDOPAK_PAGE_COUNT, indopakMeta, indopakPage,
+  indopakVerseKey, placeIndopakPage, parseIndopakPage, validIndopakPage, type IndopakChapter,
 } from '../services/indopakMushaf';
 
 type Picker = 'page' | 'surah' | 'juz' | 'bookmarks' | 'verse' | 'sources';
@@ -44,12 +46,18 @@ export function IndopakMushafReader({ colors: C, dark, language, rtl, icon, init
   const [attempt, setAttempt] = useState(0);
   const [saveError, setSaveError] = useState(false);
   const [picker, setPicker] = useState<Picker | null>(null);
-  const [verse, setVerse] = useState<string | null>(null);
+  const [selection, setSelection] = useState<IndopakSelection | null>(null);
+  const verse = selection?.verse || null;
+  const closeSelection = useCallback(() => setSelection(null), []);
+  const [pendingReveal, setPendingReveal] = useState<{ point: IndopakReadingPoint; open: boolean } | null>(null);
   const [viewport, setViewport] = useState({ width: 0, height: 0 });
   const [turn, setTurn] = useState<PageTurn | null>(null);
   const turning = useRef(false), turnProgress = useRef(new Animated.Value(1)).current;
   const scroll = useRef({ x: 0, y: 0 });
-  const suppressVerseUntil = useRef(0);
+  const suppressVerseUntil = useRef(0), popupTouch = useRef(false);
+  const hold = useRef({ active: false, blocked: true, held: false, x: 0, y: 0, page: 0, zoom: 1, wordId: 0, verse: '' });
+  const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const endWord = useCallback(() => { hold.current.active = false; if (holdTimer.current) clearTimeout(holdTimer.current); holdTimer.current = null; }, []);
   const vertical = useRef<React.ElementRef<typeof ScrollView>>(null), horizontal = useRef<React.ElementRef<typeof ScrollView>>(null);
   useEffect(() => {
     let live = true;
@@ -57,6 +65,7 @@ export function IndopakMushafReader({ colors: C, dark, language, rtl, icon, init
       if (!live) return;
       const restored = validIndopakPage(initialPage) ? { ...value, page: initialPage } : value;
       latest.current = restored; setState(restored); setHydrated(true);
+      if (restored.readingPoint?.page === restored.page) setPendingReveal({ point: restored.readingPoint, open: false });
     });
     return () => { live = false; };
   }, [initialPage]);
@@ -68,10 +77,10 @@ export function IndopakMushafReader({ colors: C, dark, language, rtl, icon, init
   }, [attempt]);
 
   const update = useCallback((patch: Partial<IndopakState>) => {
-    if (!hydrated) return;
+    if (!hydrated) return Promise.resolve(false);
     const next = { ...latest.current, ...patch };
     latest.current = next; setState(next); setSaveError(false);
-    void saveIndopakState(next).then(ok => { if (latest.current === next) setSaveError(!ok); });
+    return saveIndopakState(next).then(ok => { if (latest.current === next) setSaveError(!ok); return ok; });
   }, [hydrated]);
   const page = useMemo(() => {
     try { return indopakPage(state.page); } catch { return null; }
@@ -79,11 +88,17 @@ export function IndopakMushafReader({ colors: C, dark, language, rtl, icon, init
   const meta = indopakMeta();
   const chapterFor = (key: string) => meta.chapters[Number(key.split(':')[0]) - 1];
   const chapter = verse ? chapterFor(verse) : null;
-  const verseText = useMemo(() => verse ? indopakVerseWords(verse).map(w => w[3]).join(' ') : '', [verse]);
+  const placed = useMemo(() => page ? placeIndopakPage(page) : [], [page]);
+  const segments = useMemo(() => indopakAyahSegments(placed), [placed]);
   const verses = useMemo(() => page ? [...new Set(page.words.map(indopakVerseKey))] : [], [page]);
   const size = fitIndopakPage(viewport.width, viewport.height, state.zoom, true);
   const marked = state.savedPages.includes(state.page);
   const zoomControl = indopakZoomControl(state.zoom);
+  const popover = selection ? indopakPopoverLayout(viewport, size, scroll.current, segments, selection) : null;
+  useLayoutEffect(() => {
+    endWord(); hold.current.blocked = true; closeSelection();
+  }, [state.page, state.zoom, viewport.width, viewport.height, closeSelection, endWord]);
+  useEffect(() => () => { if (holdTimer.current) clearTimeout(holdTimer.current); }, []);
   // Start after React commits both layers. No timers, transparent text crossfade or 3D distortion.
   useLayoutEffect(() => {
     if (!turn) return;
@@ -102,7 +117,7 @@ export function IndopakMushafReader({ colors: C, dark, language, rtl, icon, init
   }, [turn, still, viewport.width, viewport.height, state.zoom, turnProgress]);
   const goPage = useCallback((number: number) => {
     if (!validIndopakPage(number) || !hydrated || turning.current) return;
-    setVerse(null); setPicker(null);
+    closeSelection(); setPicker(null);
     const from = latest.current.page, plan = viewport.height > 0 ? indopakTurnPlan(from, number, viewport.width, still) : null;
     if (plan) {
       turning.current = true;
@@ -114,17 +129,31 @@ export function IndopakMushafReader({ colors: C, dark, language, rtl, icon, init
     horizontal.current?.scrollToEnd({ animated: false });
     scroll.current = { x: 0, y: 0 };
   }, [hydrated, update, still, viewport.width, viewport.height, size.width, size.height]);
+  useLayoutEffect(() => {
+    if (!pendingReveal || turn || !hydrated || !fontReady || pendingReveal.point.page !== state.page || size.width <= 0 || size.height <= 0) return;
+    const anchor = indopakWordAnchor(placed, pendingReveal.point.verse, pendingReveal.point.wordId);
+    setPendingReveal(null);
+    if (!anchor) return;
+    const target = indopakRevealOffset(viewport, size, anchor.rect);
+    scroll.current = target;
+    vertical.current?.scrollTo({ y: target.y, animated: false });
+    horizontal.current?.scrollTo({ x: target.x, animated: false });
+    if (pendingReveal.open) setSelection({ verse: pendingReveal.point.verse, wordId: anchor.wordId });
+  }, [pendingReveal, turn, hydrated, fontReady, state.page, placed, viewport.width, viewport.height, size.width, size.height]);
   const swipeFrom = useRef<number | null>(null), swipeBlocked = useRef(false);
-  const canSwipe = hydrated && fontReady && !fontError && !!page && !picker && !verse && !turn;
+  const canSwipe = hydrated && fontReady && !fontError && !!page && !picker && !turn;
   const swipe = useMemo(() => PanResponder.create({
     onStartShouldSetPanResponder: () => false,
     onStartShouldSetPanResponderCapture: (_event, gesture) => {
+      popupTouch.current = false;
       swipeBlocked.current = gesture.numberActiveTouches !== 1;
+      if (swipeBlocked.current) hold.current.blocked = true;
       return false;
     },
-    onMoveShouldSetPanResponder: (_event, gesture) => canSwipe && !turning.current && !swipeBlocked.current && captureIndopakSwipe(state.zoom, gesture),
-    onMoveShouldSetPanResponderCapture: (_event, gesture) => canSwipe && !turning.current && !swipeBlocked.current && captureIndopakSwipe(state.zoom, gesture),
+    onMoveShouldSetPanResponder: (_event, gesture) => canSwipe && !popupTouch.current && !turning.current && !swipeBlocked.current && captureIndopakSwipe(state.zoom, gesture),
+    onMoveShouldSetPanResponderCapture: (_event, gesture) => canSwipe && !popupTouch.current && !turning.current && !swipeBlocked.current && captureIndopakSwipe(state.zoom, gesture),
     onPanResponderGrant: (_event, gesture) => {
+      hold.current.blocked = true; hold.current.active = false; closeSelection();
       swipeFrom.current = latest.current.page; swipeBlocked.current = gesture.numberActiveTouches !== 1;
       suppressVerseUntil.current = Date.now() + 350;
     },
@@ -146,13 +175,41 @@ export function IndopakMushafReader({ colors: C, dark, language, rtl, icon, init
   // Keep web wrappers enabled and let their actual overflow decide what scrolls;
   // stage pan-y reserves unzoomed horizontal drags for JS, without blocking vertical scrolling.
   const webGestureStyle: ViewStyle & { touchAction: 'pan-y' | 'auto' } = { touchAction: state.zoom === 1 ? 'pan-y' : 'auto' };
-  const openWord = (key: string) => { if (!turning.current && Date.now() >= suppressVerseUntil.current) setVerse(key); };
+  const beginWord = (key: string, wordId: number, event: GestureResponderEvent) => {
+    endWord();
+    const e = event.nativeEvent, touch = e.touches?.[0] || e;
+    hold.current = { active: true, blocked: (e.touches?.length || 1) !== 1 || Date.now() < suppressVerseUntil.current,
+      held: false, x: touch.pageX, y: touch.pageY, page: latest.current.page, zoom: latest.current.zoom, wordId, verse: key };
+    // SVG's web click adapter does not register its native responder mixin. Use one cancellable web-only hold timer.
+    if (Platform.OS === 'web' && !hold.current.blocked) holdTimer.current = setTimeout(() => holdWord(key, wordId), INDOPAK_HOLD_MS);
+  };
+  const openWord = (key: string, wordId: number) => {
+    if (!turning.current && !hold.current.blocked && !hold.current.held && Date.now() >= suppressVerseUntil.current) setSelection({ verse: key, wordId });
+  };
+  const markAyah = (key: string, wordId: number) => {
+    const point = normalizeIndopakReadingPoint({ page: latest.current.page, verse: key, wordId });
+    if (!point || turning.current) return;
+    void update({ readingPoint: point }).then(ok => {
+      if (ok && latest.current.readingPoint === point) AccessibilityInfo.announceForAccessibility?.(T('Reading position saved'));
+    });
+  };
+  const holdWord = (key: string, wordId: number) => {
+    const h = hold.current;
+    if (!h.active || h.blocked || h.held || h.wordId !== wordId || h.verse !== key || h.page !== latest.current.page
+      || h.zoom !== latest.current.zoom || turning.current || Date.now() < suppressVerseUntil.current) return;
+    h.held = true;
+    setSelection({ verse: key, wordId }); markAyah(key, wordId);
+  };
+  const scrolled = (axis: 'x' | 'y', value: number) => {
+    if (Math.abs(scroll.current[axis] - value) > 1) { hold.current.blocked = true; endWord(); closeSelection(); }
+    scroll.current[axis] = value;
+  };
   const togglePage = () => update({ savedPages: marked ? latest.current.savedPages.filter(p => p !== state.page)
     : [...latest.current.savedPages, state.page].sort((a, b) => a - b) });
   const button = (label: string, onPress: () => void, name: string, options: { disabled?: boolean; selected?: boolean; text?: string; testID?: string } = {}) => (
     <Pressable accessibilityRole={options.selected === undefined ? 'button' : 'checkbox'} accessibilityLabel={label}
       accessibilityState={{ disabled: !!options.disabled || !!turn, checked: options.selected }} aria-checked={options.selected}
-      testID={options.testID} disabled={options.disabled || !hydrated || !!turn} onPress={onPress}
+      testID={options.testID} disabled={options.disabled || !hydrated || !!turn} onPress={() => { closeSelection(); onPress(); }}
       style={({ pressed }) => [styles.button, { backgroundColor: options.selected ? C.mint : C.card, borderColor: C.line, opacity: options.disabled ? .35 : pressed ? .65 : 1 }]}>
       {icon(name, 18, options.selected ? C.green : C.ink)}
       {!!options.text && <Text style={[styles.buttonText, { color: C.ink }]} numberOfLines={2}>{options.text}</Text>}
@@ -173,7 +230,7 @@ export function IndopakMushafReader({ colors: C, dark, language, rtl, icon, init
             if (nativeEvent.actionName === 'increment') goPage(latest.current.page + 1);
             if (nativeEvent.actionName === 'decrement') goPage(latest.current.page - 1);
           }}
-          disabled={!hydrated || !!turn} onPress={() => setPicker('page')}
+          disabled={!hydrated || !!turn} onPress={() => { closeSelection(); setPicker('page'); }}
           style={[styles.pageSelect, !showEdition && !inlineTop && styles.shrink, { borderColor: C.line, backgroundColor: C.card }]}>
           <View style={styles.counter}>
             <Text style={[styles.pageLabel, { color: C.muted }]} numberOfLines={1}>{T('Page')}</Text>
@@ -193,7 +250,14 @@ export function IndopakMushafReader({ colors: C, dark, language, rtl, icon, init
       </View>
     </View>
     {!!saveError && <Pressable onPress={() => update({})} accessibilityRole="button"><Text style={[styles.message, { color: C.ink }]}>{copy('saveError')}</Text></Pressable>}
-    <View testID="indopak-page-viewport" style={[styles.stage, Platform.OS === 'web' && webGestureStyle]} {...swipe.panHandlers} onLayout={({ nativeEvent: { layout } }) => {
+    <View testID="indopak-page-viewport" style={[styles.stage, Platform.OS === 'web' && webGestureStyle]} {...swipe.panHandlers}
+      onPointerDown={closeSelection}
+      onTouchStart={event => { if ((event.nativeEvent.touches?.length || 1) > 1) hold.current.blocked = true; closeSelection(); }}
+      onTouchMove={event => { const h = hold.current, e = event.nativeEvent;
+        const touch = e.touches?.[0] || e;
+        if (!indopakStationaryPress(e.touches?.length || 1, touch.pageX - h.x, touch.pageY - h.y)) { h.blocked = true; endWord(); } }}
+      onTouchEnd={endWord} onTouchCancel={() => { endWord(); hold.current.blocked = true; }}
+      onLayout={({ nativeEvent: { layout } }) => {
       setViewport(current => current.width === layout.width && current.height === layout.height ? current : { width: layout.width, height: layout.height });
     }}>
       {!hydrated || (!fontReady && !fontError) ? <View style={styles.center}><ActivityIndicator color={C.green}/><Text style={[styles.message, { color: C.ink }]}>{T('Loading…')}</Text></View>
@@ -202,13 +266,15 @@ export function IndopakMushafReader({ colors: C, dark, language, rtl, icon, init
         : <>
           <View testID="indopak-page-current" style={[styles.fill, { backgroundColor: C.bg }]}>
             <ScrollView ref={vertical} testID="indopak-vertical-scroll" nestedScrollEnabled scrollEnabled={Platform.OS === 'web' || size.height > viewport.height + 1} showsVerticalScrollIndicator={size.height > viewport.height}
-              scrollEventThrottle={16} onScroll={({ nativeEvent }) => { scroll.current.y = nativeEvent.contentOffset.y; }}
+              scrollEventThrottle={16} onScroll={({ nativeEvent }) => { scrolled('y', nativeEvent.contentOffset.y); }}
               contentContainerStyle={{ minHeight: viewport.height, justifyContent: 'center' }}>
               <ScrollView ref={horizontal} testID="indopak-horizontal-scroll" horizontal nestedScrollEnabled scrollEnabled={Platform.OS === 'web' || state.zoom > 1} bounces={false} alwaysBounceHorizontal={false} showsHorizontalScrollIndicator={state.zoom > 1}
-                scrollEventThrottle={16} onScroll={({ nativeEvent }) => { scroll.current.x = nativeEvent.contentOffset.x; }}
+                scrollEventThrottle={16} onScroll={({ nativeEvent }) => { scrolled('x', nativeEvent.contentOffset.x); }}
                 style={{ height: size.height, direction: 'ltr' }} contentContainerStyle={{ minWidth: viewport.width, alignItems: 'center', justifyContent: 'center' }}
                 onContentSizeChange={() => { if (state.zoom > 1) horizontal.current?.scrollToEnd({ animated: false }); }}>
-                <IndopakPageCanvas number={state.page} width={size.width} height={size.height} colors={C} dark={dark} language={language} verse={verse} onWordPress={openWord}/>
+                <IndopakPageCanvas number={state.page} width={size.width} height={size.height} colors={C} dark={dark} language={language} verse={verse}
+                  readingPoint={state.readingPoint?.page === state.page ? state.readingPoint.verse : null}
+                  onWordPress={openWord} onWordPressIn={beginWord} onWordPressOut={endWord} onWordLongPress={holdWord}/>
               </ScrollView>
             </ScrollView>
           </View>
@@ -216,25 +282,28 @@ export function IndopakMushafReader({ colors: C, dark, language, rtl, icon, init
             scroll={turn.scroll} colors={C} dark={dark}>
             <View style={[styles.snapshot, { width: Math.max(turn.viewport.width, turn.size.width), height: Math.max(turn.viewport.height, turn.size.height),
               transform: [{ translateX: -turn.scroll.x }, { translateY: -turn.scroll.y }] }]}>
-              <IndopakPageCanvas number={turn.from} width={turn.size.width} height={turn.size.height} colors={C} dark={dark} language={language} interactive={false}/>
+              <IndopakPageCanvas number={turn.from} width={turn.size.width} height={turn.size.height} colors={C} dark={dark} language={language} readingPoint={state.readingPoint?.page === turn.from ? state.readingPoint.verse : null} interactive={false}/>
             </View>
           </IndopakPageFold>}
+          {selection && chapter && popover && !turn && <IndopakAyahPopover layout={popover} verse={selection.verse}
+            marked={state.readingPoint?.page === state.page && state.readingPoint.verse === selection.verse}
+            colors={C} language={language} rtl={rtl} icon={icon} close={closeSelection} touching={active => { popupTouch.current = active; }}
+            play={() => { closeSelection(); onPlayVerse(selection.verse, chapter); }}
+            translate={() => { closeSelection(); onOpenVerse(selection.verse, chapter); }} mark={() => markAyah(selection.verse, selection.wordId)}/>}
         </>}
     </View>
     {picker && <SystemModal visible transparent animationType="fade" onRequestClose={() => setPicker(null)}>
-      <IndopakNavigator key={picker} kind={picker} page={state.page} savedPages={state.savedPages} verses={verses}
+      <IndopakNavigator key={picker} kind={picker} page={state.page} savedPages={state.savedPages} verses={verses} readingPoint={state.readingPoint}
+        resume={() => { if (state.readingPoint) { goPage(state.readingPoint.page); setPendingReveal({ point: state.readingPoint, open: false }); } }}
         C={C} language={language} rtl={rtl} close={() => setPicker(null)} goPage={goPage}
-        selectVerse={key => { setPicker(null); setVerse(key); }} setKind={setPicker} icon={icon}/>
-    </SystemModal>}
-    {verse && chapter && <SystemModal visible transparent animationType="fade" onRequestClose={() => setVerse(null)}>
-      <IndopakVersePanel C={C} language={language} verse={verse} chapter={chapter} text={verseText} close={() => setVerse(null)}
-        play={() => { setVerse(null); onPlayVerse(verse, chapter); }} open={() => { setVerse(null); onOpenVerse(verse, chapter); }}/>
+        selectVerse={key => { setPicker(null); const anchor = indopakWordAnchor(placed, key);
+          if (anchor) setPendingReveal({ point: { page: state.page, verse: key, wordId: anchor.wordId }, open: true }); }} setKind={setPicker} icon={icon}/>
     </SystemModal>}
   </View>;
 }
 
-function IndopakNavigator({ kind, page, savedPages, verses, C, language, rtl, close, goPage, selectVerse, setKind, icon }: {
-  kind: Picker; page: number; savedPages: number[]; verses: string[]; C: Record<string, string>; language: string; rtl: boolean;
+function IndopakNavigator({ kind, page, savedPages, verses, readingPoint, resume, C, language, rtl, close, goPage, selectVerse, setKind, icon }: {
+  kind: Picker; page: number; savedPages: number[]; verses: string[]; readingPoint: IndopakReadingPoint | null; resume: () => void; C: Record<string, string>; language: string; rtl: boolean;
   close: () => void; goPage: (page: number) => void; selectVerse: (key: string) => void; setKind: (kind: Picker) => void;
   icon: Props['icon'];
 }) {
@@ -269,6 +338,12 @@ function IndopakNavigator({ kind, page, savedPages, verses, C, language, rtl, cl
         <TextInput accessibilityLabel={T('Search')} placeholder={T('Search')} placeholderTextColor={C.muted} value={search} onChangeText={setSearch}
           style={[styles.input, { color: C.ink, backgroundColor: C.card, borderColor: C.line }]}/>
         <FlatList style={{ flexShrink: 1 }} keyboardShouldPersistTaps="handled" data={filtered} keyExtractor={item => item.id}
+          ListHeaderComponent={kind === 'bookmarks' && readingPoint ? <Pressable testID="indopak-resume" accessibilityRole="button" onPress={resume}
+            style={[styles.listRow, { borderColor: C.gold }]}>
+            <View style={styles.shrink}><Text style={[styles.body, { color: C.green }]}>{T('Continue reading')}</Text>
+              <Text style={[styles.meta, { color: C.muted }]}>{meta.chapters[Number(readingPoint.verse.split(':')[0]) - 1].name} · {readingPoint.verse} · {T('Page')} {readingPoint.page}</Text></View>
+            {icon('bookmark-outline', 20, C.green)}
+          </Pressable> : undefined}
           ListEmptyComponent={<Text style={[styles.message, { color: C.muted }]}>{kind === 'bookmarks' ? copy('empty') : T('Search')}</Text>}
           renderItem={({ item }) => <Pressable accessibilityRole="button" testID={`indopak-jump-${kind}-${item.id}`}
             onPress={() => kind === 'verse' ? selectVerse(item.id) : goPage(item.page)} style={[styles.listRow, { borderColor: C.line }]}>
@@ -279,24 +354,6 @@ function IndopakNavigator({ kind, page, savedPages, verses, C, language, rtl, cl
       <Pressable accessibilityRole="button" accessibilityLabel={T('Close')} onPress={close} style={[styles.action, { backgroundColor: C.card, borderWidth: 1, borderColor: C.line }]}>
         <Text style={[styles.buttonText, { color: C.ink }]}>{T('Close')}</Text>
       </Pressable>
-    </View>
-  </View>;
-}
-
-function IndopakVersePanel({ C, language, verse, chapter, text, close, play, open }: {
-  C: Record<string, string>; language: string; verse: string; chapter: IndopakChapter; text: string;
-  close: () => void; play: () => void; open: () => void;
-}) {
-  const { height } = useSafeContentFrame();
-  const T = (value: string) => tx(language, value);
-  return <View style={[styles.modalRoot, { backgroundColor: 'rgba(0,0,0,.42)' }]}>
-    <Pressable style={StyleSheet.absoluteFill} accessibilityRole="button" accessibilityLabel={T('Close')} onPress={close}/>
-    <View testID="indopak-verse-panel" style={[styles.modal, { backgroundColor: C.bg, borderColor: C.line, maxHeight: Math.max(120, height - 24) }]}>
-      <Text style={[styles.title, { color: C.ink }]}>{chapter.name} · {verse}</Text>
-      <ScrollView style={{ flexShrink: 1 }}><Text style={{ fontFamily: INDOPAK_FONT, fontSize: 26, lineHeight: 60, color: C.ink, textAlign: 'right', writingDirection: 'rtl', padding: 8 }}>{text}</Text></ScrollView>
-      <Pressable testID="indopak-play-verse" accessibilityRole="button" onPress={play} style={[styles.action, { backgroundColor: C.green }]}><Text style={[styles.buttonText, { color: C.onAccent }]}>{T('Play')}</Text></Pressable>
-      <Pressable testID="indopak-open-verse" accessibilityRole="button" onPress={open} style={[styles.action, { backgroundColor: C.card, borderColor: C.line, borderWidth: 1 }]}><Text style={[styles.buttonText, { color: C.ink }]}>{indopakText(language, 'openVerse')}</Text></Pressable>
-      <Pressable accessibilityRole="button" accessibilityLabel={T('Close')} onPress={close} style={[styles.action, { backgroundColor: C.card }]}><Text style={[styles.buttonText, { color: C.ink }]}>{T('Close')}</Text></Pressable>
     </View>
   </View>;
 }
