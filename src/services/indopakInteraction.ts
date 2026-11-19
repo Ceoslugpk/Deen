@@ -36,3 +36,17 @@ export function indopakSwipePage(page: number, zoom: number, width: number, gest
   const target = page + (gesture.dx > 0 ? 1 : -1);
   return validIndopakPage(target) ? target : null;
 }
+
+/** Keep the ink crisp: a short native-driven horizontal slide, never a skew/3D page curl. */
+export function indopakTurnPlan(from: number, to: number, width: number, reducedMotion: boolean): {
+  direction: 1 | -1; distance: number; duration: number;
+} | null {
+  if (reducedMotion || !validIndopakPage(from) || !validIndopakPage(to) || from === to
+    || !Number.isFinite(width) || width <= 0) return null;
+  return { direction: to > from ? 1 : -1, distance: width, duration: 260 };
+}
+
+/** The icon describes the next zoom action; the visible number describes the current scale. */
+export function indopakZoomControl(zoom: number): { next: 1 | 1.5 | 2; icon: 'zoom-in' | 'zoom-out' } {
+  return zoom === 2 ? { next: 1, icon: 'zoom-out' } : { next: zoom === 1.5 ? 2 : 1.5, icon: 'zoom-in' };
+}

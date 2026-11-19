@@ -1,20 +1,20 @@
 /** Real Expo WEB, real bundled Quran assets. Native rendering/device testing remains separate.
- * INDOPAK_URL=http://127.0.0.1:8105 node tests/verify-indopak-web.cjs
+ * INDOPAK_URL=http://127.0.0.1:8106 node tests/verify-indopak-web.cjs
  */
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { chromium } = require('playwright');
 const meta = require('../src/data/indopak16/meta.json');
-const url = process.env.INDOPAK_URL || 'http://127.0.0.1:8105';
-const output = process.env.INDOPAK_ARTIFACTS_DIR || '/tmp/islamic-r95-web-smoke';
+const url = process.env.INDOPAK_URL || 'http://127.0.0.1:8106';
+const output = process.env.INDOPAK_ARTIFACTS_DIR || '/tmp/islamic-r96-web-smoke';
 const key = '@deen/quran/indopak-taj-16/state/v1';
 const originalKeys = ['@deen/quran/preferences/v1', '@deen/quran/position/v1', '@deen/quran/bookmarks/v1', '@deen/quran/notes/v1'];
 const pause = page => page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
 const box = item => item.evaluate(e => { const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height, right: r.right, bottom: r.bottom }; });
 function inside(a, b, label) { assert.ok(a.x >= b.x - 1 && a.y >= b.y - 1 && a.right <= b.right + 1 && a.bottom <= b.bottom + 1, `${label}: ${JSON.stringify({ a, b })}`); }
-async function makePage(browser, language = 'en', dark = false) {
-  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, reducedMotion: 'reduce' });
+async function makePage(browser, language = 'en', dark = false, reducedMotion = 'reduce') {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, reducedMotion });
   await context.addInitScript(({ lang, dark }) => {
     localStorage.setItem('@deen/onboarding/v1', JSON.stringify({ completed: true, app: lang, text: 'en', voice: 'en', locationAsked: true, notificationsAsked: true }));
     localStorage.setItem('@deen/language/v1', lang);
@@ -53,8 +53,7 @@ async function gotoPage(page, number) {
   await page.getByTestId('indopak-page-select').click();
   await page.getByTestId('indopak-page-input').fill(String(number));
   await page.getByTestId('indopak-page-go').click();
-  await page.waitForFunction(n => document.querySelector('[data-testid="indopak-page-select"]')?.textContent.includes(`${n} / 548`), number);
-  await pause(page);
+  await expectPage(page,number);
 }
 async function layout(page, expectedPage) {
   await pause(page);
@@ -62,17 +61,24 @@ async function layout(page, expectedPage) {
   assert.equal(await page.getByTestId('floating-navigation-bar').count(),0,'Only this reader removes the bottom menu');
   const player = await page.getByTestId('mini-player').count() ? await box(page.getByTestId('mini-player')) : null;
   const viewport = await box(page.getByTestId('indopak-page-viewport'));
-  const navigation = await box(page.getByTestId('indopak-page-navigation'));
+  for (const id of ['indopak-page-navigation','indopak-next','indopak-previous']) assert.equal(await page.getByTestId(id).count(),0,'No bottom page section remains');
+  const top = await box(page.getByTestId('indopak-top-controls'));
+  const counter = await box(page.getByTestId('indopak-page-select'));
   const tools = await box(page.getByTestId('indopak-tools'));
   const header = await box(page.getByTestId('screen-header').last());
-  for (const [label, rect] of Object.entries({ viewport, navigation, tools, header })) inside(rect, safe, label);
+  for (const [label, rect] of Object.entries({ viewport, top, tools, header })) inside(rect, safe, label);
   if (player) {
-    inside(player,safe,'mini-player'); assert.ok(navigation.bottom <= player.y - 8,'Page controls clear the lowered mini-player');
+    inside(player,safe,'mini-player'); assert.ok(viewport.bottom <= player.y - 8,'The full page viewport clears the lowered mini-player');
     assert.ok(Math.abs(safe.bottom - player.bottom - 16) < 2,'Mini-player uses the freed bottom space on web/Android');
-  } else assert.ok(safe.bottom - navigation.bottom >= 8 && safe.bottom - navigation.bottom <= 16,'No empty tab-bar reserve remains');
-  for (const id of ['indopak-surah', 'indopak-juz', 'indopak-save-page', 'indopak-zoom']) {
-    const rect = await box(page.getByTestId(id)); inside(rect, tools, id);
-    assert.ok(rect.width >= 43.9 && rect.height >= 43.9, `${id} keeps a 44px target`);
+  } else assert.ok(safe.bottom - viewport.bottom >= 8 && safe.bottom - viewport.bottom <= 16,'No empty bottom pager/tab reserve remains');
+  inside(counter,top,'Top page selector'); assert.ok(top.bottom <= viewport.y+1,'All controls stay above the page');
+  assert.equal(await page.getByTestId('indopak-page-svg').locator('text').count(),0,'No duplicate bottom page number inside the page');
+  const controls=[];
+  for (const id of ['indopak-page-select','indopak-surah','indopak-juz','indopak-save-page','indopak-zoom','indopak-verse-list','indopak-sources']) {
+    const rect=await box(page.getByTestId(id)); inside(rect,top,id);
+    assert.ok(rect.width>=43.9 && rect.height>=43.9,`${id} keeps a 44px target`);
+    for (const before of controls) assert.ok(rect.x>=before.right-1 || rect.right<=before.x+1 || rect.y>=before.bottom-1 || rect.bottom<=before.y+1,'Top targets do not overlap');
+    controls.push(rect);
   }
   const text = await page.getByTestId('indopak-page-svg').evaluate(svg => {
     const words = Array.from(svg.querySelectorAll('path[data-testid^="indopak-ink-"]'));
@@ -92,7 +98,7 @@ async function layout(page, expectedPage) {
     const scroll = await page.getByTestId('indopak-vertical-scroll').evaluate(e => ({ height:e.clientHeight, content:e.scrollHeight }));
     assert.ok(scroll.content > scroll.height, 'Oversized/landscape pages remain vertically scrollable');
   }
-  return { safe, footerHidden:true, player, viewport, navigation, tools, header, text };
+  return { safe, footerHidden:true, bottomPagerRemoved:true, player, viewport, top, counter, tools, header, text };
 }
 /** Real Chromium touch input, not a direct call to a responder or page setter. */
 async function touchSwipe(page, { dx, dy = 0, word = false, multi = false, cancel = false }) {
@@ -117,6 +123,50 @@ async function touchSwipe(page, { dx, dy = 0, word = false, multi = false, cance
 }
 async function expectPage(page, n) {
   await page.waitForFunction(n => document.querySelector('[data-testid="indopak-page-select"]')?.textContent.includes(`${n} / 548`),n);
+  await page.getByTestId('indopak-page-outgoing').waitFor({state:'detached'}); await pause(page);
+}
+async function zoomIcon(page, plus) {
+  const icon=page.getByTestId('indopak-zoom').locator('svg');
+  assert.equal(await icon.locator('circle[cx="10.7"][r="6.7"]').count(),1,'A real magnifying-glass lens is drawn');
+  assert.equal(await icon.locator('line[x1="15.5"][x2="21"]').count(),1,'The magnifier has a diagonal handle');
+  assert.equal(await icon.locator('line[x1="10.7"][y1="7.7"]').count(),plus ? 1 : 0,'Plus/minus follows the next zoom action');
+}
+async function sampleMotion(page, action, expectedPage, direction, screenshot) {
+  const before=await box(page.getByTestId('indopak-page-svg'));
+  await page.evaluate(() => {
+    window.__indopakSampling=true; window.__indopakFrames=[];
+    const frame=()=>{
+      if (!window.__indopakSampling) return;
+      const current=document.querySelector('[data-testid="indopak-page-current"]');
+      const outgoing=document.querySelector('[data-testid="indopak-page-outgoing"]');
+      const matrix=e=>{const m=new DOMMatrixReadOnly(getComputedStyle(e).transform); return {x:m.m41,a:m.a,b:m.b,c:m.c,d:m.d};};
+      const art=outgoing?.querySelector('svg')?.getBoundingClientRect();
+      window.__indopakFrames.push({time:performance.now(),page:document.querySelector('[data-testid="indopak-page-select"]')?.textContent,
+        current:current ? matrix(current) : null,outgoing:outgoing ? matrix(outgoing) : null,
+        hidden:outgoing?.getAttribute('aria-hidden'),targets:outgoing?.querySelectorAll('[data-testid^="indopak-word-"]').length,
+        snapshot:art ? {x:art.x,y:art.y,width:art.width,height:art.height} : null});
+      requestAnimationFrame(frame);
+    }; requestAnimationFrame(frame);
+  });
+  await action();
+  if (screenshot && await page.getByTestId('indopak-page-outgoing').count()) await page.screenshot({path:path.join(output,screenshot)});
+  await expectPage(page,expectedPage);
+  const frames=await page.evaluate(()=>{window.__indopakSampling=false;return window.__indopakFrames;});
+  const active=frames.filter(f=>f.page?.includes(`${expectedPage} / 548`) && f.outgoing);
+  assert.ok(active.length>=3,'An actual multi-frame page transition is visible');
+  assert.ok(active.some(f=>direction*f.current.x < -20),'The incoming page starts on the correct RTL side');
+  assert.ok(active.some(f=>direction*f.outgoing.x > 20),'The outgoing page leaves in the swipe direction');
+  let previous=-Infinity;
+  for (const frame of active) {
+    assert.equal(frame.hidden,'true'); assert.equal(frame.targets,0,'Outgoing scripture has no duplicate interactive verse targets');
+    assert.ok(direction*frame.current.x>=previous-1,'The page settles monotonically instead of snapping backward'); previous=direction*frame.current.x;
+    for (const matrix of [frame.current,frame.outgoing]) {
+      assert.ok(Math.abs(matrix.a-1)<.001 && Math.abs(matrix.d-1)<.001 && Math.abs(matrix.b)<.001 && Math.abs(matrix.c)<.001,'Scripture slides without scale/skew distortion');
+    }
+    assert.ok(Math.abs(frame.snapshot.x-frame.outgoing.x-before.x)<1.5 && Math.abs(frame.snapshot.y-before.y)<1.5,'The outgoing snapshot retains the previous page placement and scroll offset');
+  }
+  const final=frames.at(-1); assert.ok(Math.abs(final.current.x)<.5 && !final.outgoing,'The old layer is removed and the current page ends at rest');
+  return {frames:active.length,first:active[0],last:active.at(-1),settled:final};
 }
 async function insets(page, values) {
   await page.getByTestId('system-window-boundary').first().evaluate((e, values) => {
@@ -141,10 +191,18 @@ async function insets(page, values) {
     await page.screenshot({path:path.join(output,'concise-sources.png'),animations:'disabled'});
     await page.getByTestId('indopak-navigator').getByRole('button',{name:'Close',exact:true}).click();
     report.sourceSummary = sourceText;
+    await page.evaluate(()=>{
+      window.__indopakOutgoingAdds=0;
+      new MutationObserver(records=>{
+        for (const record of records) for (const node of record.addedNodes) if (node.nodeType===1 &&
+          (node.matches('[data-testid="indopak-page-outgoing"]') || node.querySelector('[data-testid="indopak-page-outgoing"]'))) window.__indopakOutgoingAdds++;
+      }).observe(document.querySelector('[data-testid="indopak-reader"]'),{childList:true,subtree:true});
+    });
     await touchSwipe(page,{dx:-155}); await expectPage(page,1);
     assert.equal(await page.evaluate(k=>localStorage.getItem(k),key),null,'An outward boundary swipe does not save defaults');
     await touchSwipe(page,{dx:150,word:true}); await expectPage(page,2);
     assert.equal(await page.getByTestId('indopak-verse-panel').count(),0,'Swipe starting on a verse must not open a verse modal');
+    assert.equal(await page.evaluate(()=>window.__indopakOutgoingAdds),0,'Reduced motion creates no animated outgoing layer'); report.reducedMotion = true;
     await touchSwipe(page,{dx:155}); await expectPage(page,3);
     await touchSwipe(page,{dx:-155}); await expectPage(page,2);
     await touchSwipe(page,{dx:65,dy:-150}); await expectPage(page,2);
@@ -156,7 +214,7 @@ async function insets(page, values) {
     await page.getByTestId('indopak-page-svg').locator('rect[data-testid^="indopak-word-"]').first().tap();
     await page.getByTestId('indopak-verse-panel').waitFor();
     await page.getByTestId('indopak-verse-panel').getByRole('button',{name:'Close',exact:true}).click();
-    await page.getByTestId('indopak-zoom').click();
+    await zoomIcon(page,true); await page.getByTestId('indopak-zoom').click(); await zoomIcon(page,true);
     const beforePan = await page.getByTestId('indopak-horizontal-scroll').evaluate(e=>e.scrollLeft);
     await touchSwipe(page,{dx:145}); await expectPage(page,2);
     const afterPan = await page.getByTestId('indopak-horizontal-scroll').evaluate(e=>e.scrollLeft);
@@ -179,13 +237,13 @@ async function insets(page, values) {
     report.swipes = {rightNext:true,leftPrevious:true,verseTapNotTriggered:true,subsequentVerseTap:true,verticalRejected:true,multiTouchRejected:true,addedFingerRejected:true,cancelRejected:true,shortDragRejected:true,zoomPan:true,boundaries:true,savedPageRestored:true};
     const targets = [1,2,3,76,77,100,200,274,400,500,529,530,548];
     for (const n of targets) { await gotoPage(page, n); report.pages.push({ page: n, ...(await layout(page, n)) }); }
-    assert.equal(await page.getByTestId('indopak-next').getAttribute('aria-disabled'), 'true');
+    assert.equal(await page.getByTestId('indopak-next').count(),0);
     if (process.env.INDOPAK_SWEEP === '1') {
       await gotoPage(page, 1); await context.setOffline(true);
       const started = Date.now();
       for (let n = 1; n <= 548; n++) {
         if (n > 1) {
-          await page.getByTestId('indopak-next').click();
+          await touchSwipe(page,{dx:155});
           await page.waitForFunction(n => document.querySelector('[data-testid="indopak-page-select"]')?.textContent.includes(`${n} / 548`), n);
         }
         await layout(page, n);
@@ -194,7 +252,7 @@ async function insets(page, values) {
       report.allPageSweep = { pages: 548, offline: true, milliseconds: Date.now() - started, failedBounds: 0 };
       console.log('All 548 pages rendered offline with correct row counts and every original-font outline inside the printed body.');
     }
-    await gotoPage(page, 1); assert.equal(await page.getByTestId('indopak-previous').getAttribute('aria-disabled'), 'true');
+    await gotoPage(page,1); assert.equal(await page.getByTestId('indopak-previous').count(),0);
     await page.getByTestId('indopak-page-select').click(); await page.getByTestId('indopak-page-input').fill('604'); await page.getByTestId('indopak-page-go').click();
     await page.getByRole('alert').waitFor(); await page.getByTestId('indopak-page-input').fill('۲۷۴'); await page.getByTestId('indopak-page-go').click();
     await page.waitForFunction(() => document.querySelector('[data-testid="indopak-page-select"]')?.textContent.includes('274 / 548'));
@@ -203,7 +261,7 @@ async function insets(page, values) {
     await page.getByTestId('indopak-page-select').click(); await page.getByTestId('indopak-navigator').getByRole('button', { name: 'Bookmarks', exact: true }).click();
     await page.getByTestId('indopak-jump-bookmarks-274').click();
     await page.getByTestId('indopak-zoom').click(); await page.getByTestId('indopak-zoom').click();
-    await page.waitForFunction(k => JSON.parse(localStorage.getItem(k) || '{}').zoom === 2, key);
+    await page.waitForFunction(k => JSON.parse(localStorage.getItem(k) || '{}').zoom === 2, key); await zoomIcon(page,false); report.zoomIcons = true;
     assert.ok((await box(page.getByTestId('indopak-page-svg'))).width > (await box(page.getByTestId('indopak-page-viewport'))).width);
     await page.getByTestId('indopak-zoom').click();
 
@@ -322,10 +380,51 @@ async function insets(page, values) {
       const next = await makePage(browser,language,dark); active = next.page; report.errors.push(next.errors);
       await gotoPage(next.page,274); await layout(next.page,274);
       if(language==='ur') { await touchSwipe(next.page,{dx:155}); await expectPage(next.page,275); await touchSwipe(next.page,{dx:-155}); await expectPage(next.page,274); await next.page.waitForTimeout(380); report.rtlSwipes = true; }
+      await next.page.setViewportSize({width:280,height:720}); await layout(next.page,274);
+      await next.page.setViewportSize({width:390,height:844}); await pause(next.page);
       const firstWord = next.page.getByTestId('indopak-page-svg').locator('rect[data-testid^="indopak-word-"]').first();
       await firstWord.click(); await next.page.getByTestId('indopak-verse-panel').waitFor();
       await next.page.screenshot({path:path.join(output,`${language}-${dark?'dark':'rtl'}-verse.png`),animations:'disabled'});
       await next.context.close();
+    }
+    const motion=await makePage(browser,'en',false,'no-preference'); active=motion.page; report.errors.push(motion.errors);
+    await motion.page.waitForTimeout(450);
+    report.motion={
+      next:await sampleMotion(motion.page,()=>touchSwipe(motion.page,{dx:155}),2,1,'next-page-in-motion.png'),
+      previous:await sampleMotion(motion.page,()=>touchSwipe(motion.page,{dx:-155}),1,-1,'previous-page-in-motion.png'),
+    };
+    report.motion.jump=await sampleMotion(motion.page,()=>gotoPage(motion.page,274),274,1);
+    await motion.page.getByTestId('indopak-zoom').click();
+    await touchSwipe(motion.page,{dx:120}); await touchSwipe(motion.page,{dx:0,dy:-145});
+    report.motion.zoomedJump=await sampleMotion(motion.page,()=>gotoPage(motion.page,400),400,1);
+    await motion.page.getByTestId('indopak-zoom').click(); await motion.page.getByTestId('indopak-zoom').click();
+    await gotoPage(motion.page,274);
+    await touchSwipe(motion.page,{dx:155});
+    assert.equal(await motion.page.getByTestId('indopak-page-outgoing').count(),1,'Resize test interrupts an in-flight turn');
+    await motion.page.setViewportSize({width:844,height:390});
+    await expectPage(motion.page,275); await layout(motion.page,275); report.motion.resizeSettled=true;
+    await touchSwipe(motion.page,{dx:155});
+    assert.equal(await motion.page.getByTestId('indopak-page-outgoing').count(),1,'Reduce-motion test interrupts an in-flight turn');
+    await motion.page.emulateMedia({reducedMotion:'reduce'});
+    await expectPage(motion.page,276); await layout(motion.page,276); report.motion.reducedMotionChangeSettled=true;
+    await motion.page.emulateMedia({reducedMotion:'no-preference'}); await motion.page.waitForTimeout(60);
+    await touchSwipe(motion.page,{dx:155});
+    assert.equal(await motion.page.getByTestId('indopak-page-outgoing').count(),1,'Leaving interrupts an in-flight turn');
+    await motion.page.getByTestId('screen-header').last().getByRole('button',{name:'Back',exact:true}).click();
+    await motion.page.getByTestId('floating-navigation-bar').waitFor();
+    await motion.page.getByTestId('qtile-16-line Quran').scrollIntoViewIfNeeded(); await motion.page.getByTestId('qtile-16-line Quran').click();
+    await expectPage(motion.page,277); await motion.page.getByTestId('floating-navigation-bar').waitFor({state:'detached'});
+    report.motion.unmountCleanupAndRestore=true; await motion.context.close();
+    report.localizedTop=[];
+    for (const language of ['en','ar','ur','fa','ps','fr','tr','ru','uz','kk','zh','vi','az','bs','bg','si','bn','hi','id','ms','ta','ml']) {
+      const translated=await makePage(browser,language); active=translated.page; report.errors.push(translated.errors);
+      await gotoPage(translated.page,274);
+      for (const width of [280,390]) {
+        await translated.page.setViewportSize({width,height:720});
+        const result=await layout(translated.page,274);
+        report.localizedTop.push({language,width,top:result.top,counter:result.counter});
+      }
+      await translated.context.close();
     }
     const themed = await makePage(browser,'en','system'); active = themed.page; report.errors.push(themed.errors);
     await gotoPage(themed.page,274);
@@ -342,7 +441,7 @@ async function insets(page, values) {
     await themed.page.getByTestId('floating-navigation-bar').waitFor();
     report.themeRemount = {darkAndLight:true,pageRestored:true,menuScoped:true}; await themed.context.close();
     for (const errors of report.errors) for (const [type, values] of Object.entries(errors)) assert.deepEqual(values, [], `${type} errors`);
-    console.log(JSON.stringify({pages:report.pages.length,profiles:report.profiles.length,insets:report.insets.length,modals:report.modals.length,swipes:report.swipes,menuRestored:report.menuRestoredOnExit,rtlSwipes:report.rtlSwipes,activeAudio:report.activeAudio.length,audioScreenMenuRestored:report.audioScreenMenuRestored,themeRemount:report.themeRemount,offline:report.offline,allPageSweep:report.allPageSweep,restored:report.restored,audio:report.audio,existingReader:report.existingReader,errors:report.errors},null,2));
+    console.log(JSON.stringify({pages:report.pages.length,profiles:report.profiles.length,insets:report.insets.length,modals:report.modals.length,swipes:report.swipes,menuRestored:report.menuRestoredOnExit,rtlSwipes:report.rtlSwipes,zoomIcons:report.zoomIcons,reducedMotion:report.reducedMotion,motion:report.motion ? {nextFrames:report.motion.next.frames,previousFrames:report.motion.previous.frames,jumpFrames:report.motion.jump.frames,zoomedJumpFrames:report.motion.zoomedJump.frames,resizeSettled:report.motion.resizeSettled,reducedMotionChangeSettled:report.motion.reducedMotionChangeSettled,unmountCleanupAndRestore:report.motion.unmountCleanupAndRestore}:null,activeAudio:report.activeAudio.length,audioScreenMenuRestored:report.audioScreenMenuRestored,themeRemount:report.themeRemount,localizedTop:report.localizedTop.length,offline:report.offline,allPageSweep:report.allPageSweep,restored:report.restored,audio:report.audio,existingReader:report.existingReader,errors:report.errors},null,2));
   } catch(error) {
     report.failure = error.stack || String(error); if(active && !active.isClosed()) await active.screenshot({path:path.join(output,'failure.png')}).catch(()=>{}); throw error;
   } finally { fs.writeFileSync(path.join(output,'report.json'),JSON.stringify(report,null,2)); await browser.close(); }

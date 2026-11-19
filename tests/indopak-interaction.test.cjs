@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
 const { createLoader } = require('./helpers/load-typescript.cjs');
-const { isIndopakReaderRoute, captureIndopakSwipe, indopakSwipePage } = createLoader()('src/services/indopakInteraction.ts');
+const { isIndopakReaderRoute, captureIndopakSwipe, indopakSwipePage, indopakTurnPlan, indopakZoomControl } = createLoader()('src/services/indopakInteraction.ts');
 const stack = (...names) => ({ index: names.length - 1, routes: names.map(name => typeof name === 'string' ? { name } : name) });
 const quran = stack('QuranHome', '16-line Quran');
 const tabs = (index = 2, nested = quran) => ({ index, routes: [
@@ -117,4 +117,50 @@ test('the short source panel retains provider credit while full notices and orig
   assert.match(fontNotice,/NOT FOR MODIFICATION.*WITHOUT WRITTEN NOTICE/);
   assert.ok(notice.includes('not an independent rights verification'));
   assert.ok(!component.includes('QUL 11 / 59 / 242')); assert.ok(!component.includes('Abdul Majeed Khan'));
+});
+
+test('page motion follows Quran RTL order for adjacent pages and direct jumps', () => {
+  for (const [from,to,direction] of [[1,2,1],[2,1,-1],[1,548,1],[548,274,-1]]) {
+    const plan = indopakTurnPlan(from,to,390,false);
+    assert.equal(plan.direction,direction); assert.equal(plan.distance,390); assert.equal(plan.duration,260);
+  }
+});
+
+test('restoration, same-page selection, invalid pages and reduced motion never create a transition', () => {
+  for (const [from,to] of [[1,1],[274,274],[0,2],[548,549],[604,1],[NaN,2],[1,1.5]]) assert.equal(indopakTurnPlan(from,to,390,false),null);
+  for (const width of [0,-1,NaN,Infinity]) assert.equal(indopakTurnPlan(1,2,width,false),null);
+  for (const [from,to] of [[1,2],[548,547],[1,548]]) assert.equal(indopakTurnPlan(from,to,390,true),null);
+});
+
+test('zoom cycles use real magnifier-plus/minus drawings, not the unimplemented expand fallback', () => {
+  let zoom=1;
+  for (const [next,icon] of [[1.5,'zoom-in'],[2,'zoom-in'],[1,'zoom-out'],[1.5,'zoom-in']]) {
+    const control=indopakZoomControl(zoom); assert.equal(control.next,next); assert.equal(control.icon,icon); zoom=control.next;
+  }
+  const icons=fs.readFileSync(path.join(__dirname,'../src/components/CustomIcon.tsx'),'utf8');
+  assert.ok(icons.includes("case'zoom-in':case'zoom-out':"));
+  assert.ok(icons.includes("{n==='zoom-in'&&<Line"));
+  const component=fs.readFileSync(path.join(__dirname,'../src/components/IndopakMushafReader.tsx'),'utf8');
+  assert.ok(component.includes('zoomControl.icon')); assert.ok(!component.includes('expand-outline'));
+});
+
+test('page selection and verse access live at the top, with no bottom pager or duplicate printed counter', () => {
+  const component=fs.readFileSync(path.join(__dirname,'../src/components/IndopakMushafReader.tsx'),'utf8');
+  const canvas=fs.readFileSync(path.join(__dirname,'../src/components/IndopakPageCanvas.tsx'),'utf8');
+  for (const id of ['indopak-page-navigation','indopak-next','indopak-previous']) assert.ok(!component.includes(id));
+  assert.ok(component.indexOf('testID="indopak-page-select"')<component.indexOf('testID="indopak-page-viewport"'));
+  assert.ok(component.includes('indopak-top-controls')); assert.ok(component.includes('indopak-verse-list'));
+  assert.ok(component.includes('onAccessibilityAction=')); assert.ok(component.includes("writingDirection: 'ltr'"));
+  assert.ok(!canvas.includes('SvgText')); assert.ok(!canvas.includes('y={1591}'));
+});
+
+test('page motion retains only a non-interactive outgoing canvas and cancels cleanly on geometry/reduced-motion changes', () => {
+  const component=fs.readFileSync(path.join(__dirname,'../src/components/IndopakMushafReader.tsx'),'utf8');
+  assert.ok(component.includes('useCalmMotion()')); assert.ok(component.includes('useLayoutEffect('));
+  assert.ok(component.includes('useNativeDriver: true')); assert.ok(component.includes('animation.stop()'));
+  assert.ok(component.includes('turn.viewport.width !== viewport.width')); assert.ok(component.includes('turn.viewport.height !== viewport.height'));
+  assert.ok(component.includes('scroll: { ...scroll.current }')); assert.ok(component.includes('interactive={false}'));
+  assert.ok(component.includes('importantForAccessibility="no-hide-descendants"')); assert.ok(component.includes('pointerEvents="none"'));
+  assert.ok(component.includes('turning.current'));
+  assert.ok(!component.includes('rotateY')); assert.ok(!component.includes('perspective'));
 });

@@ -1,19 +1,26 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, PanResponder, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type ViewStyle } from 'react-native';
-import Svg, { G, Path, Rect, Text as SvgText } from 'react-native-svg';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Animated, FlatList, PanResponder, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type ViewStyle } from 'react-native';
 import { SystemModal } from './SystemModal';
+import { IndopakPageCanvas } from './IndopakPageCanvas';
+import { useCalmMotion } from '../design/useCalmMotion';
+import { easeOut } from '../design/motion';
 import { useSafeContentFrame } from './SystemNavigationBoundary';
 import { tx } from '../services/arabicCopy';
 import { indopakText } from '../services/indopakCopy';
-import { captureIndopakSwipe, indopakSwipePage } from '../services/indopakInteraction';
+import { captureIndopakSwipe, indopakSwipePage, indopakTurnPlan, indopakZoomControl } from '../services/indopakInteraction';
 import { ensureIndopakFont } from '../services/indopakFont';
 import { defaultIndopakState, loadIndopakState, saveIndopakState, type IndopakState } from '../services/indopakState';
 import {
-  centeredIndopakWord, fitIndopakPage, indopakShapePath, INDOPAK_FONT, INDOPAK_PAGE_COUNT, INDOPAK_VIEWBOX, indopakMeta, indopakPage,
-  indopakVerseKey, indopakVerseWords, parseIndopakPage, placeIndopakPage, validIndopakPage, type IndopakChapter, type IndopakWord,
+  fitIndopakPage, INDOPAK_FONT, INDOPAK_PAGE_COUNT, indopakMeta, indopakPage,
+  indopakVerseKey, indopakVerseWords, parseIndopakPage, validIndopakPage, type IndopakChapter,
 } from '../services/indopakMushaf';
 
 type Picker = 'page' | 'surah' | 'juz' | 'bookmarks' | 'verse' | 'sources';
+type PageTurn = {
+  from: number; plan: NonNullable<ReturnType<typeof indopakTurnPlan>>;
+  viewport: { width: number; height: number }; size: { width: number; height: number };
+  zoom: number; scroll: { x: number; y: number };
+};
 type Props = {
   colors: Record<string, string>; dark: boolean; language: string; rtl: boolean; initialPage?: number;
   icon: (name: string, size: number, color: string) => React.ReactNode;
@@ -24,7 +31,9 @@ type Props = {
 /** All scripture, page layout and typography are local. Audio/translation actions use the existing app. */
 export function IndopakMushafReader({ colors: C, dark, language, rtl, icon, initialPage, onPlayVerse, onOpenVerse }: Props) {
   const frame = useSafeContentFrame();
+  const still = useCalmMotion();
   const compact = frame.width < 330, short = frame.height < 500 && frame.width >= 400;
+  const inlineTop = short && frame.width >= 640, showEdition = !compact && !short;
   const T = useCallback((value: string) => tx(language, value), [language]);
   const copy = useCallback((key: Parameters<typeof indopakText>[1], values?: Record<string, number | string>) => indopakText(language, key, values), [language]);
   const [state, setState] = useState<IndopakState>(defaultIndopakState);
@@ -37,6 +46,10 @@ export function IndopakMushafReader({ colors: C, dark, language, rtl, icon, init
   const [picker, setPicker] = useState<Picker | null>(null);
   const [verse, setVerse] = useState<string | null>(null);
   const [viewport, setViewport] = useState({ width: 0, height: 0 });
+  const [turn, setTurn] = useState<PageTurn | null>(null);
+  const turning = useRef(false), turnProgress = useRef(new Animated.Value(1)).current;
+  const scroll = useRef({ x: 0, y: 0 });
+  const suppressVerseUntil = useRef(0);
   const vertical = useRef<React.ElementRef<typeof ScrollView>>(null), horizontal = useRef<React.ElementRef<typeof ScrollView>>(null);
   useEffect(() => {
     let live = true;
@@ -63,7 +76,6 @@ export function IndopakMushafReader({ colors: C, dark, language, rtl, icon, init
   const page = useMemo(() => {
     try { return indopakPage(state.page); } catch { return null; }
   }, [state.page]);
-  const placed = useMemo(() => page ? placeIndopakPage(page) : [], [page]);
   const meta = indopakMeta();
   const chapterFor = (key: string) => meta.chapters[Number(key.split(':')[0]) - 1];
   const chapter = verse ? chapterFor(verse) : null;
@@ -71,23 +83,47 @@ export function IndopakMushafReader({ colors: C, dark, language, rtl, icon, init
   const verses = useMemo(() => page ? [...new Set(page.words.map(indopakVerseKey))] : [], [page]);
   const size = fitIndopakPage(viewport.width, viewport.height, state.zoom, true);
   const marked = state.savedPages.includes(state.page);
+  const zoomControl = indopakZoomControl(state.zoom);
+  // Start after React commits both layers. No timers, transparent text crossfade or 3D distortion.
+  useLayoutEffect(() => {
+    if (!turn) return;
+    let live = true;
+    const finish = () => {
+      if (!live) return;
+      turnProgress.setValue(1); turning.current = false; setTurn(null);
+    };
+    if (still || turn.viewport.width !== viewport.width || turn.viewport.height !== viewport.height || turn.zoom !== state.zoom) {
+      finish(); return;
+    }
+    turnProgress.setValue(0);
+    const animation = Animated.timing(turnProgress, { toValue: 1, duration: turn.plan.duration, easing: easeOut, useNativeDriver: true });
+    animation.start(({ finished }) => { if (finished) finish(); });
+    return () => { live = false; animation.stop(); };
+  }, [turn, still, viewport.width, viewport.height, state.zoom, turnProgress]);
   const goPage = useCallback((number: number) => {
-    if (!validIndopakPage(number) || !hydrated) return;
-    setVerse(null); setPicker(null); update({ page: number });
+    if (!validIndopakPage(number) || !hydrated || turning.current) return;
+    setVerse(null); setPicker(null);
+    const from = latest.current.page, plan = indopakTurnPlan(from, number, viewport.width, still);
+    if (plan) {
+      turning.current = true;
+      setTurn({ from, plan, viewport: { ...viewport }, size: { ...size }, zoom: latest.current.zoom, scroll: { ...scroll.current } });
+      suppressVerseUntil.current = Math.max(suppressVerseUntil.current, Date.now() + plan.duration + 100);
+    }
+    if (from !== number) update({ page: number });
     vertical.current?.scrollTo({ y: 0, animated: false });
     horizontal.current?.scrollToEnd({ animated: false });
-  }, [hydrated, update]);
-  const suppressVerseUntil = useRef(0);
+    scroll.current = { x: 0, y: 0 };
+  }, [hydrated, update, still, viewport.width, viewport.height, size.width, size.height]);
   const swipeFrom = useRef<number | null>(null), swipeBlocked = useRef(false);
-  const canSwipe = hydrated && fontReady && !fontError && !!page && !picker && !verse;
+  const canSwipe = hydrated && fontReady && !fontError && !!page && !picker && !verse && !turn;
   const swipe = useMemo(() => PanResponder.create({
     onStartShouldSetPanResponder: () => false,
     onStartShouldSetPanResponderCapture: (_event, gesture) => {
       swipeBlocked.current = gesture.numberActiveTouches !== 1;
       return false;
     },
-    onMoveShouldSetPanResponder: (_event, gesture) => canSwipe && !swipeBlocked.current && captureIndopakSwipe(state.zoom, gesture),
-    onMoveShouldSetPanResponderCapture: (_event, gesture) => canSwipe && !swipeBlocked.current && captureIndopakSwipe(state.zoom, gesture),
+    onMoveShouldSetPanResponder: (_event, gesture) => canSwipe && !turning.current && !swipeBlocked.current && captureIndopakSwipe(state.zoom, gesture),
+    onMoveShouldSetPanResponderCapture: (_event, gesture) => canSwipe && !turning.current && !swipeBlocked.current && captureIndopakSwipe(state.zoom, gesture),
     onPanResponderGrant: (_event, gesture) => {
       swipeFrom.current = latest.current.page; swipeBlocked.current = gesture.numberActiveTouches !== 1;
       suppressVerseUntil.current = Date.now() + 350;
@@ -97,7 +133,7 @@ export function IndopakMushafReader({ colors: C, dark, language, rtl, icon, init
     onPanResponderRelease: (_event, gesture) => {
       suppressVerseUntil.current = Date.now() + 350;
       const from = swipeFrom.current; swipeFrom.current = null;
-      if (!canSwipe || swipeBlocked.current || from !== latest.current.page) return;
+      if (!canSwipe || turning.current || swipeBlocked.current || from !== latest.current.page) return;
       const target = indopakSwipePage(from!, latest.current.zoom, viewport.width, gesture);
       if (target !== null) goPage(target);
     },
@@ -110,13 +146,13 @@ export function IndopakMushafReader({ colors: C, dark, language, rtl, icon, init
   // Keep web wrappers enabled and let their actual overflow decide what scrolls;
   // stage pan-y reserves unzoomed horizontal drags for JS, without blocking vertical scrolling.
   const webGestureStyle: ViewStyle & { touchAction: 'pan-y' | 'auto' } = { touchAction: state.zoom === 1 ? 'pan-y' : 'auto' };
-  const openWord = (key: string) => { if (Date.now() >= suppressVerseUntil.current) setVerse(key); };
+  const openWord = (key: string) => { if (!turning.current && Date.now() >= suppressVerseUntil.current) setVerse(key); };
   const togglePage = () => update({ savedPages: marked ? latest.current.savedPages.filter(p => p !== state.page)
     : [...latest.current.savedPages, state.page].sort((a, b) => a - b) });
   const button = (label: string, onPress: () => void, name: string, options: { disabled?: boolean; selected?: boolean; text?: string; testID?: string } = {}) => (
     <Pressable accessibilityRole={options.selected === undefined ? 'button' : 'checkbox'} accessibilityLabel={label}
-      accessibilityState={{ disabled: !!options.disabled, checked: options.selected }} aria-checked={options.selected}
-      testID={options.testID} disabled={options.disabled || !hydrated} onPress={onPress}
+      accessibilityState={{ disabled: !!options.disabled || !!turn, checked: options.selected }} aria-checked={options.selected}
+      testID={options.testID} disabled={options.disabled || !hydrated || !!turn} onPress={onPress}
       style={({ pressed }) => [styles.button, { backgroundColor: options.selected ? C.mint : C.card, borderColor: C.line, opacity: options.disabled ? .35 : pressed ? .65 : 1 }]}>
       {icon(name, 18, options.selected ? C.green : C.ink)}
       {!!options.text && <Text style={[styles.buttonText, { color: C.ink }]} numberOfLines={2}>{options.text}</Text>}
@@ -124,20 +160,37 @@ export function IndopakMushafReader({ colors: C, dark, language, rtl, icon, init
   );
 
   return <View testID="indopak-reader" style={styles.fill}>
-    {!short && <View style={styles.caption}>
-      <View style={styles.shrink}>
-        <Text style={[styles.edition, { color: C.ink }]} numberOfLines={1}>{copy('edition')}</Text>
-        <Text style={[styles.meta, { color: C.green }]}>{T('Offline')} · {INDOPAK_PAGE_COUNT}</Text>
+    <View testID="indopak-top-controls" style={[styles.topControls, inlineTop && styles.topInline]}>
+      <View testID="indopak-caption" style={[styles.caption, inlineTop && styles.captionInline]}>
+        {showEdition && <View style={styles.shrink}>
+          <Text style={[styles.edition, { color: C.ink }]} numberOfLines={1}>{copy('edition')}</Text>
+          <Text style={[styles.meta, { color: C.green }]}>{T('Offline')}</Text>
+        </View>}
+        <Pressable testID="indopak-page-select" accessibilityRole="button" accessibilityLabel={`${T('Page')} ${state.page} / ${INDOPAK_PAGE_COUNT}`}
+          accessibilityValue={{ min: 1, max: INDOPAK_PAGE_COUNT, now: state.page }} accessibilityLiveRegion="polite"
+          accessibilityActions={[{ name: 'increment', label: T('Next section') }, { name: 'decrement', label: T('Previous section') }]}
+          onAccessibilityAction={({ nativeEvent }) => {
+            if (nativeEvent.actionName === 'increment') goPage(latest.current.page + 1);
+            if (nativeEvent.actionName === 'decrement') goPage(latest.current.page - 1);
+          }}
+          disabled={!hydrated || !!turn} onPress={() => setPicker('page')}
+          style={[styles.pageSelect, !showEdition && !inlineTop && styles.shrink, { borderColor: C.line, backgroundColor: C.card }]}>
+          <View style={styles.counter}>
+            <Text style={[styles.pageLabel, { color: C.muted }]} numberOfLines={1}>{T('Page')}</Text>
+            <Text style={[styles.pageNumber, { color: C.ink }]} numberOfLines={1}>{state.page} / {INDOPAK_PAGE_COUNT}</Text>
+          </View>
+          {icon('chevron-down', 14, C.muted)}
+        </Pressable>
+        {compact && button(T('Verse'), () => setPicker('verse'), 'list-outline', { testID: 'indopak-verse-list' })}
+        {button(T('Sources'), () => setPicker('sources'), 'information-circle-outline', { testID: 'indopak-sources' })}
       </View>
-      {button(T('Sources'), () => setPicker('sources'), 'information-circle-outline', { testID: 'indopak-sources' })}
-    </View>}
-    <View testID="indopak-tools" style={styles.tools}>
-      {button(T('Surah'), () => setPicker('surah'), 'book-outline', { text: compact ? undefined : T('Surah'), testID: 'indopak-surah' })}
-      {button(T('Juz'), () => setPicker('juz'), 'layers-outline', { text: compact ? undefined : T('Juz'), testID: 'indopak-juz' })}
-      {button(T('Bookmarks'), togglePage, marked ? 'bookmark' : 'bookmark-outline', { selected: marked, testID: 'indopak-save-page' })}
-      {button(`${copy('zoom')} ${state.zoom}×`, () => update({ zoom: state.zoom === 1 ? 1.5 : state.zoom === 1.5 ? 2 : 1 }), 'expand-outline', { text: compact ? undefined : `${state.zoom}×`, testID: 'indopak-zoom' })}
-      {short && button(T('Verse'), () => setPicker('verse'), 'list-outline', { text: T('Verse'), testID: 'indopak-verse-list' })}
-      {short && button(T('Sources'), () => setPicker('sources'), 'information-circle-outline', { testID: 'indopak-sources' })}
+      <View testID="indopak-tools" style={[styles.tools, inlineTop && styles.shrink]}>
+        {button(T('Surah'), () => setPicker('surah'), 'book-outline', { text: compact ? undefined : T('Surah'), testID: 'indopak-surah' })}
+        {button(T('Juz'), () => setPicker('juz'), 'layers-outline', { text: compact ? undefined : T('Juz'), testID: 'indopak-juz' })}
+        {button(T('Bookmarks'), togglePage, marked ? 'bookmark' : 'bookmark-outline', { selected: marked, testID: 'indopak-save-page' })}
+        {button(`${copy('zoom')} ${state.zoom}×`, () => update({ zoom: zoomControl.next }), zoomControl.icon, { text: compact ? undefined : `${state.zoom}×`, testID: 'indopak-zoom' })}
+        {!compact && button(T('Verse'), () => setPicker('verse'), 'list-outline', { text: T('Verse'), testID: 'indopak-verse-list' })}
+      </View>
     </View>
     {!!saveError && <Pressable onPress={() => update({})} accessibilityRole="button"><Text style={[styles.message, { color: C.ink }]}>{copy('saveError')}</Text></Pressable>}
     <View testID="indopak-page-viewport" style={[styles.stage, Platform.OS === 'web' && webGestureStyle]} {...swipe.panHandlers} onLayout={({ nativeEvent: { layout } }) => {
@@ -146,45 +199,30 @@ export function IndopakMushafReader({ colors: C, dark, language, rtl, icon, init
       {!hydrated || (!fontReady && !fontError) ? <View style={styles.center}><ActivityIndicator color={C.green}/><Text style={[styles.message, { color: C.ink }]}>{T('Loading…')}</Text></View>
         : fontError || !page ? <View style={styles.center}><Text style={[styles.message, { color: C.ink }]}>{copy(fontError ? 'fontError' : 'dataError')}</Text>
           {fontError && button(T('Retry'), () => setAttempt(n => n + 1), 'refresh-outline', { text: T('Retry') })}</View>
-        : <ScrollView ref={vertical} testID="indopak-vertical-scroll" nestedScrollEnabled scrollEnabled={Platform.OS === 'web' || size.height > viewport.height + 1} showsVerticalScrollIndicator={size.height > viewport.height}
-          contentContainerStyle={{ minHeight: viewport.height, justifyContent: 'center' }}>
-          <ScrollView ref={horizontal} testID="indopak-horizontal-scroll" horizontal nestedScrollEnabled scrollEnabled={Platform.OS === 'web' || state.zoom > 1} bounces={false} alwaysBounceHorizontal={false} showsHorizontalScrollIndicator={state.zoom > 1}
-            style={{ height: size.height, direction: 'ltr' }} contentContainerStyle={{ minWidth: viewport.width, alignItems: 'center', justifyContent: 'center' }}
-            onContentSizeChange={() => { if (state.zoom > 1) horizontal.current?.scrollToEnd({ animated: false }); }}>
-            <Svg testID="indopak-page-svg" width={size.width} height={size.height} viewBox={`0 0 ${INDOPAK_VIEWBOX.width} ${INDOPAK_VIEWBOX.height}`}
-              style={{ direction: 'ltr' }} accessibilityLabel={`${T('Page')} ${state.page}`}>
-              <Rect x={8} y={8} width={984} height={1624} rx={12} fill={dark ? C.card : '#fffdf5'} stroke={C.gold} strokeWidth={3}/>
-              <Rect x={25} y={25} width={950} height={1590} rx={5} fill="none" stroke={C.gold} strokeWidth={1}/>
-              <IndopakHeading word={meta.chapters[(page.words[0]?.[0] || 1) - 1].heading} cx={500} cy={54} fontSize={27} fill={C.muted}/>
-              {placed.map(line => line.source.t === 'surah_name' ? <G key={line.source.n} testID={`indopak-line-${line.source.n}`}>
-                <Rect x={80} y={line.top + line.height * .22} width={840} height={line.height * .56} rx={14} fill={C.mint} stroke={C.gold} strokeWidth={1}/>
-                <IndopakHeading word={meta.chapters[line.source.s! - 1].heading} cx={500} cy={line.top + line.height / 2} fontSize={44} fill={C.ink}/>
-              </G> : <G key={line.source.n} testID={`indopak-line-${line.source.n}`}>
-                {line.words.map(word => <G key={word.id}>
-                  {line.source.t === 'ayah' && <Rect x={word.boxX - 2} y={line.top + 2} width={word.width + 4} height={line.height - 4}
-                    fill={verse === word.key ? C.mint : 'transparent'} rx={7}
-                    testID={`indopak-word-${word.id}`} accessibilityLabel={`${T('Verse')} ${word.key}`}
-                    onPress={() => openWord(word.key)}/>}
-                  <Path pointerEvents="none" d={indopakShapePath(word.shape)} fill={C.ink} testID={`indopak-ink-${word.id}`}
-                    transform={`translate(${word.x} ${line.baseline}) scale(${line.fontSize / meta.unitsPerEm} ${-line.fontSize / meta.unitsPerEm})`}/>
-                </G>)}
-              </G>)}
-              <SvgText x={500} y={1591} textAnchor="middle" fontFamily="DMSans_600SemiBold" fontSize={27} fill={C.muted}>{state.page}</SvgText>
-            </Svg>
-          </ScrollView>
-        </ScrollView>}
-    </View>
-    {!short && <Pressable accessibilityRole="button" accessibilityLabel={T('Verse')} onPress={() => setPicker('verse')} style={styles.hint} disabled={!hydrated || !fontReady}>
-      <Text style={[styles.meta, { color: C.muted, textAlign: 'center' }]}>{state.zoom === 1 ? `${copy('swipeHint')} ${copy('hint')}` : copy('hint')}</Text>
-    </Pressable>}
-    <View testID="indopak-page-navigation" style={styles.navigation}>
-      {button(T('Next section'), () => goPage(state.page + 1), 'chevron-back', { disabled: state.page === INDOPAK_PAGE_COUNT, testID: 'indopak-next' })}
-      <Pressable testID="indopak-page-select" accessibilityRole="button" accessibilityLabel={`${T('Page')} ${state.page} / ${INDOPAK_PAGE_COUNT}`}
-        disabled={!hydrated} onPress={() => setPicker('page')} style={[styles.pageSelect, { borderColor: C.line, backgroundColor: C.card }]}>
-        <Text style={[styles.buttonText, { color: C.ink }]}>{T('Page')} {state.page} / {INDOPAK_PAGE_COUNT}</Text>
-        {icon('chevron-down', 15, C.muted)}
-      </Pressable>
-      {button(T('Previous section'), () => goPage(state.page - 1), 'chevron-forward', { disabled: state.page === 1, testID: 'indopak-previous' })}
+        : <>
+          {turn && <Animated.View testID="indopak-page-outgoing" pointerEvents="none" accessible={false}
+            accessibilityElementsHidden importantForAccessibility="no-hide-descendants" aria-hidden={true}
+            style={[StyleSheet.absoluteFill, { backgroundColor: C.bg,
+              transform: [{ translateX: turnProgress.interpolate({ inputRange: [0, 1], outputRange: [0, turn.plan.direction * turn.plan.distance] }) }] }]}>
+            <View style={[styles.snapshot, { width: Math.max(turn.viewport.width, turn.size.width), height: Math.max(turn.viewport.height, turn.size.height),
+              transform: [{ translateX: -turn.scroll.x }, { translateY: -turn.scroll.y }] }]}>
+              <IndopakPageCanvas number={turn.from} width={turn.size.width} height={turn.size.height} colors={C} dark={dark} language={language} interactive={false}/>
+            </View>
+          </Animated.View>}
+          <Animated.View testID="indopak-page-current" style={[styles.fill, { backgroundColor: C.bg,
+            transform: [{ translateX: turn ? turnProgress.interpolate({ inputRange: [0, 1], outputRange: [-turn.plan.direction * turn.plan.distance, 0] }) : 0 }] }]}>
+            <ScrollView ref={vertical} testID="indopak-vertical-scroll" nestedScrollEnabled scrollEnabled={Platform.OS === 'web' || size.height > viewport.height + 1} showsVerticalScrollIndicator={size.height > viewport.height}
+              scrollEventThrottle={16} onScroll={({ nativeEvent }) => { scroll.current.y = nativeEvent.contentOffset.y; }}
+              contentContainerStyle={{ minHeight: viewport.height, justifyContent: 'center' }}>
+              <ScrollView ref={horizontal} testID="indopak-horizontal-scroll" horizontal nestedScrollEnabled scrollEnabled={Platform.OS === 'web' || state.zoom > 1} bounces={false} alwaysBounceHorizontal={false} showsHorizontalScrollIndicator={state.zoom > 1}
+                scrollEventThrottle={16} onScroll={({ nativeEvent }) => { scroll.current.x = nativeEvent.contentOffset.x; }}
+                style={{ height: size.height, direction: 'ltr' }} contentContainerStyle={{ minWidth: viewport.width, alignItems: 'center', justifyContent: 'center' }}
+                onContentSizeChange={() => { if (state.zoom > 1) horizontal.current?.scrollToEnd({ animated: false }); }}>
+                <IndopakPageCanvas number={state.page} width={size.width} height={size.height} colors={C} dark={dark} language={language} verse={verse} onWordPress={openWord}/>
+              </ScrollView>
+            </ScrollView>
+          </Animated.View>
+        </>}
     </View>
     {picker && <SystemModal visible transparent animationType="fade" onRequestClose={() => setPicker(null)}>
       <IndopakNavigator key={picker} kind={picker} page={state.page} savedPages={state.savedPages} verses={verses}
@@ -196,12 +234,6 @@ export function IndopakMushafReader({ colors: C, dark, language, rtl, icon, init
         play={() => { setVerse(null); onPlayVerse(verse, chapter); }} open={() => { setVerse(null); onOpenVerse(verse, chapter); }}/>
     </SystemModal>}
   </View>;
-}
-
-/** Word paths are a rendering of the unchanged supplied font, not replacement Quran text. */
-function IndopakHeading({ word, cx, cy, fontSize, fill }: { word: IndopakWord; cx: number; cy: number; fontSize: number; fill: string }) {
-  const { x, baseline, scale } = centeredIndopakWord(word, cx, cy, fontSize);
-  return <Path d={indopakShapePath(word[9])} fill={fill} pointerEvents="none" transform={`translate(${x} ${baseline}) scale(${scale} ${-scale})`}/>;
 }
 
 function IndopakNavigator({ kind, page, savedPages, verses, C, language, rtl, close, goPage, selectVerse, setKind, icon }: {
@@ -274,15 +306,19 @@ function IndopakVersePanel({ C, language, verse, chapter, text, close, play, ope
 
 const styles = StyleSheet.create({
   fill: { flex: 1, minHeight: 0, minWidth: 0 }, shrink: { flex: 1, minWidth: 0 },
-  caption: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingBottom: 4, gap: 8 },
+  topControls: { gap: 6, paddingHorizontal: 12, paddingTop: 4, paddingBottom: 6 },
+  topInline: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  caption: { flexDirection: 'row', alignItems: 'center', gap: 6 }, captionInline: { flexShrink: 0 },
   edition: { fontFamily: 'DMSans_600SemiBold', fontSize: 12 }, meta: { fontFamily: 'DMSans_400Regular', fontSize: 10, lineHeight: 15 },
-  tools: { flexDirection: 'row', gap: 6, paddingHorizontal: 12, paddingBottom: 4 },
+  tools: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   button: { minWidth: 44, minHeight: 44, flexShrink: 1, paddingHorizontal: 10, gap: 5, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderRadius: 14 },
   buttonText: { fontFamily: 'DMSans_600SemiBold', fontSize: 12, textAlign: 'center', flexShrink: 1 },
   stage: { flex: 1, minHeight: 0, minWidth: 0, overflow: 'hidden' }, center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12, padding: 16 },
-  hint: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 12 },
-  navigation: { flexDirection: 'row', gap: 8, paddingHorizontal: 12, paddingTop: 4, paddingBottom: 6 },
-  pageSelect: { flex: 1, flexDirection: 'row', gap: 4, minHeight: 44, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderRadius: 14 },
+  snapshot: { position: 'absolute', top: 0, left: 0, alignItems: 'center', justifyContent: 'center' },
+  pageSelect: { minWidth: 104, flexShrink: 0, flexDirection: 'row', gap: 6, minHeight: 44, paddingHorizontal: 10, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderRadius: 14 },
+  counter: { alignItems: 'center', minWidth: 0, flexShrink: 1 },
+  pageLabel: { fontFamily: 'DMSans_400Regular', fontSize: 10, lineHeight: 12 },
+  pageNumber: { fontFamily: 'DMSans_600SemiBold', fontSize: 12, lineHeight: 16, fontVariant: ['tabular-nums'], writingDirection: 'ltr' },
   modalRoot: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 12 },
   modal: { width: '100%', maxWidth: 520, minHeight: 0, flexShrink: 1, padding: 16, gap: 12, borderRadius: 24, borderWidth: 1 },
   title: { fontFamily: 'DMSans_700Bold', fontSize: 18, flexShrink: 1 },

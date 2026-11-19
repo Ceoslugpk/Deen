@@ -61,6 +61,7 @@ export default function CustomIcon({ name, size = 22, color, accent }: { name: s
     case'notifications':art=<><Path {...common} d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9z"/><Path {...common} d="M10 21h4"/></>;break;
     case'shield-checkmark':art=<><Path {...common} d="M12 2.5 20 6v5.5c0 5-3.1 8.2-8 10-4.9-1.8-8-5-8-10V6z"/><Polyline {...common} points="8.3,12 10.8,14.5 16,9.3"/></>;break;
     case'search':art=<><Circle {...common} cx="10.7" cy="10.7" r="6.7"/><Line {...common} x1="15.5" y1="15.5" x2="21" y2="21"/></>;break;
+    case'zoom-in':case'zoom-out':art=<><Circle {...common} cx="10.7" cy="10.7" r="6.7"/><Line {...common} x1="15.5" y1="15.5" x2="21" y2="21"/><Line {...common} x1="7.7" y1="10.7" x2="13.7" y2="10.7"/>{n==='zoom-in'&&<Line {...common} x1="10.7" y1="7.7" x2="10.7" y2="13.7"/>}</>;break;
     case'play':art=<Path d="m8 5 11 7-11 7z" fill={stroke}/>;break;
     case'play-skip-back':art=<><Path d="m17 5v14L8 12z" fill={stroke}/><Line {...common} x1="5.4" y1="4.6" x2="5.4" y2="19.4"/></>;break;
     case'play-skip-forward':art=<><Path d="m7 5v14l9-7z" fill={stroke}/><Line {...common} x1="18.6" y1="4.6" x2="18.6" y2="19.4"/></>;break;
