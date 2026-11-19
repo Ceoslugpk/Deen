@@ -19,11 +19,12 @@ import {
   PanResponder, useColorScheme, useWindowDimensions, View, Dimensions, Keyboard
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
+import { SafeAreaProvider, initialWindowMetrics, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SystemNavigationBoundary, useSafeContentFrame } from './src/components/SystemNavigationBoundary';
 import { SystemModal as Modal } from './src/components/SystemModal';
 import { IndopakMushafReader } from './src/components/IndopakMushafReader';
 import { indopakText } from './src/services/indopakCopy';
+import { isIndopakReaderRoute } from './src/services/indopakInteraction';
 import { floatingTabBarWidth, FLOAT_BAR_PADDING } from './src/services/systemLayout';
 import { WebView } from 'react-native-webview';
 import * as SplashScreen from 'expo-splash-screen';
@@ -822,6 +823,9 @@ function useChromeHidden() {
   }, []);
   return hidden;
 }
+
+/** Route-scoped, not a persistent setting or a global reader focus-mode flag. */
+const IndopakScreenContext = createContext(false);
 
 /* ==================== Overlay layer ==================== */
 /**
@@ -3723,7 +3727,7 @@ function IndopakQuranScreen({route,navigation}:any){
   const {language,rtl}=useLanguage();
   const {dark}=useTheme();
   return <Page><ToolBar title={indopakText(language,'title')} navigation={navigation} tool="Mushaf Pages"/>
-    <View style={{flex:1,minHeight:0,paddingBottom:BOTTOM_RESERVE}}>
+    <View style={{flex:1,minHeight:0,paddingBottom:12}}>
       <IndopakMushafReader colors={C} dark={dark} language={language} rtl={rtl} icon={ico} initialPage={route.params?.page}
         onPlayVerse={(key,chapter)=>{void playFromReader({id:chapter.id,name_simple:chapter.name,name_arabic:chapter.arabic,verses_count:chapter.verses} as Chapter,
           {id:0,verse_key:key,text_uthmani:'',surah_name:chapter.name},rtl)}}
@@ -12574,8 +12578,10 @@ function SeekBar({ position, duration, onSeek }: { position: number; duration: n
 function MiniPlayer() {
   const audio = useAudio();
   const { rtl , language }=useLanguage();
+  const indopakActive = useContext(IndopakScreenContext);
+  const insets = useSafeAreaInsets();
   if (!audio.track) return null;
-  const bottom = MINI_PLAYER_BOTTOM;
+  const bottom = indopakActive ? 16 + (Platform.OS === 'ios' ? insets.bottom : 0) : MINI_PLAYER_BOTTOM;
   const open = () => { if (navigationRef.isReady()) (navigationRef as any).navigate('Quran', { screen: 'Audio Player' }); };
   return <View testID="mini-player" style={[s.miniPlayer, { bottom, flexDirection: 'row' }]}>
     <Pressable accessibilityRole="button" accessibilityLabel={tx(language,'Open the audio player')} onPress={open} style={s.miniBody}>
@@ -13192,6 +13198,7 @@ function FloatingTabBar({ state, navigation }: any) {
   const { rtl , language }=useLanguage();
   const { resolved, dark } = useTheme();
   const hidden = useChromeHidden();
+  const indopakActive = useContext(IndopakScreenContext);
   // The navigator's actual safe parent can be narrower than the display
   // (side navigation keys, a cutout, split-screen or a folded cover display).
   const barWidth = floatingTabBarWidth(Math.min(measuredWidth ?? width, width), state.routes.length);
@@ -13218,6 +13225,8 @@ function FloatingTabBar({ state, navigation }: any) {
     Animated.spring(at, { toValue: state.index, ...TAB_SPRING }).start();
   }, [state.index, at, still]);
 
+  // All hooks stay mounted; only this focused screen removes the menu, including its touch/a11y targets.
+  if (indopakActive) return null;
   return <Animated.View testID="floating-navigation" pointerEvents="box-none"
     onLayout={(event) => setMeasuredWidth(event.nativeEvent.layout.width)} style={[s.floatBarWrap, {
     opacity: drop,
@@ -13401,6 +13410,7 @@ function Root() {
      choice is made. */
   const { fontTick } = useQuranPreferences();
   const liveState = useRef<any>(undefined);
+  const [indopakActive, setIndopakActive] = useState(false);
   useBackIntegration(navigationRef);
   useEffect(() => { clearSavedNavState(); }, []);
   /* The screen dips out and back around the palette swap. It gives way a
@@ -13416,7 +13426,10 @@ function Root() {
   };
 
   return <Animated.View style={[s.themeSwap, dip]}>
-    <NavigationContainer ref={navigationRef} key={(dark ? 'dark' : 'light') + ':' + tick + ':' + fontTick} initialState={liveState.current} onStateChange={(state: any) => { liveState.current = state; }}>
+    <IndopakScreenContext.Provider value={indopakActive}>
+    <NavigationContainer ref={navigationRef} key={(dark ? 'dark' : 'light') + ':' + tick + ':' + fontTick} initialState={liveState.current}
+      onReady={() => setIndopakActive(isIndopakReaderRoute(navigationRef.getRootState()))}
+      onStateChange={(state: any) => { liveState.current = state; setIndopakActive(isIndopakReaderRoute(state)); }}>
     <Stack.Navigator screenOptions={{...subtle,headerShown:false}}>
       <Stack.Screen name="Main" component={Tabs} />
       <Stack.Screen name="Settings" component={SettingsStack} />
@@ -13427,6 +13440,7 @@ function Root() {
     </Stack.Navigator>
       <ExpoStatusBar style={dark ? 'light' : 'dark'} /><MiniPlayer /><OverlayHost /><ExitPrompt />
     </NavigationContainer>
+    </IndopakScreenContext.Provider>
   </Animated.View>;
 }
 

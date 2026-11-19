@@ -161,7 +161,7 @@ test('page fitting uses both safe dimensions and zoom never changes the printed 
 
 test('all supported interface languages have the new screen copy, with Cyrillic Uzbek/Kazakh', () => {
   for (const language of ['ar','ur','fa','ps','fr','tr','ru','uz','kk','zh','vi','az','bs','bg','si','bn','hi','id','ms','ta','ml']) {
-    for (const key of ['title','hint','pageError','zoom','openVerse','empty','fontError','dataError','saveError']) {
+    for (const key of ['title','hint','pageError','zoom','openVerse','empty','fontError','dataError','saveError','swipeHint']) {
       const value = copy.indopakText(language, key, { total: 548 });
       // “Zoom” is also the correct French word, not an English fallback.
       assert.ok(value && ((language === 'fr' && key === 'zoom') || value !== copy.indopakText('en', key, { total: 548 })), `${language}/${key}`);

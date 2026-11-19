@@ -1,13 +1,13 @@
 /** Real Expo WEB, real bundled Quran assets. Native rendering/device testing remains separate.
- * INDOPAK_URL=http://127.0.0.1:8104 node tests/verify-indopak-web.cjs
+ * INDOPAK_URL=http://127.0.0.1:8105 node tests/verify-indopak-web.cjs
  */
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { chromium } = require('playwright');
 const meta = require('../src/data/indopak16/meta.json');
-const url = process.env.INDOPAK_URL || 'http://127.0.0.1:8104';
-const output = process.env.INDOPAK_ARTIFACTS_DIR || '/tmp/islamic-r94-web-smoke';
+const url = process.env.INDOPAK_URL || 'http://127.0.0.1:8105';
+const output = process.env.INDOPAK_ARTIFACTS_DIR || '/tmp/islamic-r95-web-smoke';
 const key = '@deen/quran/indopak-taj-16/state/v1';
 const originalKeys = ['@deen/quran/preferences/v1', '@deen/quran/position/v1', '@deen/quran/bookmarks/v1', '@deen/quran/notes/v1'];
 const pause = page => page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
@@ -19,7 +19,7 @@ async function makePage(browser, language = 'en', dark = false) {
     localStorage.setItem('@deen/onboarding/v1', JSON.stringify({ completed: true, app: lang, text: 'en', voice: 'en', locationAsked: true, notificationsAsked: true }));
     localStorage.setItem('@deen/language/v1', lang);
     localStorage.setItem('@deen/location/v1', JSON.stringify({ latitude: 25.2048, longitude: 55.2708, label: 'Dubai', timezone: 'Asia/Dubai' }));
-    localStorage.setItem('deen-theme-v1', dark ? 'dark' : 'light');
+    localStorage.setItem('deen-theme-v1', dark === 'system' ? 'system' : dark ? 'dark' : 'light');
     localStorage.setItem('deen-theme-name-v1', 'islamic');
     localStorage.setItem('@deen/audio-settings/v1', JSON.stringify({ translationAudioEnabled: false }));
     localStorage.setItem('@deen/quran/preferences/v1', JSON.stringify({ scriptEdition: 'quran-uthmani', scriptName: 'Uthmani', arabicFont: 'hafs', fontSize: 30,
@@ -45,7 +45,8 @@ async function makePage(browser, language = 'en', dark = false) {
   await page.getByTestId('navigation-quran').click();
   await page.getByTestId('qtile-16-line Quran').scrollIntoViewIfNeeded();
   await page.getByTestId('qtile-16-line Quran').click();
-  await page.getByTestId('indopak-page-svg').waitFor(); await pause(page);
+  await page.getByTestId('indopak-page-svg').waitFor();
+  await page.getByTestId('floating-navigation-bar').waitFor({state:'detached'}); await pause(page);
   return { context, page, errors };
 }
 async function gotoPage(page, number) {
@@ -58,13 +59,17 @@ async function gotoPage(page, number) {
 async function layout(page, expectedPage) {
   await pause(page);
   const safe = await box(page.getByTestId('system-safe-content').first());
-  const footer = await box(page.getByTestId('floating-navigation-bar'));
+  assert.equal(await page.getByTestId('floating-navigation-bar').count(),0,'Only this reader removes the bottom menu');
+  const player = await page.getByTestId('mini-player').count() ? await box(page.getByTestId('mini-player')) : null;
   const viewport = await box(page.getByTestId('indopak-page-viewport'));
   const navigation = await box(page.getByTestId('indopak-page-navigation'));
   const tools = await box(page.getByTestId('indopak-tools'));
   const header = await box(page.getByTestId('screen-header').last());
-  for (const [label, rect] of Object.entries({ footer, viewport, navigation, tools, header })) inside(rect, safe, label);
-  assert.ok(navigation.bottom <= footer.y + 1, 'Page controls are above the existing bottom capsule');
+  for (const [label, rect] of Object.entries({ viewport, navigation, tools, header })) inside(rect, safe, label);
+  if (player) {
+    inside(player,safe,'mini-player'); assert.ok(navigation.bottom <= player.y - 8,'Page controls clear the lowered mini-player');
+    assert.ok(Math.abs(safe.bottom - player.bottom - 16) < 2,'Mini-player uses the freed bottom space on web/Android');
+  } else assert.ok(safe.bottom - navigation.bottom >= 8 && safe.bottom - navigation.bottom <= 16,'No empty tab-bar reserve remains');
   for (const id of ['indopak-surah', 'indopak-juz', 'indopak-save-page', 'indopak-zoom']) {
     const rect = await box(page.getByTestId(id)); inside(rect, tools, id);
     assert.ok(rect.width >= 43.9 && rect.height >= 43.9, `${id} keeps a 44px target`);
@@ -87,7 +92,31 @@ async function layout(page, expectedPage) {
     const scroll = await page.getByTestId('indopak-vertical-scroll').evaluate(e => ({ height:e.clientHeight, content:e.scrollHeight }));
     assert.ok(scroll.content > scroll.height, 'Oversized/landscape pages remain vertically scrollable');
   }
-  return { safe, footer, viewport, navigation, tools, header, text };
+  return { safe, footerHidden:true, player, viewport, navigation, tools, header, text };
+}
+/** Real Chromium touch input, not a direct call to a responder or page setter. */
+async function touchSwipe(page, { dx, dy = 0, word = false, multi = false, cancel = false }) {
+  const stage = await box(page.getByTestId('indopak-page-viewport'));
+  let x = stage.x + stage.width * (dx >= 0 ? .25 : .75), y = stage.y + Math.min(stage.height * .45,220);
+  if (word) {
+    const target = await box(page.getByTestId('indopak-word-1')); x = target.x + target.width / 2; y = target.y + target.height / 2;
+    dx = Math.min(dx,stage.right - x - 8);
+  }
+  const client = await page.context().newCDPSession(page);
+  const points = (px,py,second = multi === true) => [{x:px,y:py,id:1,radiusX:3,radiusY:3},...(second ? [{x:px+20,y:py+20,id:2,radiusX:3,radiusY:3}] : [])];
+  try {
+    await client.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:points(x,y)});
+    for (let i=1;i<=8;i++) {
+      if (multi === 'afterCapture' && i === 4) await client.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:points(x+dx*(i-1)/8,y+dy*(i-1)/8,true)});
+      await client.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:points(x+dx*i/8,y+dy*i/8,multi === true || (multi === 'afterCapture' && i >= 4))});
+      await page.waitForTimeout(15);
+    }
+    await client.send('Input.dispatchTouchEvent',{type:cancel ? 'touchCancel' : 'touchEnd',touchPoints:[]});
+    await pause(page);
+  } finally { await client.detach(); }
+}
+async function expectPage(page, n) {
+  await page.waitForFunction(n => document.querySelector('[data-testid="indopak-page-select"]')?.textContent.includes(`${n} / 548`),n);
 }
 async function insets(page, values) {
   await page.getByTestId('system-window-boundary').first().evaluate((e, values) => {
@@ -104,6 +133,50 @@ async function insets(page, values) {
     const { context, page, errors } = await makePage(browser); active = page; report.errors.push(errors);
     assert.equal(await page.evaluate(k => localStorage.getItem(k), key), null, 'Opening does not write defaults over saved data');
     const before = await page.evaluate(keys => Object.fromEntries(keys.map(k => [k, localStorage.getItem(k)])), originalKeys);
+    await page.getByTestId('indopak-sources').click();
+    const summary = page.getByTestId('indopak-source-summary');
+    assert.equal(await summary.locator(':scope > *').count(),2);
+    const sourceText = await summary.innerText(); assert.ok(sourceText.includes('QUL / Tarteel · QuranWBW'));
+    assert.ok(!sourceText.includes('548 · 16') && !sourceText.includes('KFGQPC') && !sourceText.includes('11 / 59 / 242'));
+    await page.screenshot({path:path.join(output,'concise-sources.png'),animations:'disabled'});
+    await page.getByTestId('indopak-navigator').getByRole('button',{name:'Close',exact:true}).click();
+    report.sourceSummary = sourceText;
+    await touchSwipe(page,{dx:-155}); await expectPage(page,1);
+    assert.equal(await page.evaluate(k=>localStorage.getItem(k),key),null,'An outward boundary swipe does not save defaults');
+    await touchSwipe(page,{dx:150,word:true}); await expectPage(page,2);
+    assert.equal(await page.getByTestId('indopak-verse-panel').count(),0,'Swipe starting on a verse must not open a verse modal');
+    await touchSwipe(page,{dx:155}); await expectPage(page,3);
+    await touchSwipe(page,{dx:-155}); await expectPage(page,2);
+    await touchSwipe(page,{dx:65,dy:-150}); await expectPage(page,2);
+    await touchSwipe(page,{dx:155,multi:true}); await expectPage(page,2);
+    await touchSwipe(page,{dx:155,multi:'afterCapture'}); await expectPage(page,2);
+    await touchSwipe(page,{dx:155,cancel:true}); await expectPage(page,2);
+    await touchSwipe(page,{dx:28}); await expectPage(page,2);
+    await page.waitForTimeout(380);
+    await page.getByTestId('indopak-page-svg').locator('rect[data-testid^="indopak-word-"]').first().tap();
+    await page.getByTestId('indopak-verse-panel').waitFor();
+    await page.getByTestId('indopak-verse-panel').getByRole('button',{name:'Close',exact:true}).click();
+    await page.getByTestId('indopak-zoom').click();
+    const beforePan = await page.getByTestId('indopak-horizontal-scroll').evaluate(e=>e.scrollLeft);
+    await touchSwipe(page,{dx:145}); await expectPage(page,2);
+    const afterPan = await page.getByTestId('indopak-horizontal-scroll').evaluate(e=>e.scrollLeft);
+    assert.ok(Math.abs(afterPan-beforePan)>10,'At 1.5× a horizontal drag pans, not a page turn');
+    await touchSwipe(page,{dx:0,dy:-145}); await expectPage(page,2);
+    assert.ok(await page.getByTestId('indopak-vertical-scroll').evaluate(e=>e.scrollTop>10),'Zoomed vertical panning still scrolls');
+    await page.setViewportSize({width:280,height:1440}); await pause(page);
+    const tallBefore = await page.getByTestId('indopak-horizontal-scroll').evaluate(e=>e.scrollLeft);
+    await touchSwipe(page,{dx:100}); await expectPage(page,2);
+    assert.ok(Math.abs(await page.getByTestId('indopak-horizontal-scroll').evaluate(e=>e.scrollLeft)-tallBefore)>10,'Zoomed horizontal panning survives a non-overflowing vertical wrapper');
+    await page.getByTestId('indopak-zoom').click(); await page.getByTestId('indopak-zoom').click();
+    await page.setViewportSize({width:390,height:844}); await pause(page);
+    await gotoPage(page,548); await touchSwipe(page,{dx:155}); await expectPage(page,548);
+    await touchSwipe(page,{dx:-155}); await expectPage(page,547);
+    await page.waitForFunction(k => JSON.parse(localStorage.getItem(k) || '{}').page === 547,key);
+    await page.getByTestId('screen-header').last().getByRole('button',{name:'Back',exact:true}).click();
+    await page.getByTestId('floating-navigation-bar').waitFor();
+    await page.getByTestId('qtile-16-line Quran').scrollIntoViewIfNeeded(); await page.getByTestId('qtile-16-line Quran').click();
+    await expectPage(page,547); await page.getByTestId('floating-navigation-bar').waitFor({state:'detached'});
+    report.swipes = {rightNext:true,leftPrevious:true,verseTapNotTriggered:true,subsequentVerseTap:true,verticalRejected:true,multiTouchRejected:true,addedFingerRejected:true,cancelRejected:true,shortDragRejected:true,zoomPan:true,boundaries:true,savedPageRestored:true};
     const targets = [1,2,3,76,77,100,200,274,400,500,529,530,548];
     for (const n of targets) { await gotoPage(page, n); report.pages.push({ page: n, ...(await layout(page, n)) }); }
     assert.equal(await page.getByTestId('indopak-next').getAttribute('aria-disabled'), 'true');
@@ -145,6 +218,13 @@ async function insets(page, values) {
       ['larger-keys',{width:280,height:720},{top:30,bottom:64}], ['side-keys',{width:844,height:390},{top:24,right:48}],
       ['left-keys',{width:844,height:390},{top:24,left:48}],
     ]) { await page.setViewportSize(viewport); await insets(page, values); report.insets.push({ name, ...(await layout(page, 274)) }); }
+    await page.setViewportSize({width:844,height:390}); await insets(page,{});
+    await touchSwipe(page,{dx:0,dy:-150}); await expectPage(page,274);
+    assert.ok(await page.getByTestId('indopak-vertical-scroll').evaluate(e=>e.scrollTop>10),'An overflowing 1× landscape page still scrolls vertically');
+    await touchSwipe(page,{dx:155}); await expectPage(page,275);
+    await touchSwipe(page,{dx:-155}); await expectPage(page,274);
+    assert.equal(await page.getByTestId('indopak-vertical-scroll').evaluate(e=>e.scrollTop),0,'A swipe resets the new page to the top');
+    report.swipes.landscapeVerticalScroll = true;
     await page.setViewportSize({ width: 390, height: 844 }); await insets(page, {});
     report.modals = [];
     for (const viewport of [{width:320,height:568},{width:844,height:390}]) {
@@ -183,7 +263,12 @@ async function insets(page, values) {
     await context.setOffline(true); await gotoPage(page, 547); await layout(page, 547); await gotoPage(page, 274);
     await context.setOffline(false); report.offline = { passed: true, pages: [547,274], source: 'bundled assets; no text or layout API requests' };
     await page.getByTestId('screen-header').last().getByRole('button', { name: 'Back', exact: true }).click();
+    await page.getByTestId('floating-navigation-bar').waitFor();
+    for (const tab of ['home','prayer','library','tools','quran']) {
+      await page.getByTestId(`navigation-${tab}`).click(); await page.getByTestId('floating-navigation-bar').waitFor();
+    }
     await page.getByTestId('qtile-16-line Quran').scrollIntoViewIfNeeded(); await page.getByTestId('qtile-16-line Quran').click();
+    await page.getByTestId('floating-navigation-bar').waitFor({state:'detached'}); report.menuRestoredOnExit = true;
     await page.waitForFunction(() => document.querySelector('[data-testid="indopak-page-select"]')?.textContent.includes('274 / 548'));
     assert.equal(await page.getByTestId('indopak-save-page').getAttribute('aria-checked'), 'true'); report.restored = true;
 
@@ -205,21 +290,59 @@ async function insets(page, values) {
     const media = await page.evaluate(() => window.__indopakMedia.map(a => ({ url:a.currentSrc || a.src,paused:a.paused,readyState:a.readyState,position:a.currentTime })).filter(a=>a.url.includes('/4906.mp3')));
     assert.ok(media.length); report.audio = media;
     await page.getByRole('button', { name: 'Pause recitation', exact: true }).click(); await layout(page);
+    report.activeAudio = [];
+    for (const [name,viewport,values] of [
+      ['small',{width:320,height:568},{}], ['buttons',{width:390,height:844},{top:24,bottom:48}],
+      ['larger-keys',{width:280,height:720},{top:30,bottom:64}], ['side-keys',{width:844,height:390},{top:24,right:48}],
+      ['left-keys',{width:844,height:390},{top:24,left:48}],
+    ]) {
+      await page.setViewportSize(viewport); await insets(page,values);
+      report.activeAudio.push({name,...(await layout(page))});
+    }
+    await page.setViewportSize({width:390,height:844}); await insets(page,{});
+    await page.screenshot({path:path.join(output,'reader-with-audio.png'),animations:'disabled'});
+    await page.getByRole('button',{name:'Open the audio player',exact:true}).click();
+    await page.getByTestId('screen-header').last().getByText('Now playing',{exact:true}).waitFor(); await page.getByTestId('floating-navigation-bar').waitFor();
+    const normalPlayer = await box(page.getByTestId('mini-player'));
+    assert.ok(Math.abs(844-normalPlayer.bottom-96)<2,'The existing player position is unchanged away from this reader');
+    await page.getByTestId('screen-header').last().getByRole('button',{name:'Back',exact:true}).click();
+    await page.getByTestId('floating-navigation-bar').waitFor({state:'detached'}); await layout(page);
+    report.audioScreenMenuRestored = true;
     await page.getByRole('button', { name: 'Verse', exact: true }).click(); await page.getByTestId('indopak-jump-verse-55:5').click();
     await page.getByTestId('indopak-open-verse').click(); await page.getByTestId('reader-header').waitFor();
     await page.getByText('55:5', { exact:true }).waitFor(); report.existingReader = true;
+    await page.getByTestId('floating-navigation-bar').waitFor();
+    await page.getByTestId('reader-header').getByRole('button',{name:'Go back',exact:true}).click();
+    await page.getByTestId('indopak-reader').waitFor(); await page.getByTestId('floating-navigation-bar').waitFor({state:'detached'});
+    await page.getByRole('button',{name:'Close the player',exact:true}).click();
+    await page.getByTestId('mini-player').waitFor({state:'detached'}); await layout(page);
     await context.close();
 
     for (const [language,dark] of [['ur',false],['en',true]]) {
       const next = await makePage(browser,language,dark); active = next.page; report.errors.push(next.errors);
       await gotoPage(next.page,274); await layout(next.page,274);
+      if(language==='ur') { await touchSwipe(next.page,{dx:155}); await expectPage(next.page,275); await touchSwipe(next.page,{dx:-155}); await expectPage(next.page,274); await next.page.waitForTimeout(380); report.rtlSwipes = true; }
       const firstWord = next.page.getByTestId('indopak-page-svg').locator('rect[data-testid^="indopak-word-"]').first();
       await firstWord.click(); await next.page.getByTestId('indopak-verse-panel').waitFor();
       await next.page.screenshot({path:path.join(output,`${language}-${dark?'dark':'rtl'}-verse.png`),animations:'disabled'});
       await next.context.close();
     }
+    const themed = await makePage(browser,'en','system'); active = themed.page; report.errors.push(themed.errors);
+    await gotoPage(themed.page,274);
+    await themed.page.waitForFunction(k=>JSON.parse(localStorage.getItem(k) || '{}').page===274,key);
+    for (const colorScheme of ['dark','light']) {
+      await themed.page.emulateMedia({colorScheme});
+      await themed.page.waitForFunction(dark=>{
+        const fill = document.querySelector('[data-testid="indopak-page-svg"] > rect')?.getAttribute('fill');
+        return !!fill && (dark ? fill !== '#fffdf5' : fill === '#fffdf5');
+      },colorScheme==='dark');
+      await expectPage(themed.page,274); await layout(themed.page,274);
+    }
+    await themed.page.getByTestId('screen-header').last().getByRole('button',{name:'Back',exact:true}).click();
+    await themed.page.getByTestId('floating-navigation-bar').waitFor();
+    report.themeRemount = {darkAndLight:true,pageRestored:true,menuScoped:true}; await themed.context.close();
     for (const errors of report.errors) for (const [type, values] of Object.entries(errors)) assert.deepEqual(values, [], `${type} errors`);
-    console.log(JSON.stringify({pages:report.pages.length,profiles:report.profiles.length,insets:report.insets.length,modals:report.modals.length,offline:report.offline,allPageSweep:report.allPageSweep,restored:report.restored,audio:report.audio,existingReader:report.existingReader,errors:report.errors},null,2));
+    console.log(JSON.stringify({pages:report.pages.length,profiles:report.profiles.length,insets:report.insets.length,modals:report.modals.length,swipes:report.swipes,menuRestored:report.menuRestoredOnExit,rtlSwipes:report.rtlSwipes,activeAudio:report.activeAudio.length,audioScreenMenuRestored:report.audioScreenMenuRestored,themeRemount:report.themeRemount,offline:report.offline,allPageSweep:report.allPageSweep,restored:report.restored,audio:report.audio,existingReader:report.existingReader,errors:report.errors},null,2));
   } catch(error) {
     report.failure = error.stack || String(error); if(active && !active.isClosed()) await active.screenshot({path:path.join(output,'failure.png')}).catch(()=>{}); throw error;
   } finally { fs.writeFileSync(path.join(output,'report.json'),JSON.stringify(report,null,2)); await browser.close(); }

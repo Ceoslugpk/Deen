@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, FlatList, PanResponder, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type ViewStyle } from 'react-native';
 import Svg, { G, Path, Rect, Text as SvgText } from 'react-native-svg';
 import { SystemModal } from './SystemModal';
 import { useSafeContentFrame } from './SystemNavigationBoundary';
 import { tx } from '../services/arabicCopy';
 import { indopakText } from '../services/indopakCopy';
+import { captureIndopakSwipe, indopakSwipePage } from '../services/indopakInteraction';
 import { ensureIndopakFont } from '../services/indopakFont';
 import { defaultIndopakState, loadIndopakState, saveIndopakState, type IndopakState } from '../services/indopakState';
 import {
@@ -70,12 +71,46 @@ export function IndopakMushafReader({ colors: C, dark, language, rtl, icon, init
   const verses = useMemo(() => page ? [...new Set(page.words.map(indopakVerseKey))] : [], [page]);
   const size = fitIndopakPage(viewport.width, viewport.height, state.zoom, true);
   const marked = state.savedPages.includes(state.page);
-  const goPage = (number: number) => {
+  const goPage = useCallback((number: number) => {
     if (!validIndopakPage(number) || !hydrated) return;
     setVerse(null); setPicker(null); update({ page: number });
     vertical.current?.scrollTo({ y: 0, animated: false });
     horizontal.current?.scrollToEnd({ animated: false });
-  };
+  }, [hydrated, update]);
+  const suppressVerseUntil = useRef(0);
+  const swipeFrom = useRef<number | null>(null), swipeBlocked = useRef(false);
+  const canSwipe = hydrated && fontReady && !fontError && !!page && !picker && !verse;
+  const swipe = useMemo(() => PanResponder.create({
+    onStartShouldSetPanResponder: () => false,
+    onStartShouldSetPanResponderCapture: (_event, gesture) => {
+      swipeBlocked.current = gesture.numberActiveTouches !== 1;
+      return false;
+    },
+    onMoveShouldSetPanResponder: (_event, gesture) => canSwipe && !swipeBlocked.current && captureIndopakSwipe(state.zoom, gesture),
+    onMoveShouldSetPanResponderCapture: (_event, gesture) => canSwipe && !swipeBlocked.current && captureIndopakSwipe(state.zoom, gesture),
+    onPanResponderGrant: (_event, gesture) => {
+      swipeFrom.current = latest.current.page; swipeBlocked.current = gesture.numberActiveTouches !== 1;
+      suppressVerseUntil.current = Date.now() + 350;
+    },
+    onPanResponderStart: (_event, gesture) => { if (gesture.numberActiveTouches > 1) swipeBlocked.current = true; },
+    onPanResponderMove: (_event, gesture) => { if (gesture.numberActiveTouches > 1) swipeBlocked.current = true; },
+    onPanResponderRelease: (_event, gesture) => {
+      suppressVerseUntil.current = Date.now() + 350;
+      const from = swipeFrom.current; swipeFrom.current = null;
+      if (!canSwipe || swipeBlocked.current || from !== latest.current.page) return;
+      const target = indopakSwipePage(from!, latest.current.zoom, viewport.width, gesture);
+      if (target !== null) goPage(target);
+    },
+    onPanResponderTerminate: () => { swipeFrom.current = null; suppressVerseUntil.current = Date.now() + 350; },
+    onPanResponderTerminationRequest: () => true,
+    // A native scroll/stack-back recognizer may take over; cancellation never turns a page.
+    onShouldBlockNativeResponder: () => false,
+  }), [canSwipe, state.zoom, viewport.width, goPage]);
+  // RN web's disabled ScrollView applies touch-action:none to descendants too.
+  // Keep web wrappers enabled and let their actual overflow decide what scrolls;
+  // stage pan-y reserves unzoomed horizontal drags for JS, without blocking vertical scrolling.
+  const webGestureStyle: ViewStyle & { touchAction: 'pan-y' | 'auto' } = { touchAction: state.zoom === 1 ? 'pan-y' : 'auto' };
+  const openWord = (key: string) => { if (Date.now() >= suppressVerseUntil.current) setVerse(key); };
   const togglePage = () => update({ savedPages: marked ? latest.current.savedPages.filter(p => p !== state.page)
     : [...latest.current.savedPages, state.page].sort((a, b) => a - b) });
   const button = (label: string, onPress: () => void, name: string, options: { disabled?: boolean; selected?: boolean; text?: string; testID?: string } = {}) => (
@@ -105,15 +140,15 @@ export function IndopakMushafReader({ colors: C, dark, language, rtl, icon, init
       {short && button(T('Sources'), () => setPicker('sources'), 'information-circle-outline', { testID: 'indopak-sources' })}
     </View>
     {!!saveError && <Pressable onPress={() => update({})} accessibilityRole="button"><Text style={[styles.message, { color: C.ink }]}>{copy('saveError')}</Text></Pressable>}
-    <View testID="indopak-page-viewport" style={styles.stage} onLayout={({ nativeEvent: { layout } }) => {
+    <View testID="indopak-page-viewport" style={[styles.stage, Platform.OS === 'web' && webGestureStyle]} {...swipe.panHandlers} onLayout={({ nativeEvent: { layout } }) => {
       setViewport(current => current.width === layout.width && current.height === layout.height ? current : { width: layout.width, height: layout.height });
     }}>
       {!hydrated || (!fontReady && !fontError) ? <View style={styles.center}><ActivityIndicator color={C.green}/><Text style={[styles.message, { color: C.ink }]}>{T('Loading…')}</Text></View>
         : fontError || !page ? <View style={styles.center}><Text style={[styles.message, { color: C.ink }]}>{copy(fontError ? 'fontError' : 'dataError')}</Text>
           {fontError && button(T('Retry'), () => setAttempt(n => n + 1), 'refresh-outline', { text: T('Retry') })}</View>
-        : <ScrollView ref={vertical} testID="indopak-vertical-scroll" nestedScrollEnabled showsVerticalScrollIndicator={size.height > viewport.height}
+        : <ScrollView ref={vertical} testID="indopak-vertical-scroll" nestedScrollEnabled scrollEnabled={Platform.OS === 'web' || size.height > viewport.height + 1} showsVerticalScrollIndicator={size.height > viewport.height}
           contentContainerStyle={{ minHeight: viewport.height, justifyContent: 'center' }}>
-          <ScrollView ref={horizontal} horizontal nestedScrollEnabled showsHorizontalScrollIndicator={state.zoom > 1}
+          <ScrollView ref={horizontal} testID="indopak-horizontal-scroll" horizontal nestedScrollEnabled scrollEnabled={Platform.OS === 'web' || state.zoom > 1} bounces={false} alwaysBounceHorizontal={false} showsHorizontalScrollIndicator={state.zoom > 1}
             style={{ height: size.height, direction: 'ltr' }} contentContainerStyle={{ minWidth: viewport.width, alignItems: 'center', justifyContent: 'center' }}
             onContentSizeChange={() => { if (state.zoom > 1) horizontal.current?.scrollToEnd({ animated: false }); }}>
             <Svg testID="indopak-page-svg" width={size.width} height={size.height} viewBox={`0 0 ${INDOPAK_VIEWBOX.width} ${INDOPAK_VIEWBOX.height}`}
@@ -129,7 +164,7 @@ export function IndopakMushafReader({ colors: C, dark, language, rtl, icon, init
                   {line.source.t === 'ayah' && <Rect x={word.boxX - 2} y={line.top + 2} width={word.width + 4} height={line.height - 4}
                     fill={verse === word.key ? C.mint : 'transparent'} rx={7}
                     testID={`indopak-word-${word.id}`} accessibilityLabel={`${T('Verse')} ${word.key}`}
-                    onPress={() => setVerse(word.key)}/>}
+                    onPress={() => openWord(word.key)}/>}
                   <Path pointerEvents="none" d={indopakShapePath(word.shape)} fill={C.ink} testID={`indopak-ink-${word.id}`}
                     transform={`translate(${word.x} ${line.baseline}) scale(${line.fontSize / meta.unitsPerEm} ${-line.fontSize / meta.unitsPerEm})`}/>
                 </G>)}
@@ -140,7 +175,7 @@ export function IndopakMushafReader({ colors: C, dark, language, rtl, icon, init
         </ScrollView>}
     </View>
     {!short && <Pressable accessibilityRole="button" accessibilityLabel={T('Verse')} onPress={() => setPicker('verse')} style={styles.hint} disabled={!hydrated || !fontReady}>
-      <Text style={[styles.meta, { color: C.muted, textAlign: 'center' }]}>{copy('hint')}</Text>
+      <Text style={[styles.meta, { color: C.muted, textAlign: 'center' }]}>{state.zoom === 1 ? `${copy('swipeHint')} ${copy('hint')}` : copy('hint')}</Text>
     </Pressable>}
     <View testID="indopak-page-navigation" style={styles.navigation}>
       {button(T('Next section'), () => goPage(state.page + 1), 'chevron-back', { disabled: state.page === INDOPAK_PAGE_COUNT, testID: 'indopak-next' })}
@@ -189,23 +224,19 @@ function IndopakNavigator({ kind, page, savedPages, verses, C, language, rtl, cl
     <Pressable style={StyleSheet.absoluteFill} accessibilityRole="button" accessibilityLabel={T('Close')} onPress={close}/>
     <View testID="indopak-navigator" style={[styles.modal, { backgroundColor: C.bg, borderColor: C.line, maxHeight: Math.max(120, height - 24), direction: rtl ? 'rtl' : 'ltr' }]}>
       <Text style={[styles.title, { color: C.ink }]}>{labels[kind]}</Text>
-      <View style={styles.tabs}>{(['page', 'surah', 'juz', 'bookmarks'] as Picker[]).map(value => <Pressable key={value} accessibilityRole="button"
+      {kind !== 'sources' && <View style={styles.tabs}>{(['page', 'surah', 'juz', 'bookmarks'] as Picker[]).map(value => <Pressable key={value} accessibilityRole="button"
         accessibilityState={{ selected: kind === value }} aria-selected={kind === value} onPress={() => setKind(value)} style={[styles.tab, { backgroundColor: kind === value ? C.mint : C.card, borderColor: C.line }]}>
-        <Text style={[styles.buttonText, { color: C.ink }]}>{labels[value]}</Text></Pressable>)}</View>
+        <Text style={[styles.buttonText, { color: C.ink }]}>{labels[value]}</Text></Pressable>)}</View>}
       {kind === 'page' ? <View style={{ gap: 10 }}>
         <TextInput testID="indopak-page-input" accessibilityLabel={T('Page')} value={input} onChangeText={v => { setInput(v); setInvalid(false); }}
           onSubmitEditing={jump} keyboardType="number-pad" returnKeyType="go" maxLength={3} selectTextOnFocus
           style={[styles.input, { color: C.ink, backgroundColor: C.card, borderColor: C.line, textAlign: 'center', writingDirection: 'ltr' }]}/>
         {invalid && <Text accessibilityRole="alert" style={[styles.message, { color: C.ink }]}>{copy('pageError')}</Text>}
         <Pressable testID="indopak-page-go" accessibilityRole="button" onPress={jump} style={[styles.action, { backgroundColor: C.green }]}><Text style={[styles.buttonText, { color: C.onAccent }]}>{T('Read')}</Text></Pressable>
-      </View> : kind === 'sources' ? <ScrollView style={{ flexShrink: 1 }} contentContainerStyle={{ gap: 12, paddingVertical: 12 }}>
-        <Text style={[styles.body, { color: C.ink }]}>{copy('edition')} · 548 · 16</Text>
-        <Text style={[styles.body, { color: C.ink }]}>QUL / Tarteel · Taj Company</Text>
-        <Text style={[styles.body, { color: C.ink }]}>AlQuran IndoPak by QuranWBW · Ayman Siddiqui</Text>
-        <Text style={[styles.body, { color: C.muted }]}>© Al Qalam · Ghandhara · KFGQPC · Ayman Siddiqui</Text>
-        <Text style={[styles.body, { color: C.muted }]}>Abdul Majeed Khan · Arif Karim · Shakir-ul-Qadree · Jawad</Text>
-        <Text style={[styles.body, { color: C.muted }]}>Islamic Data · QUL 11 / 59 / 242</Text>
-      </ScrollView> : <>
+      </View> : kind === 'sources' ? <View testID="indopak-source-summary" style={{ gap: 8, paddingVertical: 12 }}>
+        <Text style={[styles.body, { color: C.ink }]}>{copy('edition')}</Text>
+        <Text style={[styles.body, { color: C.muted }]}>QUL / Tarteel · QuranWBW</Text>
+      </View> : <>
         <TextInput accessibilityLabel={T('Search')} placeholder={T('Search')} placeholderTextColor={C.muted} value={search} onChangeText={setSearch}
           style={[styles.input, { color: C.ink, backgroundColor: C.card, borderColor: C.line }]}/>
         <FlatList style={{ flexShrink: 1 }} keyboardShouldPersistTaps="handled" data={filtered} keyExtractor={item => item.id}
