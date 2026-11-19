@@ -22,6 +22,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
 import { SystemNavigationBoundary, useSafeContentFrame } from './src/components/SystemNavigationBoundary';
 import { SystemModal as Modal } from './src/components/SystemModal';
+import { IndopakMushafReader } from './src/components/IndopakMushafReader';
+import { indopakText } from './src/services/indopakCopy';
 import { floatingTabBarWidth, FLOAT_BAR_PADDING } from './src/services/systemLayout';
 import { WebView } from 'react-native-webview';
 import * as SplashScreen from 'expo-splash-screen';
@@ -3698,7 +3700,7 @@ function QuranHome({navigation}:any){
 const submit=()=>goSearch(query);
  const[audioReciter,setAudioReciter]=useState(T('Choose a reciter'));const memorized=Object.values(hifz).filter(value=>value==='memorized').length;const contentWidth=Math.min(Math.max(width-36,280),980);
 const gridGap=8;const gridCols=gridW>=640?10:4;const tileW=gridW?Math.floor((gridW-gridGap*(gridCols-1))/gridCols):0;
-const exploreTools:{label:string;title:string;screen:string;tab?:string;params?:Record<string,any>;tool?:string}[]=[{label:'Transliteration',title:T('Transliteration'),screen:'Transliteration',tool:'Transliteration'},{label:'30 Juz',title:T('Juz'),screen:'Juz Directory',tool:'Juz'},{label:'60 Hizb',title:T('Hizb'),screen:'Hizb Directory',tool:'Hizb'},{label:'Quran Topics',title:T('Topics'),screen:'Quran Topics',tool:'Topics'},{label:'Translation Compare',title:T('Tafsir'),screen:'Tafsir Compare',tool:'Tafsir'},{label:'Tajweed',title:T('Tajweed'),screen:'Tajweed Study',tool:'Tajweed'},{label:'Quran Vocabulary',title:T('Vocab'),screen:'Quran Vocabulary',tool:'Vocab'},{label:'Khatam',title:T('Khatam'),screen:'Khatam',tool:'Khatam'},{label:'Recitations',title:T('Audio'),screen:'Quran Audio',tool:'Audio'}];
+const exploreTools:{label:string;title:string;screen:string;tab?:string;params?:Record<string,any>;tool?:string}[]=[{label:'Transliteration',title:T('Transliteration'),screen:'Transliteration',tool:'Transliteration'},{label:'30 Juz',title:T('Juz'),screen:'Juz Directory',tool:'Juz'},{label:'60 Hizb',title:T('Hizb'),screen:'Hizb Directory',tool:'Hizb'},{label:'Quran Topics',title:T('Topics'),screen:'Quran Topics',tool:'Topics'},{label:'Translation Compare',title:T('Tafsir'),screen:'Tafsir Compare',tool:'Tafsir'},{label:'Tajweed',title:T('Tajweed'),screen:'Tajweed Study',tool:'Tajweed'},{label:'Quran Vocabulary',title:T('Vocab'),screen:'Quran Vocabulary',tool:'Vocab'},{label:'Khatam',title:T('Khatam'),screen:'Khatam',tool:'Khatam'},{label:'Recitations',title:T('Audio'),screen:'Quran Audio',tool:'Audio'},{label:'16-line Quran',title:indopakText(language,'title'),screen:'16-line Quran',tool:'Mushaf Pages'}];
 const compactStats=[{label:'Bookmarks',title:T('Bookmarks'),value:String(bookmarkCount),screen:'Bookmarks',icon:'bookmark-outline',tool:'Bookmarks'},{label:'Notes',title:T('Notes'),value:String(noteCount),screen:'Notes',icon:'create-outline',tool:'Notes'},{label:'Reading Plans',title:T('Plans'),value:plan?`${plan.days}d`:'—',screen:'Reading Plans',icon:'calendar-outline',tool:'Reading Plans'},{label:'Hifz',title:T('Hifz'),value:String(memorized),screen:'Hifz',icon:'school-outline',tool:'Hifz'},{label:'Offline Quran',title:T('Offline'),value:`${preload.cached}/114`,screen:'Quran Preload',icon:'download-outline',tool:'Offline Quran'}];
  return <Page><ScrollView keyboardShouldPersistTaps={SCROLL.keyboardShouldPersistTaps} overScrollMode={SCROLL.overScrollMode} contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}><AppHeader/>
  <View style={s.search}>{ico('search-outline',19,C.muted)}<TextInput accessibilityLabel={T('Search the Quran')} value={query} onChangeText={setQuery} onSubmitEditing={submit} returnKeyType="search" style={s.searchInput} placeholder={T('Search Surah, meaning, or 2:255')} placeholderTextColor={C.muted}/>
@@ -3716,16 +3718,20 @@ const compactStats=[{label:'Bookmarks',title:T('Bookmarks'),value:String(bookmar
  {recent.length>0&&<><Section title={T('Recent Surahs')}/><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap:8,paddingRight: 16}}>{recent.map(id=>{const c=chapters.find(x=>x.id===id);return c?<Pressable key={id} onPress={()=>open(c)} style={s.recentChip}><Text style={s.settingName}>{c.name_simple}</Text><Text style={s.surahAr}>{c.name_arabic}</Text></Pressable>:null})}</ScrollView></>}
  <Section title={T('All surahs')} action={tf(language,'{n} chapters',{n:shown.length})}/>{error?<ErrorState message={error} retry={load}/>:!chapters.length?<SkeletonList rows={8} />:<View style={s.surahList}>{visible.map(c=><SurahRow key={c.id} chapter={c} onOpen={openSurah} hifz={hifz[c.id]}/>)}{visible.length<shown.length&&<Pressable accessibilityRole="button" accessibilityLabel={T('Show all')} onPress={()=>setExpanded(true)} style={s.surahMore}><Text style={s.surahMoreText}>{T('Show all')} · {shown.length}</Text></Pressable>}</View>}</ScrollView></Page>
 }
-/**
- * The one Quran reader.
- *
- * Everything the app reads - a Surah, a Juz, a Hizb or a single Mushaf page -
- * is rendered here, so the reading experience, the script, the font and the
- * Juz / Hizb markers are configured in exactly one place. Entry points such as
- * the Juz directory or the Mushaf tool simply pass a different `section`, and
- * choosing "Mushaf page" as the Arabic script switches this same screen to the
- * paged layout instead of sending the reader somewhere else.
- */
+/** A separate edition-specific reader. No script/font preference or 604-page position is changed. */
+function IndopakQuranScreen({route,navigation}:any){
+  const {language,rtl}=useLanguage();
+  const {dark}=useTheme();
+  return <Page><ToolBar title={indopakText(language,'title')} navigation={navigation} tool="Mushaf Pages"/>
+    <View style={{flex:1,minHeight:0,paddingBottom:BOTTOM_RESERVE}}>
+      <IndopakMushafReader colors={C} dark={dark} language={language} rtl={rtl} icon={ico} initialPage={route.params?.page}
+        onPlayVerse={(key,chapter)=>{void playFromReader({id:chapter.id,name_simple:chapter.name,name_arabic:chapter.arabic,verses_count:chapter.verses} as Chapter,
+          {id:0,verse_key:key,text_uthmani:'',surah_name:chapter.name},rtl)}}
+        onOpenVerse={(key,chapter)=>navigation.navigate('Reader',{chapter:{id:chapter.id,name_simple:chapter.name,name_arabic:chapter.arabic,verses_count:chapter.verses},focusVerse:key})}/>
+    </View>
+  </Page>;
+}
+
 function ReaderScreen({route,navigation}:any){
   /* Below this the header cannot hold both the step arrows and a readable
      title, so the arrows - reachable from the list anyway - stand down. */
@@ -6290,7 +6296,7 @@ function TransliterationScreen({navigation}:any){
     </Page>;
 }
 
-function QuranStack(){const subtle=useSubtleTransitions();return <Stack.Navigator screenOptions={{...subtle,headerShown:false}}><Stack.Screen name="QuranHome" component={QuranHome}/><Stack.Screen name="Downloads" component={DownloadsScreen}/><Stack.Screen name="Reader" component={ReaderScreen}/><Stack.Screen name="Translations" component={TranslationScreen}/><Stack.Screen name="Quran Vocabulary" component={VocabularyScreen}/><Stack.Screen name="Tajweed Study" component={TajweedStudyScreen}/><Stack.Screen name="Quran Search" component={QuranSearchScreen}/><Stack.Screen name="Bookmarks" component={BookmarkScreen}/><Stack.Screen name="Notes" component={NotesScreen}/><Stack.Screen name="Note Editor" component={needsPayload(NoteEditorScreen, 'Note')}/><Stack.Screen name="Reader Settings" component={ReaderSettingsScreen}
+function QuranStack(){const subtle=useSubtleTransitions();return <Stack.Navigator screenOptions={{...subtle,headerShown:false}}><Stack.Screen name="QuranHome" component={QuranHome}/><Stack.Screen name="Downloads" component={DownloadsScreen}/><Stack.Screen name="Reader" component={ReaderScreen}/><Stack.Screen name="16-line Quran" component={IndopakQuranScreen}/><Stack.Screen name="Translations" component={TranslationScreen}/><Stack.Screen name="Quran Vocabulary" component={VocabularyScreen}/><Stack.Screen name="Tajweed Study" component={TajweedStudyScreen}/><Stack.Screen name="Quran Search" component={QuranSearchScreen}/><Stack.Screen name="Bookmarks" component={BookmarkScreen}/><Stack.Screen name="Notes" component={NotesScreen}/><Stack.Screen name="Note Editor" component={needsPayload(NoteEditorScreen, 'Note')}/><Stack.Screen name="Reader Settings" component={ReaderSettingsScreen}
       options={{presentation:'transparentModal',animation:'slide_from_bottom',contentStyle:{backgroundColor:'transparent'}}}/>{/* 'Ayah Actions' was a screen; it is the verse actions sheet now. The route is
     gone on purpose - a restored stack naming it is dropped by the navigator. */}<Stack.Screen name="Tafsir" component={TafsirScreen}/><Stack.Screen name="Tafsir Compare" component={TafsirCompareScreen}/><Stack.Screen name="Quran Topics" component={QuranTopicsScreen}/><Stack.Screen name="Topic Detail" component={TopicDetailScreen}/><Stack.Screen name="Juz Directory" component={JuzDirectoryScreen}/><Stack.Screen name="Hizb Directory" component={HizbDirectoryScreen}/><Stack.Screen name="Reading Plans" component={ReadingPlansScreen}/><Stack.Screen name="Quran Preload" component={QuranPreloadScreen}/><Stack.Screen name="Hifz" component={HifzScreen}/><Stack.Screen name="Khatam" component={KhatamScreen}/><Stack.Screen name="Memorize" component={MemorizeHubScreen}/><Stack.Screen name="Memorize Test" component={MemorizeTestScreen}/><Stack.Screen name="Quran Audio" component={AudioCenterScreen}/><Stack.Screen name="Audio Player" component={AudioPlayerScreen}/><Stack.Screen name="Transliteration" component={TransliterationScreen}/></Stack.Navigator>}
 
