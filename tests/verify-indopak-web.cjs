@@ -56,6 +56,36 @@ async function gotoPage(page, number) {
   await page.getByTestId('indopak-page-go').click();
   await expectPage(page,number);
 }
+/** Use the same consolidated control a reader uses, including its remembered temporary tab. */
+async function openDirectory(page, kind = 'surah') {
+  await page.getByTestId('indopak-go-to').click();
+  const tab = page.getByTestId(`indopak-tab-${kind}`); await tab.waitFor();
+  if (await tab.getAttribute('aria-selected') !== 'true') await tab.click();
+  await pause(page);
+}
+/** Check rendered glyph ranges, not just target bounds or the complete accessible name. */
+async function fullLabel(locator) {
+  const result = await locator.evaluate(root => {
+    const r = root.getBoundingClientRect(), clipped = [], texts = [];
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    let node;
+    while (node = walker.nextNode()) {
+      if (!node.textContent.trim() || node.parentElement.closest('svg')) continue;
+      const range = document.createRange(); range.selectNodeContents(node);
+      const parent = node.parentElement, p = parent.getBoundingClientRect(), style = getComputedStyle(parent);
+      const ranges = [...range.getClientRects()].filter(q => q.width > 0 && q.height > 0);
+      const outside = ranges.filter(q => q.x < r.x - 1 || q.right > r.right + 1 || q.y < r.y - 1 || q.bottom > r.bottom + 1
+        || q.x < p.x - 1 || q.right > p.right + 1 || q.y < p.y - 1 || q.bottom > p.bottom + 1);
+      const value = { text: node.textContent, scrollWidth: parent.scrollWidth, clientWidth: parent.clientWidth,
+        scrollHeight: parent.scrollHeight, clientHeight: parent.clientHeight, lineClamp: style.webkitLineClamp, outside: outside.length };
+      texts.push(value);
+      if (outside.length || parent.scrollWidth > parent.clientWidth + 1 || parent.scrollHeight > parent.clientHeight + 1) clipped.push(value);
+    }
+    return { texts, clipped };
+  });
+  assert.deepEqual(result.clipped, [], 'The full visible label must fit, not merely its 44px target or accessible name');
+  return result.texts;
+}
 async function layout(page, expectedPage) {
   await pause(page);
   const safe = await box(page.getByTestId('system-safe-content').first());
@@ -75,11 +105,11 @@ async function layout(page, expectedPage) {
   inside(counter,top,'Top page selector'); assert.ok(top.bottom <= viewport.y+1,'All controls stay above the page');
   assert.equal(await page.getByTestId('indopak-page-svg').locator('text').count(),0,'No duplicate bottom page number inside the page');
   const controls=[];
-  for (const id of ['indopak-page-select','indopak-surah','indopak-juz','indopak-save-page','indopak-focus','indopak-verse-list','indopak-sources']) {
+  for (const id of ['indopak-page-select','indopak-go-to','indopak-save-page','indopak-focus','indopak-sources']) {
     const rect=await box(page.getByTestId(id)); inside(rect,top,id);
     assert.ok(rect.width>=43.9 && rect.height>=43.9,`${id} keeps a 44px target`);
     for (const before of controls) assert.ok(rect.x>=before.right-1 || rect.right<=before.x+1 || rect.y>=before.bottom-1 || rect.bottom<=before.y+1,'Top targets do not overlap');
-    controls.push(rect);
+    await fullLabel(page.getByTestId(id)); controls.push(rect);
   }
   const text = await page.getByTestId('indopak-page-svg').evaluate(svg => {
     const words = Array.from(svg.querySelectorAll('path[data-testid^="indopak-ink-"]'));
@@ -196,7 +226,7 @@ async function insets(page, values) {
   }, values); await pause(page);
 }
 
-module.exports = { makePage, box, pause, layout, gotoPage, expectPage, touchSwipe, insets };
+module.exports = { makePage, box, pause, layout, gotoPage, expectPage, touchSwipe, insets, openDirectory, fullLabel };
 if (require.main === module) (async () => {
   fs.mkdirSync(output, { recursive: true });
   const browser = await chromium.launch();
@@ -272,7 +302,7 @@ if (require.main === module) (async () => {
     await page.waitForFunction(() => document.querySelector('[data-testid="indopak-page-select"]')?.textContent.includes('274 / 548'));
     await page.getByTestId('indopak-save-page').click();
     await page.waitForFunction(k => JSON.parse(localStorage.getItem(k) || '{}').savedPages?.includes(274), key);
-    await page.getByTestId('indopak-page-select').click(); await page.getByTestId('indopak-navigator').getByRole('button', { name: 'Bookmarks', exact: true }).click();
+    await page.getByTestId('indopak-page-select').click(); await page.getByTestId('indopak-navigator').getByRole('tab', { name: 'Bookmarks', exact: true }).click();
     await page.getByTestId('indopak-jump-bookmarks-274').click();
     const savedBeforeFocus=await page.evaluate(k=>localStorage.getItem(k),key);
     await page.getByTestId('indopak-focus').click(); await page.getByTestId('indopak-unlock').waitFor(); await pause(page);
@@ -305,12 +335,13 @@ if (require.main === module) (async () => {
     for (const viewport of [{width:320,height:568},{width:844,height:390}]) {
       await page.setViewportSize(viewport); await insets(page, {});
       for (const kind of ['page','surah','juz','bookmarks','sources','verse-list']) {
-        if (kind === 'surah' || kind === 'juz' || kind === 'sources') await page.getByTestId(`indopak-${kind}`).click();
+        if (kind === 'surah' || kind === 'juz') await openDirectory(page,kind);
+        else if (kind === 'sources') await page.getByTestId('indopak-sources').click();
         else if (kind === 'page' || kind === 'bookmarks') {
           await page.getByTestId('indopak-page-select').click();
-          if (kind === 'bookmarks') await page.getByTestId('indopak-navigator').getByRole('button',{name:'Bookmarks',exact:true}).click();
+          if (kind === 'bookmarks') await page.getByTestId('indopak-navigator').getByRole('tab',{name:'Bookmarks',exact:true}).click();
         } else {
-          await page.getByRole('button',{name:'Verse',exact:true}).click();
+          await openDirectory(page,'verse');
         }
         const panel = page.getByTestId('indopak-navigator');
         // Android has a separate SystemModal boundary; the web portal intentionally
@@ -346,16 +377,16 @@ if (require.main === module) (async () => {
     await page.waitForFunction(() => document.querySelector('[data-testid="indopak-page-select"]')?.textContent.includes('274 / 548'));
     assert.equal(await page.getByTestId('indopak-save-page').getAttribute('aria-checked'), 'true'); report.restored = true;
 
-    await page.getByTestId('indopak-surah').click(); await page.getByRole('textbox', { name: 'Search', exact: true }).fill('55');
+    await openDirectory(page,'surah'); await page.getByRole('textbox', { name: 'Search', exact: true }).fill('55');
     await page.getByTestId('indopak-jump-surah-55').click();
     assert.ok((await page.getByTestId('indopak-page-select').innerText()).includes(`${meta.chapters[54].page} / 548`));
-    await page.getByTestId('indopak-juz').click(); await page.getByRole('textbox', { name: 'Search', exact: true }).fill('30');
+    await openDirectory(page,'juz'); await page.getByRole('textbox', { name: 'Search', exact: true }).fill('30');
     await page.getByTestId('indopak-jump-juz-30').click();
     assert.ok((await page.getByTestId('indopak-page-select').innerText()).includes(`${meta.juz[29].page} / 548`)); report.directories = true;
     await gotoPage(page, meta.chapters[54].page);
     const word55 = await page.getByTestId('indopak-page-svg').locator('rect').filter({ hasText: /^$/ }).count(); assert.ok(word55 > 0);
     // Accessibility alternative to tiny word targets, then an actual word hit target.
-    await page.getByRole('button', { name: 'Verse', exact: true }).click();
+    await openDirectory(page,'verse');
     await page.getByTestId('indopak-jump-verse-55:5').click(); await page.getByTestId('indopak-ayah-popover').waitFor();
     assert.equal(await page.evaluate(() => window.__indopakPlays.length), 0, 'Cold player: no earlier audio plays');
     await page.getByTestId('indopak-ayah-play').click(); await page.getByTestId('mini-player').waitFor();
@@ -382,7 +413,7 @@ if (require.main === module) (async () => {
     await page.getByTestId('screen-header').last().getByRole('button',{name:'Back',exact:true}).click();
     await page.getByTestId('floating-navigation-bar').waitFor({state:'detached'}); await layout(page);
     report.audioScreenMenuRestored = true;
-    await page.getByRole('button', { name: 'Verse', exact: true }).click(); await page.getByTestId('indopak-jump-verse-55:5').click();
+    await openDirectory(page,'verse'); await page.getByTestId('indopak-jump-verse-55:5').click();
     await page.getByTestId('indopak-ayah-translation').click(); await page.getByTestId('reader-header').waitFor();
     await page.getByText('55:5', { exact:true }).waitFor(); report.existingReader = true;
     await page.getByTestId('floating-navigation-bar').waitFor();

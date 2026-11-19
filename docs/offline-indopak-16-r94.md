@@ -7,10 +7,10 @@
 The screen contains:
 
 - the supplied **Taj Company IndoPak 16-line / 548-page** layout, matching verbatim Nastaleeq word text and the supplied **AlQuran IndoPak by QuranWBW v2.100** font;
-- a tappable **top page counter**, page entry including Arabic/Persian digits, Surah and canonical verse-based Juz navigation, independent page bookmarks and one exact ayah/word-level Continue reading marker;
+- a tappable **top page counter**, page entry including Arabic/Persian digits, one responsive **Go to → Surah / Juz / Verse** picker, independent page bookmarks and one exact ayah/word-level Continue reading marker;
 - lightweight paper-fold swipes: **right → next page; left → previous page**, in every interface language;
 - **Focus mode instead of Zoom**: the complete, undistorted paper fits the available safe screen, the app header/top controls/mini-player disappear, and a small **top-right Unlock** restores normal mode. Audio keeps playing;
-- per-verse hit targets and a larger Verse-list alternative, whole-ayah highlighting and a small three-icon recitation/translation/reading-marker popup;
+- per-verse hit targets and a larger **Go to → Verse** alternative, whole-ayah highlighting and a small three-icon recitation/translation/reading-marker popup;
 - current-recitation highlighting and page/line following from the authoritative audio queue, independent of selection, saved reading point and page bookmarks;
 - shared labels and feature copy in all **22 interface languages**. Uzbek/Kazakh remain Cyrillic; Malay and Indonesian remain distinct;
 - the bottom tab menu hidden **only on this screen**, even in normal mode, with its empty reserve reclaimed;
@@ -46,20 +46,20 @@ An early running-app check caught browser SVG text separating leading waqf marks
 
 The generator uses `uharfbuzz==0.57.0` and `fonttools==4.68.0`, emitting UTF-8 JSON-string envelopes for large numeric tables. Only requested page chunks expand; six-chunk and 512-word-path caches bound derived data. Builds use checked-in runtime data; the source database is retained for audit/regeneration, not runtime queries. No SQLite package or new runtime dependency is needed.
 
-R100 separated **memoized fixed line ink/hit targets, headings, paper and live highlights**. SVG resizing or selection/recitation/marker changes do not recreate the fixed-word component. Stable dispatchers use the latest committed callbacks, not stale page/hold/action state. This work remains in R101. Native SVG still redraws the vector surface as needed; memoization does not make drawing free.
+R100 separated **memoized fixed line ink/hit targets, headings, paper and live highlights**. SVG resizing or selection/recitation/marker changes do not recreate the fixed-word component. Stable dispatchers use the latest committed callbacks, not stale page/hold/action state. This work remains in R102. Native SVG still redraws the vector surface as needed; memoization does not make drawing free.
 
 ## State isolation
 
 - Edition: `indopak-taj-16`; storage: `@deen/quran/indopak-taj-16/state/v1`.
 - Existing schema: validated page 1–548, sorted valid saved pages, optional `readingPoint: { page, verse, wordId }`, and the older 1/1.5/2 zoom field.
 - **R101 retains old zoom values on disk but never uses them to magnify rendering or disable swipes.** Loading a saved 2× page cannot trap someone in an inaccessible old mode. No zoom migration or deletion is performed.
-- Opening/restoring the screen performs no write. Page, page-bookmark and explicit reading-marker actions save through the existing edition-specific path. Focus/Unlock is temporary UI state and does not save a preference or change the reading marker.
+- Opening/restoring the screen performs no write. Page, page-bookmark and explicit reading-marker actions save through the existing edition-specific path. Focus/Unlock and the last-used Go to tab are temporary UI state, not persistent preferences. Opening, switching or searching the picker does not change the saved reading point or page.
 - No shared Reader position/preference/note/bookmark migration, clearing or heuristic deletion occurs. A translation action deliberately opens the existing Reader with `focusVerse`, where normal Reader behaviour applies.
 - Canonical Surah:Ayah keys remain authoritative, including verses split across printed pages. Juz lookup uses verse boundaries, not another edition's page map.
 
 ## Normal controls and navigation (R95–R97, retained)
 
-The top counter is **Page N / 548**, tappable for direct selection and exposing increment/decrement accessibility actions. Surah, Juz, page saving, **Focus**, Verse and Sources stay above the normal page. Compact widths use icons and move Verse beside the counter; short wide landscape frames combine the top groups into one row. All targets remain at least 44px. There is no bottom pager, pager arrows, hint/footer row or duplicate printed page number. In normal mode an active mini-player keeps its safe reserve; short landscape panes retain width-fit vertical reading/scrolling.
+The top counter is **Page N / 548**, tappable for direct selection and exposing increment/decrement accessibility actions. **Go to**, page saving, **Focus** and Sources stay above the normal page. Go to replaces the three standalone Surah/Juz/Verse buttons; it always retains its visible localized label, even at 240px. Compact widths keep the established icon-only Focus/Sources controls; short wide landscape frames combine the top groups into one row. Toolbar buttons wrap at their natural width/height rather than squeezing labels or imposing a two-line cap. All targets remain at least 44px. There is no bottom pager, pager arrows, hint/footer row or duplicate printed page number. In normal mode an active mini-player keeps its safe reserve; short landscape panes retain width-fit vertical reading/scrolling.
 
 Route detection follows only the navigation state's active leaf. An inactive Quran stack, stored route or route parameter cannot hide other screens' menu/player. Leaving this screen, opening the full audio player or opening the existing Reader restores the normal shell. The original Reader's persistent scroll-triggered Focus preference is untouched. Android retains the shared four-edge system-safe boundary; iOS retains its safe-area handling and mini-player bottom inset.
 
@@ -99,9 +99,34 @@ An on-page Play enables following. Targets use this 548-page edition, preserve a
 
 R100's memoized rendering and viewport-correction work remain. Its removed Zoom UI/browser runners are historical; [the recorded before/after measurements](indopak-zoom-r100.json) remain available, with original runner sources at commit `b1e3b90`. Those timings are not Focus or native-performance benchmarks. The current active runner is `tests/verify-indopak-focus-web.cjs`, and geometry tests are named `indopak-viewport.test.cjs`.
 
-## Validation completed on R101
+## Consolidated Go to and complete labels (R102)
 
-[Durable identities, counts, observations and limitations](indopak-focus-r101.json).
+The user chose **one Go to button**, not three separately resized controls. It opens a picker with exactly **Surah / Juz / Verse** tabs. The most recently used directory tab is remembered only for this mounted reader session; it is never written into edition or Reader preferences. Switching tabs resets that tab's search/list position so a Surah search cannot accidentally hide Juz or ayah entries.
+
+`indopakNavigation.ts` groups the three directories separately from **Page / Bookmarks**. Page entry and saved pages remain accessible from the existing top counter; its bookmark icon still toggles only the current page. Sources remains its short separate panel, and Focus/Unlock is unchanged. Canonical Surah/Juz targets and on-page ayah actions use the same existing callbacks. **Verse still lists the current printed page**, now explicitly captioned `Page N / 548`; this is not a new global verse/Quran/Hadith search implementation.
+
+The old shrinking five-control toolbar becomes three controls. Buttons and picker tabs can wrap, have natural height and at least 44px targets, and do not use a two-line truncation cap. Long translations may use more than one row instead of clipping. The new Go to label is localized in all 22 interface languages in the feature copy service, without shifting any older positional copy value; Uzbek/Kazakh stay Cyrillic and Malay/Indonesian labels differ.
+
+Picker headings, tabs and search scroll with the virtualized list; Page/Sources use a scrollable content area. The independent Close action stays inside the safe panel when the viewport is short or a keyboard-height fixture is applied. Actual short-pane list selection and page entry were exercised, not only modal bounds. Tabs expose selected semantics and a roving web tab stop, transfer focus on selection, and support physical left/right arrows (including RTL), vertical arrows for wrapped tabs, Home/End and Escape. Escape also works during the opening web fade; native Back retains the existing SystemModal close path.
+
+## Validation completed on R102
+
+[Durable bundle identities, counts, checks and limitations](indopak-navigation-r102.json).
+
+- **184/184 automated tests passed**; TypeScript had **zero diagnostics**. Seven new tests cover exact tab grouping, temporary memory/wiring, physical LTR/RTL and wrapped keyboard policy, complete localized copy, one toolbar entry without line caps, scrollable picker content and retained independent controls. All existing content/state/fold/Focus/playback tests passed.
+- **Navigation-specific production WEB:** **11 viewport profiles**, including the 330px breakpoint, 844×268 short landscape and a 390×320 keyboard-height fixture; **five safe-inset fixtures**; **two 2× browser-label-size fixtures**; **66 localized checks** (22 languages at 240/280/390px); **23 error-free contexts**. All toolbar and tab targets stayed safe and non-overlapping, with complete rendered labels checked using actual DOM text ranges and scroll dimensions, not just accessible names or button boxes. Surah 55/Juz 30 jumps, exact current-page Verse selection, separate Page/Bookmarks, search reset, remembered tab, keyboard/RTL, Escape, short-pane scroll/selection/page entry, connected scripture nodes and unchanged old Reader keys passed.
+- **Full reader:** all **548 pages offline**, real touch swipes and original SVG contour/source-row checks, **zero failed bounds**, **305,650ms** for the deliberate exhaustive sweep (not rendering performance or scholarly proofreading); **29 error-free contexts**, 44 translated top layouts, nine normal viewports, five inset fixtures and 12 picker/source geometry checks. Fold motion and its cancellation/reduced-motion protections passed.
+- **Focus:** all prior entry/Unlock, physical-corner/ink/popup clearance, mode reset, audio reserve, keyboard focus, swipes/rotation and old 2× data-preservation checks passed: **24 error-free contexts / 44 localized checks**.
+- **Ayah/marker:** **23 error-free contexts / 44 localized checks**; a real stationary hold saved at **516.1ms**, not at 350ms. Exact marker/resume/reopen, cancellation/movement/multi-touch/resize, popup dismissal, page bookmarks and old Reader data passed after migrating Verse access through Go to.
+- **Playback:** **21 actual media observations / three error-free contexts**. Focus entry preserved the real playing URI/play-call count and advanced 55:5 from **0.093260s → 0.589744s**, then naturally to 55:6. Cross-page, manual-browse deferral, repeat/pause, split ayahs, landscape/Focus on-page actions, Urdu dark mode and real sequential translation passed. **Six intentional media-range cancellations** are kept separately; there were no unexpected page/console/HTTP/request errors.
+- **Existing audio, translation-selection and 11-profile app navigation/Reader/player/sheets/onboarding/RTL regressions passed** against the same export. No original Reader, app shell, scripture/layout/font/generated resource, state schema, dependency or app/release configuration changed in R102.
+- **Web, Android and iOS production exports passed**, including native Hermes bytecode. Original font found exactly once in each asset set with the unchanged hash below. Web JavaScript changed by **+2,156 raw / +553 gzip bytes** versus R101, not an APK/AAB install-size or RAM measurement.
+
+These checks establish the new browser layout and existing source/transport contracts, **not installed-device behaviour**. The reported old button truncation was not reproduced in 30 sampled R101 web labels; no physical device/emulator is available here. Native font scaling, text shaping, accessibility/keyboard/long-press and OEM navigation services still need device QA. The fix removes the crowded three-button arrangement and its shrink/line-cap constraints rather than claiming a measured native before/after result. No search implementation, deployment or store submission was added. QA captures are real running-app images, not generated artwork.
+
+## Earlier Focus validation (R101, historical)
+
+The following records describe the previous Focus delivery. Current R102 results are above; [R101 evidence is retained](indopak-focus-r101.json).
 
 ### Static, content and state checks
 
@@ -140,10 +165,11 @@ npm run test:regressions
 node node_modules/typescript/bin/tsc --noEmit
 
 # Against a fresh, locally served production WEB export:
-INDOPAK_URL=http://127.0.0.1:8108 INDOPAK_SWEEP=1 node tests/verify-indopak-web.cjs
-INDOPAK_URL=http://127.0.0.1:8108 node tests/verify-indopak-focus-web.cjs
-INDOPAK_URL=http://127.0.0.1:8108 node tests/verify-indopak-ayah-web.cjs
-INDOPAK_URL=http://127.0.0.1:8108 node tests/verify-indopak-playback-web.cjs
+INDOPAK_URL=http://127.0.0.1:8109 INDOPAK_SWEEP=1 node tests/verify-indopak-web.cjs
+INDOPAK_URL=http://127.0.0.1:8109 node tests/verify-indopak-navigation-web.cjs
+INDOPAK_URL=http://127.0.0.1:8109 node tests/verify-indopak-focus-web.cjs
+INDOPAK_URL=http://127.0.0.1:8109 node tests/verify-indopak-ayah-web.cjs
+INDOPAK_URL=http://127.0.0.1:8109 node tests/verify-indopak-playback-web.cjs
 ```
 
-Use the Node version required by this Expo project. Browser reports/screenshots default to temporary QA directories; `INDOPAK_ARTIFACTS_DIR`, `INDOPAK_FOCUS_ARTIFACTS_DIR`, `INDOPAK_AYAH_ARTIFACTS_DIR` and `INDOPAK_PLAYBACK_ARTIFACTS_DIR` override their respective output directories.
+Use the Node version required by this Expo project. Browser reports/screenshots default to temporary QA directories; `INDOPAK_ARTIFACTS_DIR`, `INDOPAK_NAV_ARTIFACTS_DIR`, `INDOPAK_FOCUS_ARTIFACTS_DIR`, `INDOPAK_AYAH_ARTIFACTS_DIR` and `INDOPAK_PLAYBACK_ARTIFACTS_DIR` override their respective output directories.

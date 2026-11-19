@@ -145,7 +145,7 @@ test('page selection and verse access live at the top, with no bottom pager or d
   const canvas=fs.readFileSync(path.join(__dirname,'../src/components/IndopakPageCanvas.tsx'),'utf8');
   for (const id of ['indopak-page-navigation','indopak-next','indopak-previous']) assert.ok(!component.includes(id));
   assert.ok(component.indexOf('testID="indopak-page-select"')<component.indexOf('testID="indopak-page-viewport"'));
-  assert.ok(component.includes('indopak-top-controls')); assert.ok(component.includes('indopak-verse-list'));
+  assert.ok(component.includes('indopak-top-controls')); assert.ok(component.includes('indopak-go-to'));
   assert.ok(component.includes('onAccessibilityAction=')); assert.ok(component.includes("writingDirection: 'ltr'"));
   assert.ok(!canvas.includes('SvgText')); assert.ok(!canvas.includes('y={1591}'));
 });

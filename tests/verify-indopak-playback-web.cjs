@@ -8,7 +8,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { chromium } = require('playwright');
 const { createLoader } = require('./helpers/load-typescript.cjs');
-const { makePage, box, pause, gotoPage, expectPage } = require('./verify-indopak-web.cjs');
+const { makePage, box, pause, gotoPage, expectPage, openDirectory } = require('./verify-indopak-web.cjs');
 const load = createLoader();
 const model = load('src/services/indopakMushaf.ts');
 const { indopakAyahSegments } = load('src/services/indopakSelection.ts');
@@ -22,7 +22,7 @@ const suffix = verse => {
   return `/ar.alafasy/${number}.mp3`;
 };
 async function chooseVerse(page, verse) {
-  await page.getByTestId('indopak-verse-list').click();
+  await openDirectory(page,'verse');
   await page.getByTestId('indopak-navigator').locator('input').fill(verse);
   await page.getByTestId(`indopak-jump-verse-${verse}`).click();
   await page.getByTestId('indopak-ayah-popover').waitFor(); await pause(page);

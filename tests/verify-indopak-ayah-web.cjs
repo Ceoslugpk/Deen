@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { chromium } = require('playwright');
-const { makePage, box, pause, gotoPage, expectPage, touchSwipe, insets } = require('./verify-indopak-web.cjs');
+const { makePage, box, pause, gotoPage, expectPage, touchSwipe, insets, openDirectory } = require('./verify-indopak-web.cjs');
 const output = process.env.INDOPAK_AYAH_ARTIFACTS_DIR || '/tmp/islamic-r98-ayah-smoke';
 const key = '@deen/quran/indopak-taj-16/state/v1';
 const oldKeys = ['@deen/quran/preferences/v1','@deen/quran/position/v1','@deen/quran/bookmarks/v1','@deen/quran/notes/v1'];
@@ -67,13 +67,13 @@ async function pressWord(page, word, {early, multi=false, added=false, cancel=fa
   } finally { await client.detach(); }
 }
 async function chooseVerse(page, verse) {
-  await page.getByTestId('indopak-verse-list').click();
+  await openDirectory(page,'verse');
   await page.getByTestId(`indopak-jump-verse-${verse}`).click();
   await page.getByTestId('indopak-ayah-popover').waitFor(); await pause(page);
 }
 async function resume(page) {
   await page.getByTestId('indopak-page-select').click();
-  await page.getByTestId('indopak-navigator').getByRole('button',{name:'Bookmarks',exact:true}).click();
+  await page.getByTestId('indopak-navigator').getByRole('tab',{name:'Bookmarks',exact:true}).click();
   await page.getByTestId('indopak-resume').click();
 }
 (async()=>{
@@ -134,7 +134,7 @@ async function resume(page) {
     assert.deepEqual((await read(page)).readingPoint,exact); report.checks.reopenRestored=true;
     const after=await page.evaluate(keys=>Object.fromEntries(keys.map(k=>[k,localStorage.getItem(k)])),oldKeys); assert.deepEqual(after,old); report.checks.existingDataUntouched=true;
     await page.setViewportSize({width:844,height:390}); await pause(page);
-    await page.getByTestId('indopak-verse-list').click(); const last=page.locator('[data-testid^="indopak-jump-verse-"]').last(), lastKey=(await last.getAttribute('data-testid')).replace('indopak-jump-verse-',''); await last.click();
+    await openDirectory(page,'verse'); const last=page.locator('[data-testid^="indopak-jump-verse-"]').last(), lastKey=(await last.getAttribute('data-testid')).replace('indopak-jump-verse-',''); await last.click();
     await page.getByTestId('indopak-ayah-popover').waitFor(); report.layouts.push({name:'landscape-verse-list',...(await checkPopup(page,{verse:lastKey}))});
     await page.screenshot({path:path.join(output,'landscape-ayah-popup.png')}); await page.keyboard.press('Escape'); report.checks.verseListReveals=true;
     await page.setViewportSize({width:390,height:844}); await pause(page);

@@ -1,0 +1,662 @@
+{
+  "revision": "R102",
+  "baseCommit": "fed28bbf46190b37abd80a5fb0113ef166aac7db",
+  "userDecision": "One Go to button with Surah/Juz/Verse tabs, rather than retaining three standalone toolbar buttons.",
+  "scope": "Only separate 16-line Quran UI/copy and its QA. No changes to app shell, original Reader, scripture/font/layout/resources, storage schema, dependencies or native/release configuration.",
+  "behavior": {
+    "directoryTabs": [
+      "surah",
+      "juz",
+      "verse"
+    ],
+    "pageCounterTabs": [
+      "page",
+      "bookmarks"
+    ],
+    "sourcesTabs": [],
+    "defaultDirectory": "surah",
+    "lastUsedDirectoryPersistence": "temporary component state only; not stored",
+    "verseScope": "current printed page, explicitly captioned Page N / 548",
+    "labelPolicy": "natural width/height; wrap controls/tabs; no two-line cap; Go to visibly labelled even at 240px",
+    "focusAndAudio": "existing Focus/Unlock and authoritative recitation behavior retained"
+  },
+  "static": {
+    "unitTests": 184,
+    "passed": 184,
+    "failed": 0,
+    "typeScriptDiagnostics": 0,
+    "newNavigationTests": 7,
+    "node": "v22.13.0"
+  },
+  "navigationWeb": {
+    "runner": "tests/verify-indopak-navigation-web.cjs",
+    "method": "Production WEB, real buttons/tabs/searches/storage and original Quran paths. Explicit browser inset/text-size fixtures; not native-device QA.",
+    "checks": {
+      "oneEntryThreeTabsSearchResetAndTemporaryMemory": true,
+      "keyboardTabsAndEscape": true,
+      "canonicalSurahJuzAndCurrentPageVerseActions": true,
+      "pageCounterAndBookmarksStillSeparate": true,
+      "shortViewportListsAndPageEntry": true,
+      "existingReaderDataUnchanged": true,
+      "rtlKeyboardOrder": true
+    },
+    "contexts": 23,
+    "profiles": [
+      {
+        "name": "compact",
+        "width": 240,
+        "height": 640,
+        "toolbar": {
+          "x": 0,
+          "y": 56,
+          "width": 240,
+          "height": 104,
+          "right": 240,
+          "bottom": 160
+        },
+        "picker": {
+          "x": 12,
+          "y": 12,
+          "width": 216,
+          "height": 616,
+          "right": 228,
+          "bottom": 628
+        },
+        "close": {
+          "x": 29,
+          "y": 567,
+          "width": 182,
+          "height": 44,
+          "right": 211,
+          "bottom": 611
+        }
+      },
+      {
+        "name": "cover",
+        "width": 280,
+        "height": 720,
+        "toolbar": {
+          "x": 0,
+          "y": 56,
+          "width": 280,
+          "height": 104,
+          "right": 280,
+          "bottom": 160
+        },
+        "picker": {
+          "x": 12,
+          "y": 12,
+          "width": 256,
+          "height": 696,
+          "right": 268,
+          "bottom": 708
+        },
+        "close": {
+          "x": 29,
+          "y": 647,
+          "width": 222,
+          "height": 44,
+          "right": 251,
+          "bottom": 691
+        }
+      },
+      {
+        "name": "small",
+        "width": 320,
+        "height": 568,
+        "toolbar": {
+          "x": 0,
+          "y": 56,
+          "width": 320,
+          "height": 104,
+          "right": 320,
+          "bottom": 160
+        },
+        "picker": {
+          "x": 12,
+          "y": 12,
+          "width": 296,
+          "height": 544,
+          "right": 308,
+          "bottom": 556
+        },
+        "close": {
+          "x": 29,
+          "y": 495,
+          "width": 262,
+          "height": 44,
+          "right": 291,
+          "bottom": 539
+        }
+      },
+      {
+        "name": "breakpoint",
+        "width": 330,
+        "height": 568,
+        "toolbar": {
+          "x": 0,
+          "y": 56,
+          "width": 330,
+          "height": 104,
+          "right": 330,
+          "bottom": 160
+        },
+        "picker": {
+          "x": 12,
+          "y": 12,
+          "width": 306,
+          "height": 544,
+          "right": 318,
+          "bottom": 556
+        },
+        "close": {
+          "x": 29,
+          "y": 495,
+          "width": 272,
+          "height": 44,
+          "right": 301,
+          "bottom": 539
+        }
+      },
+      {
+        "name": "phone",
+        "width": 390,
+        "height": 844,
+        "toolbar": {
+          "x": 0,
+          "y": 56,
+          "width": 390,
+          "height": 104,
+          "right": 390,
+          "bottom": 160
+        },
+        "picker": {
+          "x": 12,
+          "y": 12,
+          "width": 366,
+          "height": 820,
+          "right": 378,
+          "bottom": 832
+        },
+        "close": {
+          "x": 29,
+          "y": 771,
+          "width": 332,
+          "height": 44,
+          "right": 361,
+          "bottom": 815
+        }
+      },
+      {
+        "name": "landscape",
+        "width": 844,
+        "height": 390,
+        "toolbar": {
+          "x": 0,
+          "y": 56,
+          "width": 844,
+          "height": 54,
+          "right": 844,
+          "bottom": 110
+        },
+        "picker": {
+          "x": 162,
+          "y": 12,
+          "width": 520,
+          "height": 366,
+          "right": 682,
+          "bottom": 378
+        },
+        "close": {
+          "x": 179,
+          "y": 317,
+          "width": 486,
+          "height": 44,
+          "right": 665,
+          "bottom": 361
+        }
+      },
+      {
+        "name": "short-landscape",
+        "width": 844,
+        "height": 268,
+        "toolbar": {
+          "x": 0,
+          "y": 56,
+          "width": 844,
+          "height": 54,
+          "right": 844,
+          "bottom": 110
+        },
+        "picker": {
+          "x": 162,
+          "y": 12,
+          "width": 520,
+          "height": 244,
+          "right": 682,
+          "bottom": 256
+        },
+        "close": {
+          "x": 179,
+          "y": 195,
+          "width": 486,
+          "height": 44,
+          "right": 665,
+          "bottom": 239
+        }
+      },
+      {
+        "name": "keyboard-height-fixture",
+        "width": 390,
+        "height": 320,
+        "toolbar": {
+          "x": 0,
+          "y": 56,
+          "width": 390,
+          "height": 104,
+          "right": 390,
+          "bottom": 160
+        },
+        "picker": {
+          "x": 12,
+          "y": 12,
+          "width": 366,
+          "height": 296,
+          "right": 378,
+          "bottom": 308
+        },
+        "close": {
+          "x": 29,
+          "y": 247,
+          "width": 332,
+          "height": 44,
+          "right": 361,
+          "bottom": 291
+        }
+      },
+      {
+        "name": "tablet",
+        "width": 800,
+        "height": 1280,
+        "toolbar": {
+          "x": 0,
+          "y": 56,
+          "width": 800,
+          "height": 104,
+          "right": 800,
+          "bottom": 160
+        },
+        "picker": {
+          "x": 140,
+          "y": 12,
+          "width": 520,
+          "height": 1256,
+          "right": 660,
+          "bottom": 1268
+        },
+        "close": {
+          "x": 157,
+          "y": 1207,
+          "width": 486,
+          "height": 44,
+          "right": 643,
+          "bottom": 1251
+        }
+      },
+      {
+        "name": "tablet-landscape",
+        "width": 1280,
+        "height": 800,
+        "toolbar": {
+          "x": 50,
+          "y": 56,
+          "width": 1180,
+          "height": 104,
+          "right": 1230,
+          "bottom": 160
+        },
+        "picker": {
+          "x": 380,
+          "y": 12,
+          "width": 520,
+          "height": 776,
+          "right": 900,
+          "bottom": 788
+        },
+        "close": {
+          "x": 397,
+          "y": 727,
+          "width": 486,
+          "height": 44,
+          "right": 883,
+          "bottom": 771
+        }
+      },
+      {
+        "name": "desktop",
+        "width": 1440,
+        "height": 900,
+        "toolbar": {
+          "x": 130,
+          "y": 56,
+          "width": 1180,
+          "height": 104,
+          "right": 1310,
+          "bottom": 160
+        },
+        "picker": {
+          "x": 460,
+          "y": 12,
+          "width": 520,
+          "height": 876,
+          "right": 980,
+          "bottom": 888
+        },
+        "close": {
+          "x": 477,
+          "y": 827,
+          "width": 486,
+          "height": 44,
+          "right": 963,
+          "bottom": 871
+        }
+      }
+    ],
+    "insetFixtures": 5,
+    "localizedChecks": 66,
+    "languages": [
+      "ar",
+      "az",
+      "bg",
+      "bn",
+      "bs",
+      "en",
+      "fa",
+      "fr",
+      "hi",
+      "id",
+      "kk",
+      "ml",
+      "ms",
+      "ps",
+      "ru",
+      "si",
+      "ta",
+      "tr",
+      "ur",
+      "uz",
+      "vi",
+      "zh"
+    ],
+    "localizedWidths": [
+      240,
+      280,
+      390
+    ],
+    "enlargedLabelFixtures": [
+      {
+        "width": 240,
+        "height": 640
+      },
+      {
+        "width": 390,
+        "height": 320
+      }
+    ],
+    "enlargedLabelPixels": 24,
+    "enlargedLineHeightPixels": 34,
+    "textValidation": "Actual rendered DOM text-range rects within target/text parent, scrollWidth/clientWidth and scrollHeight/clientHeight; target boxes/accessible names alone are insufficient.",
+    "unexpectedErrors": {
+      "page": 0,
+      "console": 0,
+      "http": 0,
+      "requests": 0
+    }
+  },
+  "regressions": {
+    "reader": {
+      "runner": "tests/verify-indopak-web.cjs",
+      "contexts": 29,
+      "offlineSweep": {
+        "pages": 548,
+        "offline": true,
+        "reducedMotion": true,
+        "milliseconds": 305650,
+        "failedBounds": 0
+      },
+      "localizedTopChecks": 44,
+      "normalViewports": 9,
+      "systemInsets": 5,
+      "modalGeometryChecks": 12,
+      "motionFrames": {
+        "next": 21,
+        "previous": 22,
+        "jump": 18,
+        "focusNext": 19,
+        "focusPrevious": 20,
+        "scrolledLandscape": 17,
+        "scrolledLandscapePrevious": 22,
+        "compact": 18
+      },
+      "unexpectedErrors": {
+        "page": 0,
+        "console": 0,
+        "http": 0,
+        "requests": 0
+      }
+    },
+    "focus": {
+      "runner": "tests/verify-indopak-focus-web.cjs",
+      "contexts": 24,
+      "checks": {
+        "ayahActionsAndEscape": true,
+        "repeatedTogglesAndFocusedRotation": true,
+        "swipesAndCancellation": true,
+        "keyboardEntryAndUnlock": true,
+        "topRowAyahActionsAndUnlockDoNotOverlap": true,
+        "leavingRestoresNormalMode": true,
+        "existingReaderDataUntouched": true,
+        "legacyZoomIgnoredWithoutDataDeletion": true
+      },
+      "localizedChecks": 44,
+      "unexpectedErrors": {
+        "page": 0,
+        "console": 0,
+        "http": 0,
+        "requests": 0
+      }
+    },
+    "ayah": {
+      "runner": "tests/verify-indopak-ayah-web.cjs",
+      "contexts": 23,
+      "checks": {
+        "outsideClickDismisses": true,
+        "iconDragRejected": true,
+        "holdDelayMs": 516.1000000014901,
+        "shortRejected": true,
+        "multiStartRejected": true,
+        "addedFingerRejected": true,
+        "cancelledRejected": true,
+        "movedRejected": true,
+        "resizedRejected": true,
+        "exactResume": true,
+        "reopenRestored": true,
+        "existingDataUntouched": true,
+        "verseListReveals": true,
+        "focusDismisses": true,
+        "unlockDismisses": true,
+        "panDismisses": true
+      },
+      "localizedPopupChecks": 44,
+      "unexpectedErrors": {
+        "page": 0,
+        "console": 0,
+        "http": 0,
+        "requests": 0
+      }
+    },
+    "playback": {
+      "runner": "tests/verify-indopak-playback-web.cjs",
+      "contexts": 3,
+      "checks": {
+        "focusKeepsAudioPlayingWithoutRestart": {
+          "beforeFocus": {
+            "uri": "https://cdn.islamic.network/quran/audio/128/ar.alafasy/4906.mp3",
+            "position": 0.09326,
+            "duration": 6.266463,
+            "paused": false
+          },
+          "duringFocus": {
+            "uri": "https://cdn.islamic.network/quran/audio/128/ar.alafasy/4906.mp3",
+            "position": 0.589744,
+            "duration": 6.266463,
+            "paused": false
+          }
+        },
+        "naturalNextAyah": true,
+        "pauseResume": true,
+        "selectionIsSeparate": true,
+        "repeatOne": true,
+        "activeGestureDefersPageFollow": true,
+        "focusCrossPageFollow": true,
+        "crossPageFollow": true,
+        "manualBrowseDoesNotSnapBack": true,
+        "landscapeReveal": {
+          "bounds": {
+            "x": 147.8975067138672,
+            "y": 183.751220703125,
+            "width": 38.8314208984375,
+            "height": 72.1754150390625,
+            "right": 186.7289276123047,
+            "bottom": 255.9266357421875
+          },
+          "viewport": {
+            "x": 0,
+            "y": 110,
+            "width": 844,
+            "height": 226,
+            "right": 844,
+            "bottom": 336
+          }
+        },
+        "focusLandscapePlayback": {
+          "bounds": {
+            "x": 338.03070068359375,
+            "y": 330.6495361328125,
+            "width": 11.895721435546875,
+            "height": 22.11041259765625,
+            "right": 349.9264221191406,
+            "bottom": 352.75994873046875
+          },
+          "viewport": {
+            "x": 0,
+            "y": 0,
+            "width": 844,
+            "height": 430,
+            "right": 844,
+            "bottom": 430
+          }
+        },
+        "splitVerseStaysOnLaterPage": true,
+        "focusGatedFollow": true,
+        "readingMarkBookmarksAndOriginalReaderUntouched": true,
+        "closeClearsOnlyAudioHighlight": true,
+        "urduDarkFollow": true,
+        "realSequentialTranslationStaysOnSameAyah": true
+      },
+      "realMediaObservations": 21,
+      "expectedMediaCancellations": [
+        "https://cdn.islamic.network/quran/audio/128/ar.alafasy/11.mp3 net::ERR_ABORTED",
+        "https://cdn.islamic.network/quran/audio/128/ar.alafasy/11.mp3 net::ERR_ABORTED",
+        "https://cdn.islamic.network/quran/audio/128/ar.alafasy/2249.mp3 net::ERR_ABORTED",
+        "https://cdn.islamic.network/quran/audio/128/ar.alafasy/2249.mp3 net::ERR_ABORTED",
+        "https://cdn.islamic.network/quran/audio/128/ar.alafasy/2250.mp3 net::ERR_ABORTED",
+        "https://cdn.islamic.network/quran/audio/128/ar.alafasy/2250.mp3 net::ERR_ABORTED"
+      ],
+      "unexpectedErrors": {
+        "page": 0,
+        "console": 0,
+        "http": 0,
+        "requests": 0
+      }
+    },
+    "originalAudio": "tests/verify-hotfix-web.cjs passed, phone/tablet first/repeated/changed-ayah real audio",
+    "translationSelection": "tests/verify-translation-selection-web.cjs passed, new/saved Urdu text/audio preferences and independent English UI",
+    "responsiveApp": "tests/verify-responsive-navigation-web.cjs passed, 11 profiles/five tabs/live insets/Reader/player/sheets/onboarding/Urdu RTL"
+  },
+  "exports": {
+    "web": {
+      "passed": true,
+      "bundle": "index-525f3f61939f1b598295b848dd54bdea.js",
+      "bundleBytes": 24158290,
+      "gzipBytes": 6635860,
+      "originalFontCopies": [
+        "assets/assets/fonts/IndopakNastaleeq.51aff7449ae51ff5b54ea98eed919504.ttf"
+      ]
+    },
+    "android": {
+      "passed": true,
+      "bundle": "index-76d36910f1b019fae583298754a58b8a.hbc",
+      "bundleBytes": 29030100,
+      "gzipBytes": 8464419,
+      "originalFontCopies": [
+        "assets/51aff7449ae51ff5b54ea98eed919504"
+      ]
+    },
+    "ios": {
+      "passed": true,
+      "bundle": "index-eb4b1c2de446b9da1a894b3d13aaee9a.hbc",
+      "bundleBytes": 29016712,
+      "gzipBytes": 8458883,
+      "originalFontCopies": [
+        "assets/51aff7449ae51ff5b54ea98eed919504"
+      ]
+    }
+  },
+  "webBundleDeltaFromR101": {
+    "rawBytes": 2156,
+    "gzipBytes": 553
+  },
+  "integrity": {
+    "fontBytes": 310912,
+    "fontSha256": "a6463e24e36651404e9eff52dae26e18e9ef0718eb620636a66a20026a75c563",
+    "protectedSourceDiffEmpty": true,
+    "unchanged": [
+      "App.tsx",
+      "assets/fonts/IndopakNastaleeq.ttf",
+      "resources/quran/indopak-taj-16/",
+      "src/data/indopak16/",
+      "scripts/build_indopak_16.py",
+      "app.json",
+      "package.json",
+      "package-lock.json"
+    ]
+  },
+  "baselineSampling": {
+    "revision": "R101",
+    "webBundle": "index-646a26c9e51ec12630312784634c44b2.js",
+    "labelsChecked": 30,
+    "clippedLabelsObserved": 0,
+    "languages": [
+      "en",
+      "ta",
+      "ml",
+      "si",
+      "fr"
+    ],
+    "widths": [
+      330,
+      390
+    ],
+    "limitation": "The reported old device truncation was not reproduced in these browser samples. New layout removes the crowded controls and shrink/line-cap constraints; this is not proof of native before/after performance or text rendering."
+  },
+  "limitations": [
+    "Production WEB with real bundled Quran and actual streamed audio, not installed Android/iOS device QA.",
+    "Browser text-size and inset fixtures do not emulate native font scaling/text shaping, screen readers, keyboard or OEM navigation services.",
+    "Android/iOS Hermes production exports are not installed APK/AAB/IPA or physical-device tests.",
+    "Exhaustive page-sweep timing includes deliberate gestures, waits and assertions; not rendering performance or scholarly proofreading.",
+    "Expected cancelled media range reads are retained separately; there were no unexpected runtime/console/HTTP/request failures.",
+    "Current-page Verse list remains unchanged in scope; no global Quran/Hadith/Mufahras search added.",
+    "No new artwork, dependency, native/release setting, deployment or store submission."
+  ]
+}
