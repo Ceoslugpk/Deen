@@ -1,0 +1,793 @@
+{
+  "revision": "R101",
+  "baseCommit": "b1e3b9062fa6ffe8e299171201812bb244036b1a",
+  "scope": "Replace Zoom with temporary, route-scoped full-page Focus and a physical top-right Unlock; preserve audio, scripture/font/layout and all existing user data.",
+  "environment": {
+    "node": "v22.13.0",
+    "browser": "Playwright Chromium, actual production Expo WEB",
+    "nativeDeviceAvailable": false
+  },
+  "static": {
+    "unitTests": 177,
+    "passed": 177,
+    "failed": 0,
+    "typeScriptDiagnostics": 0,
+    "focusSpecificTests": 9,
+    "focusViewportFits": 96,
+    "focusWordClearancePages": 548,
+    "focusPopoverClearancePages": 548,
+    "focusPopoverViewports": [
+      [
+        166,
+        400
+      ],
+      [
+        240,
+        400
+      ],
+      [
+        390,
+        640
+      ],
+      [
+        390,
+        844
+      ],
+      [
+        844,
+        390
+      ]
+    ],
+    "retainedViewportCombinations": 972
+  },
+  "contentIntegrity": {
+    "protectedSourceDiffEmpty": true,
+    "paths": [
+      "assets/fonts/IndopakNastaleeq.ttf",
+      "resources/quran/indopak-taj-16/",
+      "src/data/indopak16/",
+      "scripts/build_indopak_16.py"
+    ],
+    "fontBytes": 310912,
+    "fontSha256": "a6463e24e36651404e9eff52dae26e18e9ef0718eb620636a66a20026a75c563",
+    "pages": 548,
+    "wordAndMarkerRecords": 83668,
+    "sourceAndOriginalReaderDataNotMigrated": true,
+    "legacyZoomRetainedButNotRendered": true
+  },
+  "web": {
+    "reader": {
+      "runner": "tests/verify-indopak-web.cjs",
+      "offlineSweep": {
+        "pages": 548,
+        "offline": true,
+        "reducedMotion": true,
+        "milliseconds": 278467,
+        "failedBounds": 0
+      },
+      "contexts": 29,
+      "normalViewportProfiles": 9,
+      "systemInsetFixtures": 5,
+      "directoryModalChecks": 12,
+      "localizedTopChecks": 44,
+      "swipes": {
+        "rightNext": true,
+        "leftPrevious": true,
+        "verseTapNotTriggered": true,
+        "subsequentVerseTap": true,
+        "verticalRejected": true,
+        "multiTouchRejected": true,
+        "addedFingerRejected": true,
+        "cancelRejected": true,
+        "shortDragRejected": true,
+        "focusSwipes": true,
+        "boundaries": true,
+        "savedPageRestored": true,
+        "landscapeVerticalScroll": true
+      },
+      "motionObservedFrames": {
+        "next": 22,
+        "previous": 22,
+        "jump": 19,
+        "focusNext": 16,
+        "focusPrevious": 15,
+        "scrolledLandscape": 18,
+        "scrolledLandscapePrevious": 21,
+        "compact": 21
+      },
+      "motionVariantFrames": [
+        {
+          "language": "ur",
+          "dark": false,
+          "next": 17,
+          "previous": 18
+        },
+        {
+          "language": "en",
+          "dark": true,
+          "next": 19,
+          "previous": 19
+        }
+      ],
+      "focusUnlockDuringFoldSettled": true,
+      "unexpectedErrors": {
+        "page": 0,
+        "console": 0,
+        "http": 0,
+        "requests": 0
+      }
+    },
+    "focus": {
+      "runner": "tests/verify-indopak-focus-web.cjs",
+      "checks": {
+        "ayahActionsAndEscape": true,
+        "repeatedTogglesAndFocusedRotation": true,
+        "swipesAndCancellation": true,
+        "keyboardEntryAndUnlock": true,
+        "topRowAyahActionsAndUnlockDoNotOverlap": true,
+        "leavingRestoresNormalMode": true,
+        "existingReaderDataUntouched": true,
+        "legacyZoomIgnoredWithoutDataDeletion": true
+      },
+      "contexts": 24,
+      "profiles": [
+        {
+          "name": "compact",
+          "width": 240,
+          "height": 640,
+          "safe": {
+            "x": 0,
+            "y": 0,
+            "width": 240,
+            "height": 640,
+            "right": 240,
+            "bottom": 640
+          },
+          "viewport": {
+            "x": 0,
+            "y": 0,
+            "width": 240,
+            "height": 640,
+            "right": 240,
+            "bottom": 640
+          },
+          "paper": {
+            "x": 6,
+            "y": 133.046875,
+            "width": 228,
+            "height": 373.90625,
+            "right": 234,
+            "bottom": 506.953125
+          },
+          "unlock": {
+            "x": 188,
+            "y": 8,
+            "width": 44,
+            "height": 44,
+            "right": 232,
+            "bottom": 52
+          },
+          "outsideContours": 0,
+          "unlockInkCollisions": 0
+        },
+        {
+          "name": "cover",
+          "width": 280,
+          "height": 720,
+          "safe": {
+            "x": 0,
+            "y": 0,
+            "width": 280,
+            "height": 720,
+            "right": 280,
+            "bottom": 720
+          },
+          "viewport": {
+            "x": 0,
+            "y": 0,
+            "width": 280,
+            "height": 720,
+            "right": 280,
+            "bottom": 720
+          },
+          "paper": {
+            "x": 6,
+            "y": 140.234375,
+            "width": 268,
+            "height": 439.515625,
+            "right": 274,
+            "bottom": 579.75
+          },
+          "unlock": {
+            "x": 228,
+            "y": 8,
+            "width": 44,
+            "height": 44,
+            "right": 272,
+            "bottom": 52
+          },
+          "outsideContours": 0,
+          "unlockInkCollisions": 0
+        },
+        {
+          "name": "small",
+          "width": 320,
+          "height": 568,
+          "safe": {
+            "x": 0,
+            "y": 0,
+            "width": 320,
+            "height": 568,
+            "right": 320,
+            "bottom": 568
+          },
+          "viewport": {
+            "x": 0,
+            "y": 0,
+            "width": 320,
+            "height": 568,
+            "right": 320,
+            "bottom": 568
+          },
+          "paper": {
+            "x": 6,
+            "y": 31.4375,
+            "width": 308,
+            "height": 505.109375,
+            "right": 314,
+            "bottom": 536.546875
+          },
+          "unlock": {
+            "x": 268,
+            "y": 8,
+            "width": 44,
+            "height": 44,
+            "right": 312,
+            "bottom": 52
+          },
+          "outsideContours": 0,
+          "unlockInkCollisions": 0
+        },
+        {
+          "name": "phone",
+          "width": 390,
+          "height": 844,
+          "safe": {
+            "x": 0,
+            "y": 0,
+            "width": 390,
+            "height": 844,
+            "right": 390,
+            "bottom": 844
+          },
+          "viewport": {
+            "x": 0,
+            "y": 0,
+            "width": 390,
+            "height": 844,
+            "right": 390,
+            "bottom": 844
+          },
+          "paper": {
+            "x": 6,
+            "y": 112.046875,
+            "width": 378,
+            "height": 619.90625,
+            "right": 384,
+            "bottom": 731.953125
+          },
+          "unlock": {
+            "x": 338,
+            "y": 8,
+            "width": 44,
+            "height": 44,
+            "right": 382,
+            "bottom": 52
+          },
+          "outsideContours": 0,
+          "unlockInkCollisions": 0
+        },
+        {
+          "name": "near-paper-ratio",
+          "width": 390,
+          "height": 640,
+          "safe": {
+            "x": 0,
+            "y": 0,
+            "width": 390,
+            "height": 640,
+            "right": 390,
+            "bottom": 640
+          },
+          "viewport": {
+            "x": 0,
+            "y": 0,
+            "width": 390,
+            "height": 640,
+            "right": 390,
+            "bottom": 640
+          },
+          "paper": {
+            "x": 15.0625,
+            "y": 24.890625,
+            "width": 359.875,
+            "height": 590.21875,
+            "right": 374.9375,
+            "bottom": 615.109375
+          },
+          "unlock": {
+            "x": 338,
+            "y": 8,
+            "width": 44,
+            "height": 44,
+            "right": 382,
+            "bottom": 52
+          },
+          "outsideContours": 0,
+          "unlockInkCollisions": 0
+        },
+        {
+          "name": "landscape",
+          "width": 844,
+          "height": 390,
+          "safe": {
+            "x": 0,
+            "y": 0,
+            "width": 844,
+            "height": 390,
+            "right": 844,
+            "bottom": 390
+          },
+          "viewport": {
+            "x": 0,
+            "y": 0,
+            "width": 844,
+            "height": 390,
+            "right": 844,
+            "bottom": 390
+          },
+          "paper": {
+            "x": 306.75,
+            "y": 6,
+            "width": 230.484375,
+            "height": 378,
+            "right": 537.234375,
+            "bottom": 384
+          },
+          "unlock": {
+            "x": 792,
+            "y": 8,
+            "width": 44,
+            "height": 44,
+            "right": 836,
+            "bottom": 52
+          },
+          "outsideContours": 0,
+          "unlockInkCollisions": 0
+        },
+        {
+          "name": "tablet",
+          "width": 800,
+          "height": 1280,
+          "safe": {
+            "x": 0,
+            "y": 0,
+            "width": 800,
+            "height": 1280,
+            "right": 800,
+            "bottom": 1280
+          },
+          "viewport": {
+            "x": 0,
+            "y": 0,
+            "width": 800,
+            "height": 1280,
+            "right": 800,
+            "bottom": 1280
+          },
+          "paper": {
+            "x": 13.421875,
+            "y": 6,
+            "width": 773.15625,
+            "height": 1268,
+            "right": 786.578125,
+            "bottom": 1274
+          },
+          "unlock": {
+            "x": 748,
+            "y": 8,
+            "width": 44,
+            "height": 44,
+            "right": 792,
+            "bottom": 52
+          },
+          "outsideContours": 0,
+          "unlockInkCollisions": 0
+        },
+        {
+          "name": "tablet-landscape",
+          "width": 1280,
+          "height": 800,
+          "safe": {
+            "x": 0,
+            "y": 0,
+            "width": 1280,
+            "height": 800,
+            "right": 1280,
+            "bottom": 800
+          },
+          "viewport": {
+            "x": 0,
+            "y": 0,
+            "width": 1280,
+            "height": 800,
+            "right": 1280,
+            "bottom": 800
+          },
+          "paper": {
+            "x": 399.75,
+            "y": 6,
+            "width": 480.484375,
+            "height": 788,
+            "right": 880.234375,
+            "bottom": 794
+          },
+          "unlock": {
+            "x": 1228,
+            "y": 8,
+            "width": 44,
+            "height": 44,
+            "right": 1272,
+            "bottom": 52
+          },
+          "outsideContours": 0,
+          "unlockInkCollisions": 0
+        },
+        {
+          "name": "desktop",
+          "width": 1440,
+          "height": 900,
+          "safe": {
+            "x": 0,
+            "y": 0,
+            "width": 1440,
+            "height": 900,
+            "right": 1440,
+            "bottom": 900
+          },
+          "viewport": {
+            "x": 0,
+            "y": 0,
+            "width": 1440,
+            "height": 900,
+            "right": 1440,
+            "bottom": 900
+          },
+          "paper": {
+            "x": 449.265625,
+            "y": 6,
+            "width": 541.453125,
+            "height": 888,
+            "right": 990.71875,
+            "bottom": 894
+          },
+          "unlock": {
+            "x": 1388,
+            "y": 8,
+            "width": 44,
+            "height": 44,
+            "right": 1432,
+            "bottom": 52
+          },
+          "outsideContours": 0,
+          "unlockInkCollisions": 0
+        }
+      ],
+      "systemInsetFixtures": 5,
+      "localizedChecks": 44,
+      "unexpectedErrors": {
+        "page": 0,
+        "console": 0,
+        "http": 0,
+        "requests": 0
+      }
+    },
+    "ayah": {
+      "runner": "tests/verify-indopak-ayah-web.cjs",
+      "checks": {
+        "outsideClickDismisses": true,
+        "iconDragRejected": true,
+        "holdDelayMs": 503.6000000014901,
+        "shortRejected": true,
+        "multiStartRejected": true,
+        "addedFingerRejected": true,
+        "cancelledRejected": true,
+        "movedRejected": true,
+        "resizedRejected": true,
+        "exactResume": true,
+        "reopenRestored": true,
+        "existingDataUntouched": true,
+        "verseListReveals": true,
+        "focusDismisses": true,
+        "unlockDismisses": true,
+        "panDismisses": true
+      },
+      "contexts": 23,
+      "localizedPopupChecks": 44,
+      "layouts": [
+        "phone",
+        "focused",
+        "landscape-verse-list"
+      ],
+      "unexpectedErrors": {
+        "page": 0,
+        "console": 0,
+        "http": 0,
+        "requests": 0
+      }
+    },
+    "playback": {
+      "runner": "tests/verify-indopak-playback-web.cjs",
+      "checks": {
+        "focusKeepsAudioPlayingWithoutRestart": {
+          "beforeFocus": {
+            "uri": "https://cdn.islamic.network/quran/audio/128/ar.alafasy/4906.mp3",
+            "position": 0.079241,
+            "duration": 6.266463,
+            "paused": false
+          },
+          "duringFocus": {
+            "uri": "https://cdn.islamic.network/quran/audio/128/ar.alafasy/4906.mp3",
+            "position": 0.496655,
+            "duration": 6.266463,
+            "paused": false
+          }
+        },
+        "naturalNextAyah": true,
+        "pauseResume": true,
+        "selectionIsSeparate": true,
+        "repeatOne": true,
+        "activeGestureDefersPageFollow": true,
+        "focusCrossPageFollow": true,
+        "crossPageFollow": true,
+        "manualBrowseDoesNotSnapBack": true,
+        "landscapeReveal": {
+          "bounds": {
+            "x": 147.8975067138672,
+            "y": 183.751220703125,
+            "width": 38.8314208984375,
+            "height": 72.1754150390625,
+            "right": 186.7289276123047,
+            "bottom": 255.9266357421875
+          },
+          "viewport": {
+            "x": 0,
+            "y": 110,
+            "width": 844,
+            "height": 226,
+            "right": 844,
+            "bottom": 336
+          }
+        },
+        "focusLandscapePlayback": {
+          "bounds": {
+            "x": 338.03070068359375,
+            "y": 330.6495361328125,
+            "width": 11.895721435546875,
+            "height": 22.11041259765625,
+            "right": 349.9264221191406,
+            "bottom": 352.75994873046875
+          },
+          "viewport": {
+            "x": 0,
+            "y": 0,
+            "width": 844,
+            "height": 430,
+            "right": 844,
+            "bottom": 430
+          }
+        },
+        "splitVerseStaysOnLaterPage": true,
+        "focusGatedFollow": true,
+        "readingMarkBookmarksAndOriginalReaderUntouched": true,
+        "closeClearsOnlyAudioHighlight": true,
+        "urduDarkFollow": true,
+        "realSequentialTranslationStaysOnSameAyah": true
+      },
+      "contexts": 3,
+      "realMediaObservations": 21,
+      "media": [
+        {
+          "uri": "https://cdn.islamic.network/quran/audio/128/ar.alafasy/4906.mp3",
+          "position": 0.070423,
+          "duration": 6.266463,
+          "paused": false
+        },
+        {
+          "uri": "https://cdn.islamic.network/quran/audio/128/ar.alafasy/4906.mp3",
+          "position": 0.496655,
+          "duration": 6.266463,
+          "paused": false
+        },
+        {
+          "uri": "https://cdn.islamic.network/quran/audio/128/ar.alafasy/4907.mp3",
+          "position": 0.058442,
+          "duration": 6.332562,
+          "paused": false
+        },
+        {
+          "uri": "https://cdn.islamic.network/quran/audio/128/ar.alafasy/4907.mp3",
+          "position": 1.157081,
+          "duration": 6.332562,
+          "paused": false,
+          "realNearEndSeek": true
+        },
+        {
+          "uri": "https://cdn.islamic.network/quran/audio/128/ar.alafasy/11.mp3",
+          "position": 0.067446,
+          "duration": 15.773855,
+          "paused": false
+        },
+        {
+          "uri": "https://cdn.islamic.network/quran/audio/128/ar.alafasy/11.mp3",
+          "position": 0.190124,
+          "duration": 15.773855,
+          "paused": false,
+          "realNearEndSeek": true
+        },
+        {
+          "uri": "https://cdn.islamic.network/quran/audio/128/ar.alafasy/12.mp3",
+          "position": 0.579918,
+          "duration": 11.323968,
+          "paused": false
+        },
+        {
+          "uri": "https://cdn.islamic.network/quran/audio/128/ar.alafasy/12.mp3",
+          "position": 0.88601,
+          "duration": 11.323968,
+          "paused": false,
+          "realNearEndSeek": true
+        },
+        {
+          "uri": "https://cdn.islamic.network/quran/audio/128/ar.alafasy/2249.mp3",
+          "position": 0.066056,
+          "duration": 24.298005,
+          "paused": false
+        },
+        {
+          "uri": "https://cdn.islamic.network/quran/audio/128/ar.alafasy/2249.mp3",
+          "position": 0.07052,
+          "duration": 24.298005,
+          "paused": false,
+          "realNearEndSeek": true
+        },
+        {
+          "uri": "https://cdn.islamic.network/quran/audio/128/ar.alafasy/2250.mp3",
+          "position": 0.05949,
+          "duration": 40.660454,
+          "paused": false
+        },
+        {
+          "uri": "https://cdn.islamic.network/quran/audio/128/ar.alafasy/32.mp3",
+          "position": 0.087383,
+          "duration": 38.287959,
+          "paused": false
+        },
+        {
+          "uri": "https://cdn.islamic.network/quran/audio/128/ar.alafasy/11.mp3",
+          "position": 0.064624,
+          "duration": 15.773855,
+          "paused": false
+        },
+        {
+          "uri": "https://cdn.islamic.network/quran/audio/128/ar.alafasy/11.mp3",
+          "position": 1.022243,
+          "duration": 15.773855,
+          "paused": false,
+          "realNearEndSeek": true
+        },
+        {
+          "uri": "https://cdn.islamic.network/quran/audio/128/ar.alafasy/6226.mp3",
+          "position": 0.058653,
+          "duration": 3.417574,
+          "paused": false
+        },
+        {
+          "uri": "https://cdn.islamic.network/quran/audio/128/ar.alafasy/6226.mp3",
+          "position": 0.061936,
+          "duration": 3.417574,
+          "paused": false,
+          "realNearEndSeek": true
+        },
+        {
+          "uri": "https://cdn.islamic.network/quran/audio/128/ar.alafasy/1.mp3",
+          "position": 0.059016,
+          "duration": 6.031111,
+          "paused": false
+        },
+        {
+          "uri": "https://cdn.islamic.network/quran/audio/128/ar.alafasy/1.mp3",
+          "position": 0.062326,
+          "duration": 6.031111,
+          "paused": false,
+          "realNearEndSeek": true
+        },
+        {
+          "uri": "https://cdn.islamic.network/quran/audio/192/en.walk/1.mp3",
+          "position": 0.053816,
+          "duration": 7.078821,
+          "paused": false
+        },
+        {
+          "uri": "https://cdn.islamic.network/quran/audio/192/en.walk/1.mp3",
+          "position": 0.132562,
+          "duration": 7.078821,
+          "paused": false,
+          "realNearEndSeek": true
+        },
+        {
+          "uri": "https://cdn.islamic.network/quran/audio/128/ar.alafasy/2.mp3",
+          "position": 0.06645,
+          "duration": 5.533696,
+          "paused": false
+        }
+      ],
+      "expectedMediaCancellations": [
+        "https://cdn.islamic.network/quran/audio/128/ar.alafasy/11.mp3 net::ERR_ABORTED",
+        "https://cdn.islamic.network/quran/audio/128/ar.alafasy/2249.mp3 net::ERR_ABORTED"
+      ],
+      "unexpectedErrors": {
+        "page": 0,
+        "console": 0,
+        "http": 0,
+        "requests": 0
+      }
+    },
+    "existingAppRegressions": {
+      "tests/verify-hotfix-web.cjs": "passed; phone/tablet real first/repeated/changed-ayah audio",
+      "tests/verify-translation-selection-web.cjs": "passed; saved text/audio choice, Urdu restoration, independent English UI",
+      "tests/verify-responsive-navigation-web.cjs": "passed; 11 profiles, all tabs, live insets, Reader/player/sheets/onboarding and Urdu RTL"
+    }
+  },
+  "exports": {
+    "web": {
+      "passed": true,
+      "bundle": "index-646a26c9e51ec12630312784634c44b2.js",
+      "bundleBytes": 24156134,
+      "gzipBytes": 6635307,
+      "originalFontCopies": [
+        "assets/assets/fonts/IndopakNastaleeq.51aff7449ae51ff5b54ea98eed919504.ttf"
+      ]
+    },
+    "android": {
+      "passed": true,
+      "bundle": "index-19e06fa0476034c274d3a339c534aa3c.hbc",
+      "bundleBytes": 29026257,
+      "gzipBytes": 8463795,
+      "originalFontCopies": [
+        "assets/51aff7449ae51ff5b54ea98eed919504"
+      ]
+    },
+    "ios": {
+      "passed": true,
+      "bundle": "index-88d83d53022db071b724729f286ec2c0.hbc",
+      "bundleBytes": 29010895,
+      "gzipBytes": 8457627,
+      "originalFontCopies": [
+        "assets/51aff7449ae51ff5b54ea98eed919504"
+      ]
+    }
+  },
+  "webBundleDeltaFromR100": {
+    "rawBytes": 2909,
+    "gzipBytes": 838
+  },
+  "limits": [
+    "Production WEB interactions and simulated browser insets, not physical native navigation-mode/long-press/accessibility tests.",
+    "Android/iOS production Hermes exports are not installed APK/AAB/IPA, emulator/device, store or native performance validation.",
+    "Exhaustive sweep time includes intentional touch/wait/assertion work; not a rendering performance comparison or scholarly proofreading.",
+    "Two intentional cancelled media range reads are recorded separately; no unexpected page/console/HTTP/request errors.",
+    "Original R100 zoom profiler results remain historical; the Zoom UI/runners are replaced, not a Focus performance claim.",
+    "No new content/font/layout, dependency, app/release configuration, search implementation, deployment or store submission."
+  ]
+}

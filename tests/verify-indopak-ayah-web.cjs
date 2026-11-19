@@ -116,14 +116,15 @@ async function resume(page) {
       report.checks[name+'Rejected']=true;
     }
     await page.setViewportSize({width:390,height:844}); await gotoPage(page,274); await page.waitForTimeout(400);
-    await page.getByTestId('indopak-zoom').click(); await touchSwipe(page,{dx:115}); await touchSwipe(page,{dx:0,dy:-145});
-    words=await visibleWords(page); const zoomed=words[Math.floor(words.length/2)];
-    await pressWord(page,zoomed); const exact=(await read(page)).readingPoint; assert.equal(exact.wordId,zoomed.id); assert.equal((await read(page)).zoom,1.5);
-    report.layouts.push({name:'zoomed',...(await checkPopup(page,zoomed))}); await page.screenshot({path:path.join(output,'zoomed-ayah-popup.png')}); await page.keyboard.press('Escape');
+    await page.getByTestId('indopak-focus').click(); await page.getByTestId('indopak-unlock').waitFor(); await pause(page);
+    words=await visibleWords(page); const focused=words[Math.floor(words.length/2)];
+    await pressWord(page,focused); const exact=(await read(page)).readingPoint; assert.equal(exact.wordId,focused.id); assert.equal((await read(page)).zoom,1);
+    report.layouts.push({name:'focused',...(await checkPopup(page,focused))}); await page.screenshot({path:path.join(output,'focused-ayah-popup.png')}); await page.keyboard.press('Escape');
+    await page.getByTestId('indopak-unlock').click(); await page.getByTestId('indopak-top-controls').waitFor();
     await gotoPage(page,400); assert.deepEqual((await read(page)).readingPoint,exact,'Browsing other pages does not move the explicit reading marker');
     await resume(page); await expectPage(page,274); await pause(page);
     const resumed=await box(page.getByTestId(`indopak-word-${exact.wordId}`)), viewport=await box(page.getByTestId('indopak-page-viewport'));
-    assert.ok(resumed.x<viewport.right && resumed.right>viewport.x && resumed.y>=viewport.y && resumed.bottom<=viewport.bottom,'Continue reading reveals the exact marked word/line at the saved zoom');
+    assert.ok(resumed.x<viewport.right && resumed.right>viewport.x && resumed.y>=viewport.y && resumed.bottom<=viewport.bottom,'Continue reading reveals the exact marked word/line without depending on the removed zoom');
     assert.deepEqual((await read(page)).readingPoint,exact); assert.deepEqual((await read(page)).savedPages,[],'Ayah marking never changes page bookmarks');
     report.checks.exactResume=true;
     await page.getByTestId('screen-header').last().getByRole('button',{name:'Back',exact:true}).click();
@@ -132,17 +133,19 @@ async function resume(page) {
     const reopened=await box(page.getByTestId(`indopak-word-${exact.wordId}`)); assert.ok(reopened.y>=viewport.y && reopened.bottom<=viewport.bottom,'Reopening the marked page automatically reveals the exact saved place');
     assert.deepEqual((await read(page)).readingPoint,exact); report.checks.reopenRestored=true;
     const after=await page.evaluate(keys=>Object.fromEntries(keys.map(k=>[k,localStorage.getItem(k)])),oldKeys); assert.deepEqual(after,old); report.checks.existingDataUntouched=true;
-    await page.getByTestId('indopak-zoom').click(); await page.getByTestId('indopak-zoom').click();
     await page.setViewportSize({width:844,height:390}); await pause(page);
     await page.getByTestId('indopak-verse-list').click(); const last=page.locator('[data-testid^="indopak-jump-verse-"]').last(), lastKey=(await last.getAttribute('data-testid')).replace('indopak-jump-verse-',''); await last.click();
     await page.getByTestId('indopak-ayah-popover').waitFor(); report.layouts.push({name:'landscape-verse-list',...(await checkPopup(page,{verse:lastKey}))});
     await page.screenshot({path:path.join(output,'landscape-ayah-popup.png')}); await page.keyboard.press('Escape'); report.checks.verseListReveals=true;
     await page.setViewportSize({width:390,height:844}); await pause(page);
     await chooseVerse(page,lastKey);
-    await page.getByTestId('indopak-zoom').click(); await page.getByTestId('indopak-ayah-popover').waitFor({state:'detached'}); report.checks.zoomDismisses=true;
+    await page.getByTestId('indopak-focus').click(); await page.getByTestId('indopak-ayah-popover').waitFor({state:'detached'}); report.checks.focusDismisses=true;
+    await pause(page); words=await visibleWords(page); const focusTap=words[Math.floor(words.length/2)]; await tapWord(page,focusTap);
+    await page.getByTestId('indopak-unlock').click(); await page.getByTestId('indopak-ayah-popover').waitFor({state:'detached'}); report.checks.unlockDismisses=true;
+    await page.setViewportSize({width:844,height:390}); await pause(page);
     await chooseVerse(page,lastKey); const beforeScroll=await page.getByTestId('indopak-vertical-scroll').evaluate(e=>e.scrollTop);
     await touchSwipe(page,{dx:0,dy:110}); await page.getByTestId('indopak-ayah-popover').waitFor({state:'detached'});
-    assert.ok(Math.abs(await page.getByTestId('indopak-vertical-scroll').evaluate(e=>e.scrollTop)-beforeScroll)>10,'Real panning dismisses the popup without changing the marker');
+    assert.ok(Math.abs(await page.getByTestId('indopak-vertical-scroll').evaluate(e=>e.scrollTop)-beforeScroll)>10,'Real landscape scrolling dismisses the popup without changing the marker');
     report.checks.panDismisses=true;
     await own.context.close();
 

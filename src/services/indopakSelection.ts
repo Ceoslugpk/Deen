@@ -34,8 +34,8 @@ export function indopakPageOrigin(viewport: { width: number; height: number }, s
   return { x: Math.max(0, (viewport.width - size.width) / 2), y: Math.max(0, (viewport.height - size.height) / 2) };
 }
 
-/** Keep the same physical page point at the viewport centre on zoom/rotation, clamping only at paper edges. */
-export function indopakZoomOffset(viewport: { width: number; height: number }, size: { width: number; height: number },
+/** Keep the same physical page point on focus/viewport changes, clamping only at paper edges. */
+export function indopakResizeOffset(viewport: { width: number; height: number }, size: { width: number; height: number },
   scroll: { x: number; y: number }, nextViewport: { width: number; height: number }, nextSize: { width: number; height: number }) {
   if (![viewport.width, viewport.height, size.width, size.height, nextViewport.width, nextViewport.height, nextSize.width, nextSize.height]
     .every(n => Number.isFinite(n) && n > 0) || ![scroll.x, scroll.y].every(Number.isFinite)) return { x: 0, y: 0 };

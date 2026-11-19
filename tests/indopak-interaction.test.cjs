@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
 const { createLoader } = require('./helpers/load-typescript.cjs');
-const { isIndopakReaderRoute, captureIndopakSwipe, indopakSwipePage, indopakTurnPlan, indopakZoomControl } = createLoader()('src/services/indopakInteraction.ts');
+const { isIndopakReaderRoute, captureIndopakSwipe, indopakSwipePage, indopakTurnPlan } = createLoader()('src/services/indopakInteraction.ts');
 const stack = (...names) => ({ index: names.length - 1, routes: names.map(name => typeof name === 'string' ? { name } : name) });
 const quran = stack('QuranHome', '16-line Quran');
 const tabs = (index = 2, nested = quran) => ({ index, routes: [
@@ -91,7 +91,7 @@ test('menu removal, freed reader space and mini-player placement are route-scope
   assert.match(app,/if \(indopakActive\) return null;/);
   assert.match(app,/const bottom = indopakActive \? 16 \+ \(Platform.OS === 'ios' \? insets.bottom : 0\) : MINI_PLAYER_BOTTOM;/);
   const screen = app.slice(app.indexOf('function IndopakQuranScreen('),app.indexOf('function ReaderScreen('));
-  assert.ok(screen.includes('paddingBottom:12')); assert.ok(!screen.includes('paddingBottom:BOTTOM_RESERVE'));
+  assert.ok(screen.includes('paddingBottom:focusMode?0:12')); assert.ok(!screen.includes('paddingBottom:BOTTOM_RESERVE'));
   assert.ok(!screen.includes('setChromeHidden')); assert.ok(!screen.includes('writeJson'));
 });
 
@@ -103,8 +103,8 @@ test('the viewport yields to native recognizers and cancels page turns without d
   assert.ok(component.includes('from !== latest.current.page'));
   assert.ok(component.includes('swipeBlocked.current ||'));
   assert.ok(component.includes("scrollEnabled={Platform.OS === 'web' || size.height > viewport.height + 1}"));
-  assert.ok(component.includes("scrollEnabled={Platform.OS === 'web' || state.zoom > 1}"));
-  assert.ok(component.includes("touchAction: state.zoom === 1 ? 'pan-y' : 'auto'"));
+  assert.ok(component.includes("scrollEnabled={Platform.OS === 'web'}"));
+  assert.ok(component.includes("touchAction: 'pan-y'"));
   assert.ok(component.includes('Date.now() >= suppressVerseUntil.current'));
 });
 
@@ -132,16 +132,12 @@ test('restoration, same-page selection, invalid pages and reduced motion never c
   for (const [from,to] of [[1,2],[548,547],[1,548]]) assert.equal(indopakTurnPlan(from,to,390,true),null);
 });
 
-test('zoom cycles use real magnifier-plus/minus drawings, not the unimplemented expand fallback', () => {
-  let zoom=1;
-  for (const [next,icon] of [[1.5,'zoom-in'],[2,'zoom-in'],[1,'zoom-out'],[1.5,'zoom-in']]) {
-    const control=indopakZoomControl(zoom); assert.equal(control.next,next); assert.equal(control.icon,icon); zoom=control.next;
-  }
+test('focus replaces zoom with a real fullscreen drawing and an open-lock return control', () => {
   const icons=fs.readFileSync(path.join(__dirname,'../src/components/CustomIcon.tsx'),'utf8');
-  assert.ok(icons.includes("case'zoom-in':case'zoom-out':"));
-  assert.ok(icons.includes("{n==='zoom-in'&&<Line"));
+  assert.ok(icons.includes("case'fullscreen':")); assert.ok(icons.includes("case'lock-open':"));
   const component=fs.readFileSync(path.join(__dirname,'../src/components/IndopakMushafReader.tsx'),'utf8');
-  assert.ok(component.includes('zoomControl.icon')); assert.ok(!component.includes('expand-outline'));
+  assert.ok(component.includes("testID: 'indopak-focus'")); assert.ok(component.includes('testID="indopak-unlock"'));
+  assert.ok(!component.includes('indopak-zoom')); assert.ok(!component.includes('zoomControl'));
 });
 
 test('page selection and verse access live at the top, with no bottom pager or duplicate printed counter', () => {

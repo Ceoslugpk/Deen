@@ -1,25 +1,23 @@
 # Separate offline 16-line Quran
 
-## Entry point and scope
+## Entry point and current scope
 
-**Quran → Explore → 16-line Quran** opens a new, separate screen. It is not a Reader setting and does not re-enable the retired Mushaf (`MUSHAF_ENABLED` remains false). Existing Reader logic, translation and reciter choices, bookmarks, notes, audio behaviour, and existing stored user data remain unchanged.
+**Quran → Explore → 16-line Quran** opens a separate screen. It is not a Reader setting and does not re-enable the retired Mushaf (`MUSHAF_ENABLED` remains false). Existing Reader settings, translation/reciter choices, bookmarks, notes and stored user data remain independent.
 
 The screen contains:
 
-- the supplied **Taj Company IndoPak 16-line / 548-page** layout;
-- matching, verbatim Nastaleeq word text from the owner's Islamic Data API;
-- the supplied **AlQuran IndoPak by QuranWBW v2.100** font;
-- a tappable **top page counter** with page entry (including Arabic/Persian digits), Surah and canonical verse-based Juz navigation;
-- edition-specific page bookmarks, last-page/zoom restoration and one exact ayah/word-level continue-reading marker;
-- lightweight paper-fold page swiping at 1×: **right → next page; left → previous page**, following Quran RTL page order in every interface language;
-- 1× / 1.5× / 2× position-preserving zoom with scrolling and memoized fixed-word rendering; very short landscape panes use width-fit scrolling rather than shrinking the entire page to an unreadable thumbnail;
-- per-verse hit targets and a larger Verse-list alternative, full-ayah highlighting and a small anchored three-icon popup for recitation, translation and saving the reading position;
-- feature copy in English and all 21 other supported interface languages, with the existing copy service supplying shared labels. Uzbek and Kazakh remain Cyrillic; Malay and Indonesian have distinct copy;
-- the bottom tab menu hidden **only while this screen is focused**, with its empty reserve reclaimed and existing audio controls positioned inside the safe area;
-- a short Sources panel showing the edition and `QUL / Tarteel · QuranWBW`; full credits, original restrictions and permission notes remain unchanged in the resource notices;
-- light/dark colours and existing brand assets, with proper magnifier-plus/minus zoom icons in the app’s existing vector style. No illustration assets, dependencies, release settings or orientation policy were introduced.
+- the supplied **Taj Company IndoPak 16-line / 548-page** layout, matching verbatim Nastaleeq word text and the supplied **AlQuran IndoPak by QuranWBW v2.100** font;
+- a tappable **top page counter**, page entry including Arabic/Persian digits, Surah and canonical verse-based Juz navigation, independent page bookmarks and one exact ayah/word-level Continue reading marker;
+- lightweight paper-fold swipes: **right → next page; left → previous page**, in every interface language;
+- **Focus mode instead of Zoom**: the complete, undistorted paper fits the available safe screen, the app header/top controls/mini-player disappear, and a small **top-right Unlock** restores normal mode. Audio keeps playing;
+- per-verse hit targets and a larger Verse-list alternative, whole-ayah highlighting and a small three-icon recitation/translation/reading-marker popup;
+- current-recitation highlighting and page/line following from the authoritative audio queue, independent of selection, saved reading point and page bookmarks;
+- shared labels and feature copy in all **22 interface languages**. Uzbek/Kazakh remain Cyrillic; Malay and Indonesian remain distinct;
+- the bottom tab menu hidden **only on this screen**, even in normal mode, with its empty reserve reclaimed;
+- a short Sources panel showing the edition and `QUL / Tarteel · QuranWBW`; the resource notices retain full credits, original restrictions and permission notes;
+- light/dark colours and existing brand assets. No new illustration, dependency, orientation policy or release configuration is introduced.
 
-Reading the pages requires no scripture/layout API call. Audio and translations use the existing app's network/download availability; this feature does not bundle recitation recordings or new translations.
+Reading pages needs no scripture/layout API call. Audio and translations use the existing app's network/download availability; no recordings or new translations are bundled.
 
 ## Edition and content integrity
 
@@ -31,192 +29,121 @@ Reading the pages requires no scripture/layout API call. Audio and translations 
 | Word and marker records | 83,668 |
 | Canonical verses / Surahs / Juz | 6,236 / 114 / 30 |
 | Lazy page chunks | 18, at most 32 pages each |
-| Unique shaped texts, including headings / original-font glyphs | 22,761 / 572 |
+| Unique shaped texts / original-font glyphs | 22,761 / 572 |
 | Generated runtime JSON | 8,788,559 bytes |
 
-The original SQLite and TTF remain byte-identical. Checksums, sources, original font notice, attribution and the permission record are in [`resources/quran/indopak-taj-16/NOTICE.md`](../resources/quran/indopak-taj-16/NOTICE.md). The generator fails closed on changed original layout, font, raw word text or pinned Surah metadata.
+The original SQLite and TTF remain byte-identical. Checksums, sources, original font notice, attribution and the owner's permission record are in [`resources/quran/indopak-taj-16/NOTICE.md`](../resources/quran/indopak-taj-16/NOTICE.md). The generator fails closed on changed original layout, font, raw word text or pinned Surah metadata. The owner's distribution permission is recorded, not independently verified or represented as an open licence.
 
-All word IDs join the source layout exactly once and in order, without omitted/unused IDs or mismatched Surah starts. Original strings—including diacritics, private-use symbols and embedded spaces—are copied verbatim. Page breaks, line ranges, line types and centering flags are copied directly. There is no tatweel insertion, letter normalization, arbitrary 16-row regrouping or substitution of the 604-page Madani map.
+All word IDs join the source layout exactly once and in order. Original strings—including diacritics, private-use symbols and embedded spaces—remain verbatim. Page breaks, line ranges/types and centering flags are copied directly. There is no tatweel insertion, letter normalization, arbitrary 16-row regrouping or substitution of the 604-page Madani map. Source-defined short pages remain short: pages **1/2 have 7 rows**, **529/530 have 15**, and **548 has 10**; all other pages have 16.
 
-The source-defined shorter pages remain shorter:
+The database supplies line boundaries/types, not scanned images or exact printed coordinates. The renderer fits those original lines within a scalable frame. Its border/spacing are not claimed to be a pixel-identical facsimile of a printed book.
 
-| Pages | Source rows |
-| --- | --- |
-| 1, 2 | 7 each |
-| 529, 530 | 15 each |
-| 548 | 10 |
+## Rendering and implementation
 
-The layout database provides line boundaries/types, not a scanned page image or exact printed glyph coordinates. The renderer fits those original lines within its own scalable frame. Its borders and spacing are not claimed to be a pixel-identical facsimile of a printed book.
+`indopakMushaf.ts` owns canonical lookup, original line placement and fitting. `IndopakMushafReader.tsx` owns this edition's controls, gestures and live viewport. `IndopakPageCanvas.tsx` shares original-font rendering between the live page and the non-interactive outgoing snapshot. `App.tsx` handles entry/routing, existing-audio/Reader callbacks and this route's menu/player placement.
 
-## Rendering and bundle implementation
+An early running-app check caught browser SVG text separating leading waqf marks from private-use ayah symbols; native SVG also has its own bidi/shaping engine. The canvas therefore draws **the original font's contours at precomputed HarfBuzz RTL positions**, one composed SVG path per word. The font is neither modified nor subset, and remains bundled once and hash-verified in each production export. No platform-specific text reshaping is used for scripture placement.
 
-`src/services/indopakMushaf.ts` owns the edition namespace, canonical verse lookup, source line placement and safe width/height fitting. `src/components/IndopakMushafReader.tsx` owns the new screen's reader/navigation UI and `IndopakPageCanvas.tsx` shares the unchanged-font rendering between the live page and its outgoing animation snapshot; `App.tsx` handles its entry point, route, existing-audio/Reader callbacks and focused-screen-only menu/player placement. Other screens keep their established layout.
+The generator uses `uharfbuzz==0.57.0` and `fonttools==4.68.0`, emitting UTF-8 JSON-string envelopes for large numeric tables. Only requested page chunks expand; six-chunk and 512-word-path caches bound derived data. Builds use checked-in runtime data; the source database is retained for audit/regeneration, not runtime queries. No SQLite package or new runtime dependency is needed.
 
-An initial running-app check caught browser SVG text separating leading waqf marks from private-use ayah symbols. Native SVG text also has a different bidi/shaping implementation. Pages therefore draw the **original font's contours at precomputed HarfBuzz RTL positions**, with one composed SVG path per word. The original font file is neither changed nor subset, and remains bundled and hash-verified in both native export asset sets. R98 removes the former full-verse text/modal preview in favour of on-page highlighting and icons. This avoids relying on different platform SVG text engines for scripture placement. Original text remains available for canonical references and verse actions.
+R100 separated **memoized fixed line ink/hit targets, headings, paper and live highlights**. SVG resizing or selection/recitation/marker changes do not recreate the fixed-word component. Stable dispatchers use the latest committed callbacks, not stale page/hold/action state. This work remains in R101. Native SVG still redraws the vector surface as needed; memoization does not make drawing free.
 
-The generator uses `uharfbuzz==0.57.0` and `fonttools==4.68.0`. It emits UTF-8 JSON-string envelopes for large numeric tables; only a requested page chunk is expanded. A six-chunk cache and a 512-word-path cache bound derived data retained during long reading sessions. No SQLite package or new runtime dependency is needed. The original source database is retained for audit/regeneration, not queried by the app.
+## State isolation
 
-## State isolation and existing actions
+- Edition: `indopak-taj-16`; storage: `@deen/quran/indopak-taj-16/state/v1`.
+- Existing schema: validated page 1–548, sorted valid saved pages, optional `readingPoint: { page, verse, wordId }`, and the older 1/1.5/2 zoom field.
+- **R101 retains old zoom values on disk but never uses them to magnify rendering or disable swipes.** Loading a saved 2× page cannot trap someone in an inaccessible old mode. No zoom migration or deletion is performed.
+- Opening/restoring the screen performs no write. Page, page-bookmark and explicit reading-marker actions save through the existing edition-specific path. Focus/Unlock is temporary UI state and does not save a preference or change the reading marker.
+- No shared Reader position/preference/note/bookmark migration, clearing or heuristic deletion occurs. A translation action deliberately opens the existing Reader with `focusVerse`, where normal Reader behaviour applies.
+- Canonical Surah:Ayah keys remain authoritative, including verses split across printed pages. Juz lookup uses verse boundaries, not another edition's page map.
 
-- Edition ID: `indopak-taj-16`.
-- Storage: `@deen/quran/indopak-taj-16/state/v1`.
-- Persisted values: validated 1–548 page, 1/1.5/2 zoom, sorted unique valid saved pages and an optional `readingPoint: { page, verse, wordId }` (or `null`). Older v1 records without this field still load without rewriting or migrating their existing values.
-- Merely opening/restoring this screen does not write defaults. Only explicit page/zoom/page-bookmark/reading-marker actions save.
-- No shared Quran position, preference, note or bookmark migration, clearing or heuristic deletion is performed.
-- Surah:Ayah keys remain canonical even when a verse spans printed pages. Juz entries use canonical verse boundaries, not another edition's page numbers.
-- Playback calls the existing `playFromReader` flow with the selected canonical key. The explicit translation/actions button opens the existing Reader with `focusVerse`; normal existing Reader behaviour then applies.
-- Directories use the established safe-content frame and `SystemModal`; the ayah popup is non-modal and anchored inside the safe page viewport. Compact widths keep 44px tool targets; landscape consolidates controls within this screen.
+## Normal controls and navigation (R95–R97, retained)
 
-## Reader interaction refinement (R95)
+The top counter is **Page N / 548**, tappable for direct selection and exposing increment/decrement accessibility actions. Surah, Juz, page saving, **Focus**, Verse and Sources stay above the normal page. Compact widths use icons and move Verse beside the counter; short wide landscape frames combine the top groups into one row. All targets remain at least 44px. There is no bottom pager, pager arrows, hint/footer row or duplicate printed page number. In normal mode an active mini-player keeps its safe reserve; short landscape panes retain width-fit vertical reading/scrolling.
 
-`src/services/indopakInteraction.ts` reads only the navigation state's focused leaf. An inactive Quran tab, saved stack entry or route parameter cannot hide the menu elsewhere. The existing Reader's independent focus-mode flag is not changed. Leaving this screen, opening the full audio player or explicitly opening the existing Reader restores the normal menu and mini-player placement; returning removes only this screen's menu again. Android continues to use the shared system-safe boundary, and the lowered iOS mini-player also includes the current bottom safe inset.
+Route detection follows only the navigation state's active leaf. An inactive Quran stack, stored route or route parameter cannot hide other screens' menu/player. Leaving this screen, opening the full audio player or opening the existing Reader restores the normal shell. The original Reader's persistent scroll-triggered Focus preference is untouched. Android retains the shared four-edge system-safe boundary; iOS retains its safe-area handling and mini-player bottom inset.
 
-The page viewport claims only deliberate horizontal, single-finger movement at 1×. A release advances at most one page, within 1–548, and saves through the existing edition-specific state flow. Vertical drags, short drags, cancellation and multi-touch—including adding a second finger after capture—do not turn pages. Captured gestures briefly suppress verse hit targets to prevent an accidental ayah popup; deliberate later taps still work. At 1.5×/2×, gestures remain available for panning rather than turning pages. Native recognizers may take over; a terminated gesture cannot turn a page. The controls use all 22 supported interface languages.
+Deliberate horizontal single-finger swipes advance at most one authentic page. Vertical/short/cancelled drags and multi-touch, including a finger added after capture, cannot turn a page. Native recognizers may take over; terminated gestures do not turn. A brief suppression window prevents a swipe/turn from opening ayah actions accidentally. R101 always passes the unzoomed scale to these guards, independently of old stored zoom.
 
-React Native web's disabled ScrollView applies `touch-action:none` to descendants as well. Its wrappers therefore stay enabled and scroll only if content actually overflows; the unzoomed viewport uses `pan-y` so vertical landscape scrolling coexists with JS horizontal page turns. Native wrappers remain zoom/overflow-aware. This distinction is covered by real touch-input checks, including a tall narrow viewport where only the horizontal axis overflows.
+Web ScrollView wrappers remain enabled: disabling them would impose `touch-action:none` on descendants. The page stage uses `pan-y` so real vertical landscape scrolling coexists with horizontal JS page turns. Native vertical scrolling depends on actual overflow; horizontal paper scrolling is no longer needed. Viewport changes preserve a bounded physical page-centre anchor via `indopakResizeOffset`, independently of interface direction. Explicit pending Continue reading/Verse reveals and recitation following retain priority over generic resize corrections. Asynchronous content-size callbacks reapply only an explicit correction, not an unconditional snap to the right edge.
 
-No original scripture, layout, font, generated data or licensing/permission file changed in this refinement. No runtime dependency or new persistent preference was added.
+Page changes use the **320ms lightweight native-driven paper fold**, not a slide or heavy 3D mesh. A curved blank back, crease and soft shadow reveal the stationary next page. Higher page numbers fold left → right; lower numbers reverse, regardless of interface language. Direct jumps use the same rule.
 
-## Top controls and page motion (R96)
+`IndopakPageFold.tsx` clips a non-interactive outgoing canvas; equal/opposite clip and face translations keep scripture stationary, without scale/reflection/skew. Only decorative paper/shadow transforms animate. `indopakFold.ts` uses actual centred paper edges and captured scroll offsets. The snapshot has no word targets, is hidden from accessibility and cannot intercept touches. There is no per-frame React state or path rebuilding. Reduced motion skips it; geometry changes, enabling reduced motion, leaving the route or pressing Unlock in a focused fold settle and remove the old layer safely.
 
-The bottom pager, its arrows and the bottom hint row are removed completely. The duplicate number inside the rendered page frame is also removed: **Page N / 548 is now at the top**, remains tappable for direct page selection, and exposes next/previous accessibility actions. Surah, Juz, page saving, Verse-list access, zoom and Sources remain available above the page. Compact widths use icon controls and move Verse access alongside the counter; wide, short landscape frames combine the two top groups into one row. All targets remain at least 44px. The reclaimed area belongs to the page, not an empty footer reserve; the existing audio-player reserve remains when needed.
+## On-ayah actions and reading marker (R98, retained)
 
-R96 initially introduced a short horizontal slide. The lightweight fold described below replaces that effect; the top layout, turn locks, outgoing-snapshot isolation and reduced-motion/cancellation safeguards remain.
+Tapping an ayah highlights all its original-line fragments and opens **only three icons**: recitation, translation and save reading position. Each has a canonical, localized accessible label and a 44px target. There is no large verse panel, visible popup text or extra close button. The popup prefers above the whole visible ayah, falls below at the upper edge, and stays inside the actual page viewport. A very long/clipped ayah may use the tapped fragment if neither outer edge fits. Coordinates are physical LTR; icon order follows the interface language. In Focus, the popup also clears Unlock without covering the selected fragment.
 
-The zoom control now draws a real magnifier with **plus** at 1×/1.5× and **minus** at 2× (return to 1×). It keeps the same 1 → 1.5 → 2 → 1 cycle and saved zoom state. New icon names are implemented in `CustomIcon.tsx`; they no longer fall through to its generic symbol. Existing icon cases and all other screens are unchanged.
+The mark icon and a **500ms stationary single-finger hold** both set the **same one Continue reading point**, not a whole-Surah bookmark or another Reader preference. Page, canonical ayah and original global word ID validate against the bundled page. A later line/page of a long ayah resumes exactly. The marked ayah keeps a restrained gold-edged highlight after dismissal; selection and current recitation remain separate.
 
-## Lightweight paper fold (R97)
+**Page → Bookmarks → Continue reading** reveals the exact saved word/line; reopening that marked page also reveals it. Browsing other pages never moves the explicit marker. Last visited page and saved pages remain independent.
 
-Page changes now use a **320ms, native-driven lightweight paper fold**, not a horizontal slide or a heavy 3D mesh curl. A curved blank paper back, a narrow crease and a soft shadow travel across the page to reveal the next page underneath. Higher page numbers fold left → right; lower numbers reverse, independently of the interface language. Direct page/Surah/Juz jumps use the same direction rule.
+Native SVG uses its supported 500ms long-press handler. Web uses one cancellable timer because its SVG adapter lacks the native responder mixin. Movement over 8px, scrolling, multi-touch, cancellation, page/geometry/Focus changes or unmounting cancel unfinished holds. Release after a completed hold cannot trigger playback/translation. Dragging a popup icon cannot turn or mark. Outside taps, scrolling, mode/geometry changes, Escape, accessibility escape and native Back dismiss actions without deleting the mark. Success is announced only after saving; normal mode retains the storage-error retry UI.
 
-`IndopakPageFold.tsx` clips one non-interactive outgoing canvas above the stationary incoming page. Moving the clip and counter-translating its contents by exactly the opposite amount keeps **every original-font scripture outline fixed and undistorted**. Only the blank decorative back/shadow scales or mirrors, never the Quran canvas. `indopakFold.ts` derives the visible paper edges, centred position, actual captured horizontal/vertical scroll offsets and bounded curved band geometry. The overlay uses its own LTR physical coordinate space even in an RTL interface. Light and dark paper/shadow colours follow the current page palette.
+## Recitation-follow highlighting (R99, retained)
 
-Only transforms and decorative opacity animate, using the existing React Native native driver and existing SVG support. There is no per-frame React state, path rebuilding, mesh renderer, additional graphics dependency or persistent animation setting. The old snapshot has no word hit targets, is hidden from accessibility and cannot intercept touches. Another turn or zoom is held during the brief fold; accidental verse taps remain suppressed. Same-page selections and restoration do not animate. Reduced motion skips the fold entirely; enabling it mid-turn, changing geometry/zoom or leaving the screen stops the animation and removes the old layer safely. Existing zoom panning, landscape scrolling, audio/safe-area clearance and focused-screen-only menu behaviour are unchanged. No scripture, font, page data, notices, application configuration or unrelated screen was changed.
+The audio emitter derives the published track from the resulting **queue and index**, not a stale track object. Natural advancement, next/previous, repeats, sequential translation and mini-player metadata stay consistent. `useIndopakRecitation.ts` observes a primitive canonical-ayah snapshot; ordinary progress/buffering ticks do not rerender the reader subscription. No guessed durations, new timing map or content changes are used. Pause retains the current highlight; clearing audio removes only that highlight. Untimed whole-Surah/downloaded tracks (`globalNumber: 0`) do not receive a fabricated current ayah.
 
-## On-ayah actions and reading marker (R98)
+An on-page Play enables following. Targets use this 548-page edition, preserve a visible later-page fragment of a split ayah and reveal only offscreen anchors. Following waits for the requested audio key, runs only on the active screen, and defers during touch/holds, selection, pickers, pending reveals and turns. Manual page navigation/Continue reading opts out until another on-page Play; highlighting still reflects the actual current ayah on the browsed page. Following updates only the last visited edition page, not the saved mark/bookmarks. Focus mode keeps this behaviour and never pauses, clears or restarts the queue merely to hide its controls.
 
-Tapping an ayah no longer opens a large verse panel. The complete ayah is highlighted across its original line fragments, and `IndopakAyahPopover.tsx` shows **only three icons**: recitation, translation and save reading position. Each is a 44px labelled accessibility target; the popup contains no visible text or extra close button. It prefers the area above the whole visible ayah, falls below when the upper edge has no room, and stays within the page viewport at zoom/scroll offsets. Very long/clipped ayahs can anchor to the tapped fragment if neither outer edge fits. Its physical positioning is independent of the interface direction; the icons follow the interface's RTL/LTR order. Audio uses the unchanged canonical-ayah playback flow; translation explicitly opens the existing Reader focused on that same ayah.
+## Full-page Focus / Unlock (R101)
 
-The bookmark icon and a **500ms stationary single-finger hold** both set the **same one continue-reading point**, as confirmed by the user. This is not a whole-Surah bookmark or another shared Reader preference. The saved point contains the original printed page, canonical verse key and original global word ID, validated against the bundled page. Thus a later line or later page of a long ayah is resumable, rather than incorrectly opening its first page. The marked ayah keeps a restrained gold-edged highlight after its popup is dismissed; the currently selected ayah uses the existing selection colour. Headings/basmalah rows are never accidentally marked as ayahs.
+- **Zoom is removed**, replaced by the existing localized **Focus mode** label and fullscreen-style vector icon. Normal rendering is always 1×, ignoring—but preserving—the older saved zoom field.
+- A temporary, route-gated `IndopakFocusContext` coordinates this reader with the app shell. Entering Focus unmounts the app header, reader controls and mini-player and removes their reserved spacing, the normal bottom 12px and the desktop 1180px page-width cap. The original Reader's Focus setting and global scroll-chrome logic are not reused.
+- `fitIndopakFocusPage` uniformly fits the original **1000×1640** paper within the complete available safe viewport, including landscape. It never stretches, crops, reshapes or reflows scripture. At paper-like aspect ratios it reduces the fit only enough to keep the source body clear of the corner control. Width-limited portrait and height-limited landscape naturally retain unused space on the other axis.
+- A **44×44px open-lock button**, 8px from the **physical top right**, is outside the page swipe responder. It remains reachable in RTL, safe-area fixtures, rotation and page turns. Unlock returns normal chrome/player placement without resetting audio or deleting data. The safe viewport remains outside OS status/navigation/cutout areas; no browser/OS immersive API or orientation setting is changed.
+- Transient ayah actions still work. `clearIndopakFocusPopover` shifts an above-ayah popup left when necessary so none of its three actions overlaps Unlock; exceptionally narrow panes can use a below-ayah placement. Normal mode popup geometry is unchanged.
+- Mode/geometry changes cancel unfinished holds, dismiss actions and settle outgoing folds. Focus is part of the recitation reveal token, so an active ayah is rechecked at the new fit. Web Enter/Space activates Focus, keyboard focus transfers to Unlock and returns to Focus on exit; Escape exits after dismissing an open ayah popup first. Native Back/accessibility escape provide return paths in addition to Unlock.
+- Blur/unmount resets temporary Focus. It cannot hide UI on another route or persist a locked screen for the next visit. Hiding a paused or playing mini-player changes visibility/reserve only—there is no audio transport operation in the Focus path.
 
-**Page → Bookmarks → Continue reading** returns to that exact word/line at the reader's current saved zoom. Reopening that same marked page also reveals its saved position automatically. Merely browsing another page does not move the explicit marker; last-visited-page restoration and all existing page bookmarks remain independent and unchanged. The one optional field stays inside the existing edition-specific v1 state key. Loading old state performs no write; no existing user-data key is changed or removed.
+R100's memoized rendering and viewport-correction work remain. Its removed Zoom UI/browser runners are historical; [the recorded before/after measurements](indopak-zoom-r100.json) remain available, with original runner sources at commit `b1e3b90`. Those timings are not Focus or native-performance benchmarks. The current active runner is `tests/verify-indopak-focus-web.cjs`, and geometry tests are named `indopak-viewport.test.cjs`.
 
-Native SVG uses its supported `onLongPress` with a 500ms delay. The web SVG click adapter does not register that native responder mixin, so web uses one cancellable 500ms timer with the same guards. Movement over 8px, scrolling/panning, multi-touch (including an added finger), cancellation, geometry/page/zoom changes and unmounting prevent an unfinished hold from saving. A completed hold does not trigger audio or translation on release. Dragging a popup icon cannot turn a page. Tapping elsewhere, panning, changing zoom/geometry, Escape, accessibility escape or native Back dismisses the popup without deleting the saved marker. The success announcement is issued only after a successful save; the existing retry/error UI handles storage failures. The 22-language screen hint explains the half-second gesture, while existing translated labels name the icons and continue-reading entry.
+## Validation completed on R101
 
-No font, scripture, generated layout, existing Reader, global app UI, native/release setting, runtime dependency or permission notice changed. The lightweight fold, zoom/panning, audio clearance, focused-screen-only menu rule and top-only controls remain.
+[Durable identities, counts, observations and limitations](indopak-focus-r101.json).
 
-## Recitation-follow highlighting (R99)
+### Static, content and state checks
 
-The live page now highlights **the current canonical ayah from the audio queue**, separately from the manually selected popup ayah and the explicitly saved reading marker. The audio service previously updated its queue index without updating the published track unless the queue itself changed. The state emitter now derives the current track from both queue and index, so natural advancement, next/previous, repeats, translation tracks and the mini-player metadata remain consistent.
+- **177/177 automated tests passed**; full TypeScript check had **zero diagnostics**. Existing tests retain content hashes/joins/rows, 6,236 canonical targets, all Juz entries, fold/selection/playback contracts and independent data storage.
+- Nine Focus-specific tests cover **96 viewport fits**, unchanged paper ratio, maximum fit/corner clearance, every original word across all 548 pages, every ayah popup across all pages at five widths (including 166px fallback), invalid geometry, all 22 translated labels, route/shell/accessibility wiring and read-only restoration of old 2× bookmarks/reading-point state.
+- Six retained viewport/render-isolation tests include 972 size/scroll combinations, original path immutability, centre/bounded resizing, pending reveal priority and current committed callbacks. Old zoom-scale fixtures still exercise geometry/legacy compatibility, not a visible zoom option.
+- Original scripture/layout/font/generated data/notices/generator, dependencies and app/release configuration are unchanged in R101. The original **310,912-byte** font was found exactly once in each final web, Android and iOS asset set, SHA-256 `a6463e24e36651404e9eff52dae26e18e9ef0718eb620636a66a20026a75c563`.
 
-`useIndopakRecitation.ts` observes a read-only audio snapshot through a primitive-key external-store subscription: ordinary progress/buffering ticks do not themselves change the reader's subscription value. No timers, guessed durations, new timing maps, runtime dependencies or scripture/font changes are involved. A paused ayah stays highlighted; closing the queue removes only the recitation highlight. A sequential spoken translation keeps the same ayah highlighted before the next Arabic track advances it. Untimed whole-Surah/downloaded files (`globalNumber: 0`) are deliberately not assigned a fabricated current ayah.
+### Real running production web app
 
-Playing from this reader also enables page/line following. Targets use the authentic 548-page edition, retain an already-visible later-page fragment of a split ayah, and reveal an offscreen anchor at the actual zoom/scroll offsets without moving an already-readable anchor. Short landscape panes reduce unnecessary headroom. Following waits for the requested audio key rather than an older track that is still loading, runs only while this screen is focused, and defers during active page touches, popup selection, navigation pickers and page turns. Manually turning/jumping pages or choosing Continue reading opts out of automatic page following until another on-page Play action; playback highlighting still reflects any current ayah on the page being browsed. Following updates only the last visited edition page, never the explicit reading point or page bookmarks.
+No scripture/layout/audio responses, action callbacks or completion states are mocked. Browser profiles use isolated fixture preferences, not anyone's real user data. Insets are explicit browser layout fixtures, not OEM navigation-mode tests.
 
-## Zoom and screen responsiveness (R100)
+- **Full reader:** all **548 pages offline**, reduced motion, real touch-swiped traversal, original source row counts and actual SVG contour bounds; **zero failed bounds**, **278,467ms** for the exhaustive sweep. This includes intentional gestures/waits/assertions and is not a rendering-speed comparison or independent scholarly proofreading. Also: nine normal viewports, five inset fixtures, 12 directory-modal checks, 44 localized top layouts, bookmarks/directories, Persian page input, first/final limits and no 604-page map. All **29 contexts** had empty page/console/HTTP/failed-request arrays.
+- **Motion:** actual intermediate frames passed next/previous/jump, Focus next/previous, scrolled landscape both ways, compact and Urdu/dark variants. The scripture remained stationary/undistorted, the crease stayed bounded/monotonic, the curved blank back/shadow appeared, and snapshots had no interactive targets. Unlock during a focused fold, resize, reduced-motion change and route exit/re-entry settled cleanly. Reduced-motion turns produced no outgoing layer.
+- **Focus runner:** **nine viewport profiles**, **five system-inset fixtures**, **44 localized checks** and **24 error-free contexts**. The stage filled the safe area exactly, including desktop width with no old width cap, while whole paper/contours fit. Only Unlock remained at rest. Repeated toggles, focused rotation, connected/unchanged original path nodes, Enter/Space/Escape/focus return, swipe cancellation and icon drag, top-row popup/Unlock independent hit targets, route exit/re-entry and unchanged old Reader keys passed. A seeded old 2× record loaded without a write, rendered normally, survived Focus/Unlock unchanged and still allowed page swipes without losing its saved zoom/bookmarks/marker.
+- **Ayah runner:** **44 localized popup checks / 23 error-free contexts**. Phone, Focus and landscape geometry passed; all three actions retained 44px targets. A normal tap did not save; the icon and real stationary touch saved the exact word. The final observed hold delay was **503.6ms**, with no write at 350ms. Short/moved/cancelled/multi-touch/resize cases did not replace the mark. Exact resume/reopen, separate page bookmarks, old Reader data, outside click, Escape, mode/scroll dismissal and icon-drag rejection passed.
+- **Playback runner:** **21 actual media observations / three error-free contexts**. Playing 55:5 progressed from **0.079241s → 0.496655s** across Focus entry with unchanged URI/play-call count, naturally advanced to 55:6 while chrome stayed hidden, and restored normal controls on Unlock. Real near-end seeks, not fake completion events, bounded remaining checks: 2:4→2:5 followed page 2→3 in Focus after an active touch ended; manual browsing opted out; normal landscape revealed 18:110; an on-page action started real playback while staying in landscape Focus. Split 2:25/page 5, repeat/pause, screen-blur deferral, Urdu dark mode and actual sequential English translation passed. Explicit mark/bookmarks/old Reader keys remained separate. **Two intentional media-range cancellations** are recorded separately, not hidden or reported as unexpected failures.
+- **Existing app regressions:** phone/tablet first/repeated/changed-ayah audio; saved translation/audio matching and independent English UI/Urdu restoration; 11-profile/five-tab navigation, live insets, original Reader/player, sheets, onboarding and Urdu RTL all passed against the same export.
 
-Zoom previously recreated every word's React elements and touch callbacks, even though the page's original-font outlines, placement and word IDs were unchanged. `IndopakPageCanvas.tsx` now separates **memoized line ink/hit targets, headings, paper and live highlights**. Resizing the SVG viewport or changing a selected/reciting/marked ayah does not rerun the fixed-word component. Stable event dispatchers read the latest committed callbacks through a layout-effect-updated ref, so memoization does not retain stale page, zoom, hold or action state. Line-fragment grouping is derived once per placed page. Native SVG still redraws the vector surface as required; this is not a claim that drawing becomes free.
-
-The existing magnifier and **1 → 1.5 → 2 → 1** presets remain; no toolbar redesign, continuous pinch mode or new gesture dependency was added. Zoom and same-page viewport changes now keep the **same physical page point at the viewport centre**, clamping only where the paper edge makes that impossible. `indopakZoomOffset` includes the true centred paper origin on both axes, independent of the UI language. A different page still starts at the top/right. The old unconditional horizontal content-size → `scrollToEnd` callback is removed: explicit scroll corrections are reapplied for asynchronous native content layout, then relinquished to touch/drag/wheel panning. Exact Continue reading/Verse-list reveals and authoritative recitation following use the same correction path rather than being overwritten by a delayed right-edge snap. Rapid zoom presses read the latest requested state, not a stale render's preset. Geometry changes still cancel holds and dismiss the popup without changing the saved marker.
-
-### Controlled before/after web measurement
-
-`tests/profile-indopak-zoom-web.cjs` compares the real R99 production export (`40f7d49`) with the R100 final export on the same sandbox. Each fresh context opens actual page **274**, then makes **12 real zoom-button clicks**, covering four complete preset cycles, with **6× Chromium CPU throttling**. The metric is click capture → the next animation frame observing changed SVG width; it is **not screen-presentation latency, a native frame-rate test or a physical-device speed guarantee**. Each version renders the same 160 paths. Timings vary with host load; long tasks remain at this artificial throttle.
-
-| Browser viewport | Before median | After median | Median delay reduction |
-| --- | ---: | ---: | ---: |
-| Phone, 390×844 | 188.8ms | 86.9ms | 54.0% |
-| Landscape, 844×390 | 123.4ms | 74.9ms | 39.3% |
-| Narrow cover, 280×720 | 175.5ms | 74.6ms | 57.5% |
-
-Medians use the mean of the two middle sorted samples. [Recorded samples, exact bundle identities, validation summary and limitations](indopak-zoom-r100.json) are checked in. The production web bundle grows by only **2,335 raw bytes / 584 gzip bytes** versus R99; there are no new assets or dependencies. Original scripture/layout/font/notices, app/release configuration, state schema and existing Reader data are unchanged. These figures are web JavaScript sizes, not APK/AAB install-size or RAM measurements.
-
-`tests/verify-indopak-zoom-web.cjs` separately checks **six real running-app contexts**: phone, 280px cover, landscape, tall cover with no vertical overflow, tablet and Urdu dark mode. It records 30 preset-anchor checks and 12 resize-anchor checks; exercises actual touch panning, Enter/Space activation and 42 rapid preset presses; retains the same connected original-font path nodes/attributes; marks an exact word at 2× without a scroll jump; and verifies that zoom never changes the explicit marker, saved-page list or original Reader keys. Different-page reset and exact-word resume take precedence over the generic zoom anchor. All six contexts have empty page/console/HTTP/failed-request arrays. This is browser evidence; native touch arbitration and phone performance still require installed-device QA.
-
-## Validation completed
-
-### Static and source regression checks
-
-- **168 automated tests passed**: all 98 pre-existing regressions, 14 edition-specific tests, 19 focused-route/swipe/motion/zoom interaction tests, 7 fold geometry/rendering tests, 12 ayah-selection/marker tests, 12 playback-follow tests and 6 new zoom/render-isolation tests. The latter include 972 preset/viewport/scroll-position geometry combinations, centred and panned anchors, edge clamping, invalid inputs, source immutability and fresh-callback/memoization wiring.
-- Full TypeScript check: **zero diagnostics**.
-- New tests cover resource hashes/notice retention, all 548 source pages, all 83,668 records, headings/centering/short pages, line geometry, original-font glyph/shape availability, every canonical verse lookup, all 30 Juz mappings, invalid/Arabic/Persian page entry, fitting/zoom, supported-language copy and independent read-only-on-load state. Interaction tests add focused/inactive navigation, malformed/cyclic states, RTL swipe directions, thresholds, page limits, zoom/multi-touch rejection and retained credits/native cancellation hooks, page-motion direction/reduced-motion planning, top-only page controls and semantic zoom icons. Fold tests cover centred/zoomed/landscape paper, both scroll offsets, 101 progress points in both directions, anchored ink, bounded band sizes, invalid/unmeasured/offscreen inputs, physical RTL-independent coordinates and the separation of decorative transforms from scripture. Selection tests cover every ayah fragment on all 548 pages, full-line selection bounds, popup safe-edge/zoom/scroll/multi-line geometry, exact word anchors and clamped resume offsets, the 500ms/movement guard, canonical reading-point validation (including page-spanning verses), legacy-state preservation, icon-only actions and cancellation/accessibility wiring.
-- Playback-follow tests cover all 6,236 verse-to-word/page targets, split-verse retention, malformed/untimed tracks, readable/offscreen/short-pane geometry, primitive subscription snapshots and actual service/engine code with explicit Android/iOS transport test doubles. Natural completion, native playlist track-change events, pause/resume, seek, next/previous, sequential translation, repeat-one and clear are checked; these contract tests are not installed-device playback tests.
-- Original font bytes were found unchanged in both successful native export asset sets.
-- Generated assets rebuilt reproducibly from the approved local inputs. Runtime builds use the checked-in data.
-
-### Running production web app, real content
-
-`tests/verify-indopak-web.cjs` runs against the actual fresh Expo web export, with no mocked scripture, layout or audio responses.
-
-Passing checks:
-
-- **All 548 pages rendered while the browser was offline**, after local app/font assets loaded, with reduced motion enabled. The sweep advanced through all pages using real Chromium touch swipes, not direct state setters. Every page retained its source row count; actual SVG outline bounds remained within the printed body. This is a geometric/rendering check, not a claim of independent scholarly proofreading.
-- Representative opening, middle, Surah-start and shorter/final pages: 1, 2, 3, 76, 77, 100, 200, 274, 400, 500, 529, 530 and 548.
-- Nine viewports: 240×640, 280×720, 320×568, 390×844, 844×390, 800×1280, 1280×800, 884×1104 and 1440×900.
-- Five live simulated system-navigation fixtures: gesture, three-button, larger button bar, right-side keys and left-side keys. Top controls and the page viewport stayed within the app's safe box, with no bottom pager or empty tab-bar reserve.
-- Real Chromium touch input, not direct page setters: right/left swipes, first/final bounds, gesture-saved page restoration, a swipe beginning on a verse without opening its panel, later verse taps, vertical/short/cancelled drags, two-finger starts and an added finger after capture. Zoomed horizontal/vertical panning and overflowing unzoomed landscape scrolling remain functional.
-- The menu returns on exit, all five tabs, the full audio player and explicit existing Reader handoff. Returning hides it again. Five active-audio viewport/inset fixtures keep the page viewport clear of the lowered mini-player; closing audio reclaims that space. System dark/light changes remount navigation while preserving the page and focused-screen-only menu rule.
-- **44 localized top-layout checks**: all 22 interface languages at 280px and 390px widths, using a three-digit page counter. All page/Verse/Sources/Surah/Juz/save/zoom targets remain in the top area without overlap.
-- Actual intermediate fold frames were observed in **12 normal-motion scenarios** (17–21 frames each in the R98 Chromium run, with all scenarios rerun successfully after R99 and R100): next, previous, direct jump, zoomed jumps in both directions, vertically scrolled landscape in both directions, a compact cover screen, and next/previous folds in Urdu RTL and dark mode. The crease moved monotonically, the mask and face translations cancelled exactly, and the outgoing and incoming scripture stayed stationary without scaling, reflection or skew. Real curved-back and separate shadow gradients were present; the old layer was removed at rest. The snapshot retained its exact zoom and horizontal/vertical scroll offsets while the revealed page independently reset its scroll. In-flight rotation, enabling reduced motion, and leaving/re-entering the screen all settled correctly. Reduced-motion swipes created no outgoing animation layer. Mid-fold QA images are actual running-app captures, not generated or staged mockups. This is browser interaction evidence, not a native frame-rate benchmark.
-- The magnifier lens/handle and plus/minus SVG strokes were checked across the zoom cycle, not merely the icon name or button label.
-- Twelve modal geometry checks: page, Surah, Juz, saved pages, sources and verse list, each at small-phone and landscape sizes with explicit local modal inset fixtures. Web modals are portals without the Android-only provider; the fixtures are correctly applied to their local roots, not the unrelated app boundary behind them.
-- Page limits, rejected 604-page input, Persian-digit page entry, Surah/Juz jumps, page saving, 2× zoom, exit/re-entry restoration and independently preserved existing preferences/position/bookmarks/notes.
-- Cold-player first tap on **55:5** requested the actual `ar.alafasy/4906.mp3` and advanced real media playback; the explicit Reader action focused **55:5**.
-- Urdu RTL and dark-theme page/anchored-popup rendering, including the supplied private-use glyphs. QA images are real running-app captures and remain temporary, not new store/gallery assets.
-- Empty runtime, console, HTTP-error and failed-request arrays in final runs.
-
-`tests/verify-indopak-ayah-web.cjs` adds actual running-app selection/marking checks against the same final export:
-
-- Three icon-only actions, canonical accessible labels, non-overlapping 44px targets, on-page highlighting and safe popup geometry on phone, zoomed/scrolled pages and landscape Verse-list selection.
-- A normal tap does not save a reading point. The bookmark icon does, shows its selected state and leaves the marker visible after dismissal.
-- A real held touch does not overwrite the marker at 350ms, then saves before release after the half-second threshold (519ms observed in the final R100 browser run). Short released presses, two-finger starts, an added finger, cancelled/moved touches and an in-flight resize leave the existing marker unchanged.
-- Exact word/line resume after browsing another page, plus exit/re-entry restoration at 1.5×. Page bookmarks remain separate; the existing Reader's preferences, position, bookmarks and notes remain byte-for-byte unchanged.
-- Verse-list selection reveals an offscreen ayah; real panning and zoom dismiss the popup. Outside mouse clicks dismiss it, Escape works, and dragging a popup icon neither turns a page nor saves a marker.
-- **44 localized popup checks**, all 22 interface languages at 280px and 390px, including RTL and dark-mode captures. The focused runner's 23 contexts and the full reader runner's 29 contexts all had empty page/console/HTTP/failed-request arrays.
-
-`tests/verify-indopak-playback-web.cjs` adds actual streamed-audio advancement checks, rerun against the final R100 production export:
-
-- Natural **55:5 → 55:6** playback moves every printed fragment of the recitation highlight; the separate saved **55:5** marker remains unchanged. The popup closes without losing the playing highlight, pause/resume keeps the current ayah, and a different manually selected popup does not replace the audio key.
-- Repeat-one retains the ayah until the real queue advances. Real near-end media seeks (not fabricated ended events) keep the remaining checks bounded: **2:4 → 2:5** follows page **2 → 3**, waits for an active touch to end, and updates mini-player metadata. Manual browsing does not snap back.
-- Zoomed landscape **18:109 → 18:110** reveals the actual current line. Playing split **2:25** on page **5** does not jump back to its first page. A hidden reader does not turn/persist pages behind the audio screen; returning follows the actual current ayah.
-- Real English spoken translation **1:1 → translation 1:1 → Arabic 1:2** retains then advances the correct key. Urdu dark-mode playback also follows. Closing audio removes its highlight without altering existing Reader data, the exact saved mark or page bookmarks.
-- The three isolated browser contexts recorded 19 real media observations, with no page/console/HTTP/unexpected request failures. Intentional cancelled media-range requests during source changes/queue clearing are retained separately in `expectedMediaCancellations`, not counted as playback or network failures. No audio/content responses, completion callbacks or audio state are mocked.
-- The separate full reader sweep was repeated after R100: all **548 pages offline**, **zero failed outline bounds**, **303,890ms** for the exhaustive page sweep; the reader and popup runners again passed all 29 and 23 contexts respectively. This full-sweep duration includes deliberate touch/wait/geometry checks and is not a rendering-performance comparison.
-
-The existing running-web regressions also passed against this same export:
-
-- first-tap / repeated-tap / changed-ayah real audio playback on phone and tablet;
-- translation/audio matching, persistent checked selection and existing Urdu preference restoration;
-- the 11-profile / five-tab responsive navigation, live inset transitions, reader/player, sheets, onboarding and Urdu RTL checks from R93.
+QA screenshots are actual running-app captures, kept in temporary QA output, not generated artwork or new store screenshots.
 
 ### Production exports and limitations
 
-Separate **web, Android and iOS production exports passed**, including native Hermes bytecode, after R100. In this 2 GB sandbox, final native exports ran sequentially with one Metro worker, disk-backed temporary/export paths and 320 MB Node heaps for both Android and iOS. TypeScript ran separately with a larger heap. The original supplied font was hash-verified in both new native asset sets. No app or native release configuration was changed. The pre-existing Apple team configuration warning remains unchanged.
+**Web, Android and iOS production exports passed**, including Android/iOS Hermes bytecode. Native exports ran sequentially, one worker, disk-backed temporary paths and 320MB Node heaps in this 2GB sandbox; TypeScript ran separately. Web JavaScript changed by **+2,909 raw / +838 gzip bytes** versus R100 (not APK/AAB install size or RAM). No runtime dependency, source asset, native/release configuration, deployment or store submission was added.
 
-These are **not APK/AAB installation or physical Android/iOS device tests**. No emulator/device or store release was used. Chromium inset fixtures do not exercise an OEM system navigation service, native long-press arbitration, native screen-reader traversal, native edge-back/swipe arbitration or native keyboard. Physical-device visual/interaction and animation review remains part of release QA. There is no Vercel deployment or store submission in this change.
+These are **not installed APK/AAB/IPA or physical Android/iOS device tests**. No emulator/device is available here. OEM gesture/three-button/side-bar navigation, native screen-reader traversal/accessibility escape, native long-press and edge-back arbitration, keyboard and phone animation performance still require installed-device QA. Chromium fixtures and transport-contract test doubles are not substitutes for those checks.
 
 ## Reproduction
 
 ```sh
-# Optional asset regeneration; normal Expo builds need neither Python nor a network.
+# Optional regeneration; normal Expo builds need neither Python nor a network.
 pip install uharfbuzz==0.57.0 fonttools==4.68.0
 python3 scripts/build_indopak_16.py --words /path/to/original/indopak-nastaleeq.json
 
 npm run test:regressions
 node node_modules/typescript/bin/tsc --noEmit
 
-# Against a freshly exported, locally served production WEB app:
-INDOPAK_URL=http://127.0.0.1:8107 INDOPAK_SWEEP=1 \
-  node tests/verify-indopak-web.cjs
-INDOPAK_URL=http://127.0.0.1:8107 node tests/verify-indopak-ayah-web.cjs
-INDOPAK_URL=http://127.0.0.1:8107 node tests/verify-indopak-playback-web.cjs
-INDOPAK_URL=http://127.0.0.1:8107 node tests/verify-indopak-zoom-web.cjs
-
-# Compare independently served baseline and optimized exports on the same machine:
-INDOPAK_URL=http://127.0.0.1:8106 INDOPAK_ZOOM_PROFILE=/tmp/zoom-before.json \
-  node tests/profile-indopak-zoom-web.cjs
-INDOPAK_URL=http://127.0.0.1:8107 INDOPAK_ZOOM_PROFILE=/tmp/zoom-after.json \
-  node tests/profile-indopak-zoom-web.cjs
+# Against a fresh, locally served production WEB export:
+INDOPAK_URL=http://127.0.0.1:8108 INDOPAK_SWEEP=1 node tests/verify-indopak-web.cjs
+INDOPAK_URL=http://127.0.0.1:8108 node tests/verify-indopak-focus-web.cjs
+INDOPAK_URL=http://127.0.0.1:8108 node tests/verify-indopak-ayah-web.cjs
+INDOPAK_URL=http://127.0.0.1:8108 node tests/verify-indopak-playback-web.cjs
 ```
 
-Use the Node version required by this Expo project. Browser reports/screenshots go to a temporary QA directory by default; `INDOPAK_ARTIFACTS_DIR`, `INDOPAK_AYAH_ARTIFACTS_DIR`, `INDOPAK_PLAYBACK_ARTIFACTS_DIR` and `INDOPAK_ZOOM_ARTIFACTS_DIR` can override each runner’s output directory. The profiler writes to `INDOPAK_ZOOM_PROFILE`.
+Use the Node version required by this Expo project. Browser reports/screenshots default to temporary QA directories; `INDOPAK_ARTIFACTS_DIR`, `INDOPAK_FOCUS_ARTIFACTS_DIR`, `INDOPAK_AYAH_ARTIFACTS_DIR` and `INDOPAK_PLAYBACK_ARTIFACTS_DIR` override their respective output directories.

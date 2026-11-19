@@ -5,7 +5,7 @@ const test = require('node:test');
 const { createLoader } = require('./helpers/load-typescript.cjs');
 const load = createLoader();
 const { fitIndopakPage } = load('src/services/indopakMushaf.ts');
-const { indopakZoomOffset, indopakPageOrigin } = load('src/services/indopakSelection.ts');
+const { indopakResizeOffset, indopakPageOrigin } = load('src/services/indopakSelection.ts');
 const plain = x => JSON.parse(JSON.stringify(x));
 const close = (actual, expected) => assert.ok(Math.abs(actual - expected) < .00001, `${actual} != ${expected}`);
 const clamp = (n, maximum) => Math.max(0, Math.min(Math.max(0, maximum), n));
@@ -15,12 +15,12 @@ const centre = (viewport, size, scroll) => {
     y: (scroll.y + viewport.height / 2 - origin.y) / size.height };
 };
 
-test('zooming centred, fully visible paper magnifies its centre, not its right edge or first line', () => {
+test('centred viewport resizing preserves the page centre, not its right edge or first line', () => {
   const viewport = { width: 390, height: 672 };
   const from = fitIndopakPage(viewport.width, viewport.height, 1, true);
   for (const zoom of [1.5, 2]) {
     const to = fitIndopakPage(viewport.width, viewport.height, zoom, true);
-    const offset = indopakZoomOffset(viewport, from, { x: 0, y: 0 }, viewport, to);
+    const offset = indopakResizeOffset(viewport, from, { x: 0, y: 0 }, viewport, to);
     close(offset.x, (to.width - viewport.width) / 2);
     close(offset.y, (to.height - viewport.height) / 2);
     const anchor = centre(viewport, to, offset); close(anchor.x, .5); close(anchor.y, .5);
@@ -28,15 +28,15 @@ test('zooming centred, fully visible paper magnifies its centre, not its right e
   }
 });
 
-test('panned zoom-in/out preserves the same page point, with only unavoidable edge clamping', () => {
+test('panned viewport resizing preserves the same page point, with only unavoidable edge clamping', () => {
   const viewport = { width: 390, height: 672 };
   const from = { width: 567, height: 929.88 }, to = { width: 756, height: 1239.84 };
   const scroll = { x: 30, y: 180 };
-  const offset = indopakZoomOffset(viewport, from, scroll, viewport, to);
+  const offset = indopakResizeOffset(viewport, from, scroll, viewport, to);
   close(offset.x, 105); close(offset.y, 352);
   const old = centre(viewport, from, scroll), next = centre(viewport, to, offset);
   close(old.x, next.x); close(old.y, next.y);
-  const back = indopakZoomOffset(viewport, to, offset, viewport, from);
+  const back = indopakResizeOffset(viewport, to, offset, viewport, from);
   close(back.x, scroll.x); close(back.y, scroll.y);
 });
 
@@ -51,7 +51,7 @@ test('all preset pairs and portrait/landscape/cover/tablet resizes use physical,
       const scroll = { x: Math.max(0, size.width - viewport.width) * fraction,
         y: Math.max(0, size.height - viewport.height) * fraction };
       const before = centre(viewport, size, scroll), origin = indopakPageOrigin(nextViewport, nextSize);
-      const result = indopakZoomOffset(viewport, size, scroll, nextViewport, nextSize);
+      const result = indopakResizeOffset(viewport, size, scroll, nextViewport, nextSize);
       close(result.x, clamp(origin.x + before.x * nextSize.width - nextViewport.width / 2, nextSize.width - nextViewport.width));
       close(result.y, clamp(origin.y + before.y * nextSize.height - nextViewport.height / 2, nextSize.height - nextViewport.height));
       for (const axis of ['x', 'y']) assert.ok(Number.isFinite(result[axis]) && result[axis] >= 0);
@@ -61,12 +61,12 @@ test('all preset pairs and portrait/landscape/cover/tablet resizes use physical,
   assert.equal(cases, 972);
 });
 
-test('zoom-out to a fully fitted page clears both overflow offsets and never leaves blank scroll space', () => {
+test('resizing to a fully fitted page clears both overflow offsets and never leaves blank scroll space', () => {
   const viewport = { width: 390, height: 672 };
   const full = fitIndopakPage(viewport.width, viewport.height, 1, true);
   const zoomed = fitIndopakPage(viewport.width, viewport.height, 2, true);
   for (const scroll of [{ x: 0, y: 0 }, { x: 300, y: 500 }, { x: 366, y: 567.84 }, { x: -3, y: -4 }]) {
-    assert.deepEqual(plain(indopakZoomOffset(viewport, zoomed, scroll, viewport, full)), { x: 0, y: 0 });
+    assert.deepEqual(plain(indopakResizeOffset(viewport, zoomed, scroll, viewport, full)), { x: 0, y: 0 });
   }
 });
 
@@ -76,15 +76,15 @@ test('unmeasured/non-finite zoom geometry is safe and does not change any source
   for (const invalid of [0, -1, NaN, Infinity]) for (const axis of ['width', 'height']) {
     for (const index of [0, 1, 3, 4]) {
       const args = [viewport, size, scroll, viewport, size]; args[index] = { ...args[index], [axis]: invalid };
-      assert.deepEqual(plain(indopakZoomOffset(...args)), { x: 0, y: 0 });
+      assert.deepEqual(plain(indopakResizeOffset(...args)), { x: 0, y: 0 });
     }
   }
-  for (const axis of ['x', 'y']) assert.deepEqual(plain(indopakZoomOffset(viewport, size, { ...scroll, [axis]: NaN }, viewport, size)), { x: 0, y: 0 });
-  indopakZoomOffset(viewport, size, scroll, viewport, size);
+  for (const axis of ['x', 'y']) assert.deepEqual(plain(indopakResizeOffset(viewport, size, { ...scroll, [axis]: NaN }, viewport, size)), { x: 0, y: 0 });
+  indopakResizeOffset(viewport, size, scroll, viewport, size);
   assert.equal(JSON.stringify({ viewport, size, scroll }), before);
 });
 
-test('fixed scripture paths/hit handlers are memoized independently of zoom and live highlights, with fresh committed callbacks', () => {
+test('fixed scripture paths/hit handlers are memoized independently of viewport and live highlights, with fresh committed callbacks', () => {
   const canvas = fs.readFileSync(path.resolve(__dirname, '../src/components/IndopakPageCanvas.tsx'), 'utf8');
   assert.ok(canvas.includes('const IndopakInkWords = memo('));
   assert.ok(canvas.includes('const IndopakHighlights = memo('));
@@ -95,9 +95,9 @@ test('fixed scripture paths/hit handlers are memoized independently of zoom and 
   for (const changing of ['recitingVerse', 'readingPoint', 'width={width}', 'height={height}', 'verse={verse}']) assert.ok(!ink.includes(changing));
   assert.ok(ink.includes('indopakShapePath(word.shape)')); assert.ok(ink.includes('delayLongPress={INDOPAK_HOLD_MS}'));
   const reader = fs.readFileSync(path.resolve(__dirname, '../src/components/IndopakMushafReader.tsx'), 'utf8');
-  assert.ok(reader.includes('indopakZoomOffset(before.viewport'));
+  assert.ok(reader.includes('indopakResizeOffset(before.viewport'));
   assert.equal((reader.match(/onContentSizeChange=\{applyScrollCorrection\}/g) || []).length, 2);
   assert.ok(reader.includes('onScrollBeginDrag={userPanning}')); assert.ok(reader.includes('scrollCorrection.current = null'));
   assert.ok(!reader.includes('scrollToEnd('));
-  assert.ok(reader.includes('indopakZoomControl(latest.current.zoom).next'), 'Rapid presses use the latest requested preset, not a stale render');
+  assert.ok(!reader.includes('state.zoom')); assert.ok(reader.includes('focusMode ? fitIndopakFocusPage'));
 });

@@ -13,9 +13,10 @@ const originalKeys = ['@deen/quran/preferences/v1', '@deen/quran/position/v1', '
 const pause = page => page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
 const box = item => item.evaluate(e => { const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height, right: r.right, bottom: r.bottom }; });
 function inside(a, b, label) { assert.ok(a.x >= b.x - 1 && a.y >= b.y - 1 && a.right <= b.right + 1 && a.bottom <= b.bottom + 1, `${label}: ${JSON.stringify({ a, b })}`); }
-async function makePage(browser, language = 'en', dark = false, reducedMotion = 'reduce', audioSettings = {}) {
+async function makePage(browser, language = 'en', dark = false, reducedMotion = 'reduce', audioSettings = {}, readerState = null) {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, reducedMotion });
-  await context.addInitScript(({ lang, dark, audioSettings }) => {
+  await context.addInitScript(({ lang, dark, audioSettings, readerState }) => {
+    if (readerState) localStorage.setItem('@deen/quran/indopak-taj-16/state/v1', JSON.stringify(readerState));
     localStorage.setItem('@deen/onboarding/v1', JSON.stringify({ completed: true, app: lang, text: 'en', voice: 'en', locationAsked: true, notificationsAsked: true }));
     localStorage.setItem('@deen/language/v1', lang);
     localStorage.setItem('@deen/location/v1', JSON.stringify({ latitude: 25.2048, longitude: 55.2708, label: 'Dubai', timezone: 'Asia/Dubai' }));
@@ -34,7 +35,7 @@ async function makePage(browser, language = 'en', dark = false, reducedMotion = 
       window.__indopakPlays.push(this.src || this.currentSrc);
       return Reflect.apply(originalPlay, this, args);
     };
-  }, { lang: language, dark, audioSettings });
+  }, { lang: language, dark, audioSettings, readerState });
   const page = await context.newPage(); page.setDefaultTimeout(25000);
   const errors = { page: [], console: [], http: [], requests: [] };
   page.on('pageerror', e => errors.page.push(e.message));
@@ -74,7 +75,7 @@ async function layout(page, expectedPage) {
   inside(counter,top,'Top page selector'); assert.ok(top.bottom <= viewport.y+1,'All controls stay above the page');
   assert.equal(await page.getByTestId('indopak-page-svg').locator('text').count(),0,'No duplicate bottom page number inside the page');
   const controls=[];
-  for (const id of ['indopak-page-select','indopak-surah','indopak-juz','indopak-save-page','indopak-zoom','indopak-verse-list','indopak-sources']) {
+  for (const id of ['indopak-page-select','indopak-surah','indopak-juz','indopak-save-page','indopak-focus','indopak-verse-list','indopak-sources']) {
     const rect=await box(page.getByTestId(id)); inside(rect,top,id);
     assert.ok(rect.width>=43.9 && rect.height>=43.9,`${id} keeps a 44px target`);
     for (const before of controls) assert.ok(rect.x>=before.right-1 || rect.right<=before.x+1 || rect.y>=before.bottom-1 || rect.bottom<=before.y+1,'Top targets do not overlap');
@@ -122,14 +123,13 @@ async function touchSwipe(page, { dx, dy = 0, word = false, multi = false, cance
   } finally { await client.detach(); }
 }
 async function expectPage(page, n) {
-  await page.waitForFunction(n => document.querySelector('[data-testid="indopak-page-select"]')?.textContent.includes(`${n} / 548`),n);
+  await page.waitForFunction(n => {
+    const counter = document.querySelector('[data-testid="indopak-page-select"]');
+    if (counter) return counter.textContent.includes(`${n} / 548`);
+    const label = document.querySelector('[data-testid="indopak-page-svg"]')?.getAttribute('aria-label');
+    return Number(label?.match(/\d+$/)?.[0]) === n;
+  },n);
   await page.getByTestId('indopak-page-outgoing').waitFor({state:'detached'}); await pause(page);
-}
-async function zoomIcon(page, plus) {
-  const icon=page.getByTestId('indopak-zoom').locator('svg');
-  assert.equal(await icon.locator('circle[cx="10.7"][r="6.7"]').count(),1,'A real magnifying-glass lens is drawn');
-  assert.equal(await icon.locator('line[x1="15.5"][x2="21"]').count(),1,'The magnifier has a diagonal handle');
-  assert.equal(await icon.locator('line[x1="10.7"][y1="7.7"]').count(),plus ? 1 : 0,'Plus/minus follows the next zoom action');
 }
 async function sampleMotion(page, action, expectedPage, direction, screenshot) {
   const before=await box(page.getByTestId('indopak-page-svg'));
@@ -144,7 +144,7 @@ async function sampleMotion(page, action, expectedPage, direction, screenshot) {
       const matrix=e=>{if(!e)return null;const m=new DOMMatrixReadOnly(getComputedStyle(e).transform); return {x:m.m41,y:m.m42,a:m.a,b:m.b,c:m.c,d:m.d};};
       const rect=e=>{if(!e)return null;const r=e.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height,right:r.right};};
       const mask=find('indopak-fold-mask'), face=find('indopak-fold-face'), edge=find('indopak-fold-edge'), paper=find('indopak-fold-paper');
-      window.__indopakFrames.push({time:performance.now(),page:find('indopak-page-select')?.textContent,
+      window.__indopakFrames.push({time:performance.now(),page:find('indopak-page-select')?.textContent || `${find('indopak-page-svg')?.getAttribute('aria-label')?.match(/\d+$/)?.[0]} / 548`,
         current:matrix(current),incoming:rect(find('indopak-page-svg')),outgoing:matrix(outgoing),
         hidden:outgoing?.getAttribute('aria-hidden'),targets:outgoing?.querySelectorAll('[data-testid^="indopak-word-"]').length,
         snapshot:rect(face?.querySelector('svg')),mask:matrix(mask),face:matrix(face),edge:matrix(edge),paper:matrix(paper),
@@ -182,7 +182,7 @@ async function sampleMotion(page, action, expectedPage, direction, screenshot) {
       assert.ok(Math.abs(matrix.a-1)<.001 && Math.abs(matrix.d-1)<.001 && Math.abs(matrix.b)<.001 && Math.abs(matrix.c)<.001,'No letter scale, reflection or skew is introduced');
     }
     assert.ok(Math.abs(frame.current.x)<.1 && Math.abs(frame.outgoing.x)<.1,'Neither Quran page slides');
-    assert.ok(Math.abs(frame.snapshot.x-before.x)<1.5 && Math.abs(frame.snapshot.y-before.y)<1.5 && Math.abs(frame.snapshot.width-before.width)<1.5,'The outgoing ink retains its exact placement, zoom and both scroll offsets');
+    assert.ok(Math.abs(frame.snapshot.x-before.x)<1.5 && Math.abs(frame.snapshot.y-before.y)<1.5 && Math.abs(frame.snapshot.width-before.width)<1.5,'The outgoing ink retains its exact placement, scale and both scroll offsets');
     assert.ok(Math.abs(frame.incoming.x-active[0].incoming.x)<1.5 && Math.abs(frame.incoming.y-active[0].incoming.y)<1.5,'The revealed next page remains stationary');
     assert.equal(frame.gradients,2,'Separate paper and soft shadow gradients are rendered');
     assert.ok(frame.back.includes(' C ') && frame.shadow.startsWith('url(#'),'Only the blank decorative back is curved/shaded');
@@ -237,21 +237,10 @@ if (require.main === module) (async () => {
     await page.getByTestId('indopak-page-svg').locator('rect[data-testid^="indopak-word-"]').first().tap();
     await page.getByTestId('indopak-ayah-popover').waitFor();
     await page.keyboard.press('Escape');
-    await zoomIcon(page,true); await page.getByTestId('indopak-zoom').click(); await zoomIcon(page,true);
-    const beforePan = await page.getByTestId('indopak-horizontal-scroll').evaluate(e=>e.scrollLeft);
-    await touchSwipe(page,{dx:145}); await expectPage(page,2);
-    const afterPan = await page.getByTestId('indopak-horizontal-scroll').evaluate(e=>e.scrollLeft);
-    assert.ok(Math.abs(afterPan-beforePan)>10,'At 1.5× a horizontal drag pans, not a page turn');
-    await touchSwipe(page,{dx:0,dy:-145}); await expectPage(page,2);
-    assert.ok(await page.getByTestId('indopak-vertical-scroll').evaluate(e=>e.scrollTop>10),'Zoomed vertical panning still scrolls');
-    await page.setViewportSize({width:280,height:1440}); await pause(page);
-    const tallBefore = await page.getByTestId('indopak-horizontal-scroll').evaluate(e=>e.scrollLeft);
-    // Zoom/rotation now retain the page point instead of forcing the right edge.
-    // Pan toward available content; an outward drag at the left bound correctly cannot move.
-    await touchSwipe(page,{dx:tallBefore>20?100:-100}); await expectPage(page,2);
-    assert.ok(Math.abs(await page.getByTestId('indopak-horizontal-scroll').evaluate(e=>e.scrollLeft)-tallBefore)>10,'Zoomed horizontal panning survives a non-overflowing vertical wrapper');
-    await page.getByTestId('indopak-zoom').click(); await page.getByTestId('indopak-zoom').click();
-    await page.setViewportSize({width:390,height:844}); await pause(page);
+    assert.equal(await page.getByTestId('indopak-zoom').count(),0,'Zoom is removed, not left hidden/active');
+    await page.getByTestId('indopak-focus').click(); await page.getByTestId('indopak-unlock').waitFor(); await pause(page);
+    await touchSwipe(page,{dx:150}); await expectPage(page,3); await touchSwipe(page,{dx:-150}); await expectPage(page,2);
+    await page.getByTestId('indopak-unlock').click(); await page.getByTestId('indopak-top-controls').waitFor(); await pause(page);
     await gotoPage(page,548); await touchSwipe(page,{dx:155}); await expectPage(page,548);
     await touchSwipe(page,{dx:-155}); await expectPage(page,547);
     await page.waitForFunction(k => JSON.parse(localStorage.getItem(k) || '{}').page === 547,key);
@@ -259,7 +248,7 @@ if (require.main === module) (async () => {
     await page.getByTestId('floating-navigation-bar').waitFor();
     await page.getByTestId('qtile-16-line Quran').scrollIntoViewIfNeeded(); await page.getByTestId('qtile-16-line Quran').click();
     await expectPage(page,547); await page.getByTestId('floating-navigation-bar').waitFor({state:'detached'});
-    report.swipes = {rightNext:true,leftPrevious:true,verseTapNotTriggered:true,subsequentVerseTap:true,verticalRejected:true,multiTouchRejected:true,addedFingerRejected:true,cancelRejected:true,shortDragRejected:true,zoomPan:true,boundaries:true,savedPageRestored:true};
+    report.swipes = {rightNext:true,leftPrevious:true,verseTapNotTriggered:true,subsequentVerseTap:true,verticalRejected:true,multiTouchRejected:true,addedFingerRejected:true,cancelRejected:true,shortDragRejected:true,focusSwipes:true,boundaries:true,savedPageRestored:true};
     const targets = [1,2,3,76,77,100,200,274,400,500,529,530,548];
     for (const n of targets) { await gotoPage(page, n); report.pages.push({ page: n, ...(await layout(page, n)) }); }
     assert.equal(await page.getByTestId('indopak-next').count(),0);
@@ -285,10 +274,13 @@ if (require.main === module) (async () => {
     await page.waitForFunction(k => JSON.parse(localStorage.getItem(k) || '{}').savedPages?.includes(274), key);
     await page.getByTestId('indopak-page-select').click(); await page.getByTestId('indopak-navigator').getByRole('button', { name: 'Bookmarks', exact: true }).click();
     await page.getByTestId('indopak-jump-bookmarks-274').click();
-    await page.getByTestId('indopak-zoom').click(); await page.getByTestId('indopak-zoom').click();
-    await page.waitForFunction(k => JSON.parse(localStorage.getItem(k) || '{}').zoom === 2, key); await zoomIcon(page,false); report.zoomIcons = true;
-    assert.ok((await box(page.getByTestId('indopak-page-svg'))).width > (await box(page.getByTestId('indopak-page-viewport'))).width);
-    await page.getByTestId('indopak-zoom').click();
+    const savedBeforeFocus=await page.evaluate(k=>localStorage.getItem(k),key);
+    await page.getByTestId('indopak-focus').click(); await page.getByTestId('indopak-unlock').waitFor(); await pause(page);
+    const focusedPaper=await box(page.getByTestId('indopak-page-svg')), focusedViewport=await box(page.getByTestId('indopak-page-viewport'));
+    inside(focusedPaper,focusedViewport,'Full focused page');
+    await page.getByTestId('indopak-unlock').click(); await page.getByTestId('indopak-top-controls').waitFor();
+    assert.equal(await page.evaluate(k=>localStorage.getItem(k),key),savedBeforeFocus); report.focusUnlock=true;
+
 
     const profiles = [['compact',240,640],['cover',280,720],['small',320,568],['phone',390,844],['landscape',844,390],['tablet',800,1280],['tablet-landscape',1280,800],['foldable',884,1104],['desktop',1440,900]];
     for (const [name, width, height] of profiles) {
@@ -338,7 +330,7 @@ if (require.main === module) (async () => {
     }
     await page.setViewportSize({width:390,height:844}); await insets(page,{});
     const after = await page.evaluate(keys => Object.fromEntries(keys.map(k => [k, localStorage.getItem(k)])), originalKeys);
-    assert.deepEqual(after, before, 'New reader/page bookmarks/zoom never rewrite existing preferences, position, notes or bookmarks');
+    assert.deepEqual(after, before, 'New reader/page bookmarks/focus never rewrite existing preferences, position, notes or bookmarks');
     const restored = await page.evaluate(k => JSON.parse(localStorage.getItem(k)), key); assert.equal(restored.page, 274); assert.deepEqual(restored.savedPages, [274]);
 
     // Offline after the local font has loaded: exercise an as-yet-unopened chunk, not cached API text.
@@ -418,12 +410,14 @@ if (require.main === module) (async () => {
       previous:await sampleMotion(motion.page,()=>touchSwipe(motion.page,{dx:-155}),1,-1,'previous-page-in-motion.png'),
     };
     report.motion.jump=await sampleMotion(motion.page,()=>gotoPage(motion.page,274),274,1);
-    await motion.page.getByTestId('indopak-zoom').click();
-    await touchSwipe(motion.page,{dx:120}); await touchSwipe(motion.page,{dx:0,dy:-145});
-    report.motion.zoomedJump=await sampleMotion(motion.page,()=>gotoPage(motion.page,400),400,1);
-    await touchSwipe(motion.page,{dx:110}); await touchSwipe(motion.page,{dx:0,dy:-110});
-    report.motion.zoomedPreviousJump=await sampleMotion(motion.page,()=>gotoPage(motion.page,274),274,-1,'zoomed-page-fold.png');
-    await motion.page.getByTestId('indopak-zoom').click(); await motion.page.getByTestId('indopak-zoom').click();
+    await motion.page.getByTestId('indopak-focus').click(); await motion.page.getByTestId('indopak-unlock').waitFor(); await pause(motion.page);
+    report.motion.focusNext=await sampleMotion(motion.page,()=>touchSwipe(motion.page,{dx:155}),275,1,'focus-page-fold.png');
+    report.motion.focusPrevious=await sampleMotion(motion.page,()=>touchSwipe(motion.page,{dx:-155}),274,-1);
+    await touchSwipe(motion.page,{dx:155});
+    assert.equal(await motion.page.getByTestId('indopak-page-outgoing').count(),1,'Unlock interrupts a focused page fold');
+    await motion.page.getByTestId('indopak-unlock').click(); await expectPage(motion.page,275);
+    assert.equal(await motion.page.getByTestId('indopak-page-outgoing').count(),0); report.motion.focusUnlockSettled=true;
+    await gotoPage(motion.page,274);
     await motion.page.setViewportSize({width:844,height:390}); await pause(motion.page);
     await touchSwipe(motion.page,{dx:0,dy:-150});
     assert.ok(await motion.page.getByTestId('indopak-vertical-scroll').evaluate(e=>e.scrollTop>10),'Landscape fold starts from a real scrolled position');
@@ -485,7 +479,7 @@ if (require.main === module) (async () => {
     await themed.page.getByTestId('floating-navigation-bar').waitFor();
     report.themeRemount = {darkAndLight:true,pageRestored:true,menuScoped:true}; await themed.context.close();
     for (const errors of report.errors) for (const [type, values] of Object.entries(errors)) assert.deepEqual(values, [], `${type} errors`);
-    console.log(JSON.stringify({pages:report.pages.length,profiles:report.profiles.length,insets:report.insets.length,modals:report.modals.length,swipes:report.swipes,menuRestored:report.menuRestoredOnExit,rtlSwipes:report.rtlSwipes,zoomIcons:report.zoomIcons,reducedMotion:report.reducedMotion,motion:report.motion ? {nextFrames:report.motion.next.frames,previousFrames:report.motion.previous.frames,jumpFrames:report.motion.jump.frames,zoomedJumpFrames:report.motion.zoomedJump.frames,zoomedPreviousFrames:report.motion.zoomedPreviousJump.frames,landscapeFrames:report.motion.scrolledLandscape.frames,landscapePreviousFrames:report.motion.scrolledLandscapePrevious.frames,compactFrames:report.motion.compact.frames,variants:report.motion.variants.map(v=>({language:v.language,dark:v.dark,nextFrames:v.next.frames,previousFrames:v.previous.frames})),resizeSettled:report.motion.resizeSettled,reducedMotionChangeSettled:report.motion.reducedMotionChangeSettled,unmountCleanupAndRestore:report.motion.unmountCleanupAndRestore}:null,activeAudio:report.activeAudio.length,audioScreenMenuRestored:report.audioScreenMenuRestored,themeRemount:report.themeRemount,localizedTop:report.localizedTop.length,offline:report.offline,allPageSweep:report.allPageSweep,restored:report.restored,audio:report.audio,existingReader:report.existingReader,errors:report.errors},null,2));
+    console.log(JSON.stringify({pages:report.pages.length,profiles:report.profiles.length,insets:report.insets.length,modals:report.modals.length,swipes:report.swipes,menuRestored:report.menuRestoredOnExit,rtlSwipes:report.rtlSwipes,focusUnlock:report.focusUnlock,reducedMotion:report.reducedMotion,motion:report.motion ? {nextFrames:report.motion.next.frames,previousFrames:report.motion.previous.frames,jumpFrames:report.motion.jump.frames,focusNextFrames:report.motion.focusNext.frames,focusPreviousFrames:report.motion.focusPrevious.frames,focusUnlockSettled:report.motion.focusUnlockSettled,landscapeFrames:report.motion.scrolledLandscape.frames,landscapePreviousFrames:report.motion.scrolledLandscapePrevious.frames,compactFrames:report.motion.compact.frames,variants:report.motion.variants.map(v=>({language:v.language,dark:v.dark,nextFrames:v.next.frames,previousFrames:v.previous.frames})),resizeSettled:report.motion.resizeSettled,reducedMotionChangeSettled:report.motion.reducedMotionChangeSettled,unmountCleanupAndRestore:report.motion.unmountCleanupAndRestore}:null,activeAudio:report.activeAudio.length,audioScreenMenuRestored:report.audioScreenMenuRestored,themeRemount:report.themeRemount,localizedTop:report.localizedTop.length,offline:report.offline,allPageSweep:report.allPageSweep,restored:report.restored,audio:report.audio,existingReader:report.existingReader,errors:report.errors},null,2));
   } catch(error) {
     report.failure = error.stack || String(error); if(active && !active.isClosed()) await active.screenshot({path:path.join(output,'failure.png')}).catch(()=>{}); throw error;
   } finally { fs.writeFileSync(path.join(output,'report.json'),JSON.stringify(report,null,2)); await browser.close(); }

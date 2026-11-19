@@ -45,8 +45,3 @@ export function indopakTurnPlan(from: number, to: number, width: number, reduced
     || !Number.isFinite(width) || width <= 0) return null;
   return { direction: to > from ? 1 : -1, distance: width, duration: 320 };
 }
-
-/** The icon describes the next zoom action; the visible number describes the current scale. */
-export function indopakZoomControl(zoom: number): { next: 1 | 1.5 | 2; icon: 'zoom-in' | 'zoom-out' } {
-  return zoom === 2 ? { next: 1, icon: 'zoom-out' } : { next: zoom === 1.5 ? 2 : 1.5, icon: 'zoom-in' };
-}

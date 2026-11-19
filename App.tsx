@@ -824,8 +824,11 @@ function useChromeHidden() {
   return hidden;
 }
 
-/** Route-scoped, not a persistent setting or a global reader focus-mode flag. */
+/** Route-scoped, not a persistent setting or the original Reader's focus-mode flag. */
 const IndopakScreenContext = createContext(false);
+const IndopakFocusContext = createContext<{ focusMode: boolean; setFocusMode: (value: boolean) => void }>({
+  focusMode: false, setFocusMode: () => {},
+});
 
 /* ==================== Overlay layer ==================== */
 /**
@@ -1913,12 +1916,12 @@ const SCROLL = {
   overScrollMode: Platform.OS === 'android' ? ('never' as const) : undefined,
 };
 
-function Page({ children }: { children: React.ReactNode }) {
+function Page({ children, hidePlayerInset = false, fullWidth = false }: { children: React.ReactNode; hidePlayerInset?: boolean; fullWidth?: boolean }) {
   const { width } = useWindowDimensions(); const {rtl,language}=useLanguage();
   const audio=useAudio();
-  const playerInset = audio.track ? (Platform.OS==='ios'?96:MINI_PLAYER_INSET) : 0;
+  const playerInset = audio.track && !hidePlayerInset ? (Platform.OS==='ios'?96:MINI_PLAYER_INSET) : 0;
   const enter = useEntrance();
-  return <SafeAreaView style={[s.safe,{direction:shellDirection(rtl)} as any]}><Animated.View style={[s.page,width > 700 && s.pageWide,{direction:shellDirection(rtl),paddingBottom:playerInset} as any,{opacity:enter.opacity,transform:[{translateY:enter.translateY}]}]}>{children}</Animated.View></SafeAreaView>;
+  return <SafeAreaView style={[s.safe,{direction:shellDirection(rtl)} as any]}><Animated.View style={[s.page,width > 700 && !fullWidth && s.pageWide,{direction:shellDirection(rtl),paddingBottom:playerInset} as any,{opacity:enter.opacity,transform:[{translateY:enter.translateY}]}]}>{children}</Animated.View></SafeAreaView>;
 }
 function Spinner() { const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);return <View style={s.loading}><ActivityIndicator color={C.green} /><Text style={s.loadingText}>{T('Loading live data…')}</Text></View>; }
 
@@ -3726,9 +3729,13 @@ const compactStats=[{label:'Bookmarks',title:T('Bookmarks'),value:String(bookmar
 function IndopakQuranScreen({route,navigation}:any){
   const {language,rtl}=useLanguage();
   const {dark}=useTheme();
-  return <Page><ToolBar title={indopakText(language,'title')} navigation={navigation} tool="Mushaf Pages"/>
-    <View style={{flex:1,minHeight:0,paddingBottom:12}}>
+  const {focusMode,setFocusMode}=useContext(IndopakFocusContext);
+  // Temporary and edition-scoped: another screen or a fresh visit always has its normal chrome.
+  useFocusEffect(useCallback(()=>()=>setFocusMode(false),[setFocusMode]));
+  return <Page hidePlayerInset={focusMode} fullWidth={focusMode}>{!focusMode&&<ToolBar title={indopakText(language,'title')} navigation={navigation} tool="Mushaf Pages"/>}
+    <View style={{flex:1,minHeight:0,paddingBottom:focusMode?0:12}}>
       <IndopakMushafReader colors={C} dark={dark} language={language} rtl={rtl} icon={ico} initialPage={route.params?.page}
+        focusMode={focusMode} onFocusModeChange={setFocusMode}
         onPlayVerse={(key,chapter)=>{void playFromReader({id:chapter.id,name_simple:chapter.name,name_arabic:chapter.arabic,verses_count:chapter.verses} as Chapter,
           {id:0,verse_key:key,text_uthmani:'',surah_name:chapter.name},rtl)}}
         onOpenVerse={(key,chapter)=>navigation.navigate('Reader',{chapter:{id:chapter.id,name_simple:chapter.name,name_arabic:chapter.arabic,verses_count:chapter.verses},focusVerse:key})}/>
@@ -12579,8 +12586,9 @@ function MiniPlayer() {
   const audio = useAudio();
   const { rtl , language }=useLanguage();
   const indopakActive = useContext(IndopakScreenContext);
+  const { focusMode } = useContext(IndopakFocusContext);
   const insets = useSafeAreaInsets();
-  if (!audio.track) return null;
+  if (!audio.track || focusMode) return null;
   const bottom = indopakActive ? 16 + (Platform.OS === 'ios' ? insets.bottom : 0) : MINI_PLAYER_BOTTOM;
   const open = () => { if (navigationRef.isReady()) (navigationRef as any).navigate('Quran', { screen: 'Audio Player' }); };
   return <View testID="mini-player" style={[s.miniPlayer, { bottom, flexDirection: 'row' }]}>
@@ -13411,6 +13419,8 @@ function Root() {
   const { fontTick } = useQuranPreferences();
   const liveState = useRef<any>(undefined);
   const [indopakActive, setIndopakActive] = useState(false);
+  const [indopakFocusMode, setIndopakFocusMode] = useState(false);
+  const indopakFocus = useMemo(() => ({ focusMode: indopakActive && indopakFocusMode, setFocusMode: setIndopakFocusMode }), [indopakActive, indopakFocusMode]);
   useBackIntegration(navigationRef);
   useEffect(() => { clearSavedNavState(); }, []);
   /* The screen dips out and back around the palette swap. It gives way a
@@ -13427,6 +13437,7 @@ function Root() {
 
   return <Animated.View style={[s.themeSwap, dip]}>
     <IndopakScreenContext.Provider value={indopakActive}>
+    <IndopakFocusContext.Provider value={indopakFocus}>
     <NavigationContainer ref={navigationRef} key={(dark ? 'dark' : 'light') + ':' + tick + ':' + fontTick} initialState={liveState.current}
       onReady={() => setIndopakActive(isIndopakReaderRoute(navigationRef.getRootState()))}
       onStateChange={(state: any) => { liveState.current = state; setIndopakActive(isIndopakReaderRoute(state)); }}>
@@ -13440,6 +13451,7 @@ function Root() {
     </Stack.Navigator>
       <ExpoStatusBar style={dark ? 'light' : 'dark'} /><MiniPlayer /><OverlayHost /><ExitPrompt />
     </NavigationContainer>
+    </IndopakFocusContext.Provider>
     </IndopakScreenContext.Provider>
   </Animated.View>;
 }

@@ -86,8 +86,19 @@ async function visibleAnchor(page, verse) {
     await page.getByTestId('indopak-ayah-play').tap(); await reciting(page, '55:5', 478);
     report.media.push(await media(page, '55:5'));
     await page.getByTestId('indopak-ayah-popover').waitFor({ state: 'detached' });
-    // The whole first ayah plays; there is no seek or fabricated status here.
-    await reciting(page, '55:6', 478); report.media.push(await media(page, '55:6')); await stop(page);
+    const beforeFocus = await media(page, '55:5'), playsBeforeFocus = await page.evaluate(() => window.__indopakPlays.length);
+    await page.getByTestId('indopak-focus').click(); await page.getByTestId('indopak-unlock').waitFor(); await pause(page);
+    assert.equal(await page.getByTestId('mini-player').count(), 0);
+    const safeFocus = await box(page.getByTestId('system-safe-content').first()), focusedViewport = await box(page.getByTestId('indopak-page-viewport'));
+    for (const edge of ['x', 'y', 'width', 'height']) assert.ok(Math.abs(safeFocus[edge] - focusedViewport[edge]) < 1.1, 'Hiding a playing mini-player also reclaims its reserved space');
+    await page.waitForTimeout(300); const duringFocus = await media(page, '55:5'); report.media.push(duringFocus);
+    assert.ok(duringFocus.position > beforeFocus.position + .15, 'Audio progresses continuously while its UI is hidden');
+    assert.equal(await page.evaluate(() => window.__indopakPlays.length), playsBeforeFocus, 'Focus does not restart playback');
+    report.checks.focusKeepsAudioPlayingWithoutRestart = { beforeFocus, duringFocus };
+    // The whole first ayah plays, in Focus; there is no seek or fabricated status here.
+    await reciting(page, '55:6', 478); report.media.push(await media(page, '55:6'));
+    assert.equal(await page.getByTestId('mini-player').count(), 0, 'Natural queue advancement does not reveal hidden chrome');
+    await page.getByTestId('indopak-unlock').click(); await page.getByTestId('mini-player').waitFor(); await stop(page);
     assert.equal(await page.locator('[data-testid^="indopak-reciting-55:5-"]').count(), 0);
     assert.ok(await page.locator('[data-testid^="indopak-highlight-55:5-"]').count() > 0, 'The separate explicit marker stays visible');
     assert.deepEqual((await read(page)).readingPoint, point); report.checks.naturalNextAyah = true;
@@ -113,6 +124,7 @@ async function visibleAnchor(page, verse) {
     await openPlayer(page); await page.locator('[aria-label^="Repeat mode:"]').click(); await back(page);
 
     await gotoPage(page, 2); report.media.push(await start(page, '2:4', 2));
+    await page.getByTestId('indopak-focus').click(); await page.getByTestId('indopak-unlock').waitFor(); await pause(page);
     const client = await own.context.newCDPSession(page), stage = await box(page.getByTestId('indopak-page-viewport'));
     try {
       await client.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: stage.x + 3, y: stage.y + 10, id: 1 }] });
@@ -121,8 +133,10 @@ async function visibleAnchor(page, verse) {
       await client.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
     } finally { await client.detach(); }
     report.checks.activeGestureDefersPageFollow = true;
-    await reciting(page, '2:5', 3); report.media.push(await media(page, '2:5')); await stop(page);
-    assert.ok((await page.getByTestId('mini-player').innerText()).includes('Verse 5'), 'Mini-player metadata advances with the same queue track');
+    await reciting(page, '2:5', 3); report.media.push(await media(page, '2:5'));
+    assert.equal(await page.getByTestId('mini-player').count(), 0); report.checks.focusCrossPageFollow = true;
+    await page.getByTestId('indopak-unlock').click(); await page.getByTestId('mini-player').waitFor(); await stop(page);
+    assert.ok((await page.getByTestId('mini-player').innerText()).includes('Verse 5'), 'Restored mini-player metadata advances with the same queue track');
     assert.deepEqual((await read(page)).readingPoint, point); report.checks.crossPageFollow = true;
     await page.screenshot({ path: path.join(output, 'next-ayah-next-printed-page.png') });
 
@@ -132,15 +146,21 @@ async function visibleAnchor(page, verse) {
     assert.equal(await page.locator('[data-testid^="indopak-reciting-"]').count(), 0);
     report.checks.manualBrowseDoesNotSnapBack = true;
 
-    await page.getByTestId('indopak-zoom').click(); await page.setViewportSize({ width: 844, height: 430 }); await pause(page);
+    await page.setViewportSize({ width: 844, height: 430 }); await pause(page);
     report.media.push(await start(page, '18:109', 274));
     report.media.push(await finishRealTrack(page, '18:109'));
     await reciting(page, '18:110', 274); await media(page, '18:110'); await stop(page);
-    report.checks.zoomedLandscapeReveal = await visibleAnchor(page, '18:110');
-    await page.screenshot({ path: path.join(output, 'zoomed-landscape-reciting-line.png') });
+    report.checks.landscapeReveal = await visibleAnchor(page, '18:110');
+    await page.screenshot({ path: path.join(output, 'landscape-reciting-line.png') });
+    await page.getByTestId('indopak-focus').click(); await page.getByTestId('indopak-unlock').waitFor(); await pause(page);
+    await page.getByTestId('indopak-page-svg').locator('rect[aria-label$=" 18:110"]').first().tap();
+    await page.getByTestId('indopak-ayah-play').tap(); await reciting(page, '18:110', 274); report.media.push(await media(page, '18:110'));
+    assert.equal(await page.getByTestId('mini-player').count(), 0, 'Ayah actions can start audio without leaving Focus');
+    report.checks.focusLandscapePlayback = await visibleAnchor(page, '18:110');
+    await page.screenshot({ path: path.join(output, 'focus-landscape-reciting-line.png') });
+    await page.getByTestId('indopak-unlock').click(); await page.getByTestId('mini-player').waitFor(); await stop(page);
     assert.deepEqual((await read(page)).readingPoint, point);
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.getByTestId('indopak-zoom').click(); await page.getByTestId('indopak-zoom').click();
 
     await gotoPage(page, 5); report.media.push(await start(page, '2:25', 5)); await stop(page);
     await expectPage(page, 5); assert.ok(model.indopakPageForVerse('2:25') < 5);
