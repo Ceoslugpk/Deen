@@ -1,0 +1,193 @@
+{
+  "revision": "R100",
+  "baselineCommit": "40f7d49f7ef4c16b60e59159cb6856d8a235c21e",
+  "baselineWebBundle": "index-8f6a069300bb5640caf34c1efd87f35f.js",
+  "optimizedWebBundle": "index-d77fb4658c55ddcf033ba962609cfb13.js",
+  "method": "Production WEB, page 274, 12 real zoom-button clicks per fresh context. Six-times Chromium CPU throttle; click capture to next animation frame observing changed SVG width. Includes React/layout work, not screen presentation or total/native frame rate.",
+  "sampleCountPerProfilePerRevision": 12,
+  "timingsRoundedToMilliseconds": 0.1,
+  "profiles": [
+    {
+      "name": "phone",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "paths": 160,
+      "before": {
+        "medianMs": 188.8,
+        "maxMs": 267.6,
+        "overlappingLongTaskEntries": 12,
+        "sampleDurationsMs": [
+          150.4,
+          149.9,
+          184,
+          197.8,
+          169.6,
+          225,
+          221.5,
+          209.5,
+          175.5,
+          193.7,
+          71.5,
+          267.6
+        ]
+      },
+      "after": {
+        "medianMs": 86.9,
+        "maxMs": 100.1,
+        "overlappingLongTaskEntries": 13,
+        "sampleDurationsMs": [
+          90.5,
+          60.6,
+          100.1,
+          92.4,
+          64.2,
+          93.4,
+          57.3,
+          87.3,
+          95.1,
+          46.6,
+          62.1,
+          86.5
+        ]
+      },
+      "medianDelayReductionPercent": 54.0
+    },
+    {
+      "name": "landscape",
+      "viewport": {
+        "width": 844,
+        "height": 390
+      },
+      "paths": 160,
+      "before": {
+        "medianMs": 123.4,
+        "maxMs": 165.3,
+        "overlappingLongTaskEntries": 12,
+        "sampleDurationsMs": [
+          147.6,
+          79.9,
+          97.8,
+          126.7,
+          160.5,
+          111.7,
+          146.8,
+          98.3,
+          107.9,
+          120.1,
+          128.2,
+          165.3
+        ]
+      },
+      "after": {
+        "medianMs": 74.9,
+        "maxMs": 120,
+        "overlappingLongTaskEntries": 12,
+        "sampleDurationsMs": [
+          76.7,
+          73.1,
+          120,
+          116,
+          47.2,
+          109.5,
+          62.4,
+          27.6,
+          72.2,
+          103.6,
+          87.4,
+          22.2
+        ]
+      },
+      "medianDelayReductionPercent": 39.3
+    },
+    {
+      "name": "cover",
+      "viewport": {
+        "width": 280,
+        "height": 720
+      },
+      "paths": 160,
+      "before": {
+        "medianMs": 175.5,
+        "maxMs": 232.8,
+        "overlappingLongTaskEntries": 12,
+        "sampleDurationsMs": [
+          151,
+          232.8,
+          141.5,
+          190.6,
+          206.7,
+          114.3,
+          192.5,
+          165.8,
+          155.2,
+          170,
+          181,
+          211.6
+        ]
+      },
+      "after": {
+        "medianMs": 74.6,
+        "maxMs": 137.4,
+        "overlappingLongTaskEntries": 12,
+        "sampleDurationsMs": [
+          22.3,
+          65.4,
+          74.6,
+          137.4,
+          67.1,
+          49.8,
+          76.2,
+          48.8,
+          81.8,
+          74.6,
+          96.8,
+          78
+        ]
+      },
+      "medianDelayReductionPercent": 57.5
+    }
+  ],
+  "validation": {
+    "automatedTestsPassed": 168,
+    "typeScriptDiagnostics": 0,
+    "productionExports": [
+      "web",
+      "android-hermes",
+      "ios-hermes"
+    ],
+    "offlinePageSweep": {
+      "pages": 548,
+      "offline": true,
+      "reducedMotion": true,
+      "milliseconds": 303890,
+      "failedBounds": 0
+    },
+    "readerBrowserContexts": 29,
+    "localizedTopLayouts": 44,
+    "ayahBrowserContexts": 23,
+    "localizedPopovers": 44,
+    "stationaryHoldObservedMs": 518.8,
+    "zoomBrowserContexts": 6,
+    "zoomAnchorChecks": 30,
+    "resizeAnchorChecks": 12,
+    "rapidZoomPresses": 42,
+    "realAudioObservations": 19,
+    "audioBrowserContexts": 3,
+    "intentionalMediaRangeCancellations": 3,
+    "existingAudioTranslationResponsiveBrowserRegressions": "passed",
+    "originalFontSha256": "a6463e24e36651404e9eff52dae26e18e9ef0718eb620636a66a20026a75c563",
+    "originalFontOccurrencesPerExport": 1,
+    "protectedScriptureLayoutFontNoticesDependenciesAndAppConfig": "unchanged"
+  },
+  "limitations": [
+    "This is a controlled Chromium production-WEB comparison, not native Android/iOS or physical-phone frame-rate evidence.",
+    "Metric ends at an animation frame observing changed SVG size, not proof that all pixels have been presented on screen.",
+    "Only page 274 is used for performance sampling; all 548 pages are checked separately for offline rendering geometry.",
+    "Six-times CPU throttling is artificial, timings vary with host load; no universal speedup or frame-rate guarantee.",
+    "Long tasks can remain at this throttle; overlapping long-task entries are not unique whole-session task counts.",
+    "Native production exports are not installed APK/AAB/IPA or device tests; native gesture/accessibility/performance QA remains pending."
+  ],
+  "medianConvention": "Arithmetic mean of the two middle sorted samples (12 samples); summary calculated from unrounded durations."
+}

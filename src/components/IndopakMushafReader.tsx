@@ -7,7 +7,7 @@ import { SystemModal } from './SystemModal';
 import { IndopakPageCanvas } from './IndopakPageCanvas';
 import { IndopakPageFold } from './IndopakPageFold';
 import { IndopakAyahPopover } from './IndopakAyahPopover';
-import { INDOPAK_HOLD_MS, indopakAyahSegments, indopakPopoverLayout, indopakRevealOffset, indopakStationaryPress, indopakWordAnchor, type IndopakSelection } from '../services/indopakSelection';
+import { INDOPAK_HOLD_MS, indopakAyahSegments, indopakPopoverLayout, indopakRevealOffset, indopakStationaryPress, indopakWordAnchor, indopakZoomOffset, type IndopakSelection } from '../services/indopakSelection';
 import { useCalmMotion } from '../design/useCalmMotion';
 import { useSafeContentFrame } from './SystemNavigationBoundary';
 import { tx } from '../services/arabicCopy';
@@ -66,6 +66,20 @@ export function IndopakMushafReader({ colors: C, dark, language, rtl, icon, init
   const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const endWord = useCallback(() => { hold.current.active = false; setWordPressing(false); if (holdTimer.current) clearTimeout(holdTimer.current); holdTimer.current = null; }, []);
   const vertical = useRef<React.ElementRef<typeof ScrollView>>(null), horizontal = useRef<React.ElementRef<typeof ScrollView>>(null);
+  const geometry = useRef<{ page: number; viewport: typeof viewport; size: typeof viewport } | null>(null);
+  const scrollCorrection = useRef<{ page: number; x: number; y: number } | null>(null);
+  const applyScrollCorrection = useCallback(() => {
+    const target = scrollCorrection.current;
+    if (!target || target.page !== latest.current.page) return;
+    scroll.current = { x: target.x, y: target.y };
+    vertical.current?.scrollTo({ y: target.y, animated: false });
+    horizontal.current?.scrollTo({ x: target.x, animated: false });
+  }, []);
+  const positionPage = useCallback((target: { x: number; y: number }) => {
+    scrollCorrection.current = { ...target, page: latest.current.page };
+    applyScrollCorrection();
+  }, [applyScrollCorrection]);
+  const userPanning = useCallback(() => { scrollCorrection.current = null; }, []);
   useEffect(() => {
     let live = true;
     loadIndopakState().then(value => {
@@ -105,6 +119,21 @@ export function IndopakMushafReader({ colors: C, dark, language, rtl, icon, init
   useLayoutEffect(() => {
     endWord(); setPageTouching(false); hold.current.blocked = true; closeSelection();
   }, [state.page, state.zoom, viewport.width, viewport.height, closeSelection, endWord]);
+  useLayoutEffect(() => {
+    if (!hydrated || !fontReady || !page || !size.width || !size.height) return;
+    const before = geometry.current;
+    if (before?.page === state.page && before.size.width === size.width && before.size.height === size.height
+      && before.viewport.width === viewport.width && before.viewport.height === viewport.height) return;
+    geometry.current = { page: state.page, viewport: { ...viewport }, size: { ...size } };
+    const target = before?.page === state.page
+      ? indopakZoomOffset(before.viewport, before.size, scroll.current, viewport, size)
+      : { x: Math.max(0, size.width - viewport.width), y: 0 };
+    positionPage(target);
+    // Web can lay out synchronously; native can report its new content size later.
+    // Reapply only this explicit correction, never an unconditional scroll-to-right on every resize.
+    const frame = requestAnimationFrame(applyScrollCorrection);
+    return () => cancelAnimationFrame(frame);
+  }, [hydrated, fontReady, page, state.page, viewport.width, viewport.height, size.width, size.height, positionPage, applyScrollCorrection]);
   useEffect(() => () => { if (holdTimer.current) clearTimeout(holdTimer.current); }, []);
   // Start after React commits both layers. No timers, transparent text crossfade or 3D distortion.
   useLayoutEffect(() => {
@@ -133,21 +162,17 @@ export function IndopakMushafReader({ colors: C, dark, language, rtl, icon, init
       suppressVerseUntil.current = Math.max(suppressVerseUntil.current, Date.now() + plan.duration + 100);
     }
     if (from !== number) update({ page: number });
-    vertical.current?.scrollTo({ y: 0, animated: false });
-    horizontal.current?.scrollToEnd({ animated: false });
-    scroll.current = { x: 0, y: 0 };
-  }, [hydrated, update, still, viewport.width, viewport.height, size.width, size.height]);
+    positionPage({ x: Math.max(0, size.width - viewport.width), y: 0 });
+  }, [hydrated, update, still, viewport.width, viewport.height, size.width, size.height, positionPage]);
   useLayoutEffect(() => {
     if (!pendingReveal || turn || !hydrated || !fontReady || pendingReveal.point.page !== state.page || size.width <= 0 || size.height <= 0) return;
     const anchor = indopakWordAnchor(placed, pendingReveal.point.verse, pendingReveal.point.wordId);
     setPendingReveal(null);
     if (!anchor) return;
     const target = indopakRevealOffset(viewport, size, anchor.rect);
-    scroll.current = target;
-    vertical.current?.scrollTo({ y: target.y, animated: false });
-    horizontal.current?.scrollTo({ x: target.x, animated: false });
+    positionPage(target);
     if (pendingReveal.open) setSelection({ verse: pendingReveal.point.verse, wordId: anchor.wordId });
-  }, [pendingReveal, turn, hydrated, fontReady, state.page, placed, viewport.width, viewport.height, size.width, size.height]);
+  }, [pendingReveal, turn, hydrated, fontReady, state.page, placed, viewport.width, viewport.height, size.width, size.height, positionPage]);
   useEffect(() => {
     if (!audioFollow || !focused || !hydrated || !fontReady || !page || size.width <= 0 || size.height <= 0) return;
     if (!recitingVerse) {
@@ -170,11 +195,9 @@ export function IndopakMushafReader({ colors: C, dark, language, rtl, icon, init
     if (!anchor) return;
     const offset = indopakRecitationOffset(viewport, size, scroll.current, anchor.rect);
     if (!offset) return;
-    scroll.current = offset;
-    vertical.current?.scrollTo({ y: offset.y, animated: false });
-    horizontal.current?.scrollTo({ x: offset.x, animated: false });
+    positionPage(offset);
   }, [recitingVerse, audioFollow, focused, hydrated, fontReady, page, turn, picker, selection, pendingReveal, wordPressing, pageTouching,
-    state.page, state.zoom, viewport.width, viewport.height, size.width, size.height, placed, goPage]);
+    state.page, state.zoom, viewport.width, viewport.height, size.width, size.height, placed, goPage, positionPage]);
   const swipeFrom = useRef<number | null>(null), swipeBlocked = useRef(false);
   const canSwipe = hydrated && fontReady && !fontError && !!page && !picker && !turn;
   const swipe = useMemo(() => PanResponder.create({
@@ -282,14 +305,15 @@ export function IndopakMushafReader({ colors: C, dark, language, rtl, icon, init
         {button(T('Surah'), () => setPicker('surah'), 'book-outline', { text: compact ? undefined : T('Surah'), testID: 'indopak-surah' })}
         {button(T('Juz'), () => setPicker('juz'), 'layers-outline', { text: compact ? undefined : T('Juz'), testID: 'indopak-juz' })}
         {button(T('Bookmarks'), togglePage, marked ? 'bookmark' : 'bookmark-outline', { selected: marked, testID: 'indopak-save-page' })}
-        {button(`${copy('zoom')} ${state.zoom}×`, () => update({ zoom: zoomControl.next }), zoomControl.icon, { text: compact ? undefined : `${state.zoom}×`, testID: 'indopak-zoom' })}
+        {button(`${copy('zoom')} ${state.zoom}×`, () => update({ zoom: indopakZoomControl(latest.current.zoom).next }), zoomControl.icon, { text: compact ? undefined : `${state.zoom}×`, testID: 'indopak-zoom' })}
         {!compact && button(T('Verse'), () => setPicker('verse'), 'list-outline', { text: T('Verse'), testID: 'indopak-verse-list' })}
       </View>
     </View>
     {!!saveError && <Pressable onPress={() => update({})} accessibilityRole="button"><Text style={[styles.message, { color: C.ink }]}>{copy('saveError')}</Text></Pressable>}
     <View testID="indopak-page-viewport" style={[styles.stage, Platform.OS === 'web' && webGestureStyle]} {...swipe.panHandlers}
-      onPointerDown={closeSelection}
-      onTouchStart={event => { setPageTouching(true); if ((event.nativeEvent.touches?.length || 1) > 1) hold.current.blocked = true; closeSelection(); }}
+      {...(Platform.OS === 'web' ? { onWheel: userPanning } : {})}
+      onPointerDown={() => { userPanning(); closeSelection(); }}
+      onTouchStart={event => { userPanning(); setPageTouching(true); if ((event.nativeEvent.touches?.length || 1) > 1) hold.current.blocked = true; closeSelection(); }}
       onTouchMove={event => { const h = hold.current, e = event.nativeEvent;
         const touch = e.touches?.[0] || e;
         if (!indopakStationaryPress(e.touches?.length || 1, touch.pageX - h.x, touch.pageY - h.y)) { h.blocked = true; endWord(); } }}
@@ -305,11 +329,12 @@ export function IndopakMushafReader({ colors: C, dark, language, rtl, icon, init
           <View testID="indopak-page-current" style={[styles.fill, { backgroundColor: C.bg }]}>
             <ScrollView ref={vertical} testID="indopak-vertical-scroll" nestedScrollEnabled scrollEnabled={Platform.OS === 'web' || size.height > viewport.height + 1} showsVerticalScrollIndicator={size.height > viewport.height}
               scrollEventThrottle={16} onScroll={({ nativeEvent }) => { scrolled('y', nativeEvent.contentOffset.y); }}
+              onScrollBeginDrag={userPanning} onContentSizeChange={applyScrollCorrection}
               contentContainerStyle={{ minHeight: viewport.height, justifyContent: 'center' }}>
               <ScrollView ref={horizontal} testID="indopak-horizontal-scroll" horizontal nestedScrollEnabled scrollEnabled={Platform.OS === 'web' || state.zoom > 1} bounces={false} alwaysBounceHorizontal={false} showsHorizontalScrollIndicator={state.zoom > 1}
                 scrollEventThrottle={16} onScroll={({ nativeEvent }) => { scrolled('x', nativeEvent.contentOffset.x); }}
-                style={{ height: size.height, direction: 'ltr' }} contentContainerStyle={{ minWidth: viewport.width, alignItems: 'center', justifyContent: 'center' }}
-                onContentSizeChange={() => { if (state.zoom > 1) horizontal.current?.scrollToEnd({ animated: false }); }}>
+                onScrollBeginDrag={userPanning} onContentSizeChange={applyScrollCorrection}
+                style={{ height: size.height, direction: 'ltr' }} contentContainerStyle={{ minWidth: viewport.width, alignItems: 'center', justifyContent: 'center' }}>
                 <IndopakPageCanvas number={state.page} width={size.width} height={size.height} colors={C} dark={dark} language={language} verse={verse} recitingVerse={recitingVerse}
                   readingPoint={state.readingPoint?.page === state.page ? state.readingPoint.verse : null}
                   onWordPress={openWord} onWordPressIn={beginWord} onWordPressOut={endWord} onWordLongPress={holdWord}/>

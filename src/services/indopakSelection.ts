@@ -34,6 +34,18 @@ export function indopakPageOrigin(viewport: { width: number; height: number }, s
   return { x: Math.max(0, (viewport.width - size.width) / 2), y: Math.max(0, (viewport.height - size.height) / 2) };
 }
 
+/** Keep the same physical page point at the viewport centre on zoom/rotation, clamping only at paper edges. */
+export function indopakZoomOffset(viewport: { width: number; height: number }, size: { width: number; height: number },
+  scroll: { x: number; y: number }, nextViewport: { width: number; height: number }, nextSize: { width: number; height: number }) {
+  if (![viewport.width, viewport.height, size.width, size.height, nextViewport.width, nextViewport.height, nextSize.width, nextSize.height]
+    .every(n => Number.isFinite(n) && n > 0) || ![scroll.x, scroll.y].every(Number.isFinite)) return { x: 0, y: 0 };
+  const origin = indopakPageOrigin(viewport, size), nextOrigin = indopakPageOrigin(nextViewport, nextSize);
+  const x = clamp((scroll.x + viewport.width / 2 - origin.x) / size.width, 0, 1);
+  const y = clamp((scroll.y + viewport.height / 2 - origin.y) / size.height, 0, 1);
+  return { x: clamp(nextOrigin.x + x * nextSize.width - nextViewport.width / 2, 0, nextSize.width - nextViewport.width),
+    y: clamp(nextOrigin.y + y * nextSize.height - nextViewport.height / 2, 0, nextSize.height - nextViewport.height) };
+}
+
 /** All coordinates are physical page coordinates, independent of the interface's RTL/LTR direction. */
 export function indopakPopoverLayout(viewport: { width: number; height: number }, size: { width: number; height: number },
   scroll: { x: number; y: number }, segments: IndopakSegment[], selected: IndopakSelection) {

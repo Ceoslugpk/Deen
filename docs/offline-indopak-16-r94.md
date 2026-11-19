@@ -12,7 +12,7 @@ The screen contains:
 - a tappable **top page counter** with page entry (including Arabic/Persian digits), Surah and canonical verse-based Juz navigation;
 - edition-specific page bookmarks, last-page/zoom restoration and one exact ayah/word-level continue-reading marker;
 - lightweight paper-fold page swiping at 1×: **right → next page; left → previous page**, following Quran RTL page order in every interface language;
-- 1× / 1.5× / 2× zoom with scrolling; very short landscape panes use width-fit scrolling rather than shrinking the entire page to an unreadable thumbnail;
+- 1× / 1.5× / 2× position-preserving zoom with scrolling and memoized fixed-word rendering; very short landscape panes use width-fit scrolling rather than shrinking the entire page to an unreadable thumbnail;
 - per-verse hit targets and a larger Verse-list alternative, full-ayah highlighting and a small anchored three-icon popup for recitation, translation and saving the reading position;
 - feature copy in English and all 21 other supported interface languages, with the existing copy service supplying shared labels. Uzbek and Kazakh remain Cyrillic; Malay and Indonesian have distinct copy;
 - the bottom tab menu hidden **only while this screen is focused**, with its empty reserve reclaimed and existing audio controls positioned inside the safe area;
@@ -113,11 +113,31 @@ The live page now highlights **the current canonical ayah from the audio queue**
 
 Playing from this reader also enables page/line following. Targets use the authentic 548-page edition, retain an already-visible later-page fragment of a split ayah, and reveal an offscreen anchor at the actual zoom/scroll offsets without moving an already-readable anchor. Short landscape panes reduce unnecessary headroom. Following waits for the requested audio key rather than an older track that is still loading, runs only while this screen is focused, and defers during active page touches, popup selection, navigation pickers and page turns. Manually turning/jumping pages or choosing Continue reading opts out of automatic page following until another on-page Play action; playback highlighting still reflects any current ayah on the page being browsed. Following updates only the last visited edition page, never the explicit reading point or page bookmarks.
 
+## Zoom and screen responsiveness (R100)
+
+Zoom previously recreated every word's React elements and touch callbacks, even though the page's original-font outlines, placement and word IDs were unchanged. `IndopakPageCanvas.tsx` now separates **memoized line ink/hit targets, headings, paper and live highlights**. Resizing the SVG viewport or changing a selected/reciting/marked ayah does not rerun the fixed-word component. Stable event dispatchers read the latest committed callbacks through a layout-effect-updated ref, so memoization does not retain stale page, zoom, hold or action state. Line-fragment grouping is derived once per placed page. Native SVG still redraws the vector surface as required; this is not a claim that drawing becomes free.
+
+The existing magnifier and **1 → 1.5 → 2 → 1** presets remain; no toolbar redesign, continuous pinch mode or new gesture dependency was added. Zoom and same-page viewport changes now keep the **same physical page point at the viewport centre**, clamping only where the paper edge makes that impossible. `indopakZoomOffset` includes the true centred paper origin on both axes, independent of the UI language. A different page still starts at the top/right. The old unconditional horizontal content-size → `scrollToEnd` callback is removed: explicit scroll corrections are reapplied for asynchronous native content layout, then relinquished to touch/drag/wheel panning. Exact Continue reading/Verse-list reveals and authoritative recitation following use the same correction path rather than being overwritten by a delayed right-edge snap. Rapid zoom presses read the latest requested state, not a stale render's preset. Geometry changes still cancel holds and dismiss the popup without changing the saved marker.
+
+### Controlled before/after web measurement
+
+`tests/profile-indopak-zoom-web.cjs` compares the real R99 production export (`40f7d49`) with the R100 final export on the same sandbox. Each fresh context opens actual page **274**, then makes **12 real zoom-button clicks**, covering four complete preset cycles, with **6× Chromium CPU throttling**. The metric is click capture → the next animation frame observing changed SVG width; it is **not screen-presentation latency, a native frame-rate test or a physical-device speed guarantee**. Each version renders the same 160 paths. Timings vary with host load; long tasks remain at this artificial throttle.
+
+| Browser viewport | Before median | After median | Median delay reduction |
+| --- | ---: | ---: | ---: |
+| Phone, 390×844 | 188.8ms | 86.9ms | 54.0% |
+| Landscape, 844×390 | 123.4ms | 74.9ms | 39.3% |
+| Narrow cover, 280×720 | 175.5ms | 74.6ms | 57.5% |
+
+Medians use the mean of the two middle sorted samples. [Recorded samples, exact bundle identities, validation summary and limitations](indopak-zoom-r100.json) are checked in. The production web bundle grows by only **2,335 raw bytes / 584 gzip bytes** versus R99; there are no new assets or dependencies. Original scripture/layout/font/notices, app/release configuration, state schema and existing Reader data are unchanged. These figures are web JavaScript sizes, not APK/AAB install-size or RAM measurements.
+
+`tests/verify-indopak-zoom-web.cjs` separately checks **six real running-app contexts**: phone, 280px cover, landscape, tall cover with no vertical overflow, tablet and Urdu dark mode. It records 30 preset-anchor checks and 12 resize-anchor checks; exercises actual touch panning, Enter/Space activation and 42 rapid preset presses; retains the same connected original-font path nodes/attributes; marks an exact word at 2× without a scroll jump; and verifies that zoom never changes the explicit marker, saved-page list or original Reader keys. Different-page reset and exact-word resume take precedence over the generic zoom anchor. All six contexts have empty page/console/HTTP/failed-request arrays. This is browser evidence; native touch arbitration and phone performance still require installed-device QA.
+
 ## Validation completed
 
 ### Static and source regression checks
 
-- **162 automated tests passed**: all 98 pre-existing regressions, 14 edition-specific tests, 19 focused-route/swipe/motion/zoom interaction tests, 7 fold geometry/rendering tests, 12 ayah-selection/marker tests and 12 playback-follow tests.
+- **168 automated tests passed**: all 98 pre-existing regressions, 14 edition-specific tests, 19 focused-route/swipe/motion/zoom interaction tests, 7 fold geometry/rendering tests, 12 ayah-selection/marker tests, 12 playback-follow tests and 6 new zoom/render-isolation tests. The latter include 972 preset/viewport/scroll-position geometry combinations, centred and panned anchors, edge clamping, invalid inputs, source immutability and fresh-callback/memoization wiring.
 - Full TypeScript check: **zero diagnostics**.
 - New tests cover resource hashes/notice retention, all 548 source pages, all 83,668 records, headings/centering/short pages, line geometry, original-font glyph/shape availability, every canonical verse lookup, all 30 Juz mappings, invalid/Arabic/Persian page entry, fitting/zoom, supported-language copy and independent read-only-on-load state. Interaction tests add focused/inactive navigation, malformed/cyclic states, RTL swipe directions, thresholds, page limits, zoom/multi-touch rejection and retained credits/native cancellation hooks, page-motion direction/reduced-motion planning, top-only page controls and semantic zoom icons. Fold tests cover centred/zoomed/landscape paper, both scroll offsets, 101 progress points in both directions, anchored ink, bounded band sizes, invalid/unmeasured/offscreen inputs, physical RTL-independent coordinates and the separation of decorative transforms from scripture. Selection tests cover every ayah fragment on all 548 pages, full-line selection bounds, popup safe-edge/zoom/scroll/multi-line geometry, exact word anchors and clamped resume offsets, the 500ms/movement guard, canonical reading-point validation (including page-spanning verses), legacy-state preservation, icon-only actions and cancellation/accessibility wiring.
 - Playback-follow tests cover all 6,236 verse-to-word/page targets, split-verse retention, malformed/untimed tracks, readable/offscreen/short-pane geometry, primitive subscription snapshots and actual service/engine code with explicit Android/iOS transport test doubles. Natural completion, native playlist track-change events, pause/resume, seek, next/previous, sequential translation, repeat-one and clear are checked; these contract tests are not installed-device playback tests.
@@ -137,7 +157,7 @@ Passing checks:
 - Real Chromium touch input, not direct page setters: right/left swipes, first/final bounds, gesture-saved page restoration, a swipe beginning on a verse without opening its panel, later verse taps, vertical/short/cancelled drags, two-finger starts and an added finger after capture. Zoomed horizontal/vertical panning and overflowing unzoomed landscape scrolling remain functional.
 - The menu returns on exit, all five tabs, the full audio player and explicit existing Reader handoff. Returning hides it again. Five active-audio viewport/inset fixtures keep the page viewport clear of the lowered mini-player; closing audio reclaims that space. System dark/light changes remount navigation while preserving the page and focused-screen-only menu rule.
 - **44 localized top-layout checks**: all 22 interface languages at 280px and 390px widths, using a three-digit page counter. All page/Verse/Sources/Surah/Juz/save/zoom targets remain in the top area without overlap.
-- Actual intermediate fold frames were observed in **12 normal-motion scenarios** (17–21 frames each in the R98 Chromium run, with all scenarios rerun successfully after R99): next, previous, direct jump, zoomed jumps in both directions, vertically scrolled landscape in both directions, a compact cover screen, and next/previous folds in Urdu RTL and dark mode. The crease moved monotonically, the mask and face translations cancelled exactly, and the outgoing and incoming scripture stayed stationary without scaling, reflection or skew. Real curved-back and separate shadow gradients were present; the old layer was removed at rest. The snapshot retained its exact zoom and horizontal/vertical scroll offsets while the revealed page independently reset its scroll. In-flight rotation, enabling reduced motion, and leaving/re-entering the screen all settled correctly. Reduced-motion swipes created no outgoing animation layer. Mid-fold QA images are actual running-app captures, not generated or staged mockups. This is browser interaction evidence, not a native frame-rate benchmark.
+- Actual intermediate fold frames were observed in **12 normal-motion scenarios** (17–21 frames each in the R98 Chromium run, with all scenarios rerun successfully after R99 and R100): next, previous, direct jump, zoomed jumps in both directions, vertically scrolled landscape in both directions, a compact cover screen, and next/previous folds in Urdu RTL and dark mode. The crease moved monotonically, the mask and face translations cancelled exactly, and the outgoing and incoming scripture stayed stationary without scaling, reflection or skew. Real curved-back and separate shadow gradients were present; the old layer was removed at rest. The snapshot retained its exact zoom and horizontal/vertical scroll offsets while the revealed page independently reset its scroll. In-flight rotation, enabling reduced motion, and leaving/re-entering the screen all settled correctly. Reduced-motion swipes created no outgoing animation layer. Mid-fold QA images are actual running-app captures, not generated or staged mockups. This is browser interaction evidence, not a native frame-rate benchmark.
 - The magnifier lens/handle and plus/minus SVG strokes were checked across the zoom cycle, not merely the icon name or button label.
 - Twelve modal geometry checks: page, Surah, Juz, saved pages, sources and verse list, each at small-phone and landscape sizes with explicit local modal inset fixtures. Web modals are portals without the Android-only provider; the fixtures are correctly applied to their local roots, not the unrelated app boundary behind them.
 - Page limits, rejected 604-page input, Persian-digit page entry, Surah/Juz jumps, page saving, 2× zoom, exit/re-entry restoration and independently preserved existing preferences/position/bookmarks/notes.
@@ -149,19 +169,19 @@ Passing checks:
 
 - Three icon-only actions, canonical accessible labels, non-overlapping 44px targets, on-page highlighting and safe popup geometry on phone, zoomed/scrolled pages and landscape Verse-list selection.
 - A normal tap does not save a reading point. The bookmark icon does, shows its selected state and leaves the marker visible after dismissal.
-- A real held touch does not overwrite the marker at 350ms, then saves before release after the half-second threshold (520ms observed in the final R99 browser run). Short released presses, two-finger starts, an added finger, cancelled/moved touches and an in-flight resize leave the existing marker unchanged.
+- A real held touch does not overwrite the marker at 350ms, then saves before release after the half-second threshold (519ms observed in the final R100 browser run). Short released presses, two-finger starts, an added finger, cancelled/moved touches and an in-flight resize leave the existing marker unchanged.
 - Exact word/line resume after browsing another page, plus exit/re-entry restoration at 1.5×. Page bookmarks remain separate; the existing Reader's preferences, position, bookmarks and notes remain byte-for-byte unchanged.
 - Verse-list selection reveals an offscreen ayah; real panning and zoom dismiss the popup. Outside mouse clicks dismiss it, Escape works, and dragging a popup icon neither turns a page nor saves a marker.
 - **44 localized popup checks**, all 22 interface languages at 280px and 390px, including RTL and dark-mode captures. The focused runner's 23 contexts and the full reader runner's 29 contexts all had empty page/console/HTTP/failed-request arrays.
 
-`tests/verify-indopak-playback-web.cjs` adds actual streamed-audio advancement checks against the R99 production export:
+`tests/verify-indopak-playback-web.cjs` adds actual streamed-audio advancement checks, rerun against the final R100 production export:
 
 - Natural **55:5 → 55:6** playback moves every printed fragment of the recitation highlight; the separate saved **55:5** marker remains unchanged. The popup closes without losing the playing highlight, pause/resume keeps the current ayah, and a different manually selected popup does not replace the audio key.
 - Repeat-one retains the ayah until the real queue advances. Real near-end media seeks (not fabricated ended events) keep the remaining checks bounded: **2:4 → 2:5** follows page **2 → 3**, waits for an active touch to end, and updates mini-player metadata. Manual browsing does not snap back.
 - Zoomed landscape **18:109 → 18:110** reveals the actual current line. Playing split **2:25** on page **5** does not jump back to its first page. A hidden reader does not turn/persist pages behind the audio screen; returning follows the actual current ayah.
 - Real English spoken translation **1:1 → translation 1:1 → Arabic 1:2** retains then advances the correct key. Urdu dark-mode playback also follows. Closing audio removes its highlight without altering existing Reader data, the exact saved mark or page bookmarks.
 - The three isolated browser contexts recorded 19 real media observations, with no page/console/HTTP/unexpected request failures. Intentional cancelled media-range requests during source changes/queue clearing are retained separately in `expectedMediaCancellations`, not counted as playback or network failures. No audio/content responses, completion callbacks or audio state are mocked.
-- The separate full reader sweep was repeated after R99: all **548 pages offline**, **zero failed outline bounds**, **274,031ms** for the exhaustive page sweep; the reader and popup runners again passed all 29 and 23 contexts respectively.
+- The separate full reader sweep was repeated after R100: all **548 pages offline**, **zero failed outline bounds**, **303,890ms** for the exhaustive page sweep; the reader and popup runners again passed all 29 and 23 contexts respectively. This full-sweep duration includes deliberate touch/wait/geometry checks and is not a rendering-performance comparison.
 
 The existing running-web regressions also passed against this same export:
 
@@ -171,7 +191,7 @@ The existing running-web regressions also passed against this same export:
 
 ### Production exports and limitations
 
-Separate **web, Android and iOS production exports passed**, including native Hermes bytecode, after R99. In this 2 GB sandbox, final native exports ran sequentially with one Metro worker, disk-backed temporary/export paths and 320 MB Node heaps for both Android and iOS. TypeScript ran separately with a larger heap. The original supplied font was hash-verified in both new native asset sets. No app or native release configuration was changed. The pre-existing Apple team configuration warning remains unchanged.
+Separate **web, Android and iOS production exports passed**, including native Hermes bytecode, after R100. In this 2 GB sandbox, final native exports ran sequentially with one Metro worker, disk-backed temporary/export paths and 320 MB Node heaps for both Android and iOS. TypeScript ran separately with a larger heap. The original supplied font was hash-verified in both new native asset sets. No app or native release configuration was changed. The pre-existing Apple team configuration warning remains unchanged.
 
 These are **not APK/AAB installation or physical Android/iOS device tests**. No emulator/device or store release was used. Chromium inset fixtures do not exercise an OEM system navigation service, native long-press arbitration, native screen-reader traversal, native edge-back/swipe arbitration or native keyboard. Physical-device visual/interaction and animation review remains part of release QA. There is no Vercel deployment or store submission in this change.
 
@@ -186,10 +206,17 @@ npm run test:regressions
 node node_modules/typescript/bin/tsc --noEmit
 
 # Against a freshly exported, locally served production WEB app:
-INDOPAK_URL=http://127.0.0.1:8106 INDOPAK_SWEEP=1 \
+INDOPAK_URL=http://127.0.0.1:8107 INDOPAK_SWEEP=1 \
   node tests/verify-indopak-web.cjs
-INDOPAK_URL=http://127.0.0.1:8106 node tests/verify-indopak-ayah-web.cjs
-INDOPAK_URL=http://127.0.0.1:8106 node tests/verify-indopak-playback-web.cjs
+INDOPAK_URL=http://127.0.0.1:8107 node tests/verify-indopak-ayah-web.cjs
+INDOPAK_URL=http://127.0.0.1:8107 node tests/verify-indopak-playback-web.cjs
+INDOPAK_URL=http://127.0.0.1:8107 node tests/verify-indopak-zoom-web.cjs
+
+# Compare independently served baseline and optimized exports on the same machine:
+INDOPAK_URL=http://127.0.0.1:8106 INDOPAK_ZOOM_PROFILE=/tmp/zoom-before.json \
+  node tests/profile-indopak-zoom-web.cjs
+INDOPAK_URL=http://127.0.0.1:8107 INDOPAK_ZOOM_PROFILE=/tmp/zoom-after.json \
+  node tests/profile-indopak-zoom-web.cjs
 ```
 
-Use the Node version required by this Expo project. Browser reports/screenshots go to a temporary QA directory by default; `INDOPAK_ARTIFACTS_DIR`, `INDOPAK_AYAH_ARTIFACTS_DIR` and `INDOPAK_PLAYBACK_ARTIFACTS_DIR` can override each runner’s output directory.
+Use the Node version required by this Expo project. Browser reports/screenshots go to a temporary QA directory by default; `INDOPAK_ARTIFACTS_DIR`, `INDOPAK_AYAH_ARTIFACTS_DIR`, `INDOPAK_PLAYBACK_ARTIFACTS_DIR` and `INDOPAK_ZOOM_ARTIFACTS_DIR` can override each runner’s output directory. The profiler writes to `INDOPAK_ZOOM_PROFILE`.

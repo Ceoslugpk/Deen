@@ -246,7 +246,9 @@ if (require.main === module) (async () => {
     assert.ok(await page.getByTestId('indopak-vertical-scroll').evaluate(e=>e.scrollTop>10),'Zoomed vertical panning still scrolls');
     await page.setViewportSize({width:280,height:1440}); await pause(page);
     const tallBefore = await page.getByTestId('indopak-horizontal-scroll').evaluate(e=>e.scrollLeft);
-    await touchSwipe(page,{dx:100}); await expectPage(page,2);
+    // Zoom/rotation now retain the page point instead of forcing the right edge.
+    // Pan toward available content; an outward drag at the left bound correctly cannot move.
+    await touchSwipe(page,{dx:tallBefore>20?100:-100}); await expectPage(page,2);
     assert.ok(Math.abs(await page.getByTestId('indopak-horizontal-scroll').evaluate(e=>e.scrollLeft)-tallBefore)>10,'Zoomed horizontal panning survives a non-overflowing vertical wrapper');
     await page.getByTestId('indopak-zoom').click(); await page.getByTestId('indopak-zoom').click();
     await page.setViewportSize({width:390,height:844}); await pause(page);

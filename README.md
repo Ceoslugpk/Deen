@@ -103,7 +103,7 @@ Makkah itself the dial is replaced by a short note: every direction here is the 
 ### Qur'an
 
 - **Reader** — all 114 surahs in Uthmani script, verse by verse, with a translation beside the Arabic
-- **16-line Quran** — **Quran → Explore**, a separate offline Taj Company IndoPak edition: 548 original pages, source line breaks, matching Nastaleeq typography, top-page navigation, lightweight paper-fold swipes, Surah/Juz directories, zoom, independent saved pages, inline ayah actions, playback-follow ayah highlighting and an exact continue-reading marker. [Implementation and validation](docs/offline-indopak-16-r94.md); [resource permissions and original notices](resources/quran/indopak-taj-16/NOTICE.md).
+- **16-line Quran** — **Quran → Explore**, a separate offline Taj Company IndoPak edition: 548 original pages, source line breaks, matching Nastaleeq typography, top-page navigation, lightweight paper-fold swipes, Surah/Juz directories, position-preserving zoom with memoized page rendering, independent saved pages, inline ayah actions, playback-follow ayah highlighting and an exact continue-reading marker. [Implementation and validation](docs/offline-indopak-16-r94.md); [resource permissions and original notices](resources/quran/indopak-taj-16/NOTICE.md).
 - **Four Arabic scripts** — Uthmani, Imla'i simple, IndoPak and Tajweed
 - **484 translations** and every tafsir; **Tafsir** on its own, and **Tafsir Compare** side by side
 - **Transliteration** — how the Arabic sounds, with a picker that searches all 114 surahs by number, Latin name, Arabic name or meaning
