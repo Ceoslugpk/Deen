@@ -37,13 +37,13 @@ export function indopakSwipePage(page: number, zoom: number, width: number, gest
   return validIndopakPage(target) ? target : null;
 }
 
-/** Keep the ink crisp: a short native-driven horizontal slide, never a skew/3D page curl. */
+/** The lightweight fold keeps original ink crisp: only its clipping edge and blank back move. */
 export function indopakTurnPlan(from: number, to: number, width: number, reducedMotion: boolean): {
   direction: 1 | -1; distance: number; duration: number;
 } | null {
   if (reducedMotion || !validIndopakPage(from) || !validIndopakPage(to) || from === to
     || !Number.isFinite(width) || width <= 0) return null;
-  return { direction: to > from ? 1 : -1, distance: width, duration: 260 };
+  return { direction: to > from ? 1 : -1, distance: width, duration: 320 };
 }
 
 /** The icon describes the next zoom action; the visible number describes the current scale. */

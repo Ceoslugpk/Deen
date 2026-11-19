@@ -122,7 +122,7 @@ test('the short source panel retains provider credit while full notices and orig
 test('page motion follows Quran RTL order for adjacent pages and direct jumps', () => {
   for (const [from,to,direction] of [[1,2,1],[2,1,-1],[1,548,1],[548,274,-1]]) {
     const plan = indopakTurnPlan(from,to,390,false);
-    assert.equal(plan.direction,direction); assert.equal(plan.distance,390); assert.equal(plan.duration,260);
+    assert.equal(plan.direction,direction); assert.equal(plan.distance,390); assert.equal(plan.duration,320);
   }
 });
 
@@ -160,7 +160,9 @@ test('page motion retains only a non-interactive outgoing canvas and cancels cle
   assert.ok(component.includes('useNativeDriver: true')); assert.ok(component.includes('animation.stop()'));
   assert.ok(component.includes('turn.viewport.width !== viewport.width')); assert.ok(component.includes('turn.viewport.height !== viewport.height'));
   assert.ok(component.includes('scroll: { ...scroll.current }')); assert.ok(component.includes('interactive={false}'));
-  assert.ok(component.includes('importantForAccessibility="no-hide-descendants"')); assert.ok(component.includes('pointerEvents="none"'));
+  const fold=fs.readFileSync(path.join(__dirname,'../src/components/IndopakPageFold.tsx'),'utf8');
+  assert.ok(component.includes('<IndopakPageFold'));
+  assert.ok(fold.includes('importantForAccessibility="no-hide-descendants"')); assert.ok(fold.includes('pointerEvents="none"'));
   assert.ok(component.includes('turning.current'));
   assert.ok(!component.includes('rotateY')); assert.ok(!component.includes('perspective'));
 });

@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, FlatList, PanResponder, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type ViewStyle } from 'react-native';
+import { ActivityIndicator, Animated, Easing, FlatList, PanResponder, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type ViewStyle } from 'react-native';
 import { SystemModal } from './SystemModal';
 import { IndopakPageCanvas } from './IndopakPageCanvas';
+import { IndopakPageFold } from './IndopakPageFold';
 import { useCalmMotion } from '../design/useCalmMotion';
-import { easeOut } from '../design/motion';
 import { useSafeContentFrame } from './SystemNavigationBoundary';
 import { tx } from '../services/arabicCopy';
 import { indopakText } from '../services/indopakCopy';
@@ -96,14 +96,14 @@ export function IndopakMushafReader({ colors: C, dark, language, rtl, icon, init
       finish(); return;
     }
     turnProgress.setValue(0);
-    const animation = Animated.timing(turnProgress, { toValue: 1, duration: turn.plan.duration, easing: easeOut, useNativeDriver: true });
+    const animation = Animated.timing(turnProgress, { toValue: 1, duration: turn.plan.duration, easing: Easing.inOut(Easing.cubic), useNativeDriver: true });
     animation.start(({ finished }) => { if (finished) finish(); });
     return () => { live = false; animation.stop(); };
   }, [turn, still, viewport.width, viewport.height, state.zoom, turnProgress]);
   const goPage = useCallback((number: number) => {
     if (!validIndopakPage(number) || !hydrated || turning.current) return;
     setVerse(null); setPicker(null);
-    const from = latest.current.page, plan = indopakTurnPlan(from, number, viewport.width, still);
+    const from = latest.current.page, plan = viewport.height > 0 ? indopakTurnPlan(from, number, viewport.width, still) : null;
     if (plan) {
       turning.current = true;
       setTurn({ from, plan, viewport: { ...viewport }, size: { ...size }, zoom: latest.current.zoom, scroll: { ...scroll.current } });
@@ -200,17 +200,7 @@ export function IndopakMushafReader({ colors: C, dark, language, rtl, icon, init
         : fontError || !page ? <View style={styles.center}><Text style={[styles.message, { color: C.ink }]}>{copy(fontError ? 'fontError' : 'dataError')}</Text>
           {fontError && button(T('Retry'), () => setAttempt(n => n + 1), 'refresh-outline', { text: T('Retry') })}</View>
         : <>
-          {turn && <Animated.View testID="indopak-page-outgoing" pointerEvents="none" accessible={false}
-            accessibilityElementsHidden importantForAccessibility="no-hide-descendants" aria-hidden={true}
-            style={[StyleSheet.absoluteFill, { backgroundColor: C.bg,
-              transform: [{ translateX: turnProgress.interpolate({ inputRange: [0, 1], outputRange: [0, turn.plan.direction * turn.plan.distance] }) }] }]}>
-            <View style={[styles.snapshot, { width: Math.max(turn.viewport.width, turn.size.width), height: Math.max(turn.viewport.height, turn.size.height),
-              transform: [{ translateX: -turn.scroll.x }, { translateY: -turn.scroll.y }] }]}>
-              <IndopakPageCanvas number={turn.from} width={turn.size.width} height={turn.size.height} colors={C} dark={dark} language={language} interactive={false}/>
-            </View>
-          </Animated.View>}
-          <Animated.View testID="indopak-page-current" style={[styles.fill, { backgroundColor: C.bg,
-            transform: [{ translateX: turn ? turnProgress.interpolate({ inputRange: [0, 1], outputRange: [-turn.plan.direction * turn.plan.distance, 0] }) : 0 }] }]}>
+          <View testID="indopak-page-current" style={[styles.fill, { backgroundColor: C.bg }]}>
             <ScrollView ref={vertical} testID="indopak-vertical-scroll" nestedScrollEnabled scrollEnabled={Platform.OS === 'web' || size.height > viewport.height + 1} showsVerticalScrollIndicator={size.height > viewport.height}
               scrollEventThrottle={16} onScroll={({ nativeEvent }) => { scroll.current.y = nativeEvent.contentOffset.y; }}
               contentContainerStyle={{ minHeight: viewport.height, justifyContent: 'center' }}>
@@ -221,7 +211,14 @@ export function IndopakMushafReader({ colors: C, dark, language, rtl, icon, init
                 <IndopakPageCanvas number={state.page} width={size.width} height={size.height} colors={C} dark={dark} language={language} verse={verse} onWordPress={openWord}/>
               </ScrollView>
             </ScrollView>
-          </Animated.View>
+          </View>
+          {turn && <IndopakPageFold progress={turnProgress} direction={turn.plan.direction} viewport={turn.viewport} size={turn.size}
+            scroll={turn.scroll} colors={C} dark={dark}>
+            <View style={[styles.snapshot, { width: Math.max(turn.viewport.width, turn.size.width), height: Math.max(turn.viewport.height, turn.size.height),
+              transform: [{ translateX: -turn.scroll.x }, { translateY: -turn.scroll.y }] }]}>
+              <IndopakPageCanvas number={turn.from} width={turn.size.width} height={turn.size.height} colors={C} dark={dark} language={language} interactive={false}/>
+            </View>
+          </IndopakPageFold>}
         </>}
     </View>
     {picker && <SystemModal visible transparent animationType="fade" onRequestClose={() => setPicker(null)}>

@@ -7,7 +7,7 @@ const path = require('node:path');
 const { chromium } = require('playwright');
 const meta = require('../src/data/indopak16/meta.json');
 const url = process.env.INDOPAK_URL || 'http://127.0.0.1:8106';
-const output = process.env.INDOPAK_ARTIFACTS_DIR || '/tmp/islamic-r96-web-smoke';
+const output = process.env.INDOPAK_ARTIFACTS_DIR || '/tmp/islamic-r97-web-smoke';
 const key = '@deen/quran/indopak-taj-16/state/v1';
 const originalKeys = ['@deen/quran/preferences/v1', '@deen/quran/position/v1', '@deen/quran/bookmarks/v1', '@deen/quran/notes/v1'];
 const pause = page => page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
@@ -133,40 +133,62 @@ async function zoomIcon(page, plus) {
 }
 async function sampleMotion(page, action, expectedPage, direction, screenshot) {
   const before=await box(page.getByTestId('indopak-page-svg'));
+  const stage=await box(page.getByTestId('indopak-page-viewport'));
+  const left=Math.max(0,before.x-stage.x), right=Math.min(stage.width,before.right-stage.x);
   await page.evaluate(() => {
     window.__indopakSampling=true; window.__indopakFrames=[];
     const frame=()=>{
       if (!window.__indopakSampling) return;
-      const current=document.querySelector('[data-testid="indopak-page-current"]');
-      const outgoing=document.querySelector('[data-testid="indopak-page-outgoing"]');
-      const matrix=e=>{const m=new DOMMatrixReadOnly(getComputedStyle(e).transform); return {x:m.m41,a:m.a,b:m.b,c:m.c,d:m.d};};
-      const art=outgoing?.querySelector('svg')?.getBoundingClientRect();
-      window.__indopakFrames.push({time:performance.now(),page:document.querySelector('[data-testid="indopak-page-select"]')?.textContent,
-        current:current ? matrix(current) : null,outgoing:outgoing ? matrix(outgoing) : null,
+      const find=id=>document.querySelector(`[data-testid="${id}"]`);
+      const current=find('indopak-page-current'), outgoing=find('indopak-page-outgoing');
+      const matrix=e=>{if(!e)return null;const m=new DOMMatrixReadOnly(getComputedStyle(e).transform); return {x:m.m41,y:m.m42,a:m.a,b:m.b,c:m.c,d:m.d};};
+      const rect=e=>{if(!e)return null;const r=e.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height,right:r.right};};
+      const mask=find('indopak-fold-mask'), face=find('indopak-fold-face'), edge=find('indopak-fold-edge'), paper=find('indopak-fold-paper');
+      window.__indopakFrames.push({time:performance.now(),page:find('indopak-page-select')?.textContent,
+        current:matrix(current),incoming:rect(find('indopak-page-svg')),outgoing:matrix(outgoing),
         hidden:outgoing?.getAttribute('aria-hidden'),targets:outgoing?.querySelectorAll('[data-testid^="indopak-word-"]').length,
-        snapshot:art ? {x:art.x,y:art.y,width:art.width,height:art.height} : null});
+        snapshot:rect(face?.querySelector('svg')),mask:matrix(mask),face:matrix(face),edge:matrix(edge),paper:matrix(paper),
+        paperOpacity:paper ? Number(getComputedStyle(paper).opacity) : null,
+        back:find('indopak-fold-back')?.getAttribute('d'),shadow:find('indopak-fold-shadow')?.getAttribute('fill'),
+        gradients:edge?.querySelectorAll('linearGradient').length});
       requestAnimationFrame(frame);
     }; requestAnimationFrame(frame);
   });
-  await action();
-  if (screenshot && await page.getByTestId('indopak-page-outgoing').count()) await page.screenshot({path:path.join(output,screenshot)});
+  // Capture the real running animation, rather than disabling it or rendering a mock frame.
+  const capture=screenshot ? (async()=>{
+    await page.waitForFunction(({left,right})=>{
+      const edge=document.querySelector('[data-testid="indopak-fold-edge"]');
+      if(!edge)return false;
+      const x=new DOMMatrixReadOnly(getComputedStyle(edge).transform).m41;
+      return x>left+(right-left)*.23 && x<left+(right-left)*.77;
+    },{left,right},{polling:'raf'});
+    await page.screenshot({path:path.join(output,screenshot)});
+  })():null;
+  await action(); if(capture)await capture;
   await expectPage(page,expectedPage);
   const frames=await page.evaluate(()=>{window.__indopakSampling=false;return window.__indopakFrames;});
   const active=frames.filter(f=>f.page?.includes(`${expectedPage} / 548`) && f.outgoing);
-  assert.ok(active.length>=3,'An actual multi-frame page transition is visible');
-  assert.ok(active.some(f=>direction*f.current.x < -20),'The incoming page starts on the correct RTL side');
-  assert.ok(active.some(f=>direction*f.outgoing.x > 20),'The outgoing page leaves in the swipe direction');
+  assert.ok(active.length>=3,'An actual multi-frame paper-fold transition is visible');
+  assert.ok(active.some(f=>f.edge.x>left+20 && f.edge.x<right-20),'The fold crosses the visible paper, revealing the next page underneath');
+  assert.ok(active.some(f=>f.paperOpacity>.5 && f.paper.a>.3),'The curved blank back and soft shadow become visible');
   let previous=-Infinity;
   for (const frame of active) {
     assert.equal(frame.hidden,'true'); assert.equal(frame.targets,0,'Outgoing scripture has no duplicate interactive verse targets');
-    assert.ok(direction*frame.current.x>=previous-1,'The page settles monotonically instead of snapping backward'); previous=direction*frame.current.x;
-    for (const matrix of [frame.current,frame.outgoing]) {
-      assert.ok(Math.abs(matrix.a-1)<.001 && Math.abs(matrix.d-1)<.001 && Math.abs(matrix.b)<.001 && Math.abs(matrix.c)<.001,'Scripture slides without scale/skew distortion');
+    assert.ok(direction*frame.edge.x>=previous-1,'The crease advances monotonically in Quran RTL order'); previous=direction*frame.edge.x;
+    assert.ok(frame.edge.x>=left-.5 && frame.edge.x<=right+.5,'The crease stays inside the visible paper');
+    assert.ok(Math.abs(frame.mask.x+frame.face.x)<.1,'Counter-translation cancels the moving clip, keeping the ink anchored');
+    assert.ok(Math.abs((direction===1 ? frame.mask.x : frame.mask.x+stage.width)-frame.edge.x)<.5,'The clip edge follows the decorative crease');
+    for (const matrix of [frame.current,frame.outgoing,frame.mask,frame.face]) {
+      assert.ok(Math.abs(matrix.a-1)<.001 && Math.abs(matrix.d-1)<.001 && Math.abs(matrix.b)<.001 && Math.abs(matrix.c)<.001,'No letter scale, reflection or skew is introduced');
     }
-    assert.ok(Math.abs(frame.snapshot.x-frame.outgoing.x-before.x)<1.5 && Math.abs(frame.snapshot.y-before.y)<1.5,'The outgoing snapshot retains the previous page placement and scroll offset');
+    assert.ok(Math.abs(frame.current.x)<.1 && Math.abs(frame.outgoing.x)<.1,'Neither Quran page slides');
+    assert.ok(Math.abs(frame.snapshot.x-before.x)<1.5 && Math.abs(frame.snapshot.y-before.y)<1.5 && Math.abs(frame.snapshot.width-before.width)<1.5,'The outgoing ink retains its exact placement, zoom and both scroll offsets');
+    assert.ok(Math.abs(frame.incoming.x-active[0].incoming.x)<1.5 && Math.abs(frame.incoming.y-active[0].incoming.y)<1.5,'The revealed next page remains stationary');
+    assert.equal(frame.gradients,2,'Separate paper and soft shadow gradients are rendered');
+    assert.ok(frame.back.includes(' C ') && frame.shadow.startsWith('url(#'),'Only the blank decorative back is curved/shaded');
   }
   const final=frames.at(-1); assert.ok(Math.abs(final.current.x)<.5 && !final.outgoing,'The old layer is removed and the current page ends at rest');
-  return {frames:active.length,first:active[0],last:active.at(-1),settled:final};
+  return {frames:active.length,stationaryInk:true,curvedBlankBack:true,softShadow:true,rtlDirection:direction,first:active[0],last:active.at(-1),settled:final};
 }
 async function insets(page, values) {
   await page.getByTestId('system-window-boundary').first().evaluate((e, values) => {
@@ -249,7 +271,7 @@ async function insets(page, values) {
         await layout(page, n);
       }
       await context.setOffline(false);
-      report.allPageSweep = { pages: 548, offline: true, milliseconds: Date.now() - started, failedBounds: 0 };
+      report.allPageSweep = { pages: 548, offline: true, reducedMotion: true, milliseconds: Date.now() - started, failedBounds: 0 };
       console.log('All 548 pages rendered offline with correct row counts and every original-font outline inside the printed body.');
     }
     await gotoPage(page,1); assert.equal(await page.getByTestId('indopak-previous').count(),0);
@@ -397,7 +419,19 @@ async function insets(page, values) {
     await motion.page.getByTestId('indopak-zoom').click();
     await touchSwipe(motion.page,{dx:120}); await touchSwipe(motion.page,{dx:0,dy:-145});
     report.motion.zoomedJump=await sampleMotion(motion.page,()=>gotoPage(motion.page,400),400,1);
+    await touchSwipe(motion.page,{dx:110}); await touchSwipe(motion.page,{dx:0,dy:-110});
+    report.motion.zoomedPreviousJump=await sampleMotion(motion.page,()=>gotoPage(motion.page,274),274,-1,'zoomed-page-fold.png');
     await motion.page.getByTestId('indopak-zoom').click(); await motion.page.getByTestId('indopak-zoom').click();
+    await motion.page.setViewportSize({width:844,height:390}); await pause(motion.page);
+    await touchSwipe(motion.page,{dx:0,dy:-150});
+    assert.ok(await motion.page.getByTestId('indopak-vertical-scroll').evaluate(e=>e.scrollTop>10),'Landscape fold starts from a real scrolled position');
+    report.motion.scrolledLandscape=await sampleMotion(motion.page,()=>touchSwipe(motion.page,{dx:155}),275,1,'landscape-page-fold.png');
+    assert.equal(await motion.page.getByTestId('indopak-vertical-scroll').evaluate(e=>e.scrollTop),0,'The revealed page resets to the top, independently of the outgoing snapshot');
+    await touchSwipe(motion.page,{dx:0,dy:-110});
+    report.motion.scrolledLandscapePrevious=await sampleMotion(motion.page,()=>touchSwipe(motion.page,{dx:-155}),274,-1);
+    await motion.page.setViewportSize({width:280,height:720}); await pause(motion.page);
+    report.motion.compact=await sampleMotion(motion.page,()=>touchSwipe(motion.page,{dx:110}),275,1,'compact-page-fold.png');
+    await motion.page.setViewportSize({width:390,height:844}); await pause(motion.page);
     await gotoPage(motion.page,274);
     await touchSwipe(motion.page,{dx:155});
     assert.equal(await motion.page.getByTestId('indopak-page-outgoing').count(),1,'Resize test interrupts an in-flight turn');
@@ -415,6 +449,14 @@ async function insets(page, values) {
     await motion.page.getByTestId('qtile-16-line Quran').scrollIntoViewIfNeeded(); await motion.page.getByTestId('qtile-16-line Quran').click();
     await expectPage(motion.page,277); await motion.page.getByTestId('floating-navigation-bar').waitFor({state:'detached'});
     report.motion.unmountCleanupAndRestore=true; await motion.context.close();
+    report.motion.variants=[];
+    for(const [language,dark] of [['ur',false],['en',true]]) {
+      const variant=await makePage(browser,language,dark,'no-preference'); active=variant.page; report.errors.push(variant.errors);
+      await variant.page.waitForTimeout(450); await gotoPage(variant.page,274);
+      const next=await sampleMotion(variant.page,()=>touchSwipe(variant.page,{dx:155}),275,1,`${language}-${dark?'dark':'rtl'}-page-fold.png`);
+      const previous=await sampleMotion(variant.page,()=>touchSwipe(variant.page,{dx:-155}),274,-1);
+      report.motion.variants.push({language,dark,next,previous}); await variant.context.close();
+    }
     report.localizedTop=[];
     for (const language of ['en','ar','ur','fa','ps','fr','tr','ru','uz','kk','zh','vi','az','bs','bg','si','bn','hi','id','ms','ta','ml']) {
       const translated=await makePage(browser,language); active=translated.page; report.errors.push(translated.errors);
@@ -441,7 +483,7 @@ async function insets(page, values) {
     await themed.page.getByTestId('floating-navigation-bar').waitFor();
     report.themeRemount = {darkAndLight:true,pageRestored:true,menuScoped:true}; await themed.context.close();
     for (const errors of report.errors) for (const [type, values] of Object.entries(errors)) assert.deepEqual(values, [], `${type} errors`);
-    console.log(JSON.stringify({pages:report.pages.length,profiles:report.profiles.length,insets:report.insets.length,modals:report.modals.length,swipes:report.swipes,menuRestored:report.menuRestoredOnExit,rtlSwipes:report.rtlSwipes,zoomIcons:report.zoomIcons,reducedMotion:report.reducedMotion,motion:report.motion ? {nextFrames:report.motion.next.frames,previousFrames:report.motion.previous.frames,jumpFrames:report.motion.jump.frames,zoomedJumpFrames:report.motion.zoomedJump.frames,resizeSettled:report.motion.resizeSettled,reducedMotionChangeSettled:report.motion.reducedMotionChangeSettled,unmountCleanupAndRestore:report.motion.unmountCleanupAndRestore}:null,activeAudio:report.activeAudio.length,audioScreenMenuRestored:report.audioScreenMenuRestored,themeRemount:report.themeRemount,localizedTop:report.localizedTop.length,offline:report.offline,allPageSweep:report.allPageSweep,restored:report.restored,audio:report.audio,existingReader:report.existingReader,errors:report.errors},null,2));
+    console.log(JSON.stringify({pages:report.pages.length,profiles:report.profiles.length,insets:report.insets.length,modals:report.modals.length,swipes:report.swipes,menuRestored:report.menuRestoredOnExit,rtlSwipes:report.rtlSwipes,zoomIcons:report.zoomIcons,reducedMotion:report.reducedMotion,motion:report.motion ? {nextFrames:report.motion.next.frames,previousFrames:report.motion.previous.frames,jumpFrames:report.motion.jump.frames,zoomedJumpFrames:report.motion.zoomedJump.frames,zoomedPreviousFrames:report.motion.zoomedPreviousJump.frames,landscapeFrames:report.motion.scrolledLandscape.frames,landscapePreviousFrames:report.motion.scrolledLandscapePrevious.frames,compactFrames:report.motion.compact.frames,variants:report.motion.variants.map(v=>({language:v.language,dark:v.dark,nextFrames:v.next.frames,previousFrames:v.previous.frames})),resizeSettled:report.motion.resizeSettled,reducedMotionChangeSettled:report.motion.reducedMotionChangeSettled,unmountCleanupAndRestore:report.motion.unmountCleanupAndRestore}:null,activeAudio:report.activeAudio.length,audioScreenMenuRestored:report.audioScreenMenuRestored,themeRemount:report.themeRemount,localizedTop:report.localizedTop.length,offline:report.offline,allPageSweep:report.allPageSweep,restored:report.restored,audio:report.audio,existingReader:report.existingReader,errors:report.errors},null,2));
   } catch(error) {
     report.failure = error.stack || String(error); if(active && !active.isClosed()) await active.screenshot({path:path.join(output,'failure.png')}).catch(()=>{}); throw error;
   } finally { fs.writeFileSync(path.join(output,'report.json'),JSON.stringify(report,null,2)); await browser.close(); }
