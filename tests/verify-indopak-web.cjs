@@ -13,15 +13,15 @@ const originalKeys = ['@deen/quran/preferences/v1', '@deen/quran/position/v1', '
 const pause = page => page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
 const box = item => item.evaluate(e => { const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height, right: r.right, bottom: r.bottom }; });
 function inside(a, b, label) { assert.ok(a.x >= b.x - 1 && a.y >= b.y - 1 && a.right <= b.right + 1 && a.bottom <= b.bottom + 1, `${label}: ${JSON.stringify({ a, b })}`); }
-async function makePage(browser, language = 'en', dark = false, reducedMotion = 'reduce') {
+async function makePage(browser, language = 'en', dark = false, reducedMotion = 'reduce', audioSettings = {}) {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, reducedMotion });
-  await context.addInitScript(({ lang, dark }) => {
+  await context.addInitScript(({ lang, dark, audioSettings }) => {
     localStorage.setItem('@deen/onboarding/v1', JSON.stringify({ completed: true, app: lang, text: 'en', voice: 'en', locationAsked: true, notificationsAsked: true }));
     localStorage.setItem('@deen/language/v1', lang);
     localStorage.setItem('@deen/location/v1', JSON.stringify({ latitude: 25.2048, longitude: 55.2708, label: 'Dubai', timezone: 'Asia/Dubai' }));
     localStorage.setItem('deen-theme-v1', dark === 'system' ? 'system' : dark ? 'dark' : 'light');
     localStorage.setItem('deen-theme-name-v1', 'islamic');
-    localStorage.setItem('@deen/audio-settings/v1', JSON.stringify({ translationAudioEnabled: false }));
+    localStorage.setItem('@deen/audio-settings/v1', JSON.stringify({ translationAudioEnabled: false, ...audioSettings }));
     localStorage.setItem('@deen/quran/preferences/v1', JSON.stringify({ scriptEdition: 'quran-uthmani', scriptName: 'Uthmani', arabicFont: 'hafs', fontSize: 30,
       translationEdition: 'tr_en_saheeh_international', translationName: 'Saheeh International', translationLanguage: 'English', translationAppLanguage: lang, readingMode: 'cards' }));
     localStorage.setItem('@deen/quran/position/v1', JSON.stringify({ surahId: 55, surahName: 'Ar-Rahman', verseKey: '55:5', ayah: 5, page: 531, updatedAt: 123 }));
@@ -34,7 +34,7 @@ async function makePage(browser, language = 'en', dark = false, reducedMotion = 
       window.__indopakPlays.push(this.src || this.currentSrc);
       return Reflect.apply(originalPlay, this, args);
     };
-  }, { lang: language, dark });
+  }, { lang: language, dark, audioSettings });
   const page = await context.newPage(); page.setDefaultTimeout(25000);
   const errors = { page: [], console: [], http: [], requests: [] };
   page.on('pageerror', e => errors.page.push(e.message));

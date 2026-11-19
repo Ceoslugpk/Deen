@@ -11,13 +11,13 @@ import {
 
 type Props = {
   number: number; width: number; height: number; colors: Record<string, string>; dark: boolean; language: string;
-  verse?: string | null; readingPoint?: string | null; interactive?: boolean;
+  verse?: string | null; recitingVerse?: string | null; readingPoint?: string | null; interactive?: boolean;
   onWordPress?: (key: string, wordId: number) => void; onWordLongPress?: (key: string, wordId: number) => void;
   onWordPressIn?: (key: string, wordId: number, event: GestureResponderEvent) => void; onWordPressOut?: () => void;
 };
 
 /** Same original-font outlines for the live page and its short-lived, non-interactive outgoing snapshot. */
-export function IndopakPageCanvas({ number, width, height, colors: C, dark, language, verse, readingPoint, onWordPress, onWordLongPress, onWordPressIn, onWordPressOut, interactive = true }: Props) {
+export function IndopakPageCanvas({ number, width, height, colors: C, dark, language, verse, recitingVerse, readingPoint, onWordPress, onWordLongPress, onWordPressIn, onWordPressOut, interactive = true }: Props) {
   const lastTouch = useRef(0);
   const page = useMemo(() => indopakPage(number), [number]);
   const placed = useMemo(() => placeIndopakPage(page), [page]);
@@ -35,10 +35,13 @@ export function IndopakPageCanvas({ number, width, height, colors: C, dark, lang
       <Rect x={80} y={line.top + line.height * .22} width={840} height={line.height * .56} rx={14} fill={C.mint} stroke={C.gold} strokeWidth={1}/>
       <IndopakHeading word={meta.chapters[line.source.s! - 1].heading} cx={500} cy={line.top + line.height / 2} fontSize={44} fill={C.ink}/>
     </G> : <G key={line.source.n} testID={interactive ? `indopak-line-${line.source.n}` : undefined}>
-      {segments.filter(s => s.line === line.source.n && (s.verse === verse || s.verse === readingPoint)).map(s => <Rect key={s.verse}
-        testID={interactive ? `indopak-highlight-${s.verse}-${s.line}` : undefined} pointerEvents="none"
-        x={s.x} y={s.y} width={s.width} height={s.height} rx={7}
-        fill={s.verse === verse ? C.mint : alpha(C.gold, .14)} stroke={s.verse === readingPoint ? C.gold : C.green} strokeWidth={s.verse === readingPoint ? 2.4 : 1}/>) }
+      {segments.filter(s => s.line === line.source.n && (s.verse === verse || s.verse === recitingVerse || s.verse === readingPoint)).map(s =>
+        <G key={s.verse} pointerEvents="none" testID={interactive && s.verse === recitingVerse ? `indopak-reciting-${s.verse}-${s.line}` : undefined}>
+          <Rect testID={interactive ? `indopak-highlight-${s.verse}-${s.line}` : undefined} pointerEvents="none"
+            x={s.x} y={s.y} width={s.width} height={s.height} rx={7}
+            fill={s.verse === verse || s.verse === recitingVerse ? C.mint : alpha(C.gold, .14)} stroke={s.verse === readingPoint ? C.gold : C.green}
+            strokeWidth={s.verse === readingPoint ? 2.4 : s.verse === recitingVerse ? 2 : 1}/>
+        </G>) }
       {line.words.map(word => <G key={word.id}>
         {interactive && line.source.t === 'ayah' && <Rect x={word.boxX - 2} y={line.top + 2} width={word.width + 4} height={line.height - 4}
           fill="transparent" rx={7}

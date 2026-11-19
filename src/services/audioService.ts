@@ -453,7 +453,11 @@ export function subscribeAudioSettings(listener: (next: AudioSettings) => void) 
 }
 
 function emit(patch: Partial<AudioState>) {
-  state = { ...state, ...patch, track: patch.queue ? (patch.queue[patch.index ?? state.index] ?? null) : state.track };
+  // Advancing within a loaded queue changes its index, not the queue itself.
+  // Always derive the current track from both, or subscribers keep the first
+  // selected ayah even while the transport is already reciting the next one.
+  const queue = patch.queue ?? state.queue, index = patch.index ?? state.index;
+  state = { ...state, ...patch, track: queue[index] ?? null };
   listeners.forEach((listener) => listener(state));
 }
 
@@ -876,6 +880,9 @@ export async function setResumeOnStart(on: boolean) {
   void saveAudioSettings({ resumeOnStart: on });
 }
 
+
+/** Read-only external-store snapshot; observing a reader never changes playback or persistence. */
+export function getAudioSnapshot(): Readonly<AudioState> { return state; }
 
 export function subscribeAudio(listener: (next: AudioState) => void) {
   listeners.add(listener);

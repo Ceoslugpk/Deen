@@ -1,5 +1,8 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { AccessibilityInfo, ActivityIndicator, Animated, Easing, FlatList, PanResponder, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type GestureResponderEvent, type ViewStyle } from 'react-native';
+import { useIsFocused } from '@react-navigation/native';
+import { useIndopakRecitation } from '../services/useIndopakRecitation';
+import { indopakRecitationOffset, indopakRecitationTarget } from '../services/indopakPlayback';
 import { SystemModal } from './SystemModal';
 import { IndopakPageCanvas } from './IndopakPageCanvas';
 import { IndopakPageFold } from './IndopakPageFold';
@@ -34,6 +37,10 @@ type Props = {
 export function IndopakMushafReader({ colors: C, dark, language, rtl, icon, initialPage, onPlayVerse, onOpenVerse }: Props) {
   const frame = useSafeContentFrame();
   const still = useCalmMotion();
+  const focused = useIsFocused(), recitingVerse = useIndopakRecitation();
+  const [audioFollow, setAudioFollow] = useState<{ requested: string; wordId: number; started: boolean } | null>(null);
+  const lastFollowed = useRef('');
+  const [wordPressing, setWordPressing] = useState(false), [pageTouching, setPageTouching] = useState(false);
   const compact = frame.width < 330, short = frame.height < 500 && frame.width >= 400;
   const inlineTop = short && frame.width >= 640, showEdition = !compact && !short;
   const T = useCallback((value: string) => tx(language, value), [language]);
@@ -57,7 +64,7 @@ export function IndopakMushafReader({ colors: C, dark, language, rtl, icon, init
   const suppressVerseUntil = useRef(0), popupTouch = useRef(false);
   const hold = useRef({ active: false, blocked: true, held: false, x: 0, y: 0, page: 0, zoom: 1, wordId: 0, verse: '' });
   const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const endWord = useCallback(() => { hold.current.active = false; if (holdTimer.current) clearTimeout(holdTimer.current); holdTimer.current = null; }, []);
+  const endWord = useCallback(() => { hold.current.active = false; setWordPressing(false); if (holdTimer.current) clearTimeout(holdTimer.current); holdTimer.current = null; }, []);
   const vertical = useRef<React.ElementRef<typeof ScrollView>>(null), horizontal = useRef<React.ElementRef<typeof ScrollView>>(null);
   useEffect(() => {
     let live = true;
@@ -96,7 +103,7 @@ export function IndopakMushafReader({ colors: C, dark, language, rtl, icon, init
   const zoomControl = indopakZoomControl(state.zoom);
   const popover = selection ? indopakPopoverLayout(viewport, size, scroll.current, segments, selection) : null;
   useLayoutEffect(() => {
-    endWord(); hold.current.blocked = true; closeSelection();
+    endWord(); setPageTouching(false); hold.current.blocked = true; closeSelection();
   }, [state.page, state.zoom, viewport.width, viewport.height, closeSelection, endWord]);
   useEffect(() => () => { if (holdTimer.current) clearTimeout(holdTimer.current); }, []);
   // Start after React commits both layers. No timers, transparent text crossfade or 3D distortion.
@@ -115,8 +122,9 @@ export function IndopakMushafReader({ colors: C, dark, language, rtl, icon, init
     animation.start(({ finished }) => { if (finished) finish(); });
     return () => { live = false; animation.stop(); };
   }, [turn, still, viewport.width, viewport.height, state.zoom, turnProgress]);
-  const goPage = useCallback((number: number) => {
+  const goPage = useCallback((number: number, followingAudio = false) => {
     if (!validIndopakPage(number) || !hydrated || turning.current) return;
+    if (!followingAudio) { setAudioFollow(null); lastFollowed.current = ''; }
     closeSelection(); setPicker(null);
     const from = latest.current.page, plan = viewport.height > 0 ? indopakTurnPlan(from, number, viewport.width, still) : null;
     if (plan) {
@@ -140,6 +148,33 @@ export function IndopakMushafReader({ colors: C, dark, language, rtl, icon, init
     horizontal.current?.scrollTo({ x: target.x, animated: false });
     if (pendingReveal.open) setSelection({ verse: pendingReveal.point.verse, wordId: anchor.wordId });
   }, [pendingReveal, turn, hydrated, fontReady, state.page, placed, viewport.width, viewport.height, size.width, size.height]);
+  useEffect(() => {
+    if (!audioFollow || !focused || !hydrated || !fontReady || !page || size.width <= 0 || size.height <= 0) return;
+    if (!recitingVerse) {
+      if (audioFollow.started) { setAudioFollow(null); lastFollowed.current = ''; }
+      return;
+    }
+    // An older track may still be audible while the explicitly requested ayah loads.
+    if (!audioFollow.started) {
+      if (recitingVerse !== audioFollow.requested) return;
+      setAudioFollow({ ...audioFollow, started: true });
+    }
+    if (turn || picker || selection || pendingReveal || wordPressing || pageTouching) return;
+    const target = indopakRecitationTarget(recitingVerse, state.page);
+    if (!target) return;
+    if (target.page !== state.page) { goPage(target.page, true); return; }
+    const token = `${recitingVerse}:${state.page}:${state.zoom}:${viewport.width}:${viewport.height}`;
+    if (lastFollowed.current === token) return;
+    lastFollowed.current = token;
+    const anchor = indopakWordAnchor(placed, recitingVerse, recitingVerse === audioFollow.requested ? audioFollow.wordId : target.wordId);
+    if (!anchor) return;
+    const offset = indopakRecitationOffset(viewport, size, scroll.current, anchor.rect);
+    if (!offset) return;
+    scroll.current = offset;
+    vertical.current?.scrollTo({ y: offset.y, animated: false });
+    horizontal.current?.scrollTo({ x: offset.x, animated: false });
+  }, [recitingVerse, audioFollow, focused, hydrated, fontReady, page, turn, picker, selection, pendingReveal, wordPressing, pageTouching,
+    state.page, state.zoom, viewport.width, viewport.height, size.width, size.height, placed, goPage]);
   const swipeFrom = useRef<number | null>(null), swipeBlocked = useRef(false);
   const canSwipe = hydrated && fontReady && !fontError && !!page && !picker && !turn;
   const swipe = useMemo(() => PanResponder.create({
@@ -153,6 +188,7 @@ export function IndopakMushafReader({ colors: C, dark, language, rtl, icon, init
     onMoveShouldSetPanResponder: (_event, gesture) => canSwipe && !popupTouch.current && !turning.current && !swipeBlocked.current && captureIndopakSwipe(state.zoom, gesture),
     onMoveShouldSetPanResponderCapture: (_event, gesture) => canSwipe && !popupTouch.current && !turning.current && !swipeBlocked.current && captureIndopakSwipe(state.zoom, gesture),
     onPanResponderGrant: (_event, gesture) => {
+      setPageTouching(true);
       hold.current.blocked = true; hold.current.active = false; closeSelection();
       swipeFrom.current = latest.current.page; swipeBlocked.current = gesture.numberActiveTouches !== 1;
       suppressVerseUntil.current = Date.now() + 350;
@@ -160,13 +196,14 @@ export function IndopakMushafReader({ colors: C, dark, language, rtl, icon, init
     onPanResponderStart: (_event, gesture) => { if (gesture.numberActiveTouches > 1) swipeBlocked.current = true; },
     onPanResponderMove: (_event, gesture) => { if (gesture.numberActiveTouches > 1) swipeBlocked.current = true; },
     onPanResponderRelease: (_event, gesture) => {
+      setPageTouching(false);
       suppressVerseUntil.current = Date.now() + 350;
       const from = swipeFrom.current; swipeFrom.current = null;
       if (!canSwipe || turning.current || swipeBlocked.current || from !== latest.current.page) return;
       const target = indopakSwipePage(from!, latest.current.zoom, viewport.width, gesture);
       if (target !== null) goPage(target);
     },
-    onPanResponderTerminate: () => { swipeFrom.current = null; suppressVerseUntil.current = Date.now() + 350; },
+    onPanResponderTerminate: () => { swipeFrom.current = null; setPageTouching(false); suppressVerseUntil.current = Date.now() + 350; },
     onPanResponderTerminationRequest: () => true,
     // A native scroll/stack-back recognizer may take over; cancellation never turns a page.
     onShouldBlockNativeResponder: () => false,
@@ -176,7 +213,7 @@ export function IndopakMushafReader({ colors: C, dark, language, rtl, icon, init
   // stage pan-y reserves unzoomed horizontal drags for JS, without blocking vertical scrolling.
   const webGestureStyle: ViewStyle & { touchAction: 'pan-y' | 'auto' } = { touchAction: state.zoom === 1 ? 'pan-y' : 'auto' };
   const beginWord = (key: string, wordId: number, event: GestureResponderEvent) => {
-    endWord();
+    endWord(); setWordPressing(true);
     const e = event.nativeEvent, touch = e.touches?.[0] || e;
     hold.current = { active: true, blocked: (e.touches?.length || 1) !== 1 || Date.now() < suppressVerseUntil.current,
       held: false, x: touch.pageX, y: touch.pageY, page: latest.current.page, zoom: latest.current.zoom, wordId, verse: key };
@@ -252,11 +289,12 @@ export function IndopakMushafReader({ colors: C, dark, language, rtl, icon, init
     {!!saveError && <Pressable onPress={() => update({})} accessibilityRole="button"><Text style={[styles.message, { color: C.ink }]}>{copy('saveError')}</Text></Pressable>}
     <View testID="indopak-page-viewport" style={[styles.stage, Platform.OS === 'web' && webGestureStyle]} {...swipe.panHandlers}
       onPointerDown={closeSelection}
-      onTouchStart={event => { if ((event.nativeEvent.touches?.length || 1) > 1) hold.current.blocked = true; closeSelection(); }}
+      onTouchStart={event => { setPageTouching(true); if ((event.nativeEvent.touches?.length || 1) > 1) hold.current.blocked = true; closeSelection(); }}
       onTouchMove={event => { const h = hold.current, e = event.nativeEvent;
         const touch = e.touches?.[0] || e;
         if (!indopakStationaryPress(e.touches?.length || 1, touch.pageX - h.x, touch.pageY - h.y)) { h.blocked = true; endWord(); } }}
-      onTouchEnd={endWord} onTouchCancel={() => { endWord(); hold.current.blocked = true; }}
+      onTouchEnd={event => { endWord(); if (!event.nativeEvent.touches?.length) setPageTouching(false); }}
+      onTouchCancel={() => { endWord(); setPageTouching(false); hold.current.blocked = true; }}
       onLayout={({ nativeEvent: { layout } }) => {
       setViewport(current => current.width === layout.width && current.height === layout.height ? current : { width: layout.width, height: layout.height });
     }}>
@@ -272,7 +310,7 @@ export function IndopakMushafReader({ colors: C, dark, language, rtl, icon, init
                 scrollEventThrottle={16} onScroll={({ nativeEvent }) => { scrolled('x', nativeEvent.contentOffset.x); }}
                 style={{ height: size.height, direction: 'ltr' }} contentContainerStyle={{ minWidth: viewport.width, alignItems: 'center', justifyContent: 'center' }}
                 onContentSizeChange={() => { if (state.zoom > 1) horizontal.current?.scrollToEnd({ animated: false }); }}>
-                <IndopakPageCanvas number={state.page} width={size.width} height={size.height} colors={C} dark={dark} language={language} verse={verse}
+                <IndopakPageCanvas number={state.page} width={size.width} height={size.height} colors={C} dark={dark} language={language} verse={verse} recitingVerse={recitingVerse}
                   readingPoint={state.readingPoint?.page === state.page ? state.readingPoint.verse : null}
                   onWordPress={openWord} onWordPressIn={beginWord} onWordPressOut={endWord} onWordLongPress={holdWord}/>
               </ScrollView>
@@ -288,7 +326,9 @@ export function IndopakMushafReader({ colors: C, dark, language, rtl, icon, init
           {selection && chapter && popover && !turn && <IndopakAyahPopover layout={popover} verse={selection.verse}
             marked={state.readingPoint?.page === state.page && state.readingPoint.verse === selection.verse}
             colors={C} language={language} rtl={rtl} icon={icon} close={closeSelection} touching={active => { popupTouch.current = active; }}
-            play={() => { closeSelection(); onPlayVerse(selection.verse, chapter); }}
+            play={() => { closeSelection(); lastFollowed.current = '';
+              setAudioFollow({ requested: selection.verse, wordId: selection.wordId, started: recitingVerse === selection.verse });
+              onPlayVerse(selection.verse, chapter); }}
             translate={() => { closeSelection(); onOpenVerse(selection.verse, chapter); }} mark={() => markAyah(selection.verse, selection.wordId)}/>}
         </>}
     </View>
