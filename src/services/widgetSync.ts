@@ -1,169 +1,110 @@
-/**
- * Builds the widget snapshot from the app's own state, and publishes it.
- *
- * The widgets need the times as *instants*, not as strings — a widget has to
- * work out for itself which prayer is next, because it may be drawn hours
- * after the app last ran and a "next" decided then would be wrong by then.
- * `PrayerSnapshot` carries strings, so the instants are recomputed here with
- * the same call the Prayer screen's calculation goes through. It is a handful
- * of arithmetic on the device and it means the two can never disagree.
- *
- * Tomorrow is published alongside today for one reason: after Isha there is no
- * "next" left in today's list, and a widget that answers "—" from Maghrib
- * until midnight is a widget that is wrong for a third of the day.
- */
-import { computeDayDates, computeDayTimes, hijriLabel, methodName } from './prayerTimes';
-import type { PrayerSnapshot } from './api';
-import type { DailyAyah } from './api';
-import {
-  publishSnapshotJson,
-  startActivity,
-} from './widgetBridge';
-import {
-  resolveNow,
-  WIDGET_PRAYERS,
-  type WidgetSnapshot,
-  type WidgetPrayer,
-  type WidgetTasbih,
-} from './widgetSnapshot';
+/** Widgets use the existing prayer calculator and Hijri table. No network,
+ * location sensor, second calculation method, or Home-screen dependency. */
+import { Platform } from 'react-native';
+import { computeDayDates, computeDayTimes, methodName } from './prayerTimes';
+import { hijriForDate } from './hijri';
+import { tx } from './arabicCopy';
+import { loadDailyContent } from './localState';
+import type { DailyAyah, PrayerSnapshot } from './api';
+import { loadWidgetLanguage, prayerName } from './widgetCopy';
+import { publishSnapshotJson, readSnapshotJson, startActivity, widgetsAvailable } from './widgetBridge';
+import { dateInZone, resolveNow, WIDGET_PRAYERS, type WidgetSnapshot, type WidgetDay, type WidgetAyah, type WidgetTasbih, type WidgetConfig } from './widgetSnapshot';
 
-export type WidgetSyncInput = {
-  location: { latitude: number; longitude: number; label?: string; timezone?: string } | null;
-  calculationMethod: number;
-  madhab: 'shafi' | 'hanafi';
-  timeFormat: '12' | '24';
-  snapshot: PrayerSnapshot | null;
-  ayah: DailyAyah | null;
-  /** Localised: 'الفجر'. Falls back to the English key when not given. */
-  labelFor?: (name: string) => string;
-  tasbih?: WidgetTasbih | null;
-  dark?: boolean;
-  /** Whether to put the countdown on the Lock Screen. iOS only. */
-  liveActivity?: boolean;
+export const WIDGET_HORIZON_DAYS = 32;
+export type WidgetSyncInput = Omit<WidgetConfig, 'language' | 'dark'> & {
+  language?: string; dark?: boolean; snapshot?: PrayerSnapshot | null; ayah?: DailyAyah | null;
+  ayahDate?: string; labelFor?: (name: string) => string; tasbih?: WidgetTasbih | null; liveActivity?: boolean;
+  daily?: Record<string, DailyAyah | undefined>; expectedConfig?: string;
 };
-
-function displayTime(raw: string, timeFormat: '12' | '24'): string {
+function zone(input: WidgetSyncInput): string {
+  const requested = input.location?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  try { new Intl.DateTimeFormat('en', { timeZone: requested }).format(); return requested; } catch { return 'UTC'; }
+}
+function ayahValue(value?: DailyAyah | null): WidgetAyah | null {
+  if (!value || (!value.arabic && !value.translation)) return null;
+  return { ref: value.reference || '', ar: value.arabic || '', text: value.translation || '', surah: '' };
+}
+function time(raw: string, format: '12' | '24', language: string): string {
   if (!raw || raw === '--:--') return '--:--';
-  const [h, m] = raw.split(':').map(Number);
-  if (timeFormat === '24') return raw;
-  const suffix = h >= 12 ? 'PM' : 'AM';
-  const hour12 = h % 12 === 0 ? 12 : h % 12;
-  return `${hour12}:${String(m).padStart(2, '0')} ${suffix}`;
+  if (format === '24') return raw;
+  const [h,m] = raw.split(':').map(Number);
+  return `${h%12 || 12}:${String(m).padStart(2,'0')} ${tx(language, h>=12 ? 'PM' : 'AM')}`;
 }
-
-/**
- * One day's six, as instants and as strings.
- *
- * `computeDayDates` gives the real `Date`s the widget compares against its own
- * clock; `computeDayTimes` gives the strings it shows. Both come from the same
- * parameters, so the number and the label cannot drift apart.
- */
-function day(
-  latitude: number,
-  longitude: number,
-  date: Date,
-  method: number,
-  school: 'shafi' | 'hanafi',
-  timeFormat: '12' | '24',
-  labelFor: (name: string) => string,
-): WidgetPrayer[] {
-  const times = computeDayTimes(latitude, longitude, date, method, school);
-  const dates = computeDayDates(latitude, longitude, date, method, school);
-  return WIDGET_PRAYERS.map((name) => ({
-    name,
-    label: labelFor(name),
-    time: displayTime(times[name], timeFormat),
-    at: (dates[name] instanceof Date ? dates[name] : new Date(NaN)).getTime(),
-  })).filter((p) => Number.isFinite(p.at));
-}
-
-/** '29 Jumādá al-ūlá 1448 AH' → '29 Jumādá al-ūlá'. */
-function shortenHijri(full: string): string {
-  return full.replace(/\s+\d{3,4}\s*(AH|هـ)\s*$/, '').trim();
-}
-
-export function buildWidgetSnapshot(input: WidgetSyncInput): WidgetSnapshot | null {
-  const { location, snapshot } = input;
-  if (!location || !snapshot) return null;
-
-  const labelFor = input.labelFor ?? ((name: string) => name);
-  const now = new Date();
-  const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-
-  const today = day(
-    location.latitude,
-    location.longitude,
-    now,
-    input.calculationMethod,
-    input.madhab,
-    input.timeFormat,
-    labelFor,
-  );
-  const next = day(
-    location.latitude,
-    location.longitude,
-    tomorrow,
-    input.calculationMethod,
-    input.madhab,
-    input.timeFormat,
-    labelFor,
-  );
-
-  if (!today.length) return null;
-
-  const ayah = input.ayah
-    ? {
-        ref: input.ayah.reference || '',
-        ar: input.ayah.arabic || '',
-        text: input.ayah.translation || '',
-        // The reference the app shows is '2:255'; the surah name is the part
-        // that makes it read as something. Taken from the reference itself
-        // rather than looked up, so no extra fetch stands between the app and
-        // a widget that has already been handed everything else.
-        surah: '',
-      }
-    : null;
-
-  return {
-    v: 1,
-    updatedAt: Date.now(),
-    place: location.label || '',
-    method: methodName(input.calculationMethod),
-    hijri: snapshot.hijri || '',
-    hijriShort: shortenHijri(snapshot.hijri || ''),
-    today,
-    tomorrow: next,
-    ayah,
-    tasbih: input.tasbih ?? null,
-    theme: input.dark ? 'dark' : 'light',
-  };
-}
-
-/**
- * Builds and publishes, and puts the countdown on the Lock Screen.
- *
- * One call, called from wherever the times or the ayah change. It is cheap:
- * a little arithmetic and one write to a preference file, guarded so that
- * publishing the same snapshot twice does not redraw the widgets twice.
- */
-export async function syncWidgets(input: WidgetSyncInput): Promise<boolean> {
-  const snap = buildWidgetSnapshot(input);
-  if (!snap) return false;
-
-  const published = await publishSnapshotJson(JSON.stringify(snap));
-  if (!published) return false;
-
-  if (input.liveActivity !== false) {
-    const now = resolveNow(snap, Date.now());
-    if (now.next) {
-      await startActivity({
-        name: now.next.label,
-        time: now.next.time,
-        nextAt: now.next.at,
-        place: snap.place,
-        method: snap.method,
-      });
+let calendarCache: { key: string; days: WidgetDay[]; builtAt: number } | undefined;
+export function buildWidgetSnapshot(input: WidgetSyncInput, now = new Date()): WidgetSnapshot {
+  const timezone = zone(input), language = input.language || 'en', date = dateInZone(now, timezone);
+  const config: WidgetConfig = { location: input.location, calculationMethod: input.calculationMethod, madhab: input.madhab, timeFormat: input.timeFormat, language, dark: input.dark === true };
+  const key = JSON.stringify({ ...config, date, timezone });
+  if (calendarCache?.key !== key) {
+    const [y,m,d] = date.split('-').map(Number);
+    const valid = input.location && Number.isFinite(input.location.latitude) && Number.isFinite(input.location.longitude)
+      && Math.abs(input.location.latitude)<=90 && Math.abs(input.location.longitude)<=180;
+    const days: WidgetDay[] = [];
+    for (let offset=0; offset<WIDGET_HORIZON_DAYS; offset++) {
+      // Calculator reads local Y/M/D. Construct the selected city's calendar
+      // day in the device zone, NOT midnight UTC and not now in the phone zone.
+      const day = new Date(y,m-1,d+offset,12), key = `${day.getFullYear()}-${String(day.getMonth()+1).padStart(2,'0')}-${String(day.getDate()).padStart(2,'0')}`;
+      const h = hijriForDate(day), month = h ? tx(language, h.monthName) : '';
+      const hijriShort = h ? `${h.day} ${month}` : '';
+      const times = valid ? computeDayTimes(input.location!.latitude,input.location!.longitude,day,input.calculationMethod,input.madhab,timezone) : null;
+      const dates = valid ? computeDayDates(input.location!.latitude,input.location!.longitude,day,input.calculationMethod,input.madhab) : null;
+      let gregorian: string;
+      try { gregorian = new Intl.DateTimeFormat(language==='uz'?'uz-Cyrl':language==='kk'?'kk-Cyrl':language,{weekday:'short',day:'numeric',month:'long',year:'numeric'}).format(day); } catch { gregorian=key; }
+      days.push({date:key,hijri:h ? `${hijriShort} ${h.year}` : '',hijriShort,gregorian,ayah:null,
+        prayers: times && dates ? WIDGET_PRAYERS.map(name=>({name,label:input.labelFor?.(name) ?? prayerName(language,name),time:time(times[name],input.timeFormat,language),at:dates[name].getTime()})).filter(p=>Number.isFinite(p.at)) : []});
     }
+    calendarCache = {key,days,builtAt:now.getTime()};
   }
-  return true;
+  const days = calendarCache.days.map(day=>({...day,ayah:ayahValue(input.daily?.[day.date] ?? (day.date===(input.ayahDate || date) ? input.ayah : null))}));
+  return {v:1,schema:2,...(input.expectedConfig ? {expectedConfig:input.expectedConfig} : {}),updatedAt:calendarCache.builtAt,place:input.location?.label || '',method:tx(language,methodName(input.calculationMethod)),
+    hijri:days[0].hijri,hijriShort:days[0].hijriShort,today:days[0].prayers,tomorrow:days[1].prayers,
+    ayah:days[0].ayah,tasbih:input.tasbih ?? null,theme:input.dark ? 'dark' : 'light',timezone,language,date,days,config};
+}
+let lastInput: WidgetSyncInput | undefined;
+let syncQueue: Promise<unknown> = Promise.resolve();
+export function syncWidgets(input: WidgetSyncInput): Promise<boolean> {
+  if (!input.expectedConfig) lastInput = input;
+  const work = syncQueue.then(async()=>{
+    if (!widgetsAvailable()) return false;
+    await loadWidgetLanguage(input.language || 'en');
+    const daily: Record<string, DailyAyah | undefined> = {};
+    const skeleton = buildWidgetSnapshot(input);
+    // localState stores one dated daily-content envelope, not 32 files.
+    // Read it once; native retains a genuinely older verse as "Saved ayah".
+    const cached = await loadDailyContent<{ayah?:DailyAyah}>(skeleton.date!).catch(()=>null);
+    if (cached?.ayah) daily[skeleton.date!] = cached.ayah;
+    let counter = input.tasbih;
+    if (Platform.OS === 'ios') {
+      // Swift keeps its established timestamped AppGroup counter contract.
+      // Even a Home Ayah/theme publication must adopt it before rewriting the
+      // full v1 snapshot; Android uses the independent native state instead.
+      const { loadTasbihState, currentPhrase } = require('./tasbihService') as typeof import('./tasbihService');
+      const adopted = await loadTasbihState();
+      counter = {count:adopted.count,target:adopted.goal,label:currentPhrase(adopted).transliteration};
+    }
+    const snap = buildWidgetSnapshot({...input,tasbih:counter,daily:{...daily,...input.daily}});
+    const published = await publishSnapshotJson(JSON.stringify(snap));
+    if (published && input.liveActivity !== false) {
+      const {next} = resolveNow(snap,Date.now());
+      if (next) await startActivity({name:next.label,time:next.time,nextAt:next.at,place:snap.place,method:snap.method});
+    }
+    return published;
+  }).catch(()=>false);
+  syncQueue = work;
+  return work;
+}
+/** Home only supplies new daily content; prayer publication never waits on it. */
+export async function syncWidgetAyah(ayah: DailyAyah, date: string): Promise<boolean> {
+  if (!lastInput) return false;
+  return syncWidgets({...lastInput,ayah,ayahDate:date});
+}
+/** Registered background task reuses exactly the same JS calculator/table. */
+export async function refreshStoredWidgets(): Promise<boolean> {
+  const raw = await readSnapshotJson();
+  if (!raw) return false;
+  try {
+    const previous = JSON.parse(raw) as WidgetSnapshot;
+    if (!previous.config) return false;
+    return await syncWidgets({...previous.config,tasbih:previous.tasbih,liveActivity:false,expectedConfig:JSON.stringify(previous.config)});
+  } catch { return false; }
 }

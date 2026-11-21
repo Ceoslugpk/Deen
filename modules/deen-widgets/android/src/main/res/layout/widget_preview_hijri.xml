@@ -1,0 +1,3 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Illustrative picker content, not a native-QA screenshot. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:padding="14dp" android:background="@drawable/widget_card"><TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/widget_hijri" android:textColor="#DFB163" android:textSize="13sp" android:paddingBottom="8dp"/><TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/widget_today" android:textColor="#DFB163" android:textSize="18sp"/></LinearLayout>

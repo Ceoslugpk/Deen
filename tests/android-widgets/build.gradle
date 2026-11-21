@@ -1,0 +1,51 @@
+// Standalone native widget-library checks, NOT an Expo/Play app build. Source
+// sets compile the actual production widgets/resources. The Expo DSL bridge
+// is deliberately excluded and still requires the full release build gate.
+plugins {
+    id 'com.android.library' version '8.7.3'
+    id 'org.jetbrains.kotlin.android' version '2.0.21'
+    id 'org.jetbrains.kotlin.plugin.compose' version '2.0.21'
+}
+android {
+    namespace 'expo.modules.deenwidgets'
+    compileSdk 35
+    defaultConfig { minSdk 24; targetSdk 35 }
+    buildFeatures { compose true }
+    sourceSets {
+        main {
+            java.srcDirs = ['../../modules/deen-widgets/android/src/main/java/com/deen/widgets']
+            manifest.srcFile '../../modules/deen-widgets/android/src/main/AndroidManifest.xml'
+            res.srcDirs = ['../../modules/deen-widgets/android/src/main/res']
+        }
+    }
+    testOptions {
+        unitTests.includeAndroidResources = true
+        unitTests.all {
+            maxHeapSize = '320m'
+            maxParallelForks = 1
+            jvmArgs '-XX:ActiveProcessorCount=2', '-XX:MaxMetaspaceSize=192m', '-Xss512k'
+            // The old repo1 alias can serve a proxy/error page in CI. Keep
+            // Robolectric's checksum verification; use the canonical repo.
+            systemProperty 'robolectric.dependency.repo.url', 'https://repo.maven.apache.org/maven2'
+        }
+    }
+    compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+    kotlinOptions { jvmTarget = '17' }
+}
+dependencies {
+    implementation 'androidx.glance:glance-appwidget:1.1.1'
+    implementation 'androidx.datastore:datastore-preferences:1.1.1'
+    implementation 'androidx.work:work-runtime-ktx:2.10.5'
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.robolectric:robolectric:4.14.1'
+    testImplementation 'androidx.test:core:1.6.1'
+}
+
+// Lets a memory-constrained workstation run JUnit after Gradle exits, instead
+// of keeping the build daemon and Robolectric's Android VM alive together.
+tasks.register('exportDebugUnitTestClasspath') {
+    dependsOn 'assembleDebugUnitTest', 'generateDebugUnitTestConfig', 'processDebugUnitTestJavaRes', 'processDebugJavaRes', 'bundleLibRuntimeToJarDebug'
+    doLast {
+        file('.gradle/widget-test-classpath.txt').text = tasks.named('testDebugUnitTest').get().classpath.asPath
+    }
+}

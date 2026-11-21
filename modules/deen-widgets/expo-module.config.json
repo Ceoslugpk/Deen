@@ -1,9 +1,19 @@
 {
-  "platforms": ["apple", "android"],
+  "platforms": [
+    "apple",
+    "android"
+  ],
   "apple": {
-    "modules": ["DeenWidgetBridge"]
+    "modules": [
+      "DeenWidgetBridge"
+    ]
   },
   "android": {
-    "modules": ["expo.modules.deenwidgets.DeenWidgetsModule"]
-  }
+    "modules": [
+      "expo.modules.deenwidgets.DeenWidgetsModule"
+    ]
+  },
+  "coreFeatures": [
+    "compose"
+  ]
 }

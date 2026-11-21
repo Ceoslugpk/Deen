@@ -190,11 +190,14 @@ The normal reader uses **measured variable-height virtualization**, not fabricat
 ### Widgets and Live Activities
 
 Four widget families — **Prayer**, **Ayah**, **Hijri** and **Tasbih** — plus an iOS
-**Live Activity** for the next prayer. They are drawn by the operating system, not by the
-app, so everything they need arrives pre-formatted: times as strings in the user's clock
-style, the Hijri date already written, the palette named. A widget that recalculates
-anything will eventually disagree with the app, so none of them do. Data moves through the
-App Group `group.com.qashi.islamic`.
+**Live Activity** for the next prayer. They are drawn by the operating system, not by a
+web view. Android receives a 32-day selected-city prayer/Hijri calendar from the same
+calculator as the app, observes native DataStore state, and shares a transactional Tasbih
+counter with the app. Its city clock is host-ticked; background redraw/refill scheduling
+is inexact. iOS retains WidgetKit, its native timer/Live Activity behavior and App Group
+`group.com.qashi.islamic`. [Repair details and release/device verification boundaries](docs/widgets.md).
+The Android source repair requires a new native binary; a web deployment does not update
+installed home-screen widgets.
 
 ### Languages
 
@@ -212,7 +215,7 @@ reciter.
 ### Privacy
 
 - **No account, no sign-up, no analytics, no tracking.** The app has no profile to build
-- Everything is stored on the device in AsyncStorage
+- Personal state stays on the device in AsyncStorage and native widget stores
 - Location is a city you choose. Precise location is never requested, stored or sent — with no location chosen the app uses Makkah rather than silently guessing
 - Notifications are scheduled on the device
 - Backups are **encrypted** before they leave, and restoring one is your choice

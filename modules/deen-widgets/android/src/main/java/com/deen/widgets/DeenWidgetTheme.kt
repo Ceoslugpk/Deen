@@ -13,6 +13,7 @@ import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
 import androidx.glance.layout.Column
 import androidx.glance.layout.Row
+import androidx.glance.layout.RowScope
 import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.fillMaxWidth
@@ -94,9 +95,9 @@ fun shapeFor(size: DpSize): WidgetShape = when {
 
 /** The hero ground, rounded to the app's card radius. */
 @Composable
-fun DeenWidgetContent(content: @Composable () -> Unit) {
+fun DeenWidgetContent(modifier: GlanceModifier = GlanceModifier, content: @Composable () -> Unit) {
     Box(
-        modifier = GlanceModifier
+        modifier = modifier
             .fillMaxSize()
             .background(DeenTheme.hero)
             .cornerRadius(DeenTheme.radius)
@@ -186,7 +187,7 @@ fun CountdownPill(text: String) {
 @Composable
 fun FullRow(
     verticalAlignment: Alignment.Vertical = Alignment.CenterVertically,
-    content: @Composable () -> Unit,
+    content: @Composable RowScope.() -> Unit,
 ) {
     Row(
         modifier = GlanceModifier.fillMaxWidth(),

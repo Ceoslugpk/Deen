@@ -20,6 +20,12 @@ test('existing activity-recognition, overlay and old fingerprint blocks remain u
  assert.equal(manifest.$['xmlns:tools'],'http://schemas.android.com/tools');for(const name of names)assert.ok(manifest['uses-permission'].some(p=>p.$['android:name']===name&&p.$['tools:node']==='remove'));
 });
 test('selected cities and local coordinates are not permissions or deleted by the safeguard',()=>{
- const fs=require('node:fs'),path=require('node:path');const app=fs.readFileSync(path.join(__dirname,'../../App.tsx'),'utf8');assert.ok(app.includes('loadStoredLocation().then(saved=>setLocation(saved||DEFAULT_LOCATION))'));assert.ok(app.includes('setManual:commit'));
- assert.ok(!require('../../package.json').dependencies['expo-location']);assert.equal(fs.readFileSync(path.join(__dirname,'../../modules/deen-widgets/android/src/main/AndroidManifest.xml'),'utf8').trim(),'<manifest />');
+ const fs=require('node:fs'),path=require('node:path');const app=fs.readFileSync(path.join(__dirname,'../../App.tsx'),'utf8');assert.match(app,/loadStoredLocation\(\)\.then\(saved=>\{setLocation\(saved\|\|DEFAULT_LOCATION\);setHydrated\(true\)/);assert.ok(app.includes('setManual:commit'));
+ assert.ok(!require('../../package.json').dependencies['expo-location']);
+ // Widgets now own their receivers/resources in the local library. Pin the
+ // permission boundary, not the obsolete empty-manifest implementation.
+ const widgetManifest=fs.readFileSync(path.join(__dirname,'../../modules/deen-widgets/android/src/main/AndroidManifest.xml'),'utf8');
+ const requested=[...widgetManifest.matchAll(/<uses-permission\s+android:name="([^"]+)"/g)].map(match=>match[1]);
+ assert.deepEqual(requested,['android.permission.RECEIVE_BOOT_COMPLETED']);
+ for(const permission of blocked)assert.ok(!requested.includes(permission));
 });

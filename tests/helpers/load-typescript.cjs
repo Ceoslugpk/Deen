@@ -11,7 +11,10 @@ function createLoader(mocks = {}, globals = {}) {
   function load(relative) {
     let filename = path.resolve(root, relative);
     if (!path.extname(filename)) {
-      filename = ['.ts', '.tsx', '.js', '.json'].map((ext) => filename + ext).find(fs.existsSync);
+      filename = [
+        ...['.ts', '.tsx', '.js', '.json'].map((ext) => filename + ext),
+        ...['index.ts', 'index.tsx', 'index.js', 'index.json'].map((entry) => path.join(filename, entry)),
+      ].find((candidate) => fs.existsSync(candidate) && fs.statSync(candidate).isFile());
     }
     if (!filename) throw new Error(`Module not found: ${relative}`);
     if (cache.has(filename)) return cache.get(filename).exports;

@@ -1,243 +1,114 @@
-# Home-screen widgets
+# Native home-screen widgets — R112 repair
 
-Four widgets for Android and iOS, plus a Live Activity on iOS.
+The approved repair covers **Prayer, Ayah, Tasbih and Hijri on Android**, including picker/initial visibility, durable state, updates and interactions. These are native Glance widgets, not a web widget or a screenshot workaround.
 
-| Widget | Sizes | What it shows |
-| --- | --- | --- |
-| Prayer times | small / medium / large | Next prayer, live countdown, today's six |
-| Ayah of the day | small / medium / large | Today's verse on a Pearl card |
-| Tasbih counter | small / medium | Count, goal, and +1 / Reset buttons |
-| Hijri date | small / medium | Today's date in both calendars |
+**Release status:** source implemented; TypeScript, **396 JavaScript/plugin regressions** and **19 Android/Robolectric tests** passed. The production widget Kotlin/resources compile in the standalone Android harness. This is **not a full Expo application/release build or a device/launcher pass**. Installed Play widgets require a **new Android binary**; a Vercel deployment or JavaScript export cannot install this native repair.
 
----
+## What changed
 
-## What a widget is not
+| Family | Android behavior |
+| --- | --- |
+| Prayer | Canonical selected-city schedule, next Salah (never Sunrise), absolute prayer time, and an OS-ticked city `TextClock`. Larger/taller sizes reveal the schedule. No frozen/negative relative countdown. |
+| Ayah | Cached Arabic/reference, translation where space permits, light/dark card. If only an older real verse is cached, it is identified as **Saved ayah**, not represented as today's verse. No invented religious content. |
+| Tasbih | Native transactional **+1 / Reset**, shared count/goal/phrase/round/day/session state with the app. A Home/theme refresh cannot overwrite widget taps. Existing history and imported unknown fields are retained. |
+| Hijri | Matching selected-city calendar day, app's existing Hijri table and Gregorian date; visible refresh guidance when the runway is exhausted. |
 
-A widget is not a screen. It is drawn by the operating system, in a process the
-app does not own, at moments the app does not choose. That has consequences
-worth stating before anything else, because they explain every design decision
-below:
+All families have visible loading/error states, separate XML picker previews, an older-launcher image fallback copied from **existing shipped artwork**, and exact-size layouts. Preview content is illustrative, **not a screenshot of an installed launcher**. The screenshot supplied for the audit showed blank reorder thumbnails; it did not identify the installed binary's full failure path.
 
-- **It cannot be written in React Native.** Both platforms require real native
-  code — SwiftUI/WidgetKit on iOS, Glance (Compose) on Android.
-- **It cannot call into the app.** It cannot fetch, cannot await, and cannot
-  read AsyncStorage. It gets one synchronously-readable value.
-- **It cannot animate.** Not on either platform, in the sense a screen animates.
-
-So the architecture is: the app *publishes* a snapshot, and the widget *renders*
-it. Nothing is polled by the widget and nothing is called back into the app.
+Existing receiver identities stay unchanged so installed instances can upgrade in place:
 
 ```
-App.tsx (useHomeData, TasbihScreen)
-   └── src/services/widgetSync.ts     builds the snapshot
-         └── src/services/widgetBridge.ts
-               └── modules/deen-widgets (local Expo module)
-                     ├── App Group UserDefaults   (iOS)
-                     └── SharedPreferences        (Android)
-                              │
-                     ┌────────┴────────┐
-              WidgetKit views      Glance composables
+com.deen.widgets.PrayerWidgetReceiver
+com.deen.widgets.AyahWidgetReceiver
+com.deen.widgets.TasbihWidgetReceiver
+com.deen.widgets.HijriWidgetReceiver
 ```
 
-### The snapshot
+### Data and lifecycle
 
-Defined in `src/services/widgetSnapshot.ts`. Two rules hold it together:
+- An invisible `WidgetLifecycle` under the existing providers publishes **outside Home**, after saved city, language, worship settings and theme hydrate. Local prayer publication does not wait for Ayah/hadith/network requests.
+- `widgetSync.ts` uses the **same prayer calculator/method/madhab and Hijri table as the app**, with a **32-day** calendar in the selected city's timezone. Display strings and epoch milliseconds derive from the same calculation; Sunrise remains in the schedule but is excluded from next/current Salah.
+- The checked JS adapter calls the local module's actual exported wrapper methods. Writes are serialized and deduplicated only after persistence/redraw acknowledgment; a rejection remains retryable.
+- Glance observes **DataStore `deen_widget_state_v2` inside its composition**, rather than holding a pre-composition snapshot for the session's lifetime.
+- The former `SharedPreferences("deen_widgets") / "snapshot"` is imported without deleting its original file. Android's full Tasbih state is a separate transactional authority; AsyncStorage remains a backup/web/iOS mirror. Read errors do not initialize a replacement zero counter. No historical widget contributions are invented from count-only snapshots.
+- Ordinary startup/resume reads native counter authority first. **Only an explicit backup restore** replaces it from the restored app record. Ambiguous native command errors never fall through to a second counter; successful persistence is not reported as a failed command merely because its redraw failed.
+- Cold-start destinations and warm native intent events open the existing Prayer, Home/Ayah, Tasbih or Hijri screen. Pending-intent URIs distinguish families; destinations are allowlisted. App-lock/navigation readiness remains owned by the existing app shell.
 
-- **Everything displayed is pre-formatted.** Times arrive as `"05:05"`, not as
-  timestamps to be rendered. Formatting needs a locale and a clock style, and a
-  widget that guesses at either will disagree with the app it came from.
-- **Everything needed to work out *where in the day it is* is still a number.**
-  `at` is epoch milliseconds. The widget compares that against its own clock —
-  which it has to do, because it may be drawn hours after the app last ran, and
-  a "next prayer" decided then would be wrong by then.
+### Refresh and time: important limits
 
-Tomorrow's times are published alongside today's for one reason: after Isha
-there is no "next" left in today's list, and a widget showing "—" from Maghrib
-until midnight is wrong for a third of the day.
+- The host's native `TextClock` ticks without a JavaScript interval or per-second app wakeup. Ticking a clock **does not select the next prayer**.
+- Native WorkManager redraws are periodic (30 minutes) plus opportunistic one-off boundary work. Boot, package update, date, time and timezone broadcasts request catch-up.
+- Android Expo task `com.qashi.islamic.widgets.replenish.v2` requests replenishment at a **minimum 360-minute interval**, using the same JS calculator. Its definition is at module scope for headless startup. Missing new native modules fail closed on an older binary; web/iOS do not register this Android task.
+- Background refills include an expected-configuration precondition. Native comparison is JSON-semantic, not dependent on object-key order, so a refill begun with old settings cannot overwrite a newer manual city/theme/language selection.
+- **Both WorkManager and Expo background tasks are inexact** and can be deferred by battery controls/Doze. There is no promise of exact prayer-boundary rollover, continuous execution after force-stop, or unlimited freshness. An exhausted calendar shows refresh guidance instead of an old Fajr masquerading as next.
+- Ayah publication uses actual cached content; the calendar refill is not a guarantee of a newly downloaded verse every day.
 
----
+## Preservation boundaries
 
-## Motion: what is actually possible
+- **Manual city/no GPS:** no location sensor, `expo-location`, new exact-alarm request or tracking was added. The four Android location-permission blocks remain. Only the boot permission is declared by the widget module itself; transitive platform dependencies still need the normal full-app manifest review.
+- All **22 interface languages** have native strings for picker/recovery/controls; the selected app language and RTL can differ from the launcher language. Indonesian uses Android's `values-in` alias, Uzbek/Kazakh Gregorian formatting explicitly selects Cyrillic, and Arabic verse alignment is independent of UI direction.
+- The shipped indigo/gold/pearl design and existing icons are reused. No unrelated reader/UI redesign or data cleanup is included.
+- **iOS Swift/WidgetKit/Live Activity sources are unchanged.** The additive snapshot retains `v: 1` and existing fields. JS preserves the Swift counter timestamp contract before full snapshot writes. AppGroup remains **`group.com.qashi.islamic`**. This repair does not certify an iOS native build.
 
-You asked for good animations. Here is the honest picture, because promising
-more than the platform gives is how you end up with a widget that looks broken.
-
-### iOS
-
-| Effect | How | Where |
-| --- | --- | --- |
-| Live countdown | `Text(timerInterval:countsDown:)` — redrawn by the system every second | All three sizes |
-| Rolling digits | `.contentTransition(.numericText(countsDown:))` (iOS 17+) | Tasbih count |
-| Entry transitions | System transition when a timeline entry becomes current | All |
-| Continuously live countdown | **Live Activity** — Lock Screen + Dynamic Island | Separate feature |
-
-The timeline is the mechanism that makes the transitions land at the right
-moment: an entry is written at each prayer time, so the widget moves from
-"Dhuhr is next" to "Asr is next" exactly when that becomes true, and does not
-redraw in between. The countdown inside an entry ticks on its own, without new
-entries.
-
-**The Live Activity** (`PrayerLiveActivity.swift`) is the only genuinely
-continuous animation available to this app. Home-screen widgets hand the system
-a static view and a schedule; a Live Activity is a view the system keeps live.
-It is where a countdown that visibly counts belongs.
-
-### Android
-
-Android gives an app widget no per-second surface. `updatePeriodMillis` is
-honoured at 30 minutes and no less — asking for more frequent updates gets you
-ignored, not served. So on Android:
-
-- the countdown is **correct when drawn**, and redrawn whenever the app
-  publishes (every app open, every foreground, every prayer time);
-- Android 12+ crossfades between updates, which is the one transition
-  available;
-- the countdown does not tick continuously. That is a platform limit, not an
-  omission — the equivalent of the iOS Live Activity would be an ongoing
-  notification, and the app already has one for the adhan.
-
----
-
-## Setup
-
-### 1. Install
-
-```bash
-npm install
-```
-
-This pulls in `@bacons/apple-targets`, which generates the iOS widget
-extension on every prebuild. Managed Expo regenerates `ios/` from scratch, so
-anything added to that folder by hand is lost — the target has to be generated,
-and this is the tool that does it.
-
-### 2. iOS: register the App Group
-
-**This is the one manual step, and nothing works without it.**
-
-1. Apple Developer → Certificates, Identifiers & Profiles → App Groups
-2. Register `group.com.qashi.islamic`
-3. Add it to both the app's App ID and the widget extension's App ID
-4. Regenerate provisioning profiles
-
-The identifier appears in three places and all three must agree:
-
-- `plugins/widgets/withWidgets.js` → `APP_GROUP` (app entitlements)
-- `targets/widgets/DeenWidgets.entitlements`
-- `DeenWidgetData.swift` → `suiteName`
-
-When they disagree nothing crashes. The widget reads an empty store forever and
-renders its empty state, which is the harder failure to notice.
-
-### 3. Set your team id
-
-```bash
-export EXPO_APPLE_TEAM_ID=YOURTEAMID
-```
-
-or add it as an EAS secret. Without it the extension is signed with a team the
-App Store will reject.
-
-### 4. Prebuild and build
-
-```bash
-npx expo prebuild --clean
-npx expo run:ios      # or: eas build --platform ios
-npx expo run:android  # or: eas build --platform android
-```
-
----
-
-## Android build notes
-
-Verified against SDK 58: `expo prebuild --platform android` completes cleanly
-and writes all three of the things Glance needs into `android/app/build.gradle`:
-
-```gradle
-apply plugin: "org.jetbrains.kotlin.plugin.compose"   // line 4
-android { buildFeatures { compose true } }            // line 89
-implementation 'androidx.glance:glance-appwidget:1.1.1'
-```
-
-All three are required. `buildFeatures { compose true }` tells Android Gradle
-Plugin that Compose is in use, but the Kotlin **compiler** plugin is what turns
-`@Composable` into code — without it the widget sources do not compile on
-Kotlin 2.x. The SDK 58 template writes `apply plugin: "…"` lines rather than a
-`plugins { }` block, so the plugin adds it in the same style as the rest of the
-file rather than as `id '…'`.
-
-If you ever see `This version of the Compose Compiler requires Kotlin version
-X`, that pairing is what has come apart; pin the Glance version in
-`plugins/widgets/withWidgets.js` to match.
-
-These warnings are expected and harmless:
-
-- `withWidgets: could not find MainApplication` — not needed; autolinking registers the module
-- `[bacons/apple-targets] Expo config is missing required ios.appleTeamId` — set `EXPO_APPLE_TEAM_ID` before building for iOS
-
----
-
-## Verification checklist
-
-Nothing below has been run. This sandbox has no Xcode and no Android SDK, so
-the native code is **written but not compiled**. Work through this on a device:
-
-**Android**
-
-- [ ] Long-press the home screen → Widgets → "Islamic" shows all four
-- [ ] Prayer widget: small shows next prayer + time + countdown
-- [ ] Prayer widget: medium and large list all six, current one highlighted
-- [ ] Prayer widget: resizing re-lays out rather than stretching
-- [ ] Ayah widget: Arabic right-aligned and not clipped
-- [ ] Tasbih: **+1** increments on the home screen without opening the app
-- [ ] Tasbih: open the app — the count matches what the widget showed
-- [ ] Hijri date shows both calendars
-- [ ] Killing the app does not blank the widgets
-
-**iOS**
-
-- [ ] All four appear in the widget picker
-- [ ] Countdown visibly ticks (it should change while you watch)
-- [ ] Widget moves to the next prayer at the moment that prayer passes
-- [ ] Tasbih **+1** works from the lock screen / home screen
-- [ ] Live Activity appears on the Lock Screen after opening the app
-- [ ] Dynamic Island (iPhone 14 Pro+) shows the compact countdown
-- [ ] Dark mode: the ayah card flips to the dark ground
-
-**Both**
-
-- [ ] Changing the calculation method updates the widget
-- [ ] Clearing the location shows the empty state, not stale times
-- [ ] No widget shows a time the app disagrees with
-
----
-
-## Files
+## Source ownership
 
 ```
-src/services/widgetSnapshot.ts   the contract, and resolveNow()
-src/services/widgetSync.ts       builds it from app state
-src/services/widgetBridge.ts     guarded JS side
-modules/deen-widgets/            native module (autolinked)
-  ios/DeenWidgetBridge.swift     UserDefaults + ActivityKit
-  android/.../DeenWidgetsModule.kt
-plugins/widgets/
-  withWidgets.js                 config plugin (Android + App Group)
-  android/                       Glance sources, copied into the app
-targets/widgets/                 WidgetKit sources for @bacons/apple-targets
-  Sources/DeenWidgetData.swift   reads the App Group
-  Sources/DeenTheme.swift        the ten brand colours
-  Sources/PrayerWidget.swift     + the timeline
-  Sources/PrayerLiveActivity.swift
+App.tsx / index.ts                   provider lifecycle + headless entry
+src/services/widget{Snapshot,Sync,Bridge,Background,Navigation,Copy}.ts
+src/services/tasbihService.ts        native authority / safe mirror / restore
+modules/deen-widgets/index.ts        typed exported wrapper
+modules/deen-widgets/android/        actual library Gradle, manifest, Kotlin, resources
+plugins/widgets/withWidgets.js       former-generated-file migration + existing iOS entitlement
+scripts/generate-widget-resources.cjs
+src/data/widgetCopy.json             22-language additional copy
 ```
 
-**One file is deliberately compiled twice.** `PrayerActivityAttributes.swift`
-lives in the widget target and is copied into the app by the plugin, because
-both must build the same attributes type. A copy that drifts would not fail to
-compile — it would fail at runtime, with an activity the app starts and the
-extension cannot render.
+Compose is enabled in the **autolinked library** (`coreFeatures: ["compose"]`), not through fragile app-Gradle/source insertion. Pinned Glance is **1.1.1**, DataStore **1.1.1**; WorkManager **2.10.5** matches the new Expo background-task dependency. No Glance 1.2 generated-preview API is assumed. The config plugin removes only the old generator-owned app widget files/receiver declarations to avoid duplicate classes and transparent resource overrides; it does not remove app preferences or unrelated native files.
 
-**The palette is duplicated on purpose.** `DeenTheme.swift` (iOS) and
-`DeenTheme.kt` (Android) restate the ten brand colours, because a widget's
-classpath cannot see `src/design/brand.ts`. If the brand changes, those three
-files move together.
+## Automated verification
+
+Run project checks with the repository's supported Node 22 environment:
+
+```
+npx tsc --noEmit
+node --test --test-concurrency=1 tests/*.test.cjs plugins/__tests__/*.test.js
+```
+
+Native harness: `tests/android-widgets` compiles the **actual production `com/deen/widgets` Kotlin, manifest and resources**. It uses Java 17, Gradle 8.10.2, AGP 8.7.3, Kotlin/Compose 2.0.21, Android SDK/target 35 and Robolectric 4.14.1 (API 35). It deliberately **excludes the Expo DSL bridge**. The bridge API/import contract is source-checked against the installed Expo SDK, not certified by this harness.
+
+With those Android tools available, `scripts/test-android-widgets.sh` runs the Android compiler and then JUnit **after Gradle exits**, bounding concurrent JVM memory. Gradle caches/build/test classpaths stay ignored. The runtime tests cover:
+
+- all four real Glance compositions with actual data at three sizes, plus visible empty states;
+- selected RTL on an English host and resources for all 22 languages;
+- concurrent taps, command idempotency, goals, rounds, existing day/session history;
+- non-destructive v1 import, explicit derived-state clearing that retains the counter;
+- midnight/calendar selection, expiry, Sunrise exclusion and source freshness;
+- stale-background rejection, semantic configuration comparison and cached-verse retention.
+
+The JS/plugin tests additionally cover the real bridge wrapper, native acknowledgments/failures, provider hydration/foreground races, warm/cold route wiring, old-binary/background-module guards, selected-zone/DST calculations, iOS counter preservation and deterministic/reused resources. These are automated/source-level checks, **not phone battery, native release or launcher evidence**.
+
+Current export evidence: **web JS export passed**. An Android JS-export attempt exhausted the workspace's memory before completion; iOS export was not reached in that attempt. This does not negate the native harness result, and neither a successful nor failed JS export proves installed widget behavior.
+
+## Native release/device acceptance — still required
+
+Use the existing external Android build/release workflow. No `eas.json`, manual project regeneration or Xcode edits are introduced here.
+
+- [ ] Full Expo app/release build: module Gradle plugin/bridge, app manifest merge, resolved dependency graph, R8 and signed APK/AAB. Confirm location blocks remain effective in that final artifact.
+- [ ] Upgrade over the existing installed package **without uninstalling or clearing data**. Existing widget instances and saved manual city/Tasbih history must survive.
+- [ ] Inspect actual picker/reorder thumbnails **and placed widgets**; verify populated, no-snapshot, loading, recovery and exhausted-calendar behavior. Static previews alone are insufficient.
+- [ ] Test representative small/wide/tall resize, large font/display scale, light/dark, all language resources and the four RTL languages on LTR/RTL launcher settings.
+- [ ] Verify +1/Reset at speed, goal crossing, app-to-widget/widget-to-app return, multiple instances, backup restore, and restart/reboot without lost history.
+- [ ] Verify cold/warm/already-foreground widget destinations and the existing app lock.
+- [ ] Compare selected city/method/madhab/clock style against the app, including a different phone timezone, midnight, DST, reboot and delayed background work. Do not require exact WorkManager timing.
+- [ ] Exercise offline/background/Doze and app process death on actual Android/launcher versions. Document force-stop limitations; do not claim it is equivalent to normal backgrounding.
+- [ ] Preserve iOS WidgetKit/Live Activity/AppGroup behavior in the normal iOS release checks.
+
+### Official references
+
+- [Glance state and updates](https://developer.android.com/develop/ui/compose/glance/glance-app-widget)
+- [Glance errors/recovery](https://developer.android.com/develop/ui/compose/glance/error-handling)
+- [Glance RemoteViews interop](https://developer.android.com/develop/ui/compose/glance/interoperability)
+- [Picker previews](https://developer.android.com/develop/ui/views/appwidgets/previews)
+- [Periodic work and scheduling limits](https://developer.android.com/reference/androidx/work/PeriodicWorkRequest)
+
+The audit also inspected the pinned Glance 1.1.1 source artifacts; newer documentation examples are not assumed to be available in that version.

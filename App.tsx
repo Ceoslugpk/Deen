@@ -107,9 +107,11 @@ import { createQuranPreferenceStore } from './src/services/quranPreferenceStore'
 import { translationAudioForLanguage, translationLanguageCode } from './src/services/translationPreferences';
 import { audioPlayerLanguage, audioPlayerText } from './src/services/audioPlayerCopy';
 import { addSearchHistory as addRecentSearch, clearSearchHistory as clearRecentSearch, loadSearchHistory as loadSearchHistoryFor, removeSearchHistory as removeRecentSearch } from './src/services/searchHistory';
-import { syncWidgets } from './src/services/widgetSync';
-import { refreshWidgets } from './src/services/widgetBridge';
-import { readSnapshotJson, lastPublishTime } from './src/services/widgetBridge';
+import { syncWidgets, syncWidgetAyah } from './src/services/widgetSync';
+import { widgetText } from './src/services/widgetCopy';
+import { widgetDestinationRoute } from './src/services/widgetNavigation';
+import { consumeWidgetDestination, subscribeWidgetDestination, widgetsAvailable } from './src/services/widgetBridge';
+import { registerWidgetBackgroundTask } from './src/services/widgetBackground';
 import {
   clearMemorization, confidenceOf, demoteVerse, getMemorization, hiddenIndexes, isWord,
   loadMemorization, MODE_LABELS, overallConfidence, pickNext, recentAttempts, recordAttempt,
@@ -260,7 +262,7 @@ import { NAME_LANGUAGES } from './src/services/api';
 import { PROPHETS } from './src/content/prophets';
 import { NAMES_MEANING_AR } from './src/content/namesAr';
 import { countMuslimNames, findMuslimNames, letterCounts, loadMuslimNames, type MuslimName, type NameFilter } from './src/services/muslimNames';
-import { setTasbihCount, currentPhrase, dhikrMeaning, DHIKR_PHRASES, loadTasbihState, removeTasbihSession, resetTasbihCount, saveTasbihSession, setTasbihGoal, setTasbihPhrase, tasbihDays, tasbihLifetime, TASBIH_GOALS, tapTasbih, todayTotal, useTasbih } from './src/services/tasbihService';
+import { currentPhrase, dhikrMeaning, DHIKR_PHRASES, loadTasbihState, removeTasbihSession, resetTasbihCount, saveTasbihSession, setTasbihGoal, setTasbihPhrase, tasbihDays, tasbihLifetime, TASBIH_GOALS, tapTasbih, todayTotal, useTasbih } from './src/services/tasbihService';
 import { formatSadaqah, loadSadaqahState, logSadaqah, removeSadaqah, resetSadaqah, sadaqahSummary, setSadaqahCurrency, useSadaqah } from './src/services/sadaqahService';
 import { loadSunnahState, resetSunnah, sunnahDayKey, sunnahForDay, sunnahHistory, sunnahSummary, SUNNAH_ORDER, SUNNAH_PRAYERS, toggleSunnah, useSunnah } from './src/services/sunnahService';
 import { journalSummary, loadJournalState, removeJournalEntry, resetJournal, saveJournalEntry, useJournal } from './src/services/journalService';
@@ -614,7 +616,7 @@ export type ThemeName = 'islamic' | 'palestine';
 export type ThemeMode = 'system' | 'light' | 'dark';
 /** What is on screen once both the theme and the mode have been resolved. */
 export type ResolvedTheme = 'islamicLight' | 'islamicDark' | 'palestineLight' | 'palestineDark';
-type ThemeState = { theme: ThemeName; mode: ThemeMode; dark: boolean; resolved: ResolvedTheme; tick: number;
+type ThemeState = { theme: ThemeName; mode: ThemeMode; dark: boolean; resolved: ResolvedTheme; tick: number; hydrated: boolean;
   setTheme: (theme: ThemeName) => void; setMode: (mode: ThemeMode) => void;
   /**
    * Drives the change-over. It falls to 0 while the palette is swapped and
@@ -623,7 +625,7 @@ type ThemeState = { theme: ThemeName; mode: ThemeMode; dark: boolean; resolved: 
   swap: Animated.Value };
 const THEME_KEY = 'deen-theme-v1';
 const THEME_NAME_KEY = 'deen-theme-name-v1';
-const ThemeContext = createContext<ThemeState>({ theme: 'islamic', mode: 'system', dark: false, resolved: 'islamicLight', tick: 0, setTheme: () => {}, setMode: () => {}, swap: new Animated.Value(1) });
+const ThemeContext = createContext<ThemeState>({ theme: 'islamic', mode: 'system', dark: false, resolved: 'islamicLight', tick: 0, hydrated: false, setTheme: () => {}, setMode: () => {}, swap: new Animated.Value(1) });
 
 async function loadThemeMode(): Promise<ThemeMode> {
   try {
@@ -753,7 +755,7 @@ function ThemeProvider({ children }: { children: React.ReactNode }) {
     setThemeState(next);
     AsyncStorage.setItem(THEME_NAME_KEY, next).catch(() => undefined);
   };
-  const value = useMemo(() => ({ theme, mode, dark, resolved, setTheme, setMode, tick, swap }), [theme, mode, dark, resolved, setTheme, tick, swap]);
+  const value = useMemo(() => ({ theme, mode, dark, resolved, setTheme, setMode, tick, swap, hydrated }), [theme, mode, dark, resolved, setTheme, tick, swap, hydrated]);
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
 
@@ -1028,7 +1030,7 @@ function deviceTimeZone(): string | undefined {
     return undefined;
   }
 }
-type LocationState = { location: AppLocation | null; useDubai: () => void; setManual: (location:AppLocation)=>void; clear: () => void };
+type LocationState = { location: AppLocation | null; hydrated: boolean; useDubai: () => void; setManual: (location:AppLocation)=>void; clear: () => void };
 /**
  * Where the app starts when nobody has chosen anywhere.
  *
@@ -1052,7 +1054,8 @@ const LocationContext = createContext<LocationState | null>(null);
 function LocationProvider({children}:{children:React.ReactNode}) {
   const {rtl,language}=useLanguage();
   const [location,setLocation]=useState<AppLocation|null>(null);
-  useEffect(()=>{loadStoredLocation().then(saved=>setLocation(saved||DEFAULT_LOCATION))},[]);
+  const [hydrated,setHydrated]=useState(false);
+  useEffect(()=>{void loadStoredLocation().then(saved=>{setLocation(saved||DEFAULT_LOCATION);setHydrated(true)}).catch(()=>undefined)},[]);
   /*
    * A place is stored with the zone its times should be read in. When the
    * caller knows it — a city from the bundled list — it is passed through.
@@ -1061,14 +1064,14 @@ function LocationProvider({children}:{children:React.ReactNode}) {
    */
   const commit=useCallback((next:AppLocation|null)=>{
     if(next&&!next.timezone) next={...next,timezone:deviceTimeZone()};
-    setLocation(next);saveStoredLocation(next).catch(()=>{})
+    setLocation(next);setHydrated(true);saveStoredLocation(next).catch(()=>{})
   },[]);
   const useDubai=useCallback(()=>commit({latitude:25.2048,longitude:55.2708,label:'Dubai, United Arab Emirates',timezone:'Asia/Dubai'}),[commit]);
   /* Every one of these used to be rebuilt on each render - `clear` was an
      inline arrow, so the value object was new every time and all fourteen
      consumers re-rendered whenever the provider did. */
   const clear=useCallback(()=>commit(null),[commit]);
-  const value=useMemo(()=>({location,useDubai,setManual:commit,clear}),[location,useDubai,commit,clear]);
+  const value=useMemo(()=>({location,hydrated,useDubai,setManual:commit,clear}),[location,hydrated,useDubai,commit,clear]);
   return <LocationContext.Provider value={value}>{children}</LocationContext.Provider>;
 }
 function useAppLocation(){const value=useContext(LocationContext);if(!value)throw new Error('Location provider missing');return value}
@@ -2364,12 +2367,62 @@ async function preloadReflectionsAhead() {
   }
 }
 
+/** No rendered UI. Widgets must sync even when Home never mounts or an
+ * unrelated network request fails. All selected-city/settings hooks stay in
+ * the app's existing providers. */
+function WidgetLifecycle() {
+  const {language,ready}=useLanguage(); const {location,hydrated:cityReady}=useAppLocation();
+  const {settings,hydrated}=useWorshipSettings(); const {dark,hydrated:themeReady}=useTheme(); const counter=useTasbih();
+  const [counterReady,setCounterReady]=useState(false); const reconciling=useRef(false);
+  const input={location,calculationMethod:settings.calculationMethod,madhab:settings.madhab,timeFormat:settings.timeFormat,
+    language,dark,tasbih:{count:counter.count,target:counter.goal,label:currentPhrase(counter).transliteration}};
+  const current=useRef(input); current.current=input;
+  const enabled=Platform.OS!=='web'&&ready&&hydrated&&cityReady&&themeReady&&widgetsAvailable();
+  useEffect(()=>{
+    if(!enabled||!counterReady)return;
+    const timer=setTimeout(()=>{if(!reconciling.current)void syncWidgets(current.current)},150);
+    return()=>clearTimeout(timer);
+  },[enabled,counterReady,location?.latitude,location?.longitude,location?.timezone,location?.label,settings.calculationMethod,settings.madhab,settings.timeFormat,language,dark,counter.count,counter.goal,counter.phraseId]);
+  useEffect(()=>{
+    if(!enabled)return;
+    let live=true; let resuming=Promise.resolve(); let pendingResumes=0;
+    const openDestination=async()=>{
+      const route=widgetDestinationRoute(await consumeWidgetDestination());
+      if(live&&route)navigateWhenReady(route.name,route.params);
+    };
+    const resume=()=>{
+      void openDestination();
+      pendingResumes++; reconciling.current=true; setCounterReady(false);
+      resuming=resuming.then(async()=>{
+        let reconciled=false;
+        try {
+          const adopted=await loadTasbihState();
+          if(!live)return;
+          // Use the acknowledged state directly, not a not-yet-rendered React
+          // closure. In particular preserve Swift widget taps on cold start.
+          await syncWidgets({...current.current,tasbih:{count:adopted.count,target:adopted.goal,label:currentPhrase(adopted).transliteration}});
+          reconciled=true;
+        } catch {
+          // Android prayer/Hijri publication is independent of a broken
+          // counter mirror: its native counter ignores snapshot.tasbih.
+          // iOS retains its existing snapshot until reconciliation succeeds.
+          if(live&&Platform.OS==='android') { await syncWidgets({...current.current,tasbih:null});reconciled=true }
+        } finally {
+          pendingResumes--;
+          if(live&&pendingResumes===0) { reconciling.current=false;setCounterReady(reconciled) }
+        }
+      }).catch(()=>undefined);
+    };
+    const unsubscribeDestination=subscribeWidgetDestination(()=>{void openDestination()});
+    void registerWidgetBackgroundTask(); resume();
+    const sub=AppState.addEventListener('change',next=>{if(next==='active')resume()});
+    return()=>{live=false;sub.remove();unsubscribeDestination()};
+  },[enabled]);
+  return null;
+}
+
 function useHomeData() {
   const {rtl,language}=useLanguage(); const {location}=useAppLocation(); const {settings}=useWorshipSettings(); const dateKey=dayKeyOf(new Date());
-  /* Only needed so the widgets are told which palette to draw with: they
-     cannot read the app's theme, and a light card on a dark home screen is
-     the kind of detail that makes a widget look abandoned. */
-  const {dark}=useTheme();
   /* The hadith of the day is fetched in the reader's hadith language, so a
      change of language has to be a reason to refresh — otherwise the card
      keeps yesterday's tongue until midnight. */
@@ -2385,7 +2438,8 @@ function useHomeData() {
           already showing something */
     setError('');
     try{
-      const[p,a,h,n,duas]=await Promise.all([managedPrayerSnapshot(location,settings),getAyahOfDay(),getDailyHadith().catch(()=>null),loadNameOfDay().catch(()=>null),getDuas('morning').catch(()=>[])]);
+      const prayerTask=managedPrayerSnapshot(location,settings).then(p=>{setSnapshot(p.snapshot);setCached(p.cached);return p});
+      const[p,a,h,n,duas]=await Promise.all([prayerTask,getAyahOfDay(),getDailyHadith().catch(()=>null),loadNameOfDay().catch(()=>null),getDuas('morning').catch(()=>[])]);
       const daily={ayah:a,hadith:h as any,name:n as any,dua:duas?.[0]};
       setSnapshot(p.snapshot);setCached(p.cached);applyDaily(daily);
       await saveDailyContent(dateKey,daily);
@@ -2401,26 +2455,8 @@ function useHomeData() {
     setSnapshot(null);
     if(location)load();
   },[location?.latitude,location?.longitude,settings.calculationMethod,settings.madhab,settings.timeFormat,hadithLanguage]);
-  /* Hand today to the home-screen widgets.
-     The widgets cannot ask the app for anything — the system draws them, at
-     times of its own choosing — so this is the only moment they can be told.
-     It runs here because this hook is the one place that already knows the
-     location, the settings, the times and the ayah, and it is cheap: a little
-     arithmetic and one write, dropped on the floor where there are no
-     widgets to write to. */
-  useEffect(()=>{
-    if(!location||!snapshot)return;
-    void syncWidgets({
-      location:{latitude:location.latitude,longitude:location.longitude,label:location.label,timezone:location.timezone},
-      calculationMethod:settings.calculationMethod,
-      madhab:settings.madhab,
-      timeFormat:settings.timeFormat,
-      snapshot,
-      ayah,
-      labelFor:(n:string)=>prayerName(language,n),
-      dark,
-    });
-  },[location?.latitude,location?.longitude,snapshot,ayah,settings.calculationMethod,settings.madhab,settings.timeFormat,language,dark]);
+  /* Daily content is independent of the native prayer/calendar pipeline. */
+  useEffect(()=>{if(ayah)void syncWidgetAyah(ayah,dateKey)},[ayah,dateKey]);
   return{snapshot,ayah,hadith,name,dua,location,cached,error,load};
 }
 function getNext(prayers: Prayer[]) {
@@ -6831,44 +6867,23 @@ function TasbihScreen({ navigation }: any) {const {rtl,language}=useLanguage();c
   const press = useRef(new Animated.Value(1)).current;
   const [celebrated, setCelebrated] = useState(false);
   useEffect(() => { if (!celebrated) return; const timer = setTimeout(() => setCelebrated(false), 1600); return () => clearTimeout(timer); }, [celebrated]);
-  /* The counter on the home screen.
-     Two directions, because the count exists in two places. Tapping here
-     publishes, so the widget matches. Tapping the widget is invisible to the
-     app, so on arriving here the stored stamp is compared with the last time
-     this app wrote — and the newer of the two wins. Nothing is merged: two
-     counters cannot be added together, only one of them can be right. */
-  useEffect(() => {
-    void syncWidgets({
-      location: null, snapshot: null, ayah: null,
-      calculationMethod: 9, madhab: 'shafi', timeFormat: '12',
-      tasbih: { count: state.count, target: state.goal, label: phrase.transliteration },
-    });
-  }, [state.count, state.goal, phrase.transliteration]);
-  useEffect(() => {
-    let live = true;
-    (async () => {
-      const stored = await readSnapshotJson();
-      if (!live || !stored) return;
-      const parsed = JSON.parse(stored) as { tasbih?: { count?: number }; tasbihAt?: number };
-      const stampedAt = parsed?.tasbihAt;
-      const count = parsed?.tasbih?.count;
-      if (!stampedAt || typeof count !== 'number') return;
-      /* Only adopt it if the widget's write is the newer of the two. */
-      if (stampedAt > lastPublishTime()) await setTasbihCount(count);
-    })().catch(() => undefined);
-    return () => { live = false; };
-  }, []);
+  /* Native Android and the app share one transactional counter; startup and
+     foreground reconciliation are owned by WidgetLifecycle, not this screen. */
+  const commandFailed = () => Alert.alert(T('Tasbih'), widgetText(language).failure);
+  const counterCommand = (work: Promise<unknown>) => { void work.catch(commandFailed); };
   const tap = async () => {
     Animated.sequence([
       Animated.timing(press, { toValue: 0.94, duration: 70, useNativeDriver: true }),
       Animated.spring(press, { toValue: 1, friction: 4, tension: 220, useNativeDriver: true }),
     ]).start();
     haptic('tap');
-    const completed = await tapTasbih();
-    if (completed) {
-      if (Platform.OS !== 'web') haptic('success');
-      setCelebrated(true);
-    }
+    try {
+      const completed = await tapTasbih();
+      if (completed) {
+        if (Platform.OS !== 'web') haptic('success');
+        setCelebrated(true);
+      }
+    } catch { commandFailed(); }
   };
   const progress = Math.min(100, Math.round((state.count / state.goal) * 100));
   /**
@@ -6912,7 +6927,7 @@ function TasbihScreen({ navigation }: any) {const {rtl,language}=useLanguage();c
       </LinearGradient>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[s.choiceRow, s.tasbihRow]}>
-        {DHIKR_PHRASES.map((item) => <ChoicePill key={item.id} label={rtl ? item.arabic : item.transliteration} selected={item.id === state.phraseId} onPress={() => { void setTasbihPhrase(item.id); }} />)}
+        {DHIKR_PHRASES.map((item) => <ChoicePill key={item.id} label={rtl ? item.arabic : item.transliteration} selected={item.id === state.phraseId} onPress={() => { counterCommand(setTasbihPhrase(item.id)); }} />)}
       </ScrollView>
 
       <View style={s.tasbihCard}>
@@ -6929,15 +6944,15 @@ function TasbihScreen({ navigation }: any) {const {rtl,language}=useLanguage();c
         </View>
         <View style={[s.hadithTrack, { marginTop: 18 }]}><View style={[s.hadithFill, { width: `${progress}%` }]} /></View>
         <View style={[s.actionRow, { marginTop: 16 }]}>
-          <Tactile accessibilityLabel={T('Reset the current count')} onPress={() => void resetTasbihCount()} style={s.secondary}>{ico('refresh-outline', 16, C.green)}<Text style={s.secondaryText}>{T('Reset')}</Text></Tactile>
-          <Tactile accessibilityLabel={T('Save this round to history')} onPress={() => void saveTasbihSession()} style={s.secondary}>{ico('checkmark-outline', 16, C.green)}<Text style={s.secondaryText}>{T('Save round')}</Text></Tactile>
+          <Tactile accessibilityLabel={T('Reset the current count')} onPress={() => counterCommand(resetTasbihCount())} style={s.secondary}>{ico('refresh-outline', 16, C.green)}<Text style={s.secondaryText}>{T('Reset')}</Text></Tactile>
+          <Tactile accessibilityLabel={T('Save this round to history')} onPress={() => counterCommand(saveTasbihSession())} style={s.secondary}>{ico('checkmark-outline', 16, C.green)}<Text style={s.secondaryText}>{T('Save round')}</Text></Tactile>
           <Tactile accessibilityLabel={T('Share this dhikr as a card')} onPress={sharePhrase} style={s.secondary}>{ico('share-outline', 16, C.green)}<Text style={s.secondaryText}>{T('Share')}</Text></Tactile>
         </View>
       </View>
 
       <Section title={T('Goal')} />
       <View style={[s.choiceRow, s.tasbihGoalRow]}>
-        {TASBIH_GOALS.map((goal) => <ChoicePill key={goal} label={`${goal}`} selected={goal === state.goal} onPress={() => { void setTasbihGoal(goal); }} />)}
+        {TASBIH_GOALS.map((goal) => <ChoicePill key={goal} label={`${goal}`} selected={goal === state.goal} onPress={() => { counterCommand(setTasbihGoal(goal)); }} />)}
       </View>
 
       <Section title={T('Today')} />
@@ -6954,7 +6969,7 @@ function TasbihScreen({ navigation }: any) {const {rtl,language}=useLanguage();c
           <Text style={s.meta}>{new Date(session.completedAt).toLocaleDateString()}</Text>
         </View>
         <Text style={s.dataBody}>{session.count} of {session.goal}</Text>
-        <Pressable accessibilityLabel={T('Remove this saved round')} onPress={() => void removeTasbihSession(session.id)} style={{ marginTop: 8, alignSelf: 'flex-start' }}><Text style={s.dangerText}>{T('Remove')}</Text></Pressable>
+        <Pressable accessibilityLabel={T('Remove this saved round')} onPress={() => counterCommand(removeTasbihSession(session.id))} style={{ marginTop: 8, alignSelf: 'flex-start' }}><Text style={s.dangerText}>{T('Remove')}</Text></Pressable>
       </View>)}
     </ScrollView>
     {offscreenCard}
@@ -15013,7 +15028,7 @@ function AppShell() {
  */
 async function reloadAllState() {
   await Promise.all([
-    loadOfflineSetup(), loadAudioSettings(), loadHadithState(), loadTasbihState(),
+    loadOfflineSetup(), loadAudioSettings(), loadHadithState(), loadTasbihState(true),
     loadDownloads(), loadActivity(), loadFastingState(), loadJourneys(),
     loadWomensState(), loadZakatState(), loadLockConfig(), loadMemorization(),
     loadReports(), loadKhatamState(), loadQadaState(), loadSadaqahState(), loadJournalState(), loadSunnahState(),
@@ -15022,30 +15037,18 @@ async function reloadAllState() {
 
 export default function App(){const[fontsLoaded]=useFonts({DMSans_400Regular,DMSans_600SemiBold,DMSans_700Bold,Newsreader_600SemiBold,NotoNaskhArabic_400Regular,NotoNaskhArabic_600SemiBold,Amiri_400Regular,KFGQPCUthmanicHafs,IBMPlexSansArabic_400Regular,IBMPlexSansArabic_600SemiBold});const restoreTick=useRestoreNonce();
 useEffect(()=>{if(restoreTick>0){void reloadAllState()}},[restoreTick]);
-/* Redraw the widgets whenever the app comes back to the front.
-   A widget may have been sitting on the home screen for hours, showing a
-   countdown that stopped being true the moment the app went to the
-   background. The snapshot it draws from is still correct — it is the redraw
-   that is missing — so this asks every widget to render again from what it
-   already has, which is the cheapest of the two possible refreshes. */
-useEffect(()=>{
-  const subscription=AppState.addEventListener('change',(next)=>{
-    if(next==='active')void refreshWidgets();
-  });
-  return()=>subscription.remove();
-},[]);
 useEffect(()=>{if(fontsLoaded){void loadOfflineSetup();void resumeSavedOfflineSetup();resumeSavedQuranPreload();/* The saved recitation is restored after the first frame rather than during
    it. Restoring it means bringing the transport up, and a transport that
    answers nothing must not be able to keep the app from painting: this runs
    once the screen is already up, and swallows its own failure, so the worst
    a broken player can do is leave the mini player silent. */
-void loadAudioSettings().then(() => new Promise<void>(resolve => setTimeout(resolve, 0)).then(() => restoreSavedSession())).catch(() => undefined);void loadHadithState();void loadTasbihState();void loadDownloads();void loadActivity();void loadFastingState();void loadJourneys();void loadWomensState();void loadZakatState();void loadKhatamState();void loadQadaState();void loadSadaqahState();void loadJournalState();void loadLockConfig();void loadBackupSettings();void refreshMarket();startLockWatch();startBackupWatch()}},[fontsLoaded]);if(!fontsLoaded)return <SafeAreaView style={s.safe}><Spinner/></SafeAreaView>;/* The boundary sits *outside* every provider, not just around the shell. A
+void loadAudioSettings().then(() => new Promise<void>(resolve => setTimeout(resolve, 0)).then(() => restoreSavedSession())).catch(() => undefined);void loadHadithState();void loadTasbihState().catch(()=>undefined);void loadDownloads();void loadActivity();void loadFastingState();void loadJourneys();void loadWomensState();void loadZakatState();void loadKhatamState();void loadQadaState();void loadSadaqahState();void loadJournalState();void loadLockConfig();void loadBackupSettings();void refreshMarket();startLockWatch();startBackupWatch()}},[fontsLoaded]);if(!fontsLoaded)return <SafeAreaView style={s.safe}><Spinner/></SafeAreaView>;/* The boundary sits *outside* every provider, not just around the shell. A
    provider that throws on its first render takes the whole tree with it, and
    a boundary nested inside them never sees the error — the app simply comes
    up as an empty screen with nothing to explain it. From out here the crash
    card is drawn with the real message instead. It needs no context of its
    own: the copy comes from I18nManager and the styles from module scope. */
-return <SafeAreaProvider initialMetrics={initialWindowMetrics}><ScreenBoundary><ThemeProvider key={restoreTick}><SkeletonProvider><LanguageProvider><QuranPreferencesProvider><WorshipSettingsProvider><LocationProvider><AppShell/></LocationProvider></WorshipSettingsProvider></QuranPreferencesProvider></LanguageProvider></SkeletonProvider></ThemeProvider></ScreenBoundary></SafeAreaProvider>}
+return <SafeAreaProvider initialMetrics={initialWindowMetrics}><ScreenBoundary><ThemeProvider key={restoreTick}><SkeletonProvider><LanguageProvider><QuranPreferencesProvider><WorshipSettingsProvider><LocationProvider><WidgetLifecycle/><AppShell/></LocationProvider></WorshipSettingsProvider></QuranPreferencesProvider></LanguageProvider></SkeletonProvider></ThemeProvider></ScreenBoundary></SafeAreaProvider>}
 
 /**
  * The Arabic face used everywhere, once someone has chosen one.

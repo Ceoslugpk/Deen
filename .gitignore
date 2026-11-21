@@ -6,6 +6,12 @@ dist/
 .env
 .env.*
 *.log
+# Standalone Android test harness output (never commit Gradle caches/binaries).
+tests/android-widgets/.gradle/
+tests/android-widgets/build/
+tests/android-widgets/local.properties
+*.hprof
+hs_err_pid*
 audit-*.png
 responsive-*.png
 current-ui.png

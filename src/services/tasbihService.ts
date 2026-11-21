@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
+import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { writeText } from './storage';
+import { commandTasbihJson, nativeTasbihAvailable, readNativeTasbihJson, readSnapshotJson, lastPublishTime } from './widgetBridge';
 
 /**
  * Phase 3 — Tasbih.
@@ -121,9 +123,12 @@ function emit(next: TasbihState) {
   listeners.forEach((listener) => listener(state));
 }
 
-async function persist(next: TasbihState) {
+async function persist(next: TasbihState, nativeCommitted = false) {
+  const saved = await writeText(KEY, JSON.stringify(next));
+  // A failed backup mirror cannot undo an acknowledged native transaction.
+  // On web/iOS, however, never claim an unpersisted local change succeeded.
+  if (!saved && !nativeCommitted) throw new Error('Counter could not be saved');
   emit(next);
-  await writeText(KEY, JSON.stringify(next));
 }
 
 
@@ -134,15 +139,70 @@ export function subscribeTasbih(listener: (next: TasbihState) => void) {
   };
 }
 
-export async function loadTasbihState() {
+// Android app and widgets use one transactional native authority. AsyncStorage
+// remains a non-destructive backup/web/iOS mirror, not a competing counter.
+let ready = false;
+let operations: Promise<unknown> = Promise.resolve();
+let commandNumber = 0;
+const commandSession = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+function serial<T>(work: () => Promise<T>): Promise<T> {
+  const result = operations.then(work);
+  operations = result.catch(() => undefined);
+  return result;
+}
+async function hydrate(restore = false) {
+  const native = nativeTasbihAvailable();
+  if (native && !restore) {
+    // Native authority is read FIRST. A broken/unreadable AsyncStorage mirror
+    // must not block or replace an already initialized native counter.
+    const existing = await readNativeTasbihJson();
+    if (existing) {
+      await persist(JSON.parse(existing) as TasbihState, true);
+      ready = true;
+      return state;
+    }
+  }
+  let saved = state;
   try {
     const raw = await AsyncStorage.getItem(KEY);
-    state = raw ? { ...EMPTY_TASBIH, ...JSON.parse(raw) } : EMPTY_TASBIH;
-  } catch {
-    state = EMPTY_TASBIH;
+    if (raw) saved = { ...EMPTY_TASBIH, ...JSON.parse(raw) };
+  } catch { throw new Error('Saved counter could not be read; original data retained'); }
+  if (native) {
+    const raw = await commandTasbihJson(JSON.stringify({
+      op: restore ? 'restore' : 'init', state: saved,
+      label: currentPhrase(saved).transliteration,
+      idempotencyKey: `${commandSession}-${++commandNumber}`,
+    }));
+    if (!raw) throw new Error('Native counter did not acknowledge initialization');
+    saved = JSON.parse(raw) as TasbihState;
+  } else if (Platform.OS === 'ios' && !restore) {
+    // Preserve the existing Swift/AppGroup timestamp contract. Adopt widget
+    // taps BEFORE any global lifecycle publication can replace the snapshot.
+    const raw = await readSnapshotJson();
+    if (raw) {
+      const widget = JSON.parse(raw) as { tasbihAt?: number; tasbih?: { count?: number } };
+      const count = widget.tasbih?.count;
+      if ((widget.tasbihAt || 0) > lastPublishTime() && typeof count === 'number' && Number.isFinite(count)) {
+        saved = { ...saved, count: Math.max(0, Math.min(9999, Math.round(count))) };
+      }
+    }
   }
-  listeners.forEach((listener) => listener(state));
+  await persist(saved, native);
+  ready = true;
   return state;
+}
+/** Restore=true is used ONLY by the explicit backup-restore path. Ordinary
+ * startup/resume must adopt native widget taps, not overwrite them. */
+export function loadTasbihState(restore = false): Promise<TasbihState> {
+  return serial(() => hydrate(restore));
+}
+async function applyCommand(command: Record<string, unknown>, reduce: () => TasbihState) {
+  if (!ready) await hydrate();
+  if (nativeTasbihAvailable()) {
+    const raw = await commandTasbihJson(JSON.stringify({ ...command, idempotencyKey: `${commandSession}-${++commandNumber}` }));
+    if (!raw) throw new Error('Native counter did not acknowledge command');
+    await persist(JSON.parse(raw) as TasbihState, true);
+  } else await persist(reduce());
 }
 
 export function useTasbih(): TasbihState {
@@ -164,48 +224,35 @@ export function todayTotal(next: TasbihState = state) {
   return next.days[dayKey()] || 0;
 }
 
-export async function tapTasbih() {
-  const key = dayKey();
-  const count = state.count + 1;
-  const rounds = count >= state.goal ? state.rounds + 1 : state.rounds;
-  const next: TasbihState = {
-    ...state,
-    count: count >= state.goal ? 0 : count,
-    rounds,
-    days: { ...state.days, [key]: (state.days[key] || 0) + 1 },
-  };
-  await persist(next);
-  return count >= state.goal;
+export function tapTasbih(): Promise<boolean> {
+  return serial(async () => {
+    if (!ready) await hydrate();
+    const before = state.rounds;
+    await applyCommand({ op: 'tap' }, () => {
+      const key = dayKey(); const count = state.count + 1; const complete = count >= state.goal;
+      return { ...state, count: complete ? 0 : count, rounds: state.rounds + (complete ? 1 : 0), days: { ...state.days, [key]: (state.days[key] || 0) + 1 } };
+    });
+    return state.rounds > before;
+  });
 }
-
-export async function setTasbihPhrase(phraseId: string) {
-  await persist({ ...state, phraseId, count: 0 });
+export function setTasbihPhrase(phraseId: string): Promise<void> {
+  const label = DHIKR_PHRASES.find(phrase => phrase.id === phraseId)?.transliteration || '';
+  return serial(() => applyCommand({ op: 'phrase', phraseId, label }, () => ({ ...state, phraseId, count: 0 })));
 }
-
-export async function setTasbihGoal(goal: number) {
-  await persist({ ...state, goal, count: 0 });
+export function setTasbihGoal(goal: number): Promise<void> {
+  return serial(() => applyCommand({ op: 'goal', goal }, () => ({ ...state, goal, count: 0 })));
 }
-
-export async function resetTasbihCount() {
-  await persist({ ...state, count: 0 });
+export function resetTasbihCount(): Promise<void> {
+  return serial(() => applyCommand({ op: 'reset' }, () => ({ ...state, count: 0 })));
 }
-
-/**
- * Sets the counter to an exact number rather than stepping it.
- *
- * Added for one caller: the home-screen widget. Tapping "+1" there changes a
- * count the app cannot see, because the widget wrote it while the app was not
- * running. This lets the app adopt that number rather than overwrite it —
- * which, without this, is what would happen the next time the app published.
- *
- * It deliberately does not touch `days` or `rounds`. Those are the history of
- * how the count was reached, and a count adopted from a widget has no history
- * the app can reconstruct; inventing one would make the day's tally a lie.
- */
-export async function setTasbihCount(count: number) {
-  const next = Math.max(0, Math.min(9999, Math.round(count)));
-  if (next === state.count) return;
-  await persist({ ...state, count: next });
+/** Legacy iOS count reconciliation; Android instead adopts complete native
+ * state including real widget-created history via loadTasbihState(). */
+export function setTasbihCount(count: number): Promise<void> {
+  return serial(async () => {
+    if (nativeTasbihAvailable()) { await hydrate(); return; }
+    const next = Math.max(0, Math.min(9999, Math.round(count)));
+    await persist({ ...state, count: next });
+  });
 }
 
 /**
@@ -225,18 +272,16 @@ export function tasbihDays(value: TasbihState = state) {
   return Object.keys(value.days || {}).filter((key) => (value.days[key] || 0) > 0).length;
 }
 
-export async function saveTasbihSession() {
-  if (!state.count) return;
-  const session: TasbihSession = {
-    id: `${Date.now()}`,
-    phrase: currentPhrase().transliteration,
-    count: state.count,
-    goal: state.goal,
-    completedAt: Date.now(),
-  };
-  await persist({ ...state, sessions: [session, ...state.sessions].slice(0, 60), count: 0 });
+export function saveTasbihSession(): Promise<void> {
+  return serial(async () => {
+    if (!ready) await hydrate();
+    await applyCommand({ op: 'saveSession', label: currentPhrase().transliteration }, () => {
+      if (!state.count) return state;
+      const session: TasbihSession = { id: `${Date.now()}`, phrase: currentPhrase().transliteration, count: state.count, goal: state.goal, completedAt: Date.now() };
+      return { ...state, sessions: [session, ...state.sessions], count: 0 };
+    });
+  });
 }
-
-export async function removeTasbihSession(id: string) {
-  await persist({ ...state, sessions: state.sessions.filter((session) => session.id !== id) });
+export function removeTasbihSession(id: string): Promise<void> {
+  return serial(() => applyCommand({ op: 'removeSession', id }, () => ({ ...state, sessions: state.sessions.filter(session => session.id !== id) })));
 }

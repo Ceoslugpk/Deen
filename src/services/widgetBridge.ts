@@ -1,168 +1,85 @@
-/**
- * Talks to the native widget module.
- *
- * The widget never calls into the app; the app calls out to it. So every
- * change a widget shows has to be *published* — prayer times when they are
- * calculated, the counter when it is tapped, the theme when it flips. Nothing
- * here is polled, and nothing here is read back.
- *
- * The native module is a local Expo module (`modules/deen-widgets`), reached
- * through autolinking rather than through `NativeModules`, so it needs no
- * hand-written package registration that the next prebuild would delete.
- *
- * Everything is guarded, because this module does not exist on the web or in
- * Expo Go. A widget that is never told anything is a smaller problem than an
- * app that throws at startup because a native module was not linked.
- */
+/** One checked adapter to the local Expo module. Web/Expo Go fail closed. */
+import type { WidgetModule } from '../../modules/deen-widgets';
 
-export type DeenWidgetsNative = {
-  publish(json: string): Promise<boolean>;
-  refresh(): Promise<boolean>;
-  read(): Promise<string | null>;
-  clear(): Promise<boolean>;
-  startActivity(
-    name: string,
-    time: string,
-    nextAt: number,
-    place: string,
-    method: string,
-  ): Promise<boolean>;
-  stopActivity(): Promise<boolean>;
-};
-
-let cached: DeenWidgetsNative | null | undefined;
-
-/**
- * The module, or null where there isn't one.
- *
- * `requireNativeModule` throws rather than returning undefined when the module
- * is missing, and it is only ever missing in the same circumstances every
- * time — so the answer is worked out once and remembered.
- */
-function nativeModule(): DeenWidgetsNative | null {
+let cached: WidgetModule | null | undefined;
+function nativeModule(): WidgetModule | null {
   if (cached !== undefined) return cached;
   try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const mod = require('../../modules/deen-widgets');
-    cached = (mod && (mod as typeof import('../../modules/deen-widgets'))) as unknown as DeenWidgetsNative;
-  } catch {
-    cached = null;
-  }
+    const mod = require('../../modules/deen-widgets') as WidgetModule;
+    cached = ['publishSnapshotJson', 'refreshWidgets', 'readSnapshotJson', 'clearSnapshot'].every(
+      key => typeof (mod as unknown as Record<string, unknown>)[key] === 'function',
+    ) ? mod : null;
+  } catch { cached = null; }
   return cached;
 }
 
 let lastPublished = '';
-
-/**
- * When the app last wrote, epoch ms.
- *
- * Kept so the two writers can be told apart. The widget stamps its own write;
- * the app compares that stamp with this one and keeps whichever is newer.
- * Without a stamp on both sides there is no way to know whether a stored
- * count is the app's own, or one the widget has moved on from.
- */
 let lastPublishedAt = 0;
+let writes: Promise<unknown> = Promise.resolve();
+export const lastPublishTime = () => lastPublishedAt;
+export const widgetsAvailable = () => nativeModule() !== null;
 
-export function lastPublishTime(): number {
-  return lastPublishedAt;
+/** Serialize app publications. Never acknowledge/deduplicate a failed write. */
+export function publishSnapshotJson(json: string): Promise<boolean> {
+  const work = writes.then(async () => {
+    const native = nativeModule();
+    if (!native) return false;
+    if (json === lastPublished) return true;
+    try {
+      if (await native.publishSnapshotJson(json) !== true) return false;
+      // Persistence succeeded, but a failed update must remain retryable.
+      if (await native.refreshWidgets() !== true) return false;
+      lastPublished = json;
+      lastPublishedAt = Date.now();
+      return true;
+    } catch { return false; }
+  });
+  writes = work.catch(() => undefined);
+  return work;
 }
-
-/**
- * Writes the snapshot and redraws the widgets.
- *
- * Identical snapshots skip the redraw. The counter can be tapped several times
- * a second, and each tap would otherwise wake the widget host and rebuild four
- * layouts — all to show a number that has moved by one.
- */
-export async function publishSnapshotJson(json: string): Promise<boolean> {
-  const native = nativeModule();
-  if (!native) return false;
-  const changed = json !== lastPublished;
-  lastPublished = json;
-  lastPublishedAt = Date.now();
-  try {
-    await native.publish(json);
-    if (changed) await native.refresh();
-    return true;
-  } catch {
-    /* A widget that keeps its old snapshot is not worth an exception. */
-    return false;
-  }
-}
-
 export async function refreshWidgets(): Promise<boolean> {
-  const native = nativeModule();
-  if (!native) return false;
-  try {
-    await native.refresh();
-    return true;
-  } catch {
-    return false;
-  }
+  try { return await nativeModule()?.refreshWidgets() === true; } catch { return false; }
 }
-
-/** The snapshot as the widget host last saw it, for picking up a home tap. */
 export async function readSnapshotJson(): Promise<string | null> {
-  const native = nativeModule();
-  if (!native) return null;
-  try {
-    return await native.read();
-  } catch {
-    return null;
-  }
+  try { return await nativeModule()?.readSnapshotJson() ?? null; } catch { return null; }
 }
-
 export async function clearSnapshot(): Promise<boolean> {
-  const native = nativeModule();
-  lastPublished = '';
-  lastPublishedAt = 0;
-  if (!native) return false;
-  try {
-    return await native.clear();
-  } catch {
-    return false;
-  }
+  // Only derived prayer/daily data is cleared natively. Never erase Tasbih.
+  const work = writes.then(async () => {
+    try {
+      if (await nativeModule()?.clearSnapshot() !== true) return false;
+      lastPublished = ''; lastPublishedAt = 0;
+      return true;
+    } catch { return false; }
+  });
+  writes = work.catch(() => undefined);
+  return work;
 }
-
-/**
- * Puts the countdown on the Lock Screen and in the Dynamic Island.
- *
- * Returns false, quietly, wherever there is no Live Activity to put it on:
- * Android, an iOS before 16.1, an iPad, or a user who has switched them off.
- * All four are ordinary states and none of them is an error.
- */
-export async function startActivity(input: {
-  name: string;
-  time: string;
-  nextAt: number;
-  place: string;
-  method: string;
-}): Promise<boolean> {
-  const native = nativeModule();
-  if (!native) return false;
-  try {
-    return await native.startActivity(
-      input.name,
-      input.time,
-      input.nextAt,
-      input.place,
-      input.method,
-    );
-  } catch {
-    return false;
-  }
+export function nativeTasbihAvailable(): boolean {
+  try { return nativeModule()?.supportsTasbihCommands() === true; } catch { return false; }
 }
-
+/** Null means unsupported. A supported but failed command throws: do NOT
+ * silently apply it to a second local counter after an ambiguous native write. */
+export async function commandTasbihJson(command: string): Promise<string | null> {
+  const native = nativeModule();
+  if (!native || !nativeTasbihAvailable()) return null;
+  return native.commandTasbihJson(command);
+}
+/** Native read failures must not masquerade as an empty/uninitialized store. */
+export async function readNativeTasbihJson(): Promise<string | null> {
+  const native = nativeModule();
+  if (!native || !nativeTasbihAvailable()) return null;
+  return native.readNativeTasbihJson();
+}
+export async function consumeWidgetDestination(): Promise<string | null> {
+  try { return await nativeModule()?.consumeWidgetDestination() ?? null; } catch { return null; }
+}
+export function subscribeWidgetDestination(listener: () => void): () => void {
+  try { return nativeModule()?.subscribeWidgetDestination(listener) ?? (() => undefined); } catch { return () => undefined; }
+}
+export async function startActivity(input: { name: string; time: string; nextAt: number; place: string; method: string }): Promise<boolean> {
+  try { return await nativeModule()?.startActivity(input.name, input.time, input.nextAt, input.place, input.method) === true; } catch { return false; }
+}
 export async function stopActivity(): Promise<boolean> {
-  const native = nativeModule();
-  if (!native) return false;
-  try {
-    return await native.stopActivity();
-  } catch {
-    return false;
-  }
-}
-
-export function widgetsAvailable(): boolean {
-  return nativeModule() !== null;
+  try { return await nativeModule()?.stopActivity() === true; } catch { return false; }
 }
