@@ -2,9 +2,30 @@
   "revision": "R110",
   "approvedScope": "Optional native shake → confirmation → unchanged external form; explicit location blocks and corrected privacy. No automatic diagnostics.",
   "baselineCommit": "f11890d39a2c33acba5c3a38c0152766ddb703dc",
-  "runtimeCommit": null,
+  "runtimeCommit": "dde1089641455a878f3816e980f35f10d5ad93ef",
   "rollout": {
-    "status": "pending push and public verification"
+    "url": "https://deen-companion-preview-five.vercel.app/?v=dde1089",
+    "runtimeCommit": "dde1089641455a878f3816e980f35f10d5ad93ef",
+    "deploymentId": "dpl_32WMg7MFrpLvvKNdXaFZKhdZ9QFZ",
+    "bundle": "/_expo/static/js/web/index-12b28ac575619d6f10d229597632f78e.js",
+    "bytes": 24316289,
+    "sha256": "dd1e5e15803f946c663b1e82547af90e9fc3fc640893601e9dc50fefbb9d6ba3",
+    "matchesTestedExport": true,
+    "status": "READY",
+    "readySubstate": "PROMOTED",
+    "gitPushVerified": true,
+    "publicAliasVerified": true,
+    "nativeBinaryBuilt": false,
+    "storeReleasePerformed": false,
+    "liveBrowserChecks": {
+      "policyContexts": 1,
+      "policyLayouts": 5,
+      "manualFeedbackContexts": 1,
+      "manualFeedbackLayouts": 6,
+      "manualExternalNavigations": 3,
+      "errors": 0
+    },
+    "totalLocalAndLiveBrowserContexts": 50
   },
   "verification": {
     "unit": {

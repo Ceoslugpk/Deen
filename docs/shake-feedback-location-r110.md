@@ -10,7 +10,7 @@ Implemented after the user's approval of the R109 recommendation. Baseline: `f11
 - Existing manual Settings action remains immediately below Share app. Web still uses its secure real new-tab anchor and does **not** display the native setting, subscribe for shaking, or request browser motion/location permission.
 - Explicit Android location-permission blocks and corrected Privacy Policy/Data Safety copy. No removal of an existing declared location grant is claimed: those permissions were absent in R109's inspected current inputs.
 
-**Local implementation/verification complete; push and public deployment verification pending at the time of this initial evidence commit.** The final rollout section is updated after verification.
+**Implemented, tested and pushed.** Runtime commit: `dde1089641455a878f3816e980f35f10d5ad93ef`. Vercel is **READY / PROMOTED** and the public website serves the exact tested web bundle. A new native binary and installed-device release QA are still required.
 
 [Self-contained gallery: seven actual running-web captures](shake-feedback-location-r110-gallery.html). These are real production-web screenshots, not mockups, native screenshots or a simulated shake popup.
 
@@ -118,4 +118,12 @@ The loopback URLs above are automation inside the workspace, not browser-facing 
 
 ## Public rollout
 
-Pending push/verification in this initial local evidence snapshot. The website will show the corrected policy and preserve manual feedback. The native-only setting and manifest safeguard require a newly built native application.
+- Runtime push: `dde1089641455a878f3816e980f35f10d5ad93ef` on `main`, verified at the remote.
+- Vercel deployment: `dpl_32WMg7MFrpLvvKNdXaFZKhdZ9QFZ`, **READY / PROMOTED**, public alias assigned.
+- Public website: **https://deen-companion-preview-five.vercel.app/?v=dde1089**.
+- Exact tested/published bundle: `/_expo/static/js/web/index-12b28ac575619d6f10d229597632f78e.js`, **24,316,289 bytes**, SHA-256 `dd1e5e15803f946c663b1e82547af90e9fc3fc640893601e9dc50fefbb9d6ba3`.
+- Actual public-site English Privacy Policy/Data Safety checks: **1 context / 5 layouts**, no motion/geolocation request or saved-data mutation.
+- Actual public-site English manual-feedback checks: **1 context / 6 layouts / 3 external tab navigations**, zero errors, form navigation only intercepted as above.
+- **50 total local + live browser contexts**, all without page/console/HTTP/failed-request errors. Live checks confirm the website, not a native motion feature.
+
+This rollout adds the corrected public-web policy and retains manual feedback. The native-only switch/confirmation and manifest safeguards are in source and validated exports, **not an installed/store release**. They require a new native application build. This evidence-only follow-up changes no application runtime bytes.
