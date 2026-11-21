@@ -16,7 +16,8 @@ const pause=p=>p.waitForTimeout(100);
 const digest=text=>crypto.createHash('sha256').update(text).digest('hex');
 const protectedKeys=['@deen/quran/notes/v1','@deen/quran/indopak-taj-16/state/v1','@deen/audio-settings/v1'];
 async function makePage(browser,profile){
- const context=await browser.newContext({viewport:profile.viewport,isMobile:true,hasTouch:true,reducedMotion:'reduce'});
+ const motion=process.env.READER_MOTION||profile.motion||'no-preference';
+ const context=await browser.newContext({viewport:profile.viewport,isMobile:true,hasTouch:true,reducedMotion:motion});
  await context.addInitScript(({language,prefs})=>{
   localStorage.setItem('@deen/onboarding/v1',JSON.stringify({completed:true,app:language,text:language,voice:'en',locationAsked:true,notificationsAsked:true}));
   localStorage.setItem('@deen/language/v1',language);localStorage.setItem('@deen/location/v1',JSON.stringify({latitude:25.2048,longitude:55.2708,label:'Dubai',timezone:'Asia/Dubai'}));
@@ -35,7 +36,7 @@ async function makePage(browser,profile){
  });
  await loadCopy(profile.language);await page.goto(url,{waitUntil:'load',timeout:60000});await page.getByTestId('navigation-quran').click();
  const before=await page.evaluate(keys=>Object.fromEntries(keys.map(k=>[k,localStorage.getItem(k)])),protectedKeys);
- return{context,page,errors,responses,arabic,before,language:profile.language,name:profile.name};
+ return{context,page,errors,responses,arabic,before,language:profile.language,name:profile.name,motion};
 }
 async function openStart(h){await h.page.getByText(tx(h.language,'Start reading'),{exact:true}).click();await h.page.getByRole('button',{name:`${tx(h.language,'Play verse')} 55:1`,exact:true}).waitFor();await markList(h);}
 async function markList(h){
@@ -52,7 +53,11 @@ async function snapshot(h){return list(h).evaluate((e,prefix)=>{
  return{top:e.scrollTop,height:e.clientHeight,contentHeight:e.scrollHeight,max:e.scrollHeight-e.clientHeight,mounted:rows.length,first:rows[0]?.key,last:rows.at(-1)?.key,visible:rows.filter(r=>r.bottom>box.y+1&&r.y<bottom-1)};
  },tx(h.language,'Play verse'));}
 async function scan(h,surah,count,name){
+ // A normal-motion route transition can show the loading list first. Begin
+ // scrolling only once this surah's actual first ayah has arrived.
+ await h.page.getByRole('button',{name:`${tx(h.language,'Play verse')} ${surah}:1`,exact:true}).waitFor();
  const samples=[],seen=new Set();let stalls=0,maxMounted=0;
+ const bounds=await list(h).boundingBox();await h.page.mouse.move(bounds.x+bounds.width/2,bounds.y+Math.min(bounds.height*.55,400));
  for(let iteration=0;iteration<1800;iteration++){
   await pause(h.page);const s=await snapshot(h);maxMounted=Math.max(maxMounted,s.mounted);
   for(const row of s.visible){
@@ -70,8 +75,11 @@ async function scan(h,surah,count,name){
    await h.page.screenshot({path:path.join(output,`${name}-end.png`),animations:'disabled'});
    return{surah,count,seen:seen.size,samples,maxMounted};
   }
-  stalls=atEnd?stalls+1:0;assert.ok(stalls<15,`Reader stopped before ${surah}:${count}, last mounted ${s.last}`);
-  await list(h).evaluate((e,delta)=>{e.scrollTop=Math.min(e.scrollTop+delta,e.scrollHeight-e.clientHeight);},Math.min(500,s.height*.65));
+  stalls=atEnd?stalls+1:0;
+  if(stalls>=15)throw Object.assign(new Error(`Reader stopped before ${surah}:${count}, last mounted ${s.last}`),{samples,seen:[...seen]});
+  // Real wheel input from a cold list, not a programmatic offset that can
+  // bypass the interaction/batching path a user actually exercises.
+  await h.page.mouse.wheel(0,Math.min(500,s.height*.65));
  }
  throw new Error(`Reader scan did not terminate: ${name}`);
 }
@@ -82,15 +90,16 @@ async function target(h,key){
  await pause(h.page);const s=await snapshot(h);assert.ok(s.visible.some(v=>v.key===key));return{key,top:s.top,visible:s.visible.map(v=>v.key),mounted:s.mounted};
 }
 (async()=>{
- fs.mkdirSync(output,{recursive:true});const browser=await chromium.launch();const report={method:'Actual production Expo WEB, unmodified live Quran responses, real scrolling, no content mocks; not installed Android/iOS device validation.',url,baseline,profiles:[],checks:{},errors:[]};let active;
+ fs.mkdirSync(output,{recursive:true});const browser=await chromium.launch();const report={method:'Actual production Expo WEB, unmodified live Quran responses and real wheel scrolling from a cold list. Normal animations are enabled by default, with a separate reduced-motion control. No content mocks; not installed Android/iOS device validation.',url,baseline,profiles:[],checks:{},errors:[]};let active;
  try{
   const profiles=baseline?[{name:'baseline',language:'en',viewport:{width:390,height:844}}]:[
    {name:'phone',language:'en',viewport:{width:390,height:844}},
    {name:'rtl-urdu',language:'ur',viewport:{width:390,height:844},prefs:{fontSize:36}},
    {name:'large-arabic-continuous',language:'en',viewport:{width:900,height:1100},prefs:{fontSize:44,showTranslation:false,readingMode:'continuous'}},
+   {name:'phone-reduced-motion',language:'en',viewport:{width:390,height:844},motion:'reduce'},
   ];
   for(const profile of profiles){
-   const h=await makePage(browser,profile);active=h.page;report.errors.push(h.errors);const result={...profile,walks:[],responses:h.responses};report.profiles.push(result);await openStart(h);
+   const h=await makePage(browser,profile);active=h.page;report.errors.push(h.errors);const result={...profile,motion:h.motion,walks:[],responses:h.responses};report.profiles.push(result);await openStart(h);
    result.walks.push(await scan(h,55,78,`${profile.name}-55`));
    if(profile.name==='phone'){
     await back(h);await reference(h,'2:1');result.walks.push(await scan(h,2,286,'phone-2'));

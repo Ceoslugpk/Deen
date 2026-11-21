@@ -170,7 +170,7 @@ front of the app), **Backup** (encrypted, and yours to keep), **Storage**, **Dat
 
 ### Normal Quran reader scrolling
 
-The normal reader uses **measured variable-height virtualization**, not fabricated fixed ayah offsets. The blank-window regression after ayahs 13–14 is reproduced on the old build and fixed on the current one; complete Ar-Rahman and Al-Baqarah scans, distant reference jumps and Continue Reading are covered. [Cause, checks and actual before/after screenshots](docs/quran-reader-scroll-r106.md) · [Offline gallery](docs/quran-reader-scroll-r106-gallery.html).
+The normal reader uses **measured variable-height virtualization**, not fabricated fixed ayah offsets. **Normal-motion web rendering also uses non-interactive decorative loops and bounded deferred scheduling**, so the 12-row initial batch cannot become a permanent stopping point. Current real-wheel scans cover complete Ar-Rahman and Al-Baqarah, normal and reduced motion, Urdu RTL, distant references and Continue Reading. [Current correction and checks](docs/quran-normal-motion-r107.md) · [Actual before/after gallery](docs/quran-normal-motion-r107-gallery.html) · [Earlier geometry fix and its reduced-motion validation gap](docs/quran-reader-scroll-r106.md).
 
 ### Settings and sharing
 

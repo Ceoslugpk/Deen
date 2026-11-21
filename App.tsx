@@ -28,6 +28,7 @@ import { APP_PLAY_STORE_URL, shareAppLink } from './src/services/appShare';
 import { appShareText } from './src/services/appShareCopy';
 import { settingsDedicationText } from './src/services/settingsDedication';
 import { createMeasuredVerseScroll, type ReaderScrollFailure } from './src/services/quranReaderScroll';
+import { configureUiScheduling } from './src/services/uiScheduling';
 import { indopakText } from './src/services/indopakCopy';
 import { isIndopakReaderRoute } from './src/services/indopakInteraction';
 import { floatingTabBarWidth, FLOAT_BAR_PADDING } from './src/services/systemLayout';
@@ -803,6 +804,8 @@ const Stack = createNativeStackNavigator();
  * position is rewritten dozens of times on the way to nowhere.
  */
 const VERSE_VIEWABILITY = { itemVisiblePercentThreshold: 10, minimumViewTime: 350 };
+// Configure the web list scheduler before mounting any decorative animations.
+configureUiScheduling();
 
 type QuranPreferencesState={preferences:QuranPreferences;hydrated:boolean;update:(patch:Partial<QuranPreferences>)=>Promise<void>;getPreferences:()=>QuranPreferences;fontTick:number};
 /**
@@ -1964,9 +1967,11 @@ function SkeletonProvider({ children }: { children: React.ReactNode }) {
     if (still) { sweep.setValue(0.5); return; }
     const loop = Animated.loop(
       Animated.sequence([
-        Animated.timing(sweep, { toValue: 1, duration: 1150, easing: Easing.linear, useNativeDriver: true }),
-        Animated.delay(420),
-        Animated.timing(sweep, { toValue: 0, duration: 0, useNativeDriver: true }),
+        Animated.timing(sweep, { toValue: 1, duration: 1150, easing: Easing.linear, useNativeDriver: true, isInteraction: false }),
+        // Animated.delay defaults to an interaction too. Hold without
+        // blocking FlatList's runAfterInteractions rendering batches.
+        Animated.timing(sweep, { toValue: 1, duration: 0, delay: 420, useNativeDriver: true, isInteraction: false }),
+        Animated.timing(sweep, { toValue: 0, duration: 0, useNativeDriver: true, isInteraction: false }),
       ])
     );
     loop.start();
@@ -2483,14 +2488,16 @@ const prayerIconFor = (name: string, theme: ResolvedTheme) => {
 
 /** Honour the system setting: when reduce motion is on, everything sits still. */
 
-/** A value that drifts back and forth, slowly. */
+/** A value that drifts back and forth, slowly. Decorative loops are never
+ * interactions: they can stay mounted behind the reader and must not keep
+ * virtualized lists waiting forever for an idle rendering batch. */
 function useDrift(duration: number, from: number, to: number, still: boolean) {
   const value = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     if (still) { value.setValue(0.5); return; }
     const loop = Animated.loop(Animated.sequence([
-      Animated.timing(value, { toValue: 1, duration, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-      Animated.timing(value, { toValue: 0, duration, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      Animated.timing(value, { toValue: 1, duration, easing: Easing.inOut(Easing.sin), useNativeDriver: true, isInteraction: false }),
+      Animated.timing(value, { toValue: 0, duration, easing: Easing.inOut(Easing.sin), useNativeDriver: true, isInteraction: false }),
     ]));
     loop.start();
     return () => loop.stop();
@@ -13046,7 +13053,7 @@ function AudioPlayerScreen({ navigation }: any) {
 function PlayerAura() {
   const spin = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    const loop = Animated.loop(Animated.timing(spin, { toValue: 1, duration: 14000, useNativeDriver: true }));
+    const loop = Animated.loop(Animated.timing(spin, { toValue: 1, duration: 14000, useNativeDriver: true, isInteraction: false }));
     loop.start();
     return () => loop.stop();
   }, [spin]);
