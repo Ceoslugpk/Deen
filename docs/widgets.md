@@ -87,7 +87,7 @@ With those Android tools available, `scripts/test-android-widgets.sh` runs the A
 
 The JS/plugin tests additionally cover the real bridge wrapper, native acknowledgments/failures, provider hydration/foreground races, warm/cold route wiring, old-binary/background-module guards, selected-zone/DST calculations, iOS counter preservation and deterministic/reused resources. These are automated/source-level checks, **not phone battery, native release or launcher evidence**.
 
-Current export evidence: **web JS export passed**. An Android JS-export attempt exhausted the workspace's memory before completion; iOS export was not reached in that attempt. This does not negate the native harness result, and neither a successful nor failed JS export proves installed widget behavior.
+Current export evidence: **web, Android and iOS JS exports passed**. The native-platform checks used `--no-bytecode`; they validate the JS module graph/bundles, **not Hermes compilation, an APK/AAB or an iOS native build**. An initial native export exhausted memory because completed test/bundler scratch filled this workspace's RAM-backed `/tmp`. After preserving that generated scratch on disk, bounded-memory sequential exports completed. The native test helper likewise keeps large temporary extraction under the user cache, not on the RAM disk. See [permanent check results and hashes](widgets-r112-validation.json).
 
 ## Native release/device acceptance — still required
 

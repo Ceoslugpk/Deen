@@ -1,0 +1,195 @@
+{
+  "task": "R112 — all four Android native widgets",
+  "runtimeCommit": "151b0a534cafce5f4af6fae442fc8d5d81920fe8",
+  "auditBaselineCommit": "a3f22d796998004ddd18cb1537a723d01f00897d",
+  "families": [
+    "Prayer",
+    "Ayah",
+    "Tasbih",
+    "Hijri"
+  ],
+  "checks": {
+    "typescript": {
+      "status": "passed",
+      "command": "tsc --noEmit",
+      "log": {
+        "fileName": "tsc-confirmed.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    "jsAndPluginRegressions": {
+      "status": "passed",
+      "tests": 396,
+      "passed": 396,
+      "failed": 0,
+      "log": {
+        "fileName": "regressions-confirmed.log",
+        "sha256": "fa13fed9ebbc2b273a1eb840f1a9fd1150a53f963da9ac859d7f540fadeb51dc"
+      }
+    },
+    "androidStandalone": {
+      "status": "passed",
+      "actualProductionWidgetKotlinAndResources": true,
+      "tests": 19,
+      "passed": 19,
+      "failed": 0,
+      "runner": "Robolectric 4.14.1 / Android API 35",
+      "gradle": "8.10.2",
+      "agp": "8.7.3",
+      "kotlinCompose": "2.0.21",
+      "java": 17,
+      "compileAndTargetSdk": 35,
+      "glance": "1.1.1",
+      "dataStore": "1.1.1",
+      "workManager": "2.10.5",
+      "command": "scripts/test-android-widgets.sh",
+      "log": {
+        "fileName": "native-script-final2.log",
+        "sha256": "05d30a76f8cb37ee04df9107046778fca61d9a751bd11d35de7b4dd9813919b6"
+      },
+      "excluded": [
+        "Expo DSL bridge compilation",
+        "full Expo app/release build",
+        "R8 release processing",
+        "physical device or emulator launcher"
+      ]
+    },
+    "androidAutolinking": {
+      "status": "passed",
+      "composeFeature": true,
+      "backgroundTaskVersion": "58.0.13",
+      "taskManagerVersion": "58.0.14",
+      "log": {
+        "fileName": "autolink-final.json",
+        "sha256": "3934af4eaa41fcc25f7940c585a60310a6cbbfd534db11359e2c5a96f62ba783"
+      }
+    },
+    "dependencyAndPatchChecks": {
+      "npmLs": "passed",
+      "existingLockfileDependencyEntriesChanged": 0,
+      "newPackages": [
+        "expo-background-task",
+        "expo-task-manager",
+        "unimodules-app-loader"
+      ],
+      "patchPackage": "passed; no patch files present"
+    },
+    "jsExports": {
+      "web": {
+        "status": "passed",
+        "bundle": "_expo/static/js/web/index-052189ccd657a204a666fbfa0cd292a5.js",
+        "bytes": 24335373,
+        "sha256": "2d4efcaa33446f9762926864c41a5e2c8023aaf10a57204ecf81053fc7de8a95",
+        "hermesBytecodeCompiled": false,
+        "nativeBinaryBuilt": false
+      },
+      "android": {
+        "status": "passed",
+        "bundle": "_expo/static/js/android/index-dd4fe044fc2c02763e96f3e90aa09aaf.js",
+        "bytes": 24808616,
+        "sha256": "e2794ad0caffcc34f2a6ddac00901baa4343206df47c6f1fdc2b7aa47d11b8da",
+        "hermesBytecodeCompiled": false,
+        "nativeBinaryBuilt": false
+      },
+      "ios": {
+        "status": "passed",
+        "bundle": "_expo/static/js/ios/index-6936160fc08d395f8e941f661f457305.js",
+        "bytes": 24795970,
+        "sha256": "8928d3788319431359120a5ca20fb7600af156916ef75de17253a5f330b5a8d5",
+        "hermesBytecodeCompiled": false,
+        "nativeBinaryBuilt": false
+      },
+      "nativePlatformOption": "--no-bytecode; validates JS graph/bundles only"
+    },
+    "integrity": {
+      "baselineFiles": 1274,
+      "protectedFilesChecked": 496,
+      "protectedChanges": [],
+      "protectedAreas": [
+        "existing iOS Swift/WidgetKit/Live Activity",
+        "shipped branding/artwork",
+        "reader data/assets",
+        "app.json"
+      ],
+      "unexpectedBaselineChanges": []
+    }
+  },
+  "sourceSha256": {
+    "App.tsx": "677d0b9dcf487888ccc411d5993961d09b6a27103b04bbc7fc8d596e03a503f1",
+    "index.ts": "5a27498df1749f1f4ec9b98729492b453018e17d357b9949d1000cd16b993eae",
+    "package.json": "6fadf66b2a919c347a824bbb8a33fc65f3dbd9535678f86153edb6513bc160bb",
+    "package-lock.json": "6f847aabdc2105069c1901704215ec7b0efbfda0eaf48218de0ea5a94d8928ab",
+    "modules/deen-widgets/expo-module.config.json": "e1ea832d31daaeb171c72b71747beb3c0149287fdc14b210064ae8eb7ef00d86",
+    "modules/deen-widgets/index.ts": "ca8248b2f24f60bdc5a95229591ae2c611a661e6619a78b40d831aa920099a0e",
+    "plugins/widgets/withWidgets.js": "544cba1d51607ec35ee13c89619fcfff312477f3f2f1ee522e0d6689ffce88ab",
+    "src/services/widgetSnapshot.ts": "d2c64c324ad74ded3a31d1767386f1c853ba70f1f9d8e483ac73def9fcff5db8",
+    "src/services/widgetBridge.ts": "0bcad4122dd51153d37f8bd71adc47954449c2a339091bdad6418ccedfe8b322",
+    "src/services/widgetSync.ts": "91dfe4e46a09a5a1b9a4b4986413544bfed4551d2eaa49b3a984d18528dd9177",
+    "src/services/widgetBackground.ts": "e8e10846f9ccab5c362b6f6480b30f7530b0185675423249229bb9c278485c0c",
+    "src/services/widgetNavigation.ts": "4e3254de08b74eb67f43d05fd1d5be1209df6b174023122fbdb4384efc970d88",
+    "src/services/tasbihService.ts": "65866a5e7149eea5c8235e17c9948e149f278f28e4a8013e871f86db7835efe9",
+    "scripts/test-android-widgets.sh": "82c6597ca1a138d5bf8f4bd9e2f063683309b6c983e338a2e50cf689783ed707",
+    "modules/deen-widgets/android/build.gradle": "453585a4a1a21266e5434f83048e78ca70c6f7f165fb1591a2f4629033a1a89a",
+    "modules/deen-widgets/android/consumer-rules.pro": "a5b19c981b91491effc9b6e094b8e36d06eca66b69b0e8734e905e7911d4c40f",
+    "modules/deen-widgets/android/src/main/AndroidManifest.xml": "32181610c6b714c14dc4bdd22e295ca50670fc226af5a40977cae94fe09dc942",
+    "modules/deen-widgets/android/src/main/java/com/deen/widgets/AyahWidget.kt": "311ebe4eabaec8ffcdaa07e99991b8537784183e5c73fc5df5f4c60979e9e3e0",
+    "modules/deen-widgets/android/src/main/java/com/deen/widgets/DeenWidgetData.kt": "ccc6db7017389528ae7f0d3910a3be185aff81f476e29c2a6613516c27d93c62",
+    "modules/deen-widgets/android/src/main/java/com/deen/widgets/DeenWidgetReceivers.kt": "cbbf890d230fb62e800215adb4e05ccab2923ca3cf515165d06e8194519e55bb",
+    "modules/deen-widgets/android/src/main/java/com/deen/widgets/DeenWidgetTheme.kt": "84bb894f3a2d0c6706b873af9822e5b8207800fb511e2dd1ef359adf8a811b96",
+    "modules/deen-widgets/android/src/main/java/com/deen/widgets/HijriWidget.kt": "1318fdff9c3f74a75f728548dae41311aadf88f25ed73b7898c66cb94fef7c17",
+    "modules/deen-widgets/android/src/main/java/com/deen/widgets/PrayerWidget.kt": "8e1db32cfa47e67630a036f835019b52011049b65f90bc6626a2c7350e93df35",
+    "modules/deen-widgets/android/src/main/java/com/deen/widgets/TasbihStore.kt": "e76ba5fb672f8e08b15d3e287631aee684516afe96e2ef155f79598904c4989d",
+    "modules/deen-widgets/android/src/main/java/com/deen/widgets/TasbihWidget.kt": "c9def504f35afadee27c20c5e5f921018c363ec8955cf33d8304c2917a990200",
+    "modules/deen-widgets/android/src/main/java/com/deen/widgets/WidgetBase.kt": "b489feab1f9f757a8d5067cfa32839a063034e8094c1bc95179c9deb4edfd775",
+    "modules/deen-widgets/android/src/main/java/com/deen/widgets/WidgetRefreshWorker.kt": "7e737367f76742d2939f5054794d37519175c7e5bc9ff6f30d668707234f71fe",
+    "modules/deen-widgets/android/src/main/java/com/deen/widgets/WidgetRepository.kt": "6e8a6253d1febc26e6e858d6e6f60edb7ee255c949daa57e24d8dbcf34e4341c",
+    "modules/deen-widgets/android/src/main/java/expo/modules/deenwidgets/DeenWidgetsModule.kt": "bb9957cb2267b2b2f23b8aab15a6121a693820b00bb35d6f7803f7af91144044",
+    "modules/deen-widgets/android/src/main/res/drawable/widget_card.xml": "6446a4bd97455a80dc70b8c1489d9453645fd27c43bda75594e03d08bc85d52a",
+    "modules/deen-widgets/android/src/main/res/drawable-nodpi/widget_ayah_icon.webp": "bb159aad54cf2fa6bc37ac8c8c10931644ef73a463265ea8a5ce67c9d9eaba8b",
+    "modules/deen-widgets/android/src/main/res/drawable-nodpi/widget_hijri_icon.webp": "5fa3664d0f571cf7878da0af61fe9ad89d67fd0aac2f4f1598d3613fa686836f",
+    "modules/deen-widgets/android/src/main/res/drawable-nodpi/widget_prayer_icon.webp": "af3a6ee5c90f48ecff1b892467ec799f4fe78ed7e5cb28bf8eb5042e6b8f3b1e",
+    "modules/deen-widgets/android/src/main/res/drawable-nodpi/widget_tasbih_icon.webp": "b822d7afcef3481d70b0a029a3fa5b38d49051b90306114edb9bce6e8a86eacb",
+    "modules/deen-widgets/android/src/main/res/layout/widget_clock.xml": "27d3536f0a876c163170b07525e4d9fee2b5fd2a2a35b34eb49366597873aaa5",
+    "modules/deen-widgets/android/src/main/res/layout/widget_direction.xml": "abc80bed2f40cf3c4bd785b4590f8b5ce7cfa4fbdb69ee11e11331fc0906f166",
+    "modules/deen-widgets/android/src/main/res/layout/widget_error.xml": "4df7515f142c610d245cd5d2c2387dddd25b410387719ab4c7c9833736219860",
+    "modules/deen-widgets/android/src/main/res/layout/widget_loading.xml": "1727ada90abe76754bb0d7af0859958c8e20aa63939b92a4e22f2af1a7ab859b",
+    "modules/deen-widgets/android/src/main/res/layout/widget_preview_ayah.xml": "43ccbdbe3f8643c3c5af22ce0834d9f31670953737c8b56edfeab12d7294eef9",
+    "modules/deen-widgets/android/src/main/res/layout/widget_preview_hijri.xml": "38ebb83c60f2c78d739b058e28e3981f432673200a7b4ecd536fb11d855d418c",
+    "modules/deen-widgets/android/src/main/res/layout/widget_preview_prayer.xml": "6ca63e23cfbd8dcb52e4e31066d8e4d10a9f809a540f9c1c202e7bc8d1de57aa",
+    "modules/deen-widgets/android/src/main/res/layout/widget_preview_tasbih.xml": "2760d46afd89c57bcd83a88902deb5f959b571c3589827d797f82c3f0c208378",
+    "modules/deen-widgets/android/src/main/res/values/widget_strings.xml": "1e4ac25306f8239f74d293e0a760ed56a3ad51b90f1d0854d9d9c7bed2ead487",
+    "modules/deen-widgets/android/src/main/res/values-ar/widget_strings.xml": "e77d05afe7cf58a90abc154c89ac1a96ffb054b69cd77fb6e35601efcad847c7",
+    "modules/deen-widgets/android/src/main/res/values-az/widget_strings.xml": "9db473e0f842ffa409db5ed3f1b499096379ac87c25f63c4133bea4920f6c69f",
+    "modules/deen-widgets/android/src/main/res/values-bg/widget_strings.xml": "671b7279142bb49a4a243ff1f01d99cf6cc9793cdb82685606e4e0300711f11e",
+    "modules/deen-widgets/android/src/main/res/values-bn/widget_strings.xml": "590e38010abd395cdfa640f7cbebbc2ea2287c5ee4cc980d3e842a6f19770722",
+    "modules/deen-widgets/android/src/main/res/values-bs/widget_strings.xml": "df5eac690d22114b43c64b93c8b6a0ca1e3d2bccf0af887ecc3ce5479b14c342",
+    "modules/deen-widgets/android/src/main/res/values-fa/widget_strings.xml": "e2bfa431756707de9dda88b9634d3818bb1777a7514c36a9d24242ecd15e0115",
+    "modules/deen-widgets/android/src/main/res/values-fr/widget_strings.xml": "638d28a6e103b23a3dc41c2363a7ce8057048219527e58d945bea7a2d45d0dae",
+    "modules/deen-widgets/android/src/main/res/values-hi/widget_strings.xml": "de6b4d11a8ffaff340b5d95e00ddbb99a10ea4ea317a4b994e8f9079adb6eb06",
+    "modules/deen-widgets/android/src/main/res/values-in/widget_strings.xml": "2520951d45c1dc7b25e478fb1d0dbeb9226ca1ee7aa6efd1e98e2fa974650277",
+    "modules/deen-widgets/android/src/main/res/values-kk/widget_strings.xml": "171561fd20608f45d4fda9b6e6027a2b0ce3eda9e402d8c8dc478d8fec4c0990",
+    "modules/deen-widgets/android/src/main/res/values-ml/widget_strings.xml": "c2857707ede13ca85a08faacfe969c04fd0180bba6c0d768b1eb1ba4629aaa82",
+    "modules/deen-widgets/android/src/main/res/values-ms/widget_strings.xml": "c3034235357a8797b5533cb04d1347f611a35b06d4eb4f35fb4f3ac27cb207ba",
+    "modules/deen-widgets/android/src/main/res/values-ps/widget_strings.xml": "e431a4b21d9e4692d416d48a970b7bcd75fe3feb02f68902f9891ce2ab5ab475",
+    "modules/deen-widgets/android/src/main/res/values-ru/widget_strings.xml": "ba2e0c2e5d13ab05d09068c8c2b4c044e6bd65cf8b640b9ca5a987c92b0c7b90",
+    "modules/deen-widgets/android/src/main/res/values-si/widget_strings.xml": "e006f617933c7d5d7dcf52688760707f8a208517b96535b9f95c289fc1c2aee0",
+    "modules/deen-widgets/android/src/main/res/values-ta/widget_strings.xml": "f53036d02bed433f881b08216770d74ff314555b248449337d7c28bd38994fef",
+    "modules/deen-widgets/android/src/main/res/values-tr/widget_strings.xml": "6d356219afe27822fd236ba1cee45fa747ff77b90e9ba12f3837521a5fb75447",
+    "modules/deen-widgets/android/src/main/res/values-ur/widget_strings.xml": "bc88313460e49ee39f2a3168f549e15191b1b5d531c540f3661eac71a8146d92",
+    "modules/deen-widgets/android/src/main/res/values-uz/widget_strings.xml": "057171b83334972cc7b72a41dde0b0496e6cc7dbbc02f60a01724a7ff425c52e",
+    "modules/deen-widgets/android/src/main/res/values-vi/widget_strings.xml": "bfd6ffb83116684a62e5539f7fb5527975aec562452ad31954d0823b851036f7",
+    "modules/deen-widgets/android/src/main/res/values-zh/widget_strings.xml": "589a0a6bb8b34b0ed4044140f1471fdd3a9f6756f31180c74303edf77b37c2b5",
+    "modules/deen-widgets/android/src/main/res/xml/ayah_widget_info.xml": "3cf3ab1269bebb7a4cb284e7df6c6317e2cbbe7e0d48fcf69a8455b55673fda6",
+    "modules/deen-widgets/android/src/main/res/xml/hijri_widget_info.xml": "86ecf99c1a2f88f82ddfbd624f82b95bca303479bbfe160b1f9a411f05f9f670",
+    "modules/deen-widgets/android/src/main/res/xml/prayer_widget_info.xml": "2d7a8b389238715023efd3ebca73ac5925352d0bec2fa40994891066c88bee25",
+    "modules/deen-widgets/android/src/main/res/xml/tasbih_widget_info.xml": "ef471aa78a8b9015e90836830894c5f9e6966e27d9d5da0b90f6205e989ed8f1"
+  },
+  "limitations": [
+    "No signed APK/AAB/IPA produced; full Expo bridge/library plugin/manifest merge/R8 compatibility remains a native release gate.",
+    "No installed Google Play binary, Logcat, emulator, physical phone or launcher acceptance evidence.",
+    "Robolectric RemoteViews composition/inflation is not a real home-screen launcher test.",
+    "Native/Expo background work is inexact; no force-stop or exact-boundary execution guarantee.",
+    "Web deployment and JS exports cannot install a native widget repair.",
+    "Initial export attempts hit memory pressure; completed native-test/bundler scratch was preserved off the RAM-backed /tmp, then all platform JS exports passed. No user app data was cleared."
+  ]
+}
