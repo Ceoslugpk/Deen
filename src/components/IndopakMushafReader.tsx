@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { AccessibilityInfo, ActivityIndicator, Animated, BackHandler, Easing, FlatList, PanResponder, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type GestureResponderEvent, type KeyDownEvent, type ViewStyle } from 'react-native';
+import { AccessibilityInfo, ActivityIndicator, Animated, BackHandler, Easing, FlatList, PanResponder, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type GestureResponderEvent, type KeyDownEvent, type ViewStyle, type PanResponderCallbacks } from 'react-native';
 import { useIsFocused } from '@react-navigation/native';
 import { useIndopakRecitation } from '../services/useIndopakRecitation';
 import { indopakRecitationOffset, indopakRecitationTarget } from '../services/indopakPlayback';
@@ -10,6 +10,7 @@ import { IndopakAyahPopover } from './IndopakAyahPopover';
 import { INDOPAK_HOLD_MS, indopakAyahSegments, indopakPopoverLayout, indopakRevealOffset, indopakStationaryPress, indopakWordAnchor, indopakResizeOffset, type IndopakSelection } from '../services/indopakSelection';
 import { useCalmMotion } from '../design/useCalmMotion';
 import { clearIndopakFocusPopover, fitIndopakFocusPage, INDOPAK_FOCUS_UNLOCK } from '../services/indopakFocus';
+import { beginIndopakPinch, moveIndopakPinch, captureIndopakFocusPan, clampIndopakFocusOffset, type IndopakPinch } from '../services/indopakZoom';
 import { useSafeContentFrame } from './SystemNavigationBoundary';
 import { tx } from '../services/arabicCopy';
 import { indopakText } from '../services/indopakCopy';
@@ -66,6 +67,23 @@ export function IndopakMushafReader({ colors: C, dark, language, rtl, icon, init
   const closeSelection = useCallback(() => setSelection(null), []);
   const [pendingReveal, setPendingReveal] = useState<{ point: IndopakReadingPoint; open: boolean } | null>(null);
   const [viewport, setViewport] = useState({ width: 0, height: 0 });
+  // Focus magnification is route-local and transient. Never read or update the
+  // old stored zoom field; normal reading is always the original 1× fit.
+  const zoomContext = `${focusMode && focused ? 'focus' : 'fit'}:${state.page}:${viewport.width}:${viewport.height}`;
+  const [magnification, setMagnification] = useState({ context: zoomContext, zoom: 1 });
+  const activeZoom = focusMode && focused && magnification.context === zoomContext ? magnification.zoom : 1;
+  const pendingMagnification = useRef<{ context: string; size: typeof viewport; offset: { x: number; y: number } } | null>(null);
+  const gestureSession = useRef<null | { kind: 'pinch'; start: IndopakPinch } | { kind: 'pan'; x: number; y: number; dx: number; dy: number }
+    | { kind: 'swipe'; page: number } | { kind: 'blocked' }>(null);
+  const viewportNode = useRef<React.ElementRef<typeof View>>(null), viewportOrigin = useRef({ x: 0, y: 0 });
+  const measureViewport = useCallback(() => {
+    viewportNode.current?.measureInWindow((x, y) => { viewportOrigin.current = { x, y }; });
+  }, []);
+  useLayoutEffect(() => {
+    measureViewport();
+    const frame = requestAnimationFrame(measureViewport);
+    return () => cancelAnimationFrame(frame);
+  }, [measureViewport, focusMode, viewport.width, viewport.height, frame.width, frame.height]);
   const [turn, setTurn] = useState<PageTurn | null>(null);
   const turning = useRef(false), turnProgress = useRef(new Animated.Value(1)).current;
   const scroll = useRef({ x: 0, y: 0 });
@@ -141,29 +159,34 @@ export function IndopakMushafReader({ colors: C, dark, language, rtl, icon, init
   const placed = useMemo(() => page ? placeIndopakPage(page) : [], [page]);
   const segments = useMemo(() => indopakAyahSegments(placed), [placed]);
   const verses = useMemo(() => page ? [...new Set(page.words.map(indopakVerseKey))] : [], [page]);
-  // Older saved zoom values remain untouched on disk, but there is no magnified reader mode anymore.
-  const size = focusMode ? fitIndopakFocusPage(viewport.width, viewport.height) : fitIndopakPage(viewport.width, viewport.height, 1, true);
+  const fitSize = focusMode ? fitIndopakFocusPage(viewport.width, viewport.height) : fitIndopakPage(viewport.width, viewport.height, 1, true);
+  const size = { width: fitSize.width * activeZoom, height: fitSize.height * activeZoom };
   const marked = state.savedPages.includes(state.page);
   const anchoredPopover = selection ? indopakPopoverLayout(viewport, size, scroll.current, segments, selection) : null;
   const popover = focusMode ? clearIndopakFocusPopover(viewport, anchoredPopover) : anchoredPopover;
   useLayoutEffect(() => {
     endWord(); setPageTouching(false); hold.current.blocked = true; closeSelection();
-  }, [state.page, focusMode, viewport.width, viewport.height, closeSelection, endWord]);
+    gestureSession.current = null; pendingMagnification.current = null;
+    setMagnification(current => current.context === zoomContext && current.zoom === 1 ? current : { context: zoomContext, zoom: 1 });
+  }, [zoomContext, closeSelection, endWord]);
   useLayoutEffect(() => {
     if (!hydrated || !fontReady || !page || !size.width || !size.height) return;
-    const before = geometry.current;
-    if (before?.page === state.page && before.size.width === size.width && before.size.height === size.height
+    const before = geometry.current, pending = pendingMagnification.current;
+    const pinchTarget = pending?.context === zoomContext && Math.abs(pending.size.width - size.width) < .01 && Math.abs(pending.size.height - size.height) < .01
+      ? pending.offset : null;
+    if (!pinchTarget && before?.page === state.page && before.size.width === size.width && before.size.height === size.height
       && before.viewport.width === viewport.width && before.viewport.height === viewport.height) return;
     geometry.current = { page: state.page, viewport: { ...viewport }, size: { ...size } };
-    const target = before?.page === state.page
+    const target = pinchTarget || (before?.page === state.page
       ? indopakResizeOffset(before.viewport, before.size, scroll.current, viewport, size)
-      : { x: Math.max(0, size.width - viewport.width), y: 0 };
+      : { x: Math.max(0, size.width - viewport.width), y: 0 });
+    if (pinchTarget) pendingMagnification.current = null;
     positionPage(target);
     // Web can lay out synchronously; native can report its new content size later.
     // Reapply only this explicit correction, never an unconditional scroll-to-right on every resize.
     const frame = requestAnimationFrame(applyScrollCorrection);
     return () => cancelAnimationFrame(frame);
-  }, [hydrated, fontReady, page, state.page, viewport.width, viewport.height, size.width, size.height, positionPage, applyScrollCorrection]);
+  }, [hydrated, fontReady, page, state.page, viewport.width, viewport.height, size.width, size.height, magnification, zoomContext, positionPage, applyScrollCorrection]);
   useEffect(() => () => { if (holdTimer.current) clearTimeout(holdTimer.current); }, []);
   // Start after React commits both layers. No timers, transparent text crossfade or 3D distortion.
   useLayoutEffect(() => {
@@ -228,43 +251,142 @@ export function IndopakMushafReader({ colors: C, dark, language, rtl, icon, init
     positionPage(offset);
   }, [recitingVerse, audioFollow, focused, hydrated, fontReady, page, turn, picker, selection, pendingReveal, wordPressing, pageTouching,
     state.page, focusMode, viewport.width, viewport.height, size.width, size.height, placed, goPage, positionPage]);
-  const swipeFrom = useRef<number | null>(null), swipeBlocked = useRef(false);
-  const canSwipe = hydrated && fontReady && !fontError && !!page && !picker && !turn;
-  const swipe = useMemo(() => PanResponder.create({
+  const swipeBlocked = useRef(false);
+  const canSwipe = focused && hydrated && fontReady && !fontError && !!page && !picker && !turn;
+  const touchPoints = (event: GestureResponderEvent) => {
+    if (Platform.OS === 'web') {
+      const node = viewportNode.current as unknown as HTMLElement | null, rect = node?.getBoundingClientRect();
+      if (rect) viewportOrigin.current = { x: rect.left + window.scrollX, y: rect.top + window.scrollY };
+    }
+    return Array.from(event.nativeEvent.touches || []).map(touch => ({ x: touch.pageX - viewportOrigin.current.x, y: touch.pageY - viewportOrigin.current.y }));
+  };
+  const blockWordGesture = () => {
+    hold.current.blocked = true; endWord(); closeSelection();
+    suppressVerseUntil.current = Date.now() + 350;
+  };
+  const startPinch = (event: GestureResponderEvent) => {
+    swipeBlocked.current = true; blockWordGesture();
+    const start = beginIndopakPinch(viewport, size, scroll.current, activeZoom, touchPoints(event));
+    gestureSession.current = start ? { kind: 'pinch', start } : { kind: 'blocked' };
+  };
+  const commitPinch = (next: NonNullable<ReturnType<typeof moveIndopakPinch>>) => {
+    pendingMagnification.current = { context: zoomContext, size: next.size, offset: next.offset };
+    setMagnification({ context: zoomContext, zoom: next.zoom });
+  };
+  const captureGesture = (_event: GestureResponderEvent, gesture: Parameters<NonNullable<PanResponderCallbacks['onPanResponderMove']>>[1]) =>
+    canSwipe && !popupTouch.current && !turning.current && (focusMode && gesture.numberActiveTouches === 2
+      || !swipeBlocked.current && (captureIndopakFocusPan(activeZoom, gesture) || captureIndopakSwipe(activeZoom, gesture)));
+  const cancelGesture = () => {
+    gestureSession.current = null; swipeBlocked.current = true; setPageTouching(false); blockWordGesture();
+  };
+  const handlers: PanResponderCallbacks = {
     onStartShouldSetPanResponder: () => false,
-    onStartShouldSetPanResponderCapture: (_event, gesture) => {
+    onStartShouldSetPanResponderCapture: (event, gesture) => {
       popupTouch.current = false;
       swipeBlocked.current = gesture.numberActiveTouches !== 1;
-      if (swipeBlocked.current) hold.current.blocked = true;
-      return false;
+      if (swipeBlocked.current) blockWordGesture();
+      return canSwipe && !turning.current && focusMode && event.nativeEvent.touches?.length === 2;
     },
-    onMoveShouldSetPanResponder: (_event, gesture) => canSwipe && !popupTouch.current && !turning.current && !swipeBlocked.current && captureIndopakSwipe(1, gesture),
-    onMoveShouldSetPanResponderCapture: (_event, gesture) => canSwipe && !popupTouch.current && !turning.current && !swipeBlocked.current && captureIndopakSwipe(1, gesture),
-    onPanResponderGrant: (_event, gesture) => {
-      setPageTouching(true);
-      hold.current.blocked = true; hold.current.active = false; closeSelection();
-      swipeFrom.current = latest.current.page; swipeBlocked.current = gesture.numberActiveTouches !== 1;
-      suppressVerseUntil.current = Date.now() + 350;
+    onMoveShouldSetPanResponder: captureGesture,
+    onMoveShouldSetPanResponderCapture: captureGesture,
+    onPanResponderGrant: (event, gesture) => {
+      setPageTouching(true); blockWordGesture();
+      if (focusMode && event.nativeEvent.touches?.length === 2) startPinch(event);
+      else if (activeZoom > 1 && gesture.numberActiveTouches === 1) {
+        gestureSession.current = { kind: 'pan', ...scroll.current, dx: gesture.dx, dy: gesture.dy };
+      } else {
+        swipeBlocked.current = gesture.numberActiveTouches !== 1;
+        gestureSession.current = swipeBlocked.current ? { kind: 'blocked' } : { kind: 'swipe', page: latest.current.page };
+      }
     },
-    onPanResponderStart: (_event, gesture) => { if (gesture.numberActiveTouches > 1) swipeBlocked.current = true; },
-    onPanResponderMove: (_event, gesture) => { if (gesture.numberActiveTouches > 1) swipeBlocked.current = true; },
+    onPanResponderStart: (event, gesture) => {
+      if (gesture.numberActiveTouches <= 1) return;
+      swipeBlocked.current = true; blockWordGesture();
+      if (focusMode && event.nativeEvent.touches?.length === 2 && gestureSession.current?.kind !== 'pinch' && gestureSession.current?.kind !== 'blocked') startPinch(event);
+      else if (event.nativeEvent.touches?.length !== 2) gestureSession.current = { kind: 'blocked' };
+    },
+    onPanResponderMove: (event, gesture) => {
+      const session = gestureSession.current;
+      if (!session || !canSwipe || turning.current) return;
+      if (session.kind === 'pinch') {
+        if (!focusMode || event.nativeEvent.touches?.length !== 2) { gestureSession.current = { kind: 'blocked' }; return; }
+        const next = moveIndopakPinch(session.start, viewport, touchPoints(event));
+        if (next) commitPinch(next);
+      } else if (gesture.numberActiveTouches > 1) {
+        swipeBlocked.current = true; gestureSession.current = { kind: 'blocked' }; blockWordGesture();
+      } else if (session.kind === 'pan') {
+        positionPage(clampIndopakFocusOffset(viewport, size, { x: session.x - (gesture.dx - session.dx), y: session.y - (gesture.dy - session.dy) }));
+      }
+    },
+    onPanResponderEnd: event => {
+      // Lifting either pinch finger cannot turn the remainder into a swipe/hold.
+      if (gestureSession.current?.kind === 'pinch' && event.nativeEvent.touches?.length !== 2) gestureSession.current = { kind: 'blocked' };
+    },
     onPanResponderRelease: (_event, gesture) => {
-      setPageTouching(false);
-      suppressVerseUntil.current = Date.now() + 350;
-      const from = swipeFrom.current; swipeFrom.current = null;
-      if (!canSwipe || turning.current || swipeBlocked.current || from !== latest.current.page) return;
-      const target = indopakSwipePage(from!, 1, viewport.width, gesture);
+      const session = gestureSession.current; gestureSession.current = null;
+      setPageTouching(false); blockWordGesture();
+      if (!canSwipe || turning.current || swipeBlocked.current || session?.kind !== 'swipe' || session.page !== latest.current.page) return;
+      const target = indopakSwipePage(session.page, activeZoom, viewport.width, gesture);
       if (target !== null) goPage(target);
     },
-    onPanResponderTerminate: () => { swipeFrom.current = null; setPageTouching(false); suppressVerseUntil.current = Date.now() + 350; },
+    onPanResponderTerminate: cancelGesture,
     onPanResponderTerminationRequest: () => true,
-    // A native scroll/stack-back recognizer may take over; cancellation never turns a page.
+    // System back/cancel can always win. Focus disables native scrolling;
+    // normal mode retains its original native/vertical scroll behavior.
     onShouldBlockNativeResponder: () => false,
-  }), [canSwipe, viewport.width, goPage]);
-  // RN web's disabled ScrollView applies touch-action:none to descendants too.
-  // Keep web wrappers enabled and let their actual overflow decide what scrolls;
-  // pan-y reserves horizontal page turns for JS without blocking short-pane vertical scrolling.
-  const webGestureStyle: ViewStyle & { touchAction: 'pan-y' } = { touchAction: 'pan-y' };
+  };
+  const gestureHandlers = useRef(handlers);
+  useLayoutEffect(() => { gestureHandlers.current = handlers; });
+  // Keep one recognizer for the entire mount. Recreating a PanResponder on
+  // every pinch-sized render loses its touch history halfway through a zoom.
+  const swipe = useMemo(() => PanResponder.create({
+    onStartShouldSetPanResponder: (e, g) => gestureHandlers.current.onStartShouldSetPanResponder?.(e, g) || false,
+    onStartShouldSetPanResponderCapture: (e, g) => gestureHandlers.current.onStartShouldSetPanResponderCapture?.(e, g) || false,
+    onMoveShouldSetPanResponder: (e, g) => gestureHandlers.current.onMoveShouldSetPanResponder?.(e, g) || false,
+    onMoveShouldSetPanResponderCapture: (e, g) => gestureHandlers.current.onMoveShouldSetPanResponderCapture?.(e, g) || false,
+    onPanResponderGrant: (e, g) => { gestureHandlers.current.onPanResponderGrant?.(e, g); },
+    onPanResponderStart: (e, g) => { gestureHandlers.current.onPanResponderStart?.(e, g); },
+    onPanResponderMove: (e, g) => { gestureHandlers.current.onPanResponderMove?.(e, g); },
+    onPanResponderEnd: (e, g) => { gestureHandlers.current.onPanResponderEnd?.(e, g); },
+    onPanResponderRelease: (e, g) => { gestureHandlers.current.onPanResponderRelease?.(e, g); },
+    onPanResponderTerminate: (e, g) => { gestureHandlers.current.onPanResponderTerminate?.(e, g); },
+    onPanResponderTerminationRequest: (e, g) => gestureHandlers.current.onPanResponderTerminationRequest?.(e, g) ?? true,
+    onShouldBlockNativeResponder: () => false,
+  }), []);
+  // Focus owns both pinch/pan axes and suppresses browser page zoom. Normal
+  // mode keeps pan-y and its existing scroll/swipe ownership unchanged.
+  const webGestureStyle: ViewStyle & { touchAction: 'none' | 'pan-y' } = { touchAction: focusMode ? 'none' : 'pan-y' };
+  const wheelEnd = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wheelHandler = useRef<(event: WheelEvent) => void>(() => {});
+  useLayoutEffect(() => {
+    wheelHandler.current = event => {
+      if (!focusMode || !canSwipe || turning.current || (!event.ctrlKey && activeZoom === 1)) return;
+      event.preventDefault(); userPanning(); blockWordGesture(); setPageTouching(true);
+      if (wheelEnd.current) clearTimeout(wheelEnd.current);
+      wheelEnd.current = setTimeout(() => { setPageTouching(false); wheelEnd.current = null; }, 180);
+      const node = viewportNode.current as unknown as HTMLElement | null, rect = node?.getBoundingClientRect();
+      if (!rect) return;
+      if (event.ctrlKey) {
+        // Browser trackpad pinch arrives as ctrl+wheel, not TouchEvents.
+        const x = event.clientX - rect.left, y = event.clientY - rect.top;
+        const points = [{ x: x - 50, y }, { x: x + 50, y }];
+        const start = beginIndopakPinch(viewport, size, scroll.current, activeZoom, points);
+        const radius = 50 * Math.exp(-Math.max(-120, Math.min(120, event.deltaY)) * .01);
+        const next = start && moveIndopakPinch(start, viewport, [{ x: x - radius, y }, { x: x + radius, y }]);
+        if (next) commitPinch(next);
+      } else {
+        const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? viewport.height : 1;
+        positionPage(clampIndopakFocusOffset(viewport, size, { x: scroll.current.x + event.deltaX * unit, y: scroll.current.y + event.deltaY * unit }));
+      }
+    };
+  });
+  useEffect(() => {
+    if (Platform.OS !== 'web' || !focusMode) return;
+    const node = viewportNode.current as unknown as HTMLElement | null;
+    const wheel = (event: WheelEvent) => wheelHandler.current(event);
+    node?.addEventListener('wheel', wheel, { passive: false });
+    return () => { node?.removeEventListener('wheel', wheel); if (wheelEnd.current) clearTimeout(wheelEnd.current); };
+  }, [focusMode, zoomContext]);
   const beginWord = (key: string, wordId: number, event: GestureResponderEvent) => {
     endWord(); setWordPressing(true);
     const e = event.nativeEvent, touch = e.touches?.[0] || e;
@@ -337,16 +459,17 @@ export function IndopakMushafReader({ colors: C, dark, language, rtl, icon, init
       </View>
     </View>}
     {!focusMode && !!saveError && <Pressable onPress={() => update({})} accessibilityRole="button"><Text style={[styles.message, { color: C.ink }]}>{copy('saveError')}</Text></Pressable>}
-    <View testID="indopak-page-viewport" style={[styles.stage, Platform.OS === 'web' && webGestureStyle]} {...swipe.panHandlers}
-      {...(Platform.OS === 'web' ? { onWheel: userPanning } : {})}
+    <View ref={viewportNode} testID="indopak-page-viewport" style={[styles.stage, Platform.OS === 'web' && webGestureStyle]} {...swipe.panHandlers}
+      {...(Platform.OS === 'web' && !focusMode ? { onWheel: userPanning } : {})}
       onPointerDown={() => { userPanning(); closeSelection(); }}
       onTouchStart={event => { userPanning(); setPageTouching(true); if ((event.nativeEvent.touches?.length || 1) > 1) hold.current.blocked = true; closeSelection(); }}
       onTouchMove={event => { const h = hold.current, e = event.nativeEvent;
         const touch = e.touches?.[0] || e;
         if (!indopakStationaryPress(e.touches?.length || 1, touch.pageX - h.x, touch.pageY - h.y)) { h.blocked = true; endWord(); } }}
       onTouchEnd={event => { endWord(); if (!event.nativeEvent.touches?.length) setPageTouching(false); }}
-      onTouchCancel={() => { endWord(); setPageTouching(false); hold.current.blocked = true; }}
+      onTouchCancel={cancelGesture}
       onLayout={({ nativeEvent: { layout } }) => {
+      measureViewport();
       setViewport(current => current.width === layout.width && current.height === layout.height ? current : { width: layout.width, height: layout.height });
     }}>
       {!hydrated || (!fontReady && !fontError) ? <View style={styles.center}><ActivityIndicator color={C.green}/><Text style={[styles.message, { color: C.ink }]}>{T('Loading…')}</Text></View>
@@ -354,11 +477,11 @@ export function IndopakMushafReader({ colors: C, dark, language, rtl, icon, init
           {fontError && button(T('Retry'), () => setAttempt(n => n + 1), 'refresh-outline', { text: T('Retry') })}</View>
         : <>
           <View testID="indopak-page-current" style={[styles.fill, { backgroundColor: C.bg }]}>
-            <ScrollView ref={vertical} testID="indopak-vertical-scroll" nestedScrollEnabled scrollEnabled={Platform.OS === 'web' || size.height > viewport.height + 1} showsVerticalScrollIndicator={size.height > viewport.height}
+            <ScrollView ref={vertical} testID="indopak-vertical-scroll" nestedScrollEnabled scrollEnabled={!focusMode && (Platform.OS === 'web' || size.height > viewport.height + 1)} showsVerticalScrollIndicator={size.height > viewport.height}
               scrollEventThrottle={16} onScroll={({ nativeEvent }) => { scrolled('y', nativeEvent.contentOffset.y); }}
               onScrollBeginDrag={userPanning} onContentSizeChange={applyScrollCorrection}
               contentContainerStyle={{ minHeight: viewport.height, justifyContent: 'center' }}>
-              <ScrollView ref={horizontal} testID="indopak-horizontal-scroll" horizontal nestedScrollEnabled scrollEnabled={Platform.OS === 'web'} bounces={false} alwaysBounceHorizontal={false} showsHorizontalScrollIndicator={false}
+              <ScrollView ref={horizontal} testID="indopak-horizontal-scroll" horizontal nestedScrollEnabled scrollEnabled={!focusMode && Platform.OS === 'web'} bounces={false} alwaysBounceHorizontal={false} showsHorizontalScrollIndicator={false}
                 scrollEventThrottle={16} onScroll={({ nativeEvent }) => { scrolled('x', nativeEvent.contentOffset.x); }}
                 onScrollBeginDrag={userPanning} onContentSizeChange={applyScrollCorrection}
                 style={{ height: size.height, direction: 'ltr' }} contentContainerStyle={{ minWidth: viewport.width, alignItems: 'center', justifyContent: 'center' }}>

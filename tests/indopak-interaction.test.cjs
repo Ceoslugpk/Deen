@@ -99,12 +99,13 @@ test('the viewport yields to native recognizers and cancels page turns without d
   const component = fs.readFileSync(path.join(__dirname,'../src/components/IndopakMushafReader.tsx'),'utf8');
   assert.ok(component.includes('onPanResponderTerminationRequest: () => true'));
   assert.ok(component.includes('onShouldBlockNativeResponder: () => false'));
-  assert.ok(component.includes('onPanResponderTerminate: () => { swipeFrom.current = null;'));
-  assert.ok(component.includes('from !== latest.current.page'));
+  assert.ok(component.includes('onPanResponderTerminate: cancelGesture'));
+  assert.ok(component.includes('gestureSession.current = null; swipeBlocked.current = true;'));
+  assert.ok(component.includes('session.page !== latest.current.page'));
   assert.ok(component.includes('swipeBlocked.current ||'));
-  assert.ok(component.includes("scrollEnabled={Platform.OS === 'web' || size.height > viewport.height + 1}"));
-  assert.ok(component.includes("scrollEnabled={Platform.OS === 'web'}"));
-  assert.ok(component.includes("touchAction: 'pan-y'"));
+  assert.ok(component.includes("scrollEnabled={!focusMode && (Platform.OS === 'web' || size.height > viewport.height + 1)}"));
+  assert.ok(component.includes("scrollEnabled={!focusMode && Platform.OS === 'web'}"));
+  assert.ok(component.includes("touchAction: focusMode ? 'none' : 'pan-y'"));
   assert.ok(component.includes('Date.now() >= suppressVerseUntil.current'));
 });
 

@@ -42,6 +42,20 @@ Captured from the running app (web build, 414 × 896) — real screens, not mock
 | <img src="docs/screenshots/07-library.png" alt="Library" width="260" /> <br /> **Library** — what you read, recite and remember | <img src="docs/screenshots/08-tools.png" alt="Tools" width="260" /> <br /> **Tools** — trackers and calculators |
 | <img src="docs/screenshots/09-qibla.png" alt="Qibla" width="260" /> <br /> **Qibla** — dial, Kaaba marker, sensor honesty | <img src="docs/screenshots/10-tasbih.png" alt="Tasbih" width="260" /> <br /> **Tasbih** — a quiet dhikr counter |
 
+### Share app and Focus-only pinch zoom
+
+New captures from the running production web build at **390 × 844**. Additional
+inset fixtures are documented with the validation. These are real screenshots, not
+native-device captures or redesigned mock-ups.
+
+| | |
+| :--- | :--- |
+| <img src="docs/screenshots/share-app-en.png" alt="Share app with its real Play Store QR and family sharing button" width="260" /> <br /> **Share app** — below the privacy/legal pages in Settings | <img src="docs/screenshots/share-app-ar-dark.png" alt="Share app in Arabic and dark appearance" width="260" /> <br /> **Arabic / dark** — the QR stays black on white |
+| <img src="docs/screenshots/focus-fit-r104.png" alt="Original 16-line page fitted in Focus with a fixed Unlock button" width="260" /> <br /> **Focus at fit** — original whole printed page | <img src="docs/screenshots/focus-pinched-r104.png" alt="Pinch-magnified original page with the Unlock button still fixed" width="260" /> <br /> **Pinch magnification** — pan to read the enlarged page; Unlock stays fixed |
+
+[Behavior, validation and all six new captures](docs/share-focus-r104.md) ·
+[Self-contained screenshot gallery](docs/share-focus-r104-gallery.html)
+
 **Large-screen assets:** [Download 24 tablet and unfolded-foldable screenshots](docs/store-assets/Islamic-tablet-foldable-screenshots.zip)
 (8 per category). These are independently rendered **web-build viewport captures**, not
 native Android emulator screenshots. [Sizes, provenance and reproduction steps](docs/store-assets/README.md).
@@ -103,7 +117,7 @@ Makkah itself the dial is replaced by a short note: every direction here is the 
 ### Qur'an
 
 - **Reader** — all 114 surahs in Uthmani script, verse by verse, with a translation beside the Arabic
-- **16-line Quran** — **Quran → Explore**, a separate offline Taj Company IndoPak edition: 548 original pages, source line breaks, matching Nastaleeq typography, top-page navigation, lightweight paper-fold swipes, one responsive **Go to** picker for **Surah / Juz / Verse**, full-page **Focus mode** with a top-right **Unlock** button, memoized page rendering, independent saved pages, inline ayah actions, playback-follow highlighting and an exact continue-reading marker. Focus hides the header, controls and mini-player without stopping recitation. [Implementation and validation](docs/offline-indopak-16-r94.md); [resource permissions and original notices](resources/quran/indopak-taj-16/NOTICE.md).
+- **16-line Quran** — **Quran → Explore**, a separate offline Taj Company IndoPak edition: 548 original pages, source line breaks, matching Nastaleeq typography, top-page navigation, lightweight paper-fold swipes, one responsive **Go to** picker for **Surah / Juz / Verse**, full-page **Focus mode** with a top-right **Unlock** button, memoized page rendering, independent saved pages, inline ayah actions, playback-follow highlighting and an exact continue-reading marker. Focus hides the header, controls and mini-player without stopping recitation, and supports **pinch zoom from 1× to 3× with panning only while in Focus**. Unlock, rotation or a different printed page resets the transient magnification; normal mode and stored reader settings remain unchanged. [Share/zoom behavior and checks](docs/share-focus-r104.md); [original implementation](docs/offline-indopak-16-r94.md); [resource permissions and original notices](resources/quran/indopak-taj-16/NOTICE.md).
 - **Four Arabic scripts** — Uthmani, Imla'i simple, IndoPak and Tajweed
 - **484 translations** and every tafsir; **Tafsir** on its own, and **Tafsir Compare** side by side
 - **Transliteration** — how the Arabic sounds, with a picker that searches all 114 surahs by number, Latin name, Arabic name or meaning
@@ -151,6 +165,12 @@ Also here: **Holy site channels** — live broadcasts from Makkah and Madinah (Q
 Alharamain, Sunnah TV and Makkah Live) — **Privacy Lock** (face, fingerprint or PIN in
 front of the app), **Backup** (encrypted, and yours to keep), **Storage**, **Data sources**
 (every service the app talks to, listed in plain words), **My Reports** and **Legal**.
+
+### Settings and sharing
+
+- **Share app**, immediately below Privacy Policy / Terms of Use / Data Safety, with a bundled scannable QR for [Islamic on Google Play](https://play.google.com/store/apps/details?id=com.qashi.islamic).
+- **“Share app with your friends and family”** opens the platform share flow. Unsupported web browsers can copy the link; cancellation/errors are not presented as successful sharing. The link also stays selectable, with a separate Google Play action.
+- New page labels cover all 22 interface languages, light/dark and RTL. No QR-service request, contact access or tracking is added. [Checks and screenshots](docs/share-focus-r104.md).
 
 ### Widgets and Live Activities
 

@@ -138,6 +138,6 @@ test('following stays focus/interaction-gated, manual browsing opts out, and the
   assert.ok(reader.includes("if (!followingAudio) { setAudioFollow(null); lastFollowed.current = ''; }"));
   assert.ok(reader.includes('goPage(target.page, true)')); assert.ok(reader.includes('recitingVerse={recitingVerse}'));
   assert.ok(canvas.includes('s.verse === recitingVerse')); assert.ok(canvas.includes('s.verse === readingPoint'));
-  const effect = reader.slice(reader.indexOf('if (!audioFollow || !focused'), reader.indexOf('const swipeFrom'));
+  const effect = reader.slice(reader.indexOf('if (!audioFollow || !focused'), reader.indexOf('const swipeBlocked'));
   assert.ok(!effect.includes('readingPoint:')); assert.ok(!effect.includes('setSelection('));
 });

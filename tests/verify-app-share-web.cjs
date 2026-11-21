@@ -1,0 +1,144 @@
+/** Running production Expo WEB. Web Share bridge success/cancel/failure are
+ * explicit test doubles because Chromium/Linux has no OS sharing sheet. The
+ * clipboard fallback is checked against the actual browser clipboard. QR PNGs
+ * are screenshots of the rendered UI, independently decoded with OpenCV.
+ * INDOPAK_URL=http://127.0.0.1:8112 node tests/verify-app-share-web.cjs */
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const { spawnSync } = require('node:child_process');
+const { chromium } = require('playwright');
+const { createLoader } = require('./helpers/load-typescript.cjs');
+const { makePage, box, pause } = require('./verify-indopak-web.cjs');
+const load = createLoader(); const { tx, loadCopy } = load('src/services/arabicCopy.ts'); const { appShareText: copy } = load('src/services/appShareCopy.ts');
+const output = process.env.APP_SHARE_ARTIFACTS_DIR || '/tmp/islamic-r104-share';
+const target = 'https://play.google.com/store/apps/details?id=com.qashi.islamic';
+const oldKeys = ['@deen/quran/indopak-taj-16/state/v1', '@deen/quran/preferences/v1', '@deen/quran/position/v1', '@deen/quran/bookmarks/v1', '@deen/quran/notes/v1', '@deen/audio-settings/v1'];
+async function settings(page, language) {
+  await loadCopy(language);
+  await page.getByTestId('screen-header').last().getByRole('button').first().click();
+  await page.getByRole('button', { name: tx(language, 'Settings'), exact: true }).click();
+  await page.getByTestId('settings-share-app').scrollIntoViewIfNeeded(); await pause(page);
+}
+async function open(page) { await page.getByTestId('settings-share-app').click(); await page.getByTestId('app-share-qr').waitFor(); await pause(page); }
+async function fullLabel(locator) {
+  const clipped = await locator.evaluate(root => {
+    const bounds = root.getBoundingClientRect(), walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT), clipped = [];
+    let node;
+    while (node = walker.nextNode()) {
+      if (!node.textContent.trim() || node.parentElement.closest('svg')) continue;
+      const parent = node.parentElement, p = parent.getBoundingClientRect();
+      if (parent.scrollWidth > parent.clientWidth + 1 || parent.scrollHeight > parent.clientHeight + 1) clipped.push({ text: node.textContent, overflow: true });
+      // Chromium reports an extra end-of-line Range box for a soft-wrapped
+      // space, beyond its text container even though no glyph is there. Check
+      // each actual non-whitespace glyph, not that invisible line-break box.
+      for (let i = 0; i < node.textContent.length; i++) {
+        if (/\s|[\u200c\u200d]/u.test(node.textContent[i])) continue;
+        const range = document.createRange(); range.setStart(node, i); range.setEnd(node, i + 1);
+        for (const r of range.getClientRects()) if (r.width && r.height && (r.x < bounds.x - 1 || r.right > bounds.right + 1 || r.y < bounds.y - 1 || r.bottom > bounds.bottom + 1
+          || r.x < p.x - 1 || r.right > p.right + 1 || r.y < p.y - 1 || r.bottom > p.bottom + 1)) clipped.push({ text: node.textContent, index: i, glyph: node.textContent[i] });
+      }
+    }
+    return clipped;
+  });
+  assert.deepEqual(clipped, [], 'Every visible label glyph fits its container and reachable button, without ellipses or clipping');
+}
+async function layout(page, language, name) {
+  const safe = await box(page.getByTestId('system-safe-content').first()), qr = await box(page.getByTestId('app-share-qr'));
+  assert.ok(qr.width >= 147 && qr.width === qr.height && qr.x >= safe.x && qr.right <= safe.right, 'QR keeps a square scan-sized target inside the safe width');
+  assert.ok(Math.abs(qr.width / 49 - Math.round(qr.width / 49)) < .001, 'Integer modules avoid blurred module edges');
+  assert.equal(await page.getByTestId('app-share-button').innerText(), copy(language, 'button'));
+  const result = { name, language, safe, qr, actions: [] };
+  for (const id of ['app-share-button', 'app-share-open']) {
+    const action = page.getByTestId(id); await action.scrollIntoViewIfNeeded(); const r = await box(action);
+    assert.ok(r.height >= 44 && r.x >= safe.x && r.right <= safe.right && r.y >= safe.y && r.bottom <= safe.bottom, `${id} is reachable inside the safe window`);
+    await fullLabel(action); result.actions.push({ id, ...r });
+  }
+  assert.equal(await page.getByTestId('app-share-url').innerText(), target);
+  const url = await page.getByTestId('app-share-url').evaluate(e => ({ userSelect: getComputedStyle(e).userSelect, width: e.clientWidth, scroll: e.scrollWidth, direction: getComputedStyle(e).direction }));
+  assert.equal(url.userSelect, 'text'); assert.ok(url.scroll <= url.width + 1, 'The selectable URL wraps instead of overflowing narrow/RTL panes');
+  await page.getByTestId('app-share-qr').screenshot({ path: path.join(output, `qr-${name}.png`) }); return result;
+}
+(async () => {
+  fs.mkdirSync(output, { recursive: true }); const browser = await chromium.launch();
+  const report = { method: 'Actual production WEB, real navigation/layout/rendered QR and clipboard. Web Share returns are explicit browser bridge doubles, not real OS sheets. Outbound Play Store navigation is intercepted only in the test; no listing availability claim.', checks: {}, localized: [], errors: [], qrDecode: null };
+  let active;
+  try {
+    const own = await makePage(browser), { page } = own; active = page; report.errors.push(own.errors);
+    await own.context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    const before = await page.evaluate(keys => Object.fromEntries(keys.map(k => [k, localStorage.getItem(k)])), oldKeys);
+    await settings(page, 'en');
+    const order = await page.getByRole('button').evaluateAll(nodes => nodes.filter(e => ['Privacy Policy','Terms of Use','Data Safety','Share app'].includes(e.textContent.trim())).map(e => ({ text: e.textContent.trim(), y: e.getBoundingClientRect().y })));
+    assert.deepEqual(order.map(e => e.text), ['Privacy Policy','Terms of Use','Data Safety','Share app']); assert.ok(order.every((e, i) => i === 0 || e.y > order[i - 1].y));
+    await page.screenshot({ path: path.join(output, 'settings-share-location.png'), animations: 'disabled' }); await open(page);
+    report.checks.placementAndDefaultLayout = await layout(page, 'en', 'en-phone');
+    await page.getByTestId('app-share-page').evaluate(e => { e.scrollTop = 0; }); await pause(page);
+    await page.screenshot({ path: path.join(output, 'share-app-en.png'), animations: 'disabled' });
+    // Exercise the actual RN Web -> navigator.share argument mapping. Keep the
+    // promise unresolved briefly to verify rapid repeat taps cannot open twice.
+    await page.evaluate(() => {
+      window.__sharePayloads = [];
+      Object.defineProperty(navigator, 'share', { configurable: true, value: async payload => { window.__sharePayloads.push(payload); return new Promise(resolve => { window.__shareResolve = resolve; }); } });
+    });
+    await page.getByTestId('app-share-button').click({ clickCount: 2 });
+    assert.equal(await page.evaluate(() => window.__sharePayloads.length), 1);
+    const payload = await page.evaluate(() => window.__sharePayloads[0]);
+    assert.equal(payload.title, 'Share app'); assert.equal(payload.text, `Islamic Companion\n${target}`); assert.ok(!payload.url, 'The link is included exactly once in the shared message');
+    assert.equal(await page.getByTestId('app-share-button').getAttribute('aria-busy'), 'true');
+    await page.evaluate(() => window.__shareResolve()); await page.waitForFunction(() => document.querySelector('[data-testid="app-share-button"]').getAttribute('aria-busy') !== 'true');
+    assert.equal(await page.getByTestId('app-share-status').count(), 0); report.checks.shareBridgeAndRepeatedTapGuard = payload;
+    await page.evaluate(async () => {
+      await navigator.clipboard.writeText('share-cancel-sentinel');
+      Object.defineProperty(navigator, 'share', { configurable: true, value: async () => { throw new DOMException('Cancelled', 'AbortError'); } });
+    });
+    await page.getByTestId('app-share-button').click(); await page.waitForTimeout(120);
+    assert.equal(await page.getByTestId('app-share-status').count(), 0); assert.equal(await page.evaluate(() => navigator.clipboard.readText()), 'share-cancel-sentinel');
+    report.checks.cancelDoesNotCopyOrClaimSuccess = true;
+    await page.evaluate(() => Object.defineProperty(navigator, 'share', { configurable: true, value: async () => { throw new DOMException('Denied', 'NotAllowedError'); } }));
+    await page.getByTestId('app-share-button').click(); await page.getByTestId('app-share-status').waitFor();
+    assert.equal(await page.getByTestId('app-share-status').innerText(), copy('en', 'error'));
+    assert.equal(await page.evaluate(() => navigator.clipboard.readText()), 'share-cancel-sentinel'); report.checks.shareErrorIsHonest = true;
+    await page.evaluate(() => Object.defineProperty(navigator, 'share', { configurable: true, value: undefined }));
+    await page.getByTestId('app-share-button').click(); await page.waitForFunction(text => document.querySelector('[data-testid="app-share-status"]')?.textContent === text, copy('en', 'copied'));
+    assert.equal(await page.evaluate(() => navigator.clipboard.readText()), `Islamic Companion\n${target}`); report.checks.realClipboardFallback = true;
+    // The external navigation really opens a browser page; its HTTP response is
+    // intercepted so this test is not an assertion that a store listing exists.
+    await own.context.route(target, route => route.fulfill({ status: 200, contentType: 'text/plain', body: 'External navigation intercepted by QA' }));
+    const [popup] = await Promise.all([own.context.waitForEvent('page'), page.getByTestId('app-share-open').click()]);
+    await popup.waitForLoadState(); assert.equal(popup.url(), target); await popup.close(); report.checks.openStoreTarget = target;
+    await page.evaluate(() => {
+      Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async () => { throw new Error('QA denied'); } } });
+      document.execCommand = () => false;
+    });
+    await page.getByTestId('app-share-button').click(); await page.waitForFunction(text => document.querySelector('[data-testid="app-share-status"]')?.textContent === text, copy('en', 'error'));
+    report.checks.clipboardFailureIsNotReportedAsCopied = true;
+    await own.context.setOffline(true);
+    await page.getByTestId('screen-header').last().getByRole('button').first().click(); await page.getByTestId('settings-share-app').waitFor(); await open(page);
+    await page.getByTestId('app-share-qr').screenshot({ path: path.join(output, 'qr-offline.png') }); report.checks.qrRendersOfflineWithoutQrService = true;
+    assert.deepEqual(await page.evaluate(keys => Object.fromEntries(keys.map(k => [k, localStorage.getItem(k)])), oldKeys), before);
+    await own.context.setOffline(false); await page.getByTestId('screen-header').last().getByRole('button').first().click(); await page.getByTestId('settings-share-app').waitFor();
+    report.checks.backReturnsToSettingsAndReaderDataIsUntouched = true; await own.context.close();
+
+    for (const language of ['en','ar','ur','fa','ps','fr','tr','ru','uz','kk','zh','vi','az','bs','bg','si','bn','hi','id','ms','ta','ml']) {
+      const dark = ['ar','ur','fa','en'].includes(language), h = await makePage(browser, language, dark); active = h.page; report.errors.push(h.errors);
+      await settings(h.page, language); assert.equal(await h.page.getByTestId('settings-share-app').getAttribute('aria-label'), copy(language, 'title')); await open(h.page);
+      for (const [width, height] of [[280,720],[390,844]]) {
+        await h.page.setViewportSize({ width, height }); await pause(h.page);
+        report.localized.push({ dark, width, height, ...(await layout(h.page, language, `${language}-${width}`)) });
+        if (width === 390 && ['ar','ur'].includes(language)) { await h.page.getByTestId('app-share-page').evaluate(e => { e.scrollTop = 0; }); await pause(h.page); await h.page.screenshot({ path: path.join(output, `share-app-${language}-dark.png`), animations: 'disabled' }); }
+      }
+      if (language === 'en') {
+        for (const [name, width, height] of [['compact',240,640],['landscape',844,390],['tablet',800,1280]]) {
+          await h.page.setViewportSize({ width, height }); await pause(h.page); report.localized.push({ dark, width, height, ...(await layout(h.page, language, name)) });
+        }
+      }
+      await h.page.getByTestId('screen-header').last().getByRole('button').first().click(); await h.page.getByTestId('settings-share-app').waitFor(); await h.context.close();
+    }
+    const decoded = spawnSync('python3', [path.join(__dirname, 'verify-app-share-qr.py'), output], { encoding: 'utf8', timeout: 120000 });
+    if (decoded.status !== 0) throw new Error(`Independent rendered QR decode failed: ${decoded.stderr || decoded.stdout}`);
+    report.qrDecode = JSON.parse(decoded.stdout); assert.ok(report.qrDecode.count >= 49);
+    for (const errors of report.errors) for (const [kind, values] of Object.entries(errors)) assert.deepEqual(values, [], `${kind} errors`);
+    console.log(JSON.stringify({ checks: Object.keys(report.checks), layouts: report.localized.length + 1, contexts: report.errors.length, independentlyDecodedQrScreenshots: report.qrDecode.count }, null, 2));
+  } catch (error) { report.failure = error.stack || String(error); if (active && !active.isClosed()) await active.screenshot({ path: path.join(output, 'failure.png') }).catch(() => {}); throw error; }
+  finally { fs.writeFileSync(path.join(output, 'report.json'), JSON.stringify(report, null, 2)); await browser.close(); }
+})().catch(error => { console.error(error); process.exitCode = 1; });

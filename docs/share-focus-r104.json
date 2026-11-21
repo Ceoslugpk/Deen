@@ -1,0 +1,6862 @@
+{
+  "revision": "R104",
+  "baseCommit": "71fa76228363148d8084c170e6fbccb185a39166",
+  "scope": "Share App below Settings privacy/legal pages, exact Play Store QR/family-share CTA, followed by Focus-only 16-line Quran pinch magnification. No deferred Tajweed or Mufahras implementation.",
+  "destination": "https://play.google.com/store/apps/details?id=com.qashi.islamic",
+  "shareImplementation": {
+    "route": "Settings / Share App",
+    "rowPlacement": "Below Privacy Policy, Terms of Use and Data Safety; before the Made with footer",
+    "englishCta": "Share app with your friends and family",
+    "native": "React Native Share.share, message contains app name and exact URL once; no delivery-success banner",
+    "web": "Web Share if supported; direct navigator.clipboard.writeText fallback only if Web Share absent; no legacy execCommand success guess",
+    "cancel": "Dismissal/AbortError is silent, no clipboard fallback",
+    "error": "Localized honest error, selectable URL and Open in Google Play remain available",
+    "qr": {
+      "matrix": 41,
+      "quietZoneModules": 4,
+      "errorCorrection": "Q",
+      "opaqueWhiteBackground": true,
+      "blackModules": true,
+      "networkService": false,
+      "runtimeEncoderDependency": false,
+      "generationScript": "scripts/build-app-share-qr.cjs",
+      "developmentEncoder": "locked toqr 0.1.1, ECLevel.Q=3",
+      "independentlyDecodedRenderedScreenshots": 49
+    },
+    "localizedLanguages": 22
+  },
+  "focusImplementation": {
+    "scope": "focusMode && focused only; normal reading fixed at 1x",
+    "minimumFitMultiplier": 1,
+    "maximumFitMultiplier": 3,
+    "anchor": "Immutable paper-space pinch-centre anchor; SVG viewport resized uniformly, original paths/transforms/hitboxes unchanged",
+    "panning": "Single-finger two-axis manual pan while magnified; no page turn even at a paper edge",
+    "pageSwipes": "At exactly 1x, RIGHT next / LEFT previous in every interface language",
+    "trackpad": "Focus-only non-passive ctrl+wheel with browser page zoom suppressed",
+    "gestureSafety": [
+      "One stable PanResponder across zoom renders",
+      "Second finger cancels pending 500ms hold",
+      "Adding a second finger to captured Focus swipe can become a pinch, not a page turn",
+      "Third finger or lifting one pinch finger blocks the remainder until release",
+      "Cancel never turns/marks a page",
+      "Unlock outside the gesture viewport remains fixed at the physical safe top-right"
+    ],
+    "reset": [
+      "Unlock / re-entry",
+      "Escape or native focus Back action",
+      "Leaving/blur",
+      "Viewport change/rotation",
+      "Different printed page, including automatic audio-follow"
+    ],
+    "persistence": "Route-local transient React state only; no reading setting writes, no migration/deletion of older stored zoom",
+    "audio": "Existing authoritative follow and active-touch guards retained; playing/paused intent unaffected in final browser checks"
+  },
+  "unit": {
+    "command": "node --test tests/*.test.cjs plugins/__tests__/*.test.js",
+    "passed": 245,
+    "failed": 0,
+    "skipped": 0,
+    "newChecks": 26,
+    "newFiles": {
+      "tests/app-share.test.cjs": 15,
+      "tests/indopak-zoom.test.cjs": 11
+    },
+    "log": "/tmp/islamic-r104-unit-final.log"
+  },
+  "typeScript": {
+    "command": "tsc --noEmit",
+    "exitCode": 0,
+    "log": "/tmp/islamic-r104-tsc-final.log"
+  },
+  "productionWeb": {
+    "bundle": "_expo/static/js/web/index-c6828fd2d3fdb8f15be98025e4a5e212.js",
+    "urlUsedByLocalRunner": "http://127.0.0.1:8113",
+    "share": {
+      "method": "Actual production WEB, real navigation/layout/rendered QR and clipboard. Web Share returns are explicit browser bridge doubles, not real OS sheets. Outbound Play Store navigation is intercepted only in the test; no listing availability claim.",
+      "checks": {
+        "placementAndDefaultLayout": {
+          "name": "en-phone",
+          "language": "en",
+          "safe": {
+            "x": 0,
+            "y": 0,
+            "width": 390,
+            "height": 844,
+            "right": 390,
+            "bottom": 844
+          },
+          "qr": {
+            "x": 48,
+            "y": 223,
+            "width": 294,
+            "height": 294,
+            "right": 342,
+            "bottom": 517
+          },
+          "actions": [
+            {
+              "id": "app-share-button",
+              "x": 20,
+              "y": 555,
+              "width": 350,
+              "height": 48,
+              "right": 370,
+              "bottom": 603
+            },
+            {
+              "id": "app-share-open",
+              "x": 24,
+              "y": 621,
+              "width": 342,
+              "height": 48,
+              "right": 366,
+              "bottom": 669
+            }
+          ]
+        },
+        "shareBridgeAndRepeatedTapGuard": {
+          "title": "Share app",
+          "text": "Islamic Companion\nhttps://play.google.com/store/apps/details?id=com.qashi.islamic"
+        },
+        "cancelDoesNotCopyOrClaimSuccess": true,
+        "shareErrorIsHonest": true,
+        "realClipboardFallback": true,
+        "openStoreTarget": "https://play.google.com/store/apps/details?id=com.qashi.islamic",
+        "clipboardFailureIsNotReportedAsCopied": true,
+        "qrRendersOfflineWithoutQrService": true,
+        "backReturnsToSettingsAndReaderDataIsUntouched": true
+      },
+      "localized": [
+        {
+          "dark": true,
+          "width": 280,
+          "height": 720,
+          "name": "en-280",
+          "language": "en",
+          "safe": {
+            "x": 0,
+            "y": 0,
+            "width": 280,
+            "height": 720,
+            "right": 280,
+            "bottom": 720
+          },
+          "qr": {
+            "x": 42,
+            "y": 252,
+            "width": 196,
+            "height": 196,
+            "right": 238,
+            "bottom": 448
+          },
+          "actions": [
+            {
+              "id": "app-share-button",
+              "x": 20,
+              "y": 486,
+              "width": 240,
+              "height": 52,
+              "right": 260,
+              "bottom": 538
+            },
+            {
+              "id": "app-share-open",
+              "x": 24,
+              "y": 556,
+              "width": 232,
+              "height": 48,
+              "right": 256,
+              "bottom": 604
+            }
+          ]
+        },
+        {
+          "dark": true,
+          "width": 390,
+          "height": 844,
+          "name": "en-390",
+          "language": "en",
+          "safe": {
+            "x": 0,
+            "y": 0,
+            "width": 390,
+            "height": 844,
+            "right": 390,
+            "bottom": 844
+          },
+          "qr": {
+            "x": 48,
+            "y": 223,
+            "width": 294,
+            "height": 294,
+            "right": 342,
+            "bottom": 517
+          },
+          "actions": [
+            {
+              "id": "app-share-button",
+              "x": 20,
+              "y": 555,
+              "width": 350,
+              "height": 48,
+              "right": 370,
+              "bottom": 603
+            },
+            {
+              "id": "app-share-open",
+              "x": 24,
+              "y": 621,
+              "width": 342,
+              "height": 48,
+              "right": 366,
+              "bottom": 669
+            }
+          ]
+        },
+        {
+          "dark": true,
+          "width": 240,
+          "height": 640,
+          "name": "compact",
+          "language": "en",
+          "safe": {
+            "x": 0,
+            "y": 0,
+            "width": 240,
+            "height": 640,
+            "right": 240,
+            "bottom": 640
+          },
+          "qr": {
+            "x": 22,
+            "y": 271,
+            "width": 196,
+            "height": 196,
+            "right": 218,
+            "bottom": 467
+          },
+          "actions": [
+            {
+              "id": "app-share-button",
+              "x": 20,
+              "y": 505,
+              "width": 200,
+              "height": 52,
+              "right": 220,
+              "bottom": 557
+            },
+            {
+              "id": "app-share-open",
+              "x": 24,
+              "y": 575,
+              "width": 192,
+              "height": 48,
+              "right": 216,
+              "bottom": 623
+            }
+          ]
+        },
+        {
+          "dark": true,
+          "width": 844,
+          "height": 390,
+          "name": "landscape",
+          "language": "en",
+          "safe": {
+            "x": 0,
+            "y": 0,
+            "width": 844,
+            "height": 390,
+            "right": 844,
+            "bottom": 390
+          },
+          "qr": {
+            "x": 275,
+            "y": 204,
+            "width": 294,
+            "height": 294,
+            "right": 569,
+            "bottom": 498
+          },
+          "actions": [
+            {
+              "id": "app-share-button",
+              "x": 20,
+              "y": 199,
+              "width": 804,
+              "height": 48,
+              "right": 824,
+              "bottom": 247
+            },
+            {
+              "id": "app-share-open",
+              "x": 24,
+              "y": 265,
+              "width": 796,
+              "height": 48,
+              "right": 820,
+              "bottom": 313
+            }
+          ]
+        },
+        {
+          "dark": true,
+          "width": 800,
+          "height": 1280,
+          "name": "tablet",
+          "language": "en",
+          "safe": {
+            "x": 0,
+            "y": 0,
+            "width": 800,
+            "height": 1280,
+            "right": 800,
+            "bottom": 1280
+          },
+          "qr": {
+            "x": 253,
+            "y": 204,
+            "width": 294,
+            "height": 294,
+            "right": 547,
+            "bottom": 498
+          },
+          "actions": [
+            {
+              "id": "app-share-button",
+              "x": 20,
+              "y": 536,
+              "width": 760,
+              "height": 48,
+              "right": 780,
+              "bottom": 584
+            },
+            {
+              "id": "app-share-open",
+              "x": 24,
+              "y": 602,
+              "width": 752,
+              "height": 48,
+              "right": 776,
+              "bottom": 650
+            }
+          ]
+        },
+        {
+          "dark": true,
+          "width": 280,
+          "height": 720,
+          "name": "ar-280",
+          "language": "ar",
+          "safe": {
+            "x": 0,
+            "y": 0,
+            "width": 280,
+            "height": 720,
+            "right": 280,
+            "bottom": 720
+          },
+          "qr": {
+            "x": 42,
+            "y": 252,
+            "width": 196,
+            "height": 196,
+            "right": 238,
+            "bottom": 448
+          },
+          "actions": [
+            {
+              "id": "app-share-button",
+              "x": 20,
+              "y": 486,
+              "width": 240,
+              "height": 48,
+              "right": 260,
+              "bottom": 534
+            },
+            {
+              "id": "app-share-open",
+              "x": 24,
+              "y": 552,
+              "width": 232,
+              "height": 48,
+              "right": 256,
+              "bottom": 600
+            }
+          ]
+        },
+        {
+          "dark": true,
+          "width": 390,
+          "height": 844,
+          "name": "ar-390",
+          "language": "ar",
+          "safe": {
+            "x": 0,
+            "y": 0,
+            "width": 390,
+            "height": 844,
+            "right": 390,
+            "bottom": 844
+          },
+          "qr": {
+            "x": 48,
+            "y": 223,
+            "width": 294,
+            "height": 294,
+            "right": 342,
+            "bottom": 517
+          },
+          "actions": [
+            {
+              "id": "app-share-button",
+              "x": 20,
+              "y": 555,
+              "width": 350,
+              "height": 48,
+              "right": 370,
+              "bottom": 603
+            },
+            {
+              "id": "app-share-open",
+              "x": 24,
+              "y": 621,
+              "width": 342,
+              "height": 48,
+              "right": 366,
+              "bottom": 669
+            }
+          ]
+        },
+        {
+          "dark": true,
+          "width": 280,
+          "height": 720,
+          "name": "ur-280",
+          "language": "ur",
+          "safe": {
+            "x": 0,
+            "y": 0,
+            "width": 280,
+            "height": 720,
+            "right": 280,
+            "bottom": 720
+          },
+          "qr": {
+            "x": 42,
+            "y": 252,
+            "width": 196,
+            "height": 196,
+            "right": 238,
+            "bottom": 448
+          },
+          "actions": [
+            {
+              "id": "app-share-button",
+              "x": 20,
+              "y": 486,
+              "width": 240,
+              "height": 52,
+              "right": 260,
+              "bottom": 538
+            },
+            {
+              "id": "app-share-open",
+              "x": 24,
+              "y": 556,
+              "width": 232,
+              "height": 48,
+              "right": 256,
+              "bottom": 604
+            }
+          ]
+        },
+        {
+          "dark": true,
+          "width": 390,
+          "height": 844,
+          "name": "ur-390",
+          "language": "ur",
+          "safe": {
+            "x": 0,
+            "y": 0,
+            "width": 390,
+            "height": 844,
+            "right": 390,
+            "bottom": 844
+          },
+          "qr": {
+            "x": 48,
+            "y": 223,
+            "width": 294,
+            "height": 294,
+            "right": 342,
+            "bottom": 517
+          },
+          "actions": [
+            {
+              "id": "app-share-button",
+              "x": 20,
+              "y": 555,
+              "width": 350,
+              "height": 48,
+              "right": 370,
+              "bottom": 603
+            },
+            {
+              "id": "app-share-open",
+              "x": 24,
+              "y": 621,
+              "width": 342,
+              "height": 48,
+              "right": 366,
+              "bottom": 669
+            }
+          ]
+        },
+        {
+          "dark": true,
+          "width": 280,
+          "height": 720,
+          "name": "fa-280",
+          "language": "fa",
+          "safe": {
+            "x": 0,
+            "y": 0,
+            "width": 280,
+            "height": 720,
+            "right": 280,
+            "bottom": 720
+          },
+          "qr": {
+            "x": 42,
+            "y": 252,
+            "width": 196,
+            "height": 196,
+            "right": 238,
+            "bottom": 448
+          },
+          "actions": [
+            {
+              "id": "app-share-button",
+              "x": 20,
+              "y": 486,
+              "width": 240,
+              "height": 52,
+              "right": 260,
+              "bottom": 538
+            },
+            {
+              "id": "app-share-open",
+              "x": 24,
+              "y": 556,
+              "width": 232,
+              "height": 48,
+              "right": 256,
+              "bottom": 604
+            }
+          ]
+        },
+        {
+          "dark": true,
+          "width": 390,
+          "height": 844,
+          "name": "fa-390",
+          "language": "fa",
+          "safe": {
+            "x": 0,
+            "y": 0,
+            "width": 390,
+            "height": 844,
+            "right": 390,
+            "bottom": 844
+          },
+          "qr": {
+            "x": 48,
+            "y": 223,
+            "width": 294,
+            "height": 294,
+            "right": 342,
+            "bottom": 517
+          },
+          "actions": [
+            {
+              "id": "app-share-button",
+              "x": 20,
+              "y": 555,
+              "width": 350,
+              "height": 48,
+              "right": 370,
+              "bottom": 603
+            },
+            {
+              "id": "app-share-open",
+              "x": 24,
+              "y": 621,
+              "width": 342,
+              "height": 48,
+              "right": 366,
+              "bottom": 669
+            }
+          ]
+        },
+        {
+          "dark": false,
+          "width": 280,
+          "height": 720,
+          "name": "ps-280",
+          "language": "ps",
+          "safe": {
+            "x": 0,
+            "y": 0,
+            "width": 280,
+            "height": 720,
+            "right": 280,
+            "bottom": 720
+          },
+          "qr": {
+            "x": 42,
+            "y": 271,
+            "width": 196,
+            "height": 196,
+            "right": 238,
+            "bottom": 467
+          },
+          "actions": [
+            {
+              "id": "app-share-button",
+              "x": 20,
+              "y": 505,
+              "width": 240,
+              "height": 52,
+              "right": 260,
+              "bottom": 557
+            },
+            {
+              "id": "app-share-open",
+              "x": 24,
+              "y": 575,
+              "width": 232,
+              "height": 48,
+              "right": 256,
+              "bottom": 623
+            }
+          ]
+        },
+        {
+          "dark": false,
+          "width": 390,
+          "height": 844,
+          "name": "ps-390",
+          "language": "ps",
+          "safe": {
+            "x": 0,
+            "y": 0,
+            "width": 390,
+            "height": 844,
+            "right": 390,
+            "bottom": 844
+          },
+          "qr": {
+            "x": 48,
+            "y": 223,
+            "width": 294,
+            "height": 294,
+            "right": 342,
+            "bottom": 517
+          },
+          "actions": [
+            {
+              "id": "app-share-button",
+              "x": 20,
+              "y": 555,
+              "width": 350,
+              "height": 48,
+              "right": 370,
+              "bottom": 603
+            },
+            {
+              "id": "app-share-open",
+              "x": 24,
+              "y": 621,
+              "width": 342,
+              "height": 48,
+              "right": 366,
+              "bottom": 669
+            }
+          ]
+        },
+        {
+          "dark": false,
+          "width": 280,
+          "height": 720,
+          "name": "fr-280",
+          "language": "fr",
+          "safe": {
+            "x": 0,
+            "y": 0,
+            "width": 280,
+            "height": 720,
+            "right": 280,
+            "bottom": 720
+          },
+          "qr": {
+            "x": 42,
+            "y": 252,
+            "width": 196,
+            "height": 196,
+            "right": 238,
+            "bottom": 448
+          },
+          "actions": [
+            {
+              "id": "app-share-button",
+              "x": 20,
+              "y": 486,
+              "width": 240,
+              "height": 52,
+              "right": 260,
+              "bottom": 538
+            },
+            {
+              "id": "app-share-open",
+              "x": 24,
+              "y": 556,
+              "width": 232,
+              "height": 48,
+              "right": 256,
+              "bottom": 604
+            }
+          ]
+        },
+        {
+          "dark": false,
+          "width": 390,
+          "height": 844,
+          "name": "fr-390",
+          "language": "fr",
+          "safe": {
+            "x": 0,
+            "y": 0,
+            "width": 390,
+            "height": 844,
+            "right": 390,
+            "bottom": 844
+          },
+          "qr": {
+            "x": 48,
+            "y": 223,
+            "width": 294,
+            "height": 294,
+            "right": 342,
+            "bottom": 517
+          },
+          "actions": [
+            {
+              "id": "app-share-button",
+              "x": 20,
+              "y": 555,
+              "width": 350,
+              "height": 48,
+              "right": 370,
+              "bottom": 603
+            },
+            {
+              "id": "app-share-open",
+              "x": 24,
+              "y": 621,
+              "width": 342,
+              "height": 48,
+              "right": 366,
+              "bottom": 669
+            }
+          ]
+        },
+        {
+          "dark": false,
+          "width": 280,
+          "height": 720,
+          "name": "tr-280",
+          "language": "tr",
+          "safe": {
+            "x": 0,
+            "y": 0,
+            "width": 280,
+            "height": 720,
+            "right": 280,
+            "bottom": 720
+          },
+          "qr": {
+            "x": 42,
+            "y": 271,
+            "width": 196,
+            "height": 196,
+            "right": 238,
+            "bottom": 467
+          },
+          "actions": [
+            {
+              "id": "app-share-button",
+              "x": 20,
+              "y": 505,
+              "width": 240,
+              "height": 52,
+              "right": 260,
+              "bottom": 557
+            },
+            {
+              "id": "app-share-open",
+              "x": 24,
+              "y": 575,
+              "width": 232,
+              "height": 48,
+              "right": 256,
+              "bottom": 623
+            }
+          ]
+        },
+        {
+          "dark": false,
+          "width": 390,
+          "height": 844,
+          "name": "tr-390",
+          "language": "tr",
+          "safe": {
+            "x": 0,
+            "y": 0,
+            "width": 390,
+            "height": 844,
+            "right": 390,
+            "bottom": 844
+          },
+          "qr": {
+            "x": 48,
+            "y": 223,
+            "width": 294,
+            "height": 294,
+            "right": 342,
+            "bottom": 517
+          },
+          "actions": [
+            {
+              "id": "app-share-button",
+              "x": 20,
+              "y": 555,
+              "width": 350,
+              "height": 48,
+              "right": 370,
+              "bottom": 603
+            },
+            {
+              "id": "app-share-open",
+              "x": 24,
+              "y": 621,
+              "width": 342,
+              "height": 48,
+              "right": 366,
+              "bottom": 669
+            }
+          ]
+        },
+        {
+          "dark": false,
+          "width": 280,
+          "height": 720,
+          "name": "ru-280",
+          "language": "ru",
+          "safe": {
+            "x": 0,
+            "y": 0,
+            "width": 280,
+            "height": 720,
+            "right": 280,
+            "bottom": 720
+          },
+          "qr": {
+            "x": 42,
+            "y": 252,
+            "width": 196,
+            "height": 196,
+            "right": 238,
+            "bottom": 448
+          },
+          "actions": [
+            {
+              "id": "app-share-button",
+              "x": 20,
+              "y": 486,
+              "width": 240,
+              "height": 52,
+              "right": 260,
+              "bottom": 538
+            },
+            {
+              "id": "app-share-open",
+              "x": 24,
+              "y": 556,
+              "width": 232,
+              "height": 48,
+              "right": 256,
+              "bottom": 604
+            }
+          ]
+        },
+        {
+          "dark": false,
+          "width": 390,
+          "height": 844,
+          "name": "ru-390",
+          "language": "ru",
+          "safe": {
+            "x": 0,
+            "y": 0,
+            "width": 390,
+            "height": 844,
+            "right": 390,
+            "bottom": 844
+          },
+          "qr": {
+            "x": 48,
+            "y": 223,
+            "width": 294,
+            "height": 294,
+            "right": 342,
+            "bottom": 517
+          },
+          "actions": [
+            {
+              "id": "app-share-button",
+              "x": 20,
+              "y": 555,
+              "width": 350,
+              "height": 48,
+              "right": 370,
+              "bottom": 603
+            },
+            {
+              "id": "app-share-open",
+              "x": 24,
+              "y": 621,
+              "width": 342,
+              "height": 48,
+              "right": 366,
+              "bottom": 669
+            }
+          ]
+        },
+        {
+          "dark": false,
+          "width": 280,
+          "height": 720,
+          "name": "uz-280",
+          "language": "uz",
+          "safe": {
+            "x": 0,
+            "y": 0,
+            "width": 280,
+            "height": 720,
+            "right": 280,
+            "bottom": 720
+          },
+          "qr": {
+            "x": 42,
+            "y": 271,
+            "width": 196,
+            "height": 196,
+            "right": 238,
+            "bottom": 467
+          },
+          "actions": [
+            {
+              "id": "app-share-button",
+              "x": 20,
+              "y": 505,
+              "width": 240,
+              "height": 52,
+              "right": 260,
+              "bottom": 557
+            },
+            {
+              "id": "app-share-open",
+              "x": 24,
+              "y": 575,
+              "width": 232,
+              "height": 48,
+              "right": 256,
+              "bottom": 623
+            }
+          ]
+        },
+        {
+          "dark": false,
+          "width": 390,
+          "height": 844,
+          "name": "uz-390",
+          "language": "uz",
+          "safe": {
+            "x": 0,
+            "y": 0,
+            "width": 390,
+            "height": 844,
+            "right": 390,
+            "bottom": 844
+          },
+          "qr": {
+            "x": 48,
+            "y": 223,
+            "width": 294,
+            "height": 294,
+            "right": 342,
+            "bottom": 517
+          },
+          "actions": [
+            {
+              "id": "app-share-button",
+              "x": 20,
+              "y": 555,
+              "width": 350,
+              "height": 48,
+              "right": 370,
+              "bottom": 603
+            },
+            {
+              "id": "app-share-open",
+              "x": 24,
+              "y": 621,
+              "width": 342,
+              "height": 48,
+              "right": 366,
+              "bottom": 669
+            }
+          ]
+        },
+        {
+          "dark": false,
+          "width": 280,
+          "height": 720,
+          "name": "kk-280",
+          "language": "kk",
+          "safe": {
+            "x": 0,
+            "y": 0,
+            "width": 280,
+            "height": 720,
+            "right": 280,
+            "bottom": 720
+          },
+          "qr": {
+            "x": 42,
+            "y": 271,
+            "width": 196,
+            "height": 196,
+            "right": 238,
+            "bottom": 467
+          },
+          "actions": [
+            {
+              "id": "app-share-button",
+              "x": 20,
+              "y": 505,
+              "width": 240,
+              "height": 52,
+              "right": 260,
+              "bottom": 557
+            },
+            {
+              "id": "app-share-open",
+              "x": 24,
+              "y": 575,
+              "width": 232,
+              "height": 48,
+              "right": 256,
+              "bottom": 623
+            }
+          ]
+        },
+        {
+          "dark": false,
+          "width": 390,
+          "height": 844,
+          "name": "kk-390",
+          "language": "kk",
+          "safe": {
+            "x": 0,
+            "y": 0,
+            "width": 390,
+            "height": 844,
+            "right": 390,
+            "bottom": 844
+          },
+          "qr": {
+            "x": 48,
+            "y": 223,
+            "width": 294,
+            "height": 294,
+            "right": 342,
+            "bottom": 517
+          },
+          "actions": [
+            {
+              "id": "app-share-button",
+              "x": 20,
+              "y": 555,
+              "width": 350,
+              "height": 48,
+              "right": 370,
+              "bottom": 603
+            },
+            {
+              "id": "app-share-open",
+              "x": 24,
+              "y": 621,
+              "width": 342,
+              "height": 48,
+              "right": 366,
+              "bottom": 669
+            }
+          ]
+        },
+        {
+          "dark": false,
+          "width": 280,
+          "height": 720,
+          "name": "zh-280",
+          "language": "zh",
+          "safe": {
+            "x": 0,
+            "y": 0,
+            "width": 280,
+            "height": 720,
+            "right": 280,
+            "bottom": 720
+          },
+          "qr": {
+            "x": 42,
+            "y": 252,
+            "width": 196,
+            "height": 196,
+            "right": 238,
+            "bottom": 448
+          },
+          "actions": [
+            {
+              "id": "app-share-button",
+              "x": 20,
+              "y": 486,
+              "width": 240,
+              "height": 48,
+              "right": 260,
+              "bottom": 534
+            },
+            {
+              "id": "app-share-open",
+              "x": 24,
+              "y": 552,
+              "width": 232,
+              "height": 48,
+              "right": 256,
+              "bottom": 600
+            }
+          ]
+        },
+        {
+          "dark": false,
+          "width": 390,
+          "height": 844,
+          "name": "zh-390",
+          "language": "zh",
+          "safe": {
+            "x": 0,
+            "y": 0,
+            "width": 390,
+            "height": 844,
+            "right": 390,
+            "bottom": 844
+          },
+          "qr": {
+            "x": 48,
+            "y": 223,
+            "width": 294,
+            "height": 294,
+            "right": 342,
+            "bottom": 517
+          },
+          "actions": [
+            {
+              "id": "app-share-button",
+              "x": 20,
+              "y": 555,
+              "width": 350,
+              "height": 48,
+              "right": 370,
+              "bottom": 603
+            },
+            {
+              "id": "app-share-open",
+              "x": 24,
+              "y": 621,
+              "width": 342,
+              "height": 48,
+              "right": 366,
+              "bottom": 669
+            }
+          ]
+        },
+        {
+          "dark": false,
+          "width": 280,
+          "height": 720,
+          "name": "vi-280",
+          "language": "vi",
+          "safe": {
+            "x": 0,
+            "y": 0,
+            "width": 280,
+            "height": 720,
+            "right": 280,
+            "bottom": 720
+          },
+          "qr": {
+            "x": 42,
+            "y": 252,
+            "width": 196,
+            "height": 196,
+            "right": 238,
+            "bottom": 448
+          },
+          "actions": [
+            {
+              "id": "app-share-button",
+              "x": 20,
+              "y": 486,
+              "width": 240,
+              "height": 52,
+              "right": 260,
+              "bottom": 538
+            },
+            {
+              "id": "app-share-open",
+              "x": 24,
+              "y": 556,
+              "width": 232,
+              "height": 48,
+              "right": 256,
+              "bottom": 604
+            }
+          ]
+        },
+        {
+          "dark": false,
+          "width": 390,
+          "height": 844,
+          "name": "vi-390",
+          "language": "vi",
+          "safe": {
+            "x": 0,
+            "y": 0,
+            "width": 390,
+            "height": 844,
+            "right": 390,
+            "bottom": 844
+          },
+          "qr": {
+            "x": 48,
+            "y": 223,
+            "width": 294,
+            "height": 294,
+            "right": 342,
+            "bottom": 517
+          },
+          "actions": [
+            {
+              "id": "app-share-button",
+              "x": 20,
+              "y": 555,
+              "width": 350,
+              "height": 48,
+              "right": 370,
+              "bottom": 603
+            },
+            {
+              "id": "app-share-open",
+              "x": 24,
+              "y": 621,
+              "width": 342,
+              "height": 48,
+              "right": 366,
+              "bottom": 669
+            }
+          ]
+        },
+        {
+          "dark": false,
+          "width": 280,
+          "height": 720,
+          "name": "az-280",
+          "language": "az",
+          "safe": {
+            "x": 0,
+            "y": 0,
+            "width": 280,
+            "height": 720,
+            "right": 280,
+            "bottom": 720
+          },
+          "qr": {
+            "x": 42,
+            "y": 271,
+            "width": 196,
+            "height": 196,
+            "right": 238,
+            "bottom": 467
+          },
+          "actions": [
+            {
+              "id": "app-share-button",
+              "x": 20,
+              "y": 505,
+              "width": 240,
+              "height": 52,
+              "right": 260,
+              "bottom": 557
+            },
+            {
+              "id": "app-share-open",
+              "x": 24,
+              "y": 575,
+              "width": 232,
+              "height": 48,
+              "right": 256,
+              "bottom": 623
+            }
+          ]
+        },
+        {
+          "dark": false,
+          "width": 390,
+          "height": 844,
+          "name": "az-390",
+          "language": "az",
+          "safe": {
+            "x": 0,
+            "y": 0,
+            "width": 390,
+            "height": 844,
+            "right": 390,
+            "bottom": 844
+          },
+          "qr": {
+            "x": 48,
+            "y": 223,
+            "width": 294,
+            "height": 294,
+            "right": 342,
+            "bottom": 517
+          },
+          "actions": [
+            {
+              "id": "app-share-button",
+              "x": 20,
+              "y": 555,
+              "width": 350,
+              "height": 48,
+              "right": 370,
+              "bottom": 603
+            },
+            {
+              "id": "app-share-open",
+              "x": 24,
+              "y": 621,
+              "width": 342,
+              "height": 48,
+              "right": 366,
+              "bottom": 669
+            }
+          ]
+        },
+        {
+          "dark": false,
+          "width": 280,
+          "height": 720,
+          "name": "bs-280",
+          "language": "bs",
+          "safe": {
+            "x": 0,
+            "y": 0,
+            "width": 280,
+            "height": 720,
+            "right": 280,
+            "bottom": 720
+          },
+          "qr": {
+            "x": 42,
+            "y": 252,
+            "width": 196,
+            "height": 196,
+            "right": 238,
+            "bottom": 448
+          },
+          "actions": [
+            {
+              "id": "app-share-button",
+              "x": 20,
+              "y": 486,
+              "width": 240,
+              "height": 52,
+              "right": 260,
+              "bottom": 538
+            },
+            {
+              "id": "app-share-open",
+              "x": 24,
+              "y": 556,
+              "width": 232,
+              "height": 48,
+              "right": 256,
+              "bottom": 604
+            }
+          ]
+        },
+        {
+          "dark": false,
+          "width": 390,
+          "height": 844,
+          "name": "bs-390",
+          "language": "bs",
+          "safe": {
+            "x": 0,
+            "y": 0,
+            "width": 390,
+            "height": 844,
+            "right": 390,
+            "bottom": 844
+          },
+          "qr": {
+            "x": 48,
+            "y": 223,
+            "width": 294,
+            "height": 294,
+            "right": 342,
+            "bottom": 517
+          },
+          "actions": [
+            {
+              "id": "app-share-button",
+              "x": 20,
+              "y": 555,
+              "width": 350,
+              "height": 48,
+              "right": 370,
+              "bottom": 603
+            },
+            {
+              "id": "app-share-open",
+              "x": 24,
+              "y": 621,
+              "width": 342,
+              "height": 48,
+              "right": 366,
+              "bottom": 669
+            }
+          ]
+        },
+        {
+          "dark": false,
+          "width": 280,
+          "height": 720,
+          "name": "bg-280",
+          "language": "bg",
+          "safe": {
+            "x": 0,
+            "y": 0,
+            "width": 280,
+            "height": 720,
+            "right": 280,
+            "bottom": 720
+          },
+          "qr": {
+            "x": 42,
+            "y": 252,
+            "width": 196,
+            "height": 196,
+            "right": 238,
+            "bottom": 448
+          },
+          "actions": [
+            {
+              "id": "app-share-button",
+              "x": 20,
+              "y": 486,
+              "width": 240,
+              "height": 52,
+              "right": 260,
+              "bottom": 538
+            },
+            {
+              "id": "app-share-open",
+              "x": 24,
+              "y": 556,
+              "width": 232,
+              "height": 48,
+              "right": 256,
+              "bottom": 604
+            }
+          ]
+        },
+        {
+          "dark": false,
+          "width": 390,
+          "height": 844,
+          "name": "bg-390",
+          "language": "bg",
+          "safe": {
+            "x": 0,
+            "y": 0,
+            "width": 390,
+            "height": 844,
+            "right": 390,
+            "bottom": 844
+          },
+          "qr": {
+            "x": 48,
+            "y": 223,
+            "width": 294,
+            "height": 294,
+            "right": 342,
+            "bottom": 517
+          },
+          "actions": [
+            {
+              "id": "app-share-button",
+              "x": 20,
+              "y": 555,
+              "width": 350,
+              "height": 48,
+              "right": 370,
+              "bottom": 603
+            },
+            {
+              "id": "app-share-open",
+              "x": 24,
+              "y": 621,
+              "width": 342,
+              "height": 48,
+              "right": 366,
+              "bottom": 669
+            }
+          ]
+        },
+        {
+          "dark": false,
+          "width": 280,
+          "height": 720,
+          "name": "si-280",
+          "language": "si",
+          "safe": {
+            "x": 0,
+            "y": 0,
+            "width": 280,
+            "height": 720,
+            "right": 280,
+            "bottom": 720
+          },
+          "qr": {
+            "x": 42,
+            "y": 289,
+            "width": 196,
+            "height": 196,
+            "right": 238,
+            "bottom": 485
+          },
+          "actions": [
+            {
+              "id": "app-share-button",
+              "x": 20,
+              "y": 523,
+              "width": 240,
+              "height": 52,
+              "right": 260,
+              "bottom": 575
+            },
+            {
+              "id": "app-share-open",
+              "x": 24,
+              "y": 593,
+              "width": 232,
+              "height": 48,
+              "right": 256,
+              "bottom": 641
+            }
+          ]
+        },
+        {
+          "dark": false,
+          "width": 390,
+          "height": 844,
+          "name": "si-390",
+          "language": "si",
+          "safe": {
+            "x": 0,
+            "y": 0,
+            "width": 390,
+            "height": 844,
+            "right": 390,
+            "bottom": 844
+          },
+          "qr": {
+            "x": 48,
+            "y": 232,
+            "width": 294,
+            "height": 294,
+            "right": 342,
+            "bottom": 526
+          },
+          "actions": [
+            {
+              "id": "app-share-button",
+              "x": 20,
+              "y": 564,
+              "width": 350,
+              "height": 48,
+              "right": 370,
+              "bottom": 612
+            },
+            {
+              "id": "app-share-open",
+              "x": 24,
+              "y": 630,
+              "width": 342,
+              "height": 48,
+              "right": 366,
+              "bottom": 678
+            }
+          ]
+        },
+        {
+          "dark": false,
+          "width": 280,
+          "height": 720,
+          "name": "bn-280",
+          "language": "bn",
+          "safe": {
+            "x": 0,
+            "y": 0,
+            "width": 280,
+            "height": 720,
+            "right": 280,
+            "bottom": 720
+          },
+          "qr": {
+            "x": 42,
+            "y": 252,
+            "width": 196,
+            "height": 196,
+            "right": 238,
+            "bottom": 448
+          },
+          "actions": [
+            {
+              "id": "app-share-button",
+              "x": 20,
+              "y": 486,
+              "width": 240,
+              "height": 48,
+              "right": 260,
+              "bottom": 534
+            },
+            {
+              "id": "app-share-open",
+              "x": 24,
+              "y": 552,
+              "width": 232,
+              "height": 48,
+              "right": 256,
+              "bottom": 600
+            }
+          ]
+        },
+        {
+          "dark": false,
+          "width": 390,
+          "height": 844,
+          "name": "bn-390",
+          "language": "bn",
+          "safe": {
+            "x": 0,
+            "y": 0,
+            "width": 390,
+            "height": 844,
+            "right": 390,
+            "bottom": 844
+          },
+          "qr": {
+            "x": 48,
+            "y": 223,
+            "width": 294,
+            "height": 294,
+            "right": 342,
+            "bottom": 517
+          },
+          "actions": [
+            {
+              "id": "app-share-button",
+              "x": 20,
+              "y": 555,
+              "width": 350,
+              "height": 48,
+              "right": 370,
+              "bottom": 603
+            },
+            {
+              "id": "app-share-open",
+              "x": 24,
+              "y": 621,
+              "width": 342,
+              "height": 48,
+              "right": 366,
+              "bottom": 669
+            }
+          ]
+        },
+        {
+          "dark": false,
+          "width": 280,
+          "height": 720,
+          "name": "hi-280",
+          "language": "hi",
+          "safe": {
+            "x": 0,
+            "y": 0,
+            "width": 280,
+            "height": 720,
+            "right": 280,
+            "bottom": 720
+          },
+          "qr": {
+            "x": 42,
+            "y": 252,
+            "width": 196,
+            "height": 196,
+            "right": 238,
+            "bottom": 448
+          },
+          "actions": [
+            {
+              "id": "app-share-button",
+              "x": 20,
+              "y": 486,
+              "width": 240,
+              "height": 48,
+              "right": 260,
+              "bottom": 534
+            },
+            {
+              "id": "app-share-open",
+              "x": 24,
+              "y": 552,
+              "width": 232,
+              "height": 48,
+              "right": 256,
+              "bottom": 600
+            }
+          ]
+        },
+        {
+          "dark": false,
+          "width": 390,
+          "height": 844,
+          "name": "hi-390",
+          "language": "hi",
+          "safe": {
+            "x": 0,
+            "y": 0,
+            "width": 390,
+            "height": 844,
+            "right": 390,
+            "bottom": 844
+          },
+          "qr": {
+            "x": 48,
+            "y": 223,
+            "width": 294,
+            "height": 294,
+            "right": 342,
+            "bottom": 517
+          },
+          "actions": [
+            {
+              "id": "app-share-button",
+              "x": 20,
+              "y": 555,
+              "width": 350,
+              "height": 48,
+              "right": 370,
+              "bottom": 603
+            },
+            {
+              "id": "app-share-open",
+              "x": 24,
+              "y": 621,
+              "width": 342,
+              "height": 48,
+              "right": 366,
+              "bottom": 669
+            }
+          ]
+        },
+        {
+          "dark": false,
+          "width": 280,
+          "height": 720,
+          "name": "id-280",
+          "language": "id",
+          "safe": {
+            "x": 0,
+            "y": 0,
+            "width": 280,
+            "height": 720,
+            "right": 280,
+            "bottom": 720
+          },
+          "qr": {
+            "x": 42,
+            "y": 252,
+            "width": 196,
+            "height": 196,
+            "right": 238,
+            "bottom": 448
+          },
+          "actions": [
+            {
+              "id": "app-share-button",
+              "x": 20,
+              "y": 486,
+              "width": 240,
+              "height": 52,
+              "right": 260,
+              "bottom": 538
+            },
+            {
+              "id": "app-share-open",
+              "x": 24,
+              "y": 556,
+              "width": 232,
+              "height": 48,
+              "right": 256,
+              "bottom": 604
+            }
+          ]
+        },
+        {
+          "dark": false,
+          "width": 390,
+          "height": 844,
+          "name": "id-390",
+          "language": "id",
+          "safe": {
+            "x": 0,
+            "y": 0,
+            "width": 390,
+            "height": 844,
+            "right": 390,
+            "bottom": 844
+          },
+          "qr": {
+            "x": 48,
+            "y": 223,
+            "width": 294,
+            "height": 294,
+            "right": 342,
+            "bottom": 517
+          },
+          "actions": [
+            {
+              "id": "app-share-button",
+              "x": 20,
+              "y": 555,
+              "width": 350,
+              "height": 48,
+              "right": 370,
+              "bottom": 603
+            },
+            {
+              "id": "app-share-open",
+              "x": 24,
+              "y": 621,
+              "width": 342,
+              "height": 48,
+              "right": 366,
+              "bottom": 669
+            }
+          ]
+        },
+        {
+          "dark": false,
+          "width": 280,
+          "height": 720,
+          "name": "ms-280",
+          "language": "ms",
+          "safe": {
+            "x": 0,
+            "y": 0,
+            "width": 280,
+            "height": 720,
+            "right": 280,
+            "bottom": 720
+          },
+          "qr": {
+            "x": 42,
+            "y": 252,
+            "width": 196,
+            "height": 196,
+            "right": 238,
+            "bottom": 448
+          },
+          "actions": [
+            {
+              "id": "app-share-button",
+              "x": 20,
+              "y": 486,
+              "width": 240,
+              "height": 52,
+              "right": 260,
+              "bottom": 538
+            },
+            {
+              "id": "app-share-open",
+              "x": 24,
+              "y": 556,
+              "width": 232,
+              "height": 48,
+              "right": 256,
+              "bottom": 604
+            }
+          ]
+        },
+        {
+          "dark": false,
+          "width": 390,
+          "height": 844,
+          "name": "ms-390",
+          "language": "ms",
+          "safe": {
+            "x": 0,
+            "y": 0,
+            "width": 390,
+            "height": 844,
+            "right": 390,
+            "bottom": 844
+          },
+          "qr": {
+            "x": 48,
+            "y": 223,
+            "width": 294,
+            "height": 294,
+            "right": 342,
+            "bottom": 517
+          },
+          "actions": [
+            {
+              "id": "app-share-button",
+              "x": 20,
+              "y": 555,
+              "width": 350,
+              "height": 48,
+              "right": 370,
+              "bottom": 603
+            },
+            {
+              "id": "app-share-open",
+              "x": 24,
+              "y": 621,
+              "width": 342,
+              "height": 48,
+              "right": 366,
+              "bottom": 669
+            }
+          ]
+        },
+        {
+          "dark": false,
+          "width": 280,
+          "height": 720,
+          "name": "ta-280",
+          "language": "ta",
+          "safe": {
+            "x": 0,
+            "y": 0,
+            "width": 280,
+            "height": 720,
+            "right": 280,
+            "bottom": 720
+          },
+          "qr": {
+            "x": 42,
+            "y": 271,
+            "width": 196,
+            "height": 196,
+            "right": 238,
+            "bottom": 467
+          },
+          "actions": [
+            {
+              "id": "app-share-button",
+              "x": 20,
+              "y": 505,
+              "width": 240,
+              "height": 52,
+              "right": 260,
+              "bottom": 557
+            },
+            {
+              "id": "app-share-open",
+              "x": 24,
+              "y": 575,
+              "width": 232,
+              "height": 48,
+              "right": 256,
+              "bottom": 623
+            }
+          ]
+        },
+        {
+          "dark": false,
+          "width": 390,
+          "height": 844,
+          "name": "ta-390",
+          "language": "ta",
+          "safe": {
+            "x": 0,
+            "y": 0,
+            "width": 390,
+            "height": 844,
+            "right": 390,
+            "bottom": 844
+          },
+          "qr": {
+            "x": 48,
+            "y": 223,
+            "width": 294,
+            "height": 294,
+            "right": 342,
+            "bottom": 517
+          },
+          "actions": [
+            {
+              "id": "app-share-button",
+              "x": 20,
+              "y": 555,
+              "width": 350,
+              "height": 52,
+              "right": 370,
+              "bottom": 607
+            },
+            {
+              "id": "app-share-open",
+              "x": 24,
+              "y": 625,
+              "width": 342,
+              "height": 48,
+              "right": 366,
+              "bottom": 673
+            }
+          ]
+        },
+        {
+          "dark": false,
+          "width": 280,
+          "height": 720,
+          "name": "ml-280",
+          "language": "ml",
+          "safe": {
+            "x": 0,
+            "y": 0,
+            "width": 280,
+            "height": 720,
+            "right": 280,
+            "bottom": 720
+          },
+          "qr": {
+            "x": 42,
+            "y": 271,
+            "width": 196,
+            "height": 196,
+            "right": 238,
+            "bottom": 467
+          },
+          "actions": [
+            {
+              "id": "app-share-button",
+              "x": 20,
+              "y": 505,
+              "width": 240,
+              "height": 66,
+              "right": 260,
+              "bottom": 571
+            },
+            {
+              "id": "app-share-open",
+              "x": 24,
+              "y": 589,
+              "width": 232,
+              "height": 48,
+              "right": 256,
+              "bottom": 637
+            }
+          ]
+        },
+        {
+          "dark": false,
+          "width": 390,
+          "height": 844,
+          "name": "ml-390",
+          "language": "ml",
+          "safe": {
+            "x": 0,
+            "y": 0,
+            "width": 390,
+            "height": 844,
+            "right": 390,
+            "bottom": 844
+          },
+          "qr": {
+            "x": 48,
+            "y": 223,
+            "width": 294,
+            "height": 294,
+            "right": 342,
+            "bottom": 517
+          },
+          "actions": [
+            {
+              "id": "app-share-button",
+              "x": 20,
+              "y": 555,
+              "width": 350,
+              "height": 48,
+              "right": 370,
+              "bottom": 603
+            },
+            {
+              "id": "app-share-open",
+              "x": 24,
+              "y": 621,
+              "width": 342,
+              "height": 48,
+              "right": 366,
+              "bottom": 669
+            }
+          ]
+        }
+      ],
+      "errors": [
+        {
+          "page": [],
+          "console": [],
+          "http": [],
+          "requests": []
+        },
+        {
+          "page": [],
+          "console": [],
+          "http": [],
+          "requests": []
+        },
+        {
+          "page": [],
+          "console": [],
+          "http": [],
+          "requests": []
+        },
+        {
+          "page": [],
+          "console": [],
+          "http": [],
+          "requests": []
+        },
+        {
+          "page": [],
+          "console": [],
+          "http": [],
+          "requests": []
+        },
+        {
+          "page": [],
+          "console": [],
+          "http": [],
+          "requests": []
+        },
+        {
+          "page": [],
+          "console": [],
+          "http": [],
+          "requests": []
+        },
+        {
+          "page": [],
+          "console": [],
+          "http": [],
+          "requests": []
+        },
+        {
+          "page": [],
+          "console": [],
+          "http": [],
+          "requests": []
+        },
+        {
+          "page": [],
+          "console": [],
+          "http": [],
+          "requests": []
+        },
+        {
+          "page": [],
+          "console": [],
+          "http": [],
+          "requests": []
+        },
+        {
+          "page": [],
+          "console": [],
+          "http": [],
+          "requests": []
+        },
+        {
+          "page": [],
+          "console": [],
+          "http": [],
+          "requests": []
+        },
+        {
+          "page": [],
+          "console": [],
+          "http": [],
+          "requests": []
+        },
+        {
+          "page": [],
+          "console": [],
+          "http": [],
+          "requests": []
+        },
+        {
+          "page": [],
+          "console": [],
+          "http": [],
+          "requests": []
+        },
+        {
+          "page": [],
+          "console": [],
+          "http": [],
+          "requests": []
+        },
+        {
+          "page": [],
+          "console": [],
+          "http": [],
+          "requests": []
+        },
+        {
+          "page": [],
+          "console": [],
+          "http": [],
+          "requests": []
+        },
+        {
+          "page": [],
+          "console": [],
+          "http": [],
+          "requests": []
+        },
+        {
+          "page": [],
+          "console": [],
+          "http": [],
+          "requests": []
+        },
+        {
+          "page": [],
+          "console": [],
+          "http": [],
+          "requests": []
+        },
+        {
+          "page": [],
+          "console": [],
+          "http": [],
+          "requests": []
+        }
+      ],
+      "qrDecode": {
+        "decoder": "OpenCV 4.11.0 QRCodeDetector",
+        "count": 49,
+        "results": [
+          {
+            "file": "qr-ar-280.png",
+            "width": 196,
+            "height": 196,
+            "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+          },
+          {
+            "file": "qr-ar-390.png",
+            "width": 294,
+            "height": 294,
+            "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+          },
+          {
+            "file": "qr-az-280.png",
+            "width": 196,
+            "height": 196,
+            "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+          },
+          {
+            "file": "qr-az-390.png",
+            "width": 294,
+            "height": 294,
+            "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+          },
+          {
+            "file": "qr-bg-280.png",
+            "width": 196,
+            "height": 196,
+            "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+          },
+          {
+            "file": "qr-bg-390.png",
+            "width": 294,
+            "height": 294,
+            "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+          },
+          {
+            "file": "qr-bn-280.png",
+            "width": 196,
+            "height": 196,
+            "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+          },
+          {
+            "file": "qr-bn-390.png",
+            "width": 294,
+            "height": 294,
+            "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+          },
+          {
+            "file": "qr-bs-280.png",
+            "width": 196,
+            "height": 196,
+            "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+          },
+          {
+            "file": "qr-bs-390.png",
+            "width": 294,
+            "height": 294,
+            "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+          },
+          {
+            "file": "qr-compact.png",
+            "width": 196,
+            "height": 196,
+            "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+          },
+          {
+            "file": "qr-en-280.png",
+            "width": 196,
+            "height": 196,
+            "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+          },
+          {
+            "file": "qr-en-390.png",
+            "width": 294,
+            "height": 294,
+            "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+          },
+          {
+            "file": "qr-en-phone.png",
+            "width": 294,
+            "height": 294,
+            "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+          },
+          {
+            "file": "qr-fa-280.png",
+            "width": 196,
+            "height": 196,
+            "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+          },
+          {
+            "file": "qr-fa-390.png",
+            "width": 294,
+            "height": 294,
+            "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+          },
+          {
+            "file": "qr-fr-280.png",
+            "width": 196,
+            "height": 196,
+            "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+          },
+          {
+            "file": "qr-fr-390.png",
+            "width": 294,
+            "height": 294,
+            "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+          },
+          {
+            "file": "qr-hi-280.png",
+            "width": 196,
+            "height": 196,
+            "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+          },
+          {
+            "file": "qr-hi-390.png",
+            "width": 294,
+            "height": 294,
+            "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+          },
+          {
+            "file": "qr-id-280.png",
+            "width": 196,
+            "height": 196,
+            "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+          },
+          {
+            "file": "qr-id-390.png",
+            "width": 294,
+            "height": 294,
+            "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+          },
+          {
+            "file": "qr-kk-280.png",
+            "width": 196,
+            "height": 196,
+            "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+          },
+          {
+            "file": "qr-kk-390.png",
+            "width": 294,
+            "height": 294,
+            "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+          },
+          {
+            "file": "qr-landscape.png",
+            "width": 294,
+            "height": 294,
+            "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+          },
+          {
+            "file": "qr-ml-280.png",
+            "width": 196,
+            "height": 196,
+            "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+          },
+          {
+            "file": "qr-ml-390.png",
+            "width": 294,
+            "height": 294,
+            "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+          },
+          {
+            "file": "qr-ms-280.png",
+            "width": 196,
+            "height": 196,
+            "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+          },
+          {
+            "file": "qr-ms-390.png",
+            "width": 294,
+            "height": 294,
+            "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+          },
+          {
+            "file": "qr-offline.png",
+            "width": 294,
+            "height": 294,
+            "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+          },
+          {
+            "file": "qr-ps-280.png",
+            "width": 196,
+            "height": 196,
+            "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+          },
+          {
+            "file": "qr-ps-390.png",
+            "width": 294,
+            "height": 294,
+            "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+          },
+          {
+            "file": "qr-ru-280.png",
+            "width": 196,
+            "height": 196,
+            "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+          },
+          {
+            "file": "qr-ru-390.png",
+            "width": 294,
+            "height": 294,
+            "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+          },
+          {
+            "file": "qr-si-280.png",
+            "width": 196,
+            "height": 196,
+            "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+          },
+          {
+            "file": "qr-si-390.png",
+            "width": 294,
+            "height": 294,
+            "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+          },
+          {
+            "file": "qr-ta-280.png",
+            "width": 196,
+            "height": 196,
+            "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+          },
+          {
+            "file": "qr-ta-390.png",
+            "width": 294,
+            "height": 294,
+            "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+          },
+          {
+            "file": "qr-tablet.png",
+            "width": 294,
+            "height": 294,
+            "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+          },
+          {
+            "file": "qr-tr-280.png",
+            "width": 196,
+            "height": 196,
+            "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+          },
+          {
+            "file": "qr-tr-390.png",
+            "width": 294,
+            "height": 294,
+            "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+          },
+          {
+            "file": "qr-ur-280.png",
+            "width": 196,
+            "height": 196,
+            "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+          },
+          {
+            "file": "qr-ur-390.png",
+            "width": 294,
+            "height": 294,
+            "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+          },
+          {
+            "file": "qr-uz-280.png",
+            "width": 196,
+            "height": 196,
+            "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+          },
+          {
+            "file": "qr-uz-390.png",
+            "width": 294,
+            "height": 294,
+            "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+          },
+          {
+            "file": "qr-vi-280.png",
+            "width": 196,
+            "height": 196,
+            "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+          },
+          {
+            "file": "qr-vi-390.png",
+            "width": 294,
+            "height": 294,
+            "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+          },
+          {
+            "file": "qr-zh-280.png",
+            "width": 196,
+            "height": 196,
+            "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+          },
+          {
+            "file": "qr-zh-390.png",
+            "width": 294,
+            "height": 294,
+            "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+          }
+        ]
+      }
+    },
+    "focusPinch": {
+      "method": "Production WEB with real CDP multitouch, actual ctrl+wheel input and original bundled pages. Browser insets are fixtures, not native QA. Audio uses real media; one cross-page test seeks a real track near its end.",
+      "checks": {
+        "normalUnchangedFocalAnchorBoundedZoomAndPan": {
+          "normal": {
+            "paper": {
+              "x": 6,
+              "y": 186.046875,
+              "width": 378,
+              "height": 619.90625,
+              "right": 384,
+              "bottom": 805.953125
+            },
+            "viewport": {
+              "x": 0,
+              "y": 160,
+              "width": 390,
+              "height": 672,
+              "right": 390,
+              "bottom": 832
+            },
+            "offset": {
+              "x": 0,
+              "y": 0
+            },
+            "browserScale": 1,
+            "touchAction": "pan-y",
+            "lines": 16,
+            "paths": 160
+          },
+          "fit": {
+            "paper": {
+              "x": 6,
+              "y": 112.046875,
+              "width": 378,
+              "height": 619.90625,
+              "right": 384,
+              "bottom": 731.953125
+            },
+            "viewport": {
+              "x": 0,
+              "y": 0,
+              "width": 390,
+              "height": 844,
+              "right": 390,
+              "bottom": 844
+            },
+            "offset": {
+              "x": 0,
+              "y": 0
+            },
+            "browserScale": 1,
+            "touchAction": "none",
+            "lines": 16,
+            "paths": 160
+          },
+          "spread": {
+            "paper": {
+              "x": -259,
+              "y": -322,
+              "width": 907.1875,
+              "height": 1487.796875,
+              "right": 648.1875,
+              "bottom": 1165.796875
+            },
+            "viewport": {
+              "x": 0,
+              "y": 0,
+              "width": 390,
+              "height": 844,
+              "right": 390,
+              "bottom": 844
+            },
+            "offset": {
+              "x": 259,
+              "y": 322
+            },
+            "browserScale": 1,
+            "touchAction": "none",
+            "lines": 16,
+            "paths": 160,
+            "atThird": null
+          },
+          "panned": {
+            "paper": {
+              "x": -313,
+              "y": -405,
+              "width": 907.1875,
+              "height": 1487.796875,
+              "right": 594.1875,
+              "bottom": 1082.796875
+            },
+            "viewport": {
+              "x": 0,
+              "y": 0,
+              "width": 390,
+              "height": 844,
+              "right": 390,
+              "bottom": 844
+            },
+            "offset": {
+              "x": 313,
+              "y": 405
+            },
+            "browserScale": 1,
+            "touchAction": "none",
+            "lines": 16,
+            "paths": 160
+          },
+          "max": {
+            "paper": {
+              "x": -440,
+              "y": -612,
+              "width": 1134,
+              "height": 1859.75,
+              "right": 694,
+              "bottom": 1247.75
+            },
+            "viewport": {
+              "x": 0,
+              "y": 0,
+              "width": 390,
+              "height": 844,
+              "right": 390,
+              "bottom": 844
+            },
+            "offset": {
+              "x": 440,
+              "y": 612
+            },
+            "browserScale": 1,
+            "touchAction": "none",
+            "lines": 16,
+            "paths": 160,
+            "atThird": null
+          },
+          "min": {
+            "paper": {
+              "x": 6,
+              "y": 112.046875,
+              "width": 378,
+              "height": 619.90625,
+              "right": 384,
+              "bottom": 731.953125
+            },
+            "viewport": {
+              "x": 0,
+              "y": 0,
+              "width": 390,
+              "height": 844,
+              "right": 390,
+              "bottom": 844
+            },
+            "offset": {
+              "x": 0,
+              "y": 0
+            },
+            "browserScale": 1,
+            "touchAction": "none",
+            "lines": 16,
+            "paths": 160,
+            "atThird": null
+          }
+        },
+        "holdCancellationSplitLiftThirdFingerAndExactWordAtZoom": {
+          "cancelled": {
+            "paper": {
+              "x": -259,
+              "y": -322,
+              "width": 907.1875,
+              "height": 1487.796875,
+              "right": 648.1875,
+              "bottom": 1165.796875
+            },
+            "viewport": {
+              "x": 0,
+              "y": 0,
+              "width": 390,
+              "height": 844,
+              "right": 390,
+              "bottom": 844
+            },
+            "offset": {
+              "x": 259,
+              "y": 322
+            },
+            "browserScale": 1,
+            "touchAction": "none",
+            "lines": 16,
+            "paths": 160,
+            "atThird": null
+          },
+          "third": {
+            "paper": {
+              "x": -82,
+              "y": -33,
+              "width": 554.390625,
+              "height": 909.203125,
+              "right": 472.390625,
+              "bottom": 876.203125
+            },
+            "viewport": {
+              "x": 0,
+              "y": 0,
+              "width": 390,
+              "height": 844,
+              "right": 390,
+              "bottom": 844
+            },
+            "offset": {
+              "x": 82,
+              "y": 33
+            },
+            "browserScale": 1,
+            "touchAction": "none",
+            "lines": 16,
+            "paths": 160,
+            "atThird": {
+              "paper": {
+                "x": -82,
+                "y": -33,
+                "width": 554.390625,
+                "height": 909.203125,
+                "right": 472.390625,
+                "bottom": 876.203125
+              },
+              "viewport": {
+                "x": 0,
+                "y": 0,
+                "width": 390,
+                "height": 844,
+                "right": 390,
+                "bottom": 844
+              },
+              "offset": {
+                "x": 82,
+                "y": 33
+              },
+              "browserScale": 1,
+              "touchAction": "none",
+              "lines": 16,
+              "paths": 160
+            }
+          },
+          "point": {
+            "page": 274,
+            "verse": "18:105",
+            "wordId": 41302
+          },
+          "popup": {
+            "x": 230,
+            "y": 359.90625,
+            "width": 154,
+            "height": 54,
+            "right": 384,
+            "bottom": 413.90625
+          }
+        },
+        "unlockReentryRotationEscapeAndBlurReset": true,
+        "trackpadPinch": {
+          "trackpad": {
+            "paper": {
+              "x": -183,
+              "y": -198,
+              "width": 755.984375,
+              "height": 1239.828125,
+              "right": 572.984375,
+              "bottom": 1041.828125
+            },
+            "viewport": {
+              "x": 0,
+              "y": 0,
+              "width": 390,
+              "height": 844,
+              "right": 390,
+              "bottom": 844
+            },
+            "offset": {
+              "x": 183,
+              "y": 198
+            },
+            "browserScale": 1,
+            "touchAction": "none",
+            "lines": 16,
+            "paths": 160
+          },
+          "wheelPan": {
+            "paper": {
+              "x": -213,
+              "y": -268,
+              "width": 755.984375,
+              "height": 1239.828125,
+              "right": 542.984375,
+              "bottom": 971.828125
+            },
+            "viewport": {
+              "x": 0,
+              "y": 0,
+              "width": 390,
+              "height": 844,
+              "right": 390,
+              "bottom": 844
+            },
+            "offset": {
+              "x": 213,
+              "y": 268
+            },
+            "browserScale": 1,
+            "touchAction": "none",
+            "lines": 16,
+            "paths": 160
+          }
+        },
+        "existingReaderSettingsAndLegacyZoomUntouched": true,
+        "playingAndPausedIntentPreserved": {
+          "beforeAudio": {
+            "source": "https://cdn.islamic.network/quran/audio/128/ar.alafasy/2250.mp3",
+            "time": 0.279795,
+            "duration": 40.660454,
+            "paused": false,
+            "playCalls": 1
+          },
+          "duringAudio": {
+            "source": "https://cdn.islamic.network/quran/audio/128/ar.alafasy/2250.mp3",
+            "time": 1.728925,
+            "duration": 40.660454,
+            "paused": false,
+            "playCalls": 1
+          },
+          "afterAudio": {
+            "source": "https://cdn.islamic.network/quran/audio/128/ar.alafasy/2250.mp3",
+            "time": 1.829468,
+            "duration": 40.660454,
+            "paused": false,
+            "playCalls": 1
+          }
+        },
+        "activePinchDefersCrossPageAudioFollowThenResetsToFit": {
+          "paper": {
+            "x": 6,
+            "y": 112.046875,
+            "width": 378,
+            "height": 619.90625,
+            "right": 384,
+            "bottom": 731.953125
+          },
+          "viewport": {
+            "x": 0,
+            "y": 0,
+            "width": 390,
+            "height": 844,
+            "right": 390,
+            "bottom": 844
+          },
+          "offset": {
+            "x": 0,
+            "y": 0
+          },
+          "browserScale": 1,
+          "touchAction": "none",
+          "lines": 16,
+          "paths": 166
+        }
+      },
+      "profiles": [
+        {
+          "name": "compact",
+          "language": "en",
+          "dark": false,
+          "width": 240,
+          "height": 640,
+          "safe": {},
+          "before": {
+            "paper": {
+              "x": 6,
+              "y": 133.046875,
+              "width": 228,
+              "height": 373.90625,
+              "right": 234,
+              "bottom": 506.953125
+            },
+            "viewport": {
+              "x": 0,
+              "y": 0,
+              "width": 240,
+              "height": 640,
+              "right": 240,
+              "bottom": 640
+            },
+            "offset": {
+              "x": 0,
+              "y": 0
+            },
+            "browserScale": 1,
+            "touchAction": "none",
+            "lines": 16,
+            "paths": 160
+          },
+          "after": {
+            "paper": {
+              "x": -154,
+              "y": -129,
+              "width": 547.1875,
+              "height": 897.40625,
+              "right": 393.1875,
+              "bottom": 768.40625
+            },
+            "viewport": {
+              "x": 0,
+              "y": 0,
+              "width": 240,
+              "height": 640,
+              "right": 240,
+              "bottom": 640
+            },
+            "offset": {
+              "x": 154,
+              "y": 129
+            },
+            "browserScale": 1,
+            "touchAction": "none",
+            "lines": 16,
+            "paths": 160,
+            "atThird": null
+          },
+          "reset": {
+            "paper": {
+              "x": 6,
+              "y": 133.046875,
+              "width": 228,
+              "height": 373.90625,
+              "right": 234,
+              "bottom": 506.953125
+            },
+            "viewport": {
+              "x": 0,
+              "y": 0,
+              "width": 240,
+              "height": 640,
+              "right": 240,
+              "bottom": 640
+            },
+            "offset": {
+              "x": 0,
+              "y": 0
+            },
+            "browserScale": 1,
+            "touchAction": "none",
+            "lines": 16,
+            "paths": 160,
+            "atThird": null
+          }
+        },
+        {
+          "name": "cover-ur-dark",
+          "language": "ur",
+          "dark": true,
+          "width": 280,
+          "height": 720,
+          "safe": {
+            "top": 24,
+            "bottom": 48
+          },
+          "before": {
+            "paper": {
+              "x": 6,
+              "y": 128.234375,
+              "width": 268,
+              "height": 439.515625,
+              "right": 274,
+              "bottom": 567.75
+            },
+            "viewport": {
+              "x": 0,
+              "y": 24,
+              "width": 280,
+              "height": 648,
+              "right": 280,
+              "bottom": 672
+            },
+            "offset": {
+              "x": 0,
+              "y": 0
+            },
+            "browserScale": 1,
+            "touchAction": "none",
+            "lines": 16,
+            "paths": 160
+          },
+          "after": {
+            "paper": {
+              "x": -182,
+              "y": -179,
+              "width": 643.1875,
+              "height": 1054.84375,
+              "right": 461.1875,
+              "bottom": 875.84375
+            },
+            "viewport": {
+              "x": 0,
+              "y": 24,
+              "width": 280,
+              "height": 648,
+              "right": 280,
+              "bottom": 672
+            },
+            "offset": {
+              "x": 182,
+              "y": 203
+            },
+            "browserScale": 1,
+            "touchAction": "none",
+            "lines": 16,
+            "paths": 160,
+            "atThird": null
+          },
+          "reset": {
+            "paper": {
+              "x": 6,
+              "y": 128.234375,
+              "width": 268,
+              "height": 439.515625,
+              "right": 274,
+              "bottom": 567.75
+            },
+            "viewport": {
+              "x": 0,
+              "y": 24,
+              "width": 280,
+              "height": 648,
+              "right": 280,
+              "bottom": 672
+            },
+            "offset": {
+              "x": 0,
+              "y": 0
+            },
+            "browserScale": 1,
+            "touchAction": "none",
+            "lines": 16,
+            "paths": 160,
+            "atThird": null
+          }
+        },
+        {
+          "name": "ar-dark-keys",
+          "language": "ar",
+          "dark": true,
+          "width": 390,
+          "height": 844,
+          "safe": {
+            "top": 24,
+            "bottom": 48
+          },
+          "before": {
+            "paper": {
+              "x": 6,
+              "y": 100.046875,
+              "width": 378,
+              "height": 619.90625,
+              "right": 384,
+              "bottom": 719.953125
+            },
+            "viewport": {
+              "x": 0,
+              "y": 24,
+              "width": 390,
+              "height": 772,
+              "right": 390,
+              "bottom": 796
+            },
+            "offset": {
+              "x": 0,
+              "y": 0
+            },
+            "browserScale": 1,
+            "touchAction": "none",
+            "lines": 16,
+            "paths": 160
+          },
+          "after": {
+            "paper": {
+              "x": -259,
+              "y": -334,
+              "width": 907.1875,
+              "height": 1487.796875,
+              "right": 648.1875,
+              "bottom": 1153.796875
+            },
+            "viewport": {
+              "x": 0,
+              "y": 24,
+              "width": 390,
+              "height": 772,
+              "right": 390,
+              "bottom": 796
+            },
+            "offset": {
+              "x": 259,
+              "y": 358
+            },
+            "browserScale": 1,
+            "touchAction": "none",
+            "lines": 16,
+            "paths": 160,
+            "atThird": null
+          },
+          "reset": {
+            "paper": {
+              "x": 6,
+              "y": 100.046875,
+              "width": 378,
+              "height": 619.90625,
+              "right": 384,
+              "bottom": 719.953125
+            },
+            "viewport": {
+              "x": 0,
+              "y": 24,
+              "width": 390,
+              "height": 772,
+              "right": 390,
+              "bottom": 796
+            },
+            "offset": {
+              "x": 0,
+              "y": 0
+            },
+            "browserScale": 1,
+            "touchAction": "none",
+            "lines": 16,
+            "paths": 160,
+            "atThird": null
+          }
+        },
+        {
+          "name": "landscape-side-keys",
+          "language": "en",
+          "dark": false,
+          "width": 844,
+          "height": 390,
+          "safe": {
+            "top": 24,
+            "right": 48
+          },
+          "before": {
+            "paper": {
+              "x": 290.078125,
+              "y": 30,
+              "width": 215.84375,
+              "height": 354,
+              "right": 505.921875,
+              "bottom": 384
+            },
+            "viewport": {
+              "x": 0,
+              "y": 24,
+              "width": 796,
+              "height": 366,
+              "right": 796,
+              "bottom": 390
+            },
+            "offset": {
+              "x": 0,
+              "y": 0
+            },
+            "browserScale": 1,
+            "touchAction": "none",
+            "lines": 16,
+            "paths": 160
+          },
+          "after": {
+            "paper": {
+              "x": 138.96875,
+              "y": -218,
+              "width": 518.046875,
+              "height": 849.59375,
+              "right": 657.015625,
+              "bottom": 631.59375
+            },
+            "viewport": {
+              "x": 0,
+              "y": 24,
+              "width": 796,
+              "height": 366,
+              "right": 796,
+              "bottom": 390
+            },
+            "offset": {
+              "x": 0,
+              "y": 242
+            },
+            "browserScale": 1,
+            "touchAction": "none",
+            "lines": 16,
+            "paths": 160,
+            "atThird": null
+          },
+          "reset": {
+            "paper": {
+              "x": 290.078125,
+              "y": 30,
+              "width": 215.84375,
+              "height": 354,
+              "right": 505.921875,
+              "bottom": 384
+            },
+            "viewport": {
+              "x": 0,
+              "y": 24,
+              "width": 796,
+              "height": 366,
+              "right": 796,
+              "bottom": 390
+            },
+            "offset": {
+              "x": 0,
+              "y": 0
+            },
+            "browserScale": 1,
+            "touchAction": "none",
+            "lines": 16,
+            "paths": 160,
+            "atThird": null
+          }
+        },
+        {
+          "name": "tablet",
+          "language": "en",
+          "dark": false,
+          "width": 800,
+          "height": 1280,
+          "safe": {},
+          "before": {
+            "paper": {
+              "x": 13.421875,
+              "y": 6,
+              "width": 773.15625,
+              "height": 1268,
+              "right": 786.578125,
+              "bottom": 1274
+            },
+            "viewport": {
+              "x": 0,
+              "y": 0,
+              "width": 800,
+              "height": 1280,
+              "right": 800,
+              "bottom": 1280
+            },
+            "offset": {
+              "x": 0,
+              "y": 0
+            },
+            "browserScale": 1,
+            "touchAction": "none",
+            "lines": 16,
+            "paths": 160
+          },
+          "after": {
+            "paper": {
+              "x": -528,
+              "y": -882,
+              "width": 1855.609375,
+              "height": 3043.1875,
+              "right": 1327.609375,
+              "bottom": 2161.1875
+            },
+            "viewport": {
+              "x": 0,
+              "y": 0,
+              "width": 800,
+              "height": 1280,
+              "right": 800,
+              "bottom": 1280
+            },
+            "offset": {
+              "x": 528,
+              "y": 882
+            },
+            "browserScale": 1,
+            "touchAction": "none",
+            "lines": 16,
+            "paths": 160,
+            "atThird": null
+          },
+          "reset": {
+            "paper": {
+              "x": 13.421875,
+              "y": 6,
+              "width": 773.15625,
+              "height": 1268,
+              "right": 786.578125,
+              "bottom": 1274
+            },
+            "viewport": {
+              "x": 0,
+              "y": 0,
+              "width": 800,
+              "height": 1280,
+              "right": 800,
+              "bottom": 1280
+            },
+            "offset": {
+              "x": 0,
+              "y": 0
+            },
+            "browserScale": 1,
+            "touchAction": "none",
+            "lines": 16,
+            "paths": 160,
+            "atThird": null
+          }
+        },
+        {
+          "name": "tablet-landscape",
+          "language": "ar",
+          "dark": false,
+          "width": 1280,
+          "height": 800,
+          "safe": {},
+          "before": {
+            "paper": {
+              "x": 399.75,
+              "y": 6,
+              "width": 480.484375,
+              "height": 788,
+              "right": 880.234375,
+              "bottom": 794
+            },
+            "viewport": {
+              "x": 0,
+              "y": 0,
+              "width": 1280,
+              "height": 800,
+              "right": 1280,
+              "bottom": 800
+            },
+            "offset": {
+              "x": 0,
+              "y": 0
+            },
+            "browserScale": 1,
+            "touchAction": "none",
+            "lines": 16,
+            "paths": 160
+          },
+          "after": {
+            "paper": {
+              "x": 63.421875,
+              "y": -546,
+              "width": 1153.15625,
+              "height": 1891.1875,
+              "right": 1216.578125,
+              "bottom": 1345.1875
+            },
+            "viewport": {
+              "x": 0,
+              "y": 0,
+              "width": 1280,
+              "height": 800,
+              "right": 1280,
+              "bottom": 800
+            },
+            "offset": {
+              "x": 0,
+              "y": 546
+            },
+            "browserScale": 1,
+            "touchAction": "none",
+            "lines": 16,
+            "paths": 160,
+            "atThird": null
+          },
+          "reset": {
+            "paper": {
+              "x": 399.75,
+              "y": 6,
+              "width": 480.484375,
+              "height": 788,
+              "right": 880.234375,
+              "bottom": 794
+            },
+            "viewport": {
+              "x": 0,
+              "y": 0,
+              "width": 1280,
+              "height": 800,
+              "right": 1280,
+              "bottom": 800
+            },
+            "offset": {
+              "x": 0,
+              "y": 0
+            },
+            "browserScale": 1,
+            "touchAction": "none",
+            "lines": 16,
+            "paths": 160,
+            "atThird": null
+          }
+        }
+      ],
+      "media": [
+        {
+          "source": "https://cdn.islamic.network/quran/audio/128/ar.alafasy/2250.mp3",
+          "time": 0.113373,
+          "duration": 40.660454,
+          "paused": false,
+          "playCalls": 1
+        },
+        {
+          "source": "https://cdn.islamic.network/quran/audio/128/ar.alafasy/2250.mp3",
+          "time": 0.279795,
+          "duration": 40.660454,
+          "paused": false,
+          "playCalls": 1
+        },
+        {
+          "source": "https://cdn.islamic.network/quran/audio/128/ar.alafasy/2250.mp3",
+          "time": 1.728925,
+          "duration": 40.660454,
+          "paused": false,
+          "playCalls": 1
+        },
+        {
+          "source": "https://cdn.islamic.network/quran/audio/128/ar.alafasy/2250.mp3",
+          "time": 0.279795,
+          "duration": 40.660454,
+          "paused": false,
+          "playCalls": 1
+        },
+        {
+          "source": "https://cdn.islamic.network/quran/audio/128/ar.alafasy/2250.mp3",
+          "time": 1.728925,
+          "duration": 40.660454,
+          "paused": false,
+          "playCalls": 1
+        },
+        {
+          "source": "https://cdn.islamic.network/quran/audio/128/ar.alafasy/2250.mp3",
+          "time": 1.829468,
+          "duration": 40.660454,
+          "paused": false,
+          "playCalls": 1
+        },
+        {
+          "source": "https://cdn.islamic.network/quran/audio/128/ar.alafasy/11.mp3",
+          "time": 0.577374,
+          "duration": 15.773855,
+          "paused": false,
+          "playCalls": 2
+        },
+        {
+          "source": "https://cdn.islamic.network/quran/audio/128/ar.alafasy/12.mp3",
+          "time": 0.108307,
+          "duration": 11.323968,
+          "paused": false,
+          "playCalls": 4
+        }
+      ],
+      "errors": [
+        {
+          "page": [],
+          "console": [],
+          "http": [],
+          "requests": []
+        },
+        {
+          "page": [],
+          "console": [],
+          "http": [],
+          "requests": []
+        },
+        {
+          "page": [],
+          "console": [],
+          "http": [],
+          "requests": []
+        },
+        {
+          "page": [],
+          "console": [],
+          "http": [],
+          "requests": []
+        },
+        {
+          "page": [],
+          "console": [],
+          "http": [],
+          "requests": []
+        },
+        {
+          "page": [],
+          "console": [],
+          "http": [],
+          "requests": []
+        },
+        {
+          "page": [],
+          "console": [],
+          "http": [],
+          "requests": []
+        },
+        {
+          "page": [],
+          "console": [],
+          "http": [],
+          "requests": []
+        }
+      ],
+      "audioPlayEvents": [
+        {
+          "at": 2915.89999999851,
+          "source": "https://cdn.islamic.network/quran/audio/128/ar.alafasy/2250.mp3",
+          "time": 0,
+          "paused": true,
+          "stack": "Error\n    at HTMLMediaElement.play (eval at evaluate (:370:30), <anonymous>:5:152)\n    at u.play (http://127.0.0.1:8113/_expo/static/js/web/index-c6828fd2d3fdb8f15be98025e4a5e212.js:569:1644)\n    at h (http://127.0.0.1:8113/_expo/static/js/web/index-c6828fd2d3fdb8f15be98025e4a5e212.js:564:855)\n    at Object.loadQueue (http://127.0.0.1:8113/_expo/static/js/web/index-c6828fd2d3fdb8f15be98025e4a5e212.js:564:990)\n    at async se (http://127.0.0.1:8113/_expo/static/js/web/index-c6828fd2d3fdb8f15be98025e4a5e212.js:517:11899)\n    at async ce (http://127.0.0.1:8113/_expo/static/js/web/index-c6828fd2d3fdb8f15be98025e4a5e212.js:517:12204)\n    at async de (http://127.0.0.1:8113/_expo/static/js/web/index-c6828fd2d3fdb8f15be98025e4a5e212.js:517:13445)\n    at async _e.playVerse (http://127.0.0.1:8113/_expo/static/js/web/index-c6828fd2d3fdb8f15be98025e4a5e212.js:517:2199)\n    at async Zs (http://127.0.0.1:8113/_expo/static/js/web/index-c6828fd2d3fdb8f15be98025e4a5e212.js:195:476646)"
+        }
+      ],
+      "expectedMediaCancellations": [
+        "https://cdn.islamic.network/quran/audio/128/ar.alafasy/2250.mp3 net::ERR_ABORTED",
+        "https://cdn.islamic.network/quran/audio/128/ar.alafasy/11.mp3 net::ERR_ABORTED"
+      ]
+    },
+    "newFeatureContexts": 31,
+    "note": "Browser Web Share bridge outcomes are explicit doubles; clipboard, input, layout, QR rendering and media are real. No native share sheet/device camera claim."
+  },
+  "regressions": {
+    "focus": {
+      "contexts": 24,
+      "checks": {
+        "ayahActionsAndEscape": true,
+        "repeatedTogglesAndFocusedRotation": true,
+        "swipesAndCancellation": true,
+        "keyboardEntryAndUnlock": true,
+        "topRowAyahActionsAndUnlockDoNotOverlap": true,
+        "leavingRestoresNormalMode": true,
+        "existingReaderDataUntouched": true,
+        "legacyZoomIgnoredWithoutDataDeletion": true
+      },
+      "profiles": 9,
+      "insets": 5,
+      "localizedLayouts": 44,
+      "rawReportSha256": "dbeb5e94109db36e9d5801359a293a027f29b975e4173984881c13003ab11d2b"
+    },
+    "printedReader": {
+      "contexts": 29,
+      "sampledPages": 13,
+      "profiles": 9,
+      "allPageSweep": {
+        "pages": 548,
+        "offline": true,
+        "reducedMotion": true,
+        "milliseconds": 277967,
+        "failedBounds": 0
+      },
+      "swipes": {
+        "rightNext": true,
+        "leftPrevious": true,
+        "verseTapNotTriggered": true,
+        "subsequentVerseTap": true,
+        "verticalRejected": true,
+        "multiTouchRejected": true,
+        "addedFingerRejected": true,
+        "cancelRejected": true,
+        "shortDragRejected": true,
+        "focusSwipes": true,
+        "boundaries": true,
+        "savedPageRestored": true,
+        "landscapeVerticalScroll": true
+      },
+      "motion": {
+        "next": {
+          "frames": 20,
+          "stationaryInk": true,
+          "curvedBlankBack": true,
+          "softShadow": true,
+          "rtlDirection": 1,
+          "first": {
+            "time": 5567.70000000298,
+            "page": "Page2 / 548",
+            "current": {
+              "x": 0,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "incoming": {
+              "x": 6,
+              "y": 186.046875,
+              "width": 378,
+              "height": 619.90625,
+              "right": 384
+            },
+            "outgoing": {
+              "x": 0,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "hidden": "true",
+            "targets": 0,
+            "snapshot": {
+              "x": 6,
+              "y": 186.046875,
+              "width": 378,
+              "height": 619.90625,
+              "right": 384
+            },
+            "mask": {
+              "x": 6,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "face": {
+              "x": -6,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "edge": {
+              "x": 6,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "paper": {
+              "x": 40.824,
+              "y": 0,
+              "a": 0.04,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "paperOpacity": 0,
+            "back": "M 85.05 0 C 61.236 34.0956 28.35 105.3864 28.35 223.1712 C 28.35 396.7488 28.35 514.5336 85.05 619.92 Z",
+            "shadow": "url(#indopak-fold-_r_6_-shadow)",
+            "gradients": 2
+          },
+          "last": {
+            "time": 5891.20000000298,
+            "page": "Page2 / 548",
+            "current": {
+              "x": 0,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "incoming": {
+              "x": 6,
+              "y": 186.046875,
+              "width": 378,
+              "height": 619.90625,
+              "right": 384
+            },
+            "outgoing": {
+              "x": 0,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "hidden": "true",
+            "targets": 0,
+            "snapshot": {
+              "x": 6,
+              "y": 186.046875,
+              "width": 378,
+              "height": 619.90625,
+              "right": 384
+            },
+            "mask": {
+              "x": 383.966,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "face": {
+              "x": -383.966,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "edge": {
+              "x": 383.966,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "paper": {
+              "x": 40.8148,
+              "y": 0,
+              "a": 0.0402169,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "paperOpacity": 0.000635638,
+            "back": "M 85.05 0 C 61.236 34.0956 28.35 105.3864 28.35 223.1712 C 28.35 396.7488 28.35 514.5336 85.05 619.92 Z",
+            "shadow": "url(#indopak-fold-_r_6_-shadow)",
+            "gradients": 2
+          },
+          "settled": {
+            "time": 5990.70000000298,
+            "page": "Page2 / 548",
+            "current": {
+              "x": 0,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "incoming": {
+              "x": 6,
+              "y": 186.046875,
+              "width": 378,
+              "height": 619.90625,
+              "right": 384
+            },
+            "outgoing": null,
+            "snapshot": null,
+            "mask": null,
+            "face": null,
+            "edge": null,
+            "paper": null,
+            "paperOpacity": null
+          }
+        },
+        "previous": {
+          "frames": 21,
+          "stationaryInk": true,
+          "curvedBlankBack": true,
+          "softShadow": true,
+          "rtlDirection": -1,
+          "first": {
+            "time": 6558.30000000447,
+            "page": "Page1 / 548",
+            "current": {
+              "x": 0,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "incoming": {
+              "x": 6,
+              "y": 186.046875,
+              "width": 378,
+              "height": 619.90625,
+              "right": 384
+            },
+            "outgoing": {
+              "x": 0,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "hidden": "true",
+            "targets": 0,
+            "snapshot": {
+              "x": 6,
+              "y": 186.046875,
+              "width": 378,
+              "height": 619.90625,
+              "right": 384
+            },
+            "mask": {
+              "x": -6,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "face": {
+              "x": 6,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "edge": {
+              "x": 384,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "paper": {
+              "x": -40.824,
+              "y": 0,
+              "a": 0.04,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "paperOpacity": 0,
+            "back": "M 85.05 0 C 61.236 34.0956 28.35 105.3864 28.35 223.1712 C 28.35 396.7488 28.35 514.5336 85.05 619.92 Z",
+            "shadow": "url(#indopak-fold-_r_7_-shadow)",
+            "gradients": 2
+          },
+          "last": {
+            "time": 6873.9000000059605,
+            "page": "Page1 / 548",
+            "current": {
+              "x": 0,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "incoming": {
+              "x": 6,
+              "y": 186.046875,
+              "width": 378,
+              "height": 619.90625,
+              "right": 384
+            },
+            "outgoing": {
+              "x": 0,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "hidden": "true",
+            "targets": 0,
+            "snapshot": {
+              "x": 6,
+              "y": 186.046875,
+              "width": 378,
+              "height": 619.90625,
+              "right": 384
+            },
+            "mask": {
+              "x": -383.773,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "face": {
+              "x": 383.773,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "edge": {
+              "x": 6.2267,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "paper": {
+              "x": -40.7618,
+              "y": 0,
+              "a": 0.0414618,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "paperOpacity": 0.0042838,
+            "back": "M 85.05 0 C 61.236 34.0956 28.35 105.3864 28.35 223.1712 C 28.35 396.7488 28.35 514.5336 85.05 619.92 Z",
+            "shadow": "url(#indopak-fold-_r_7_-shadow)",
+            "gradients": 2
+          },
+          "settled": {
+            "time": 6973.70000000298,
+            "page": "Page1 / 548",
+            "current": {
+              "x": 0,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "incoming": {
+              "x": 6,
+              "y": 186.046875,
+              "width": 378,
+              "height": 619.90625,
+              "right": 384
+            },
+            "outgoing": null,
+            "snapshot": null,
+            "mask": null,
+            "face": null,
+            "edge": null,
+            "paper": null,
+            "paperOpacity": null
+          }
+        },
+        "jump": {
+          "frames": 21,
+          "stationaryInk": true,
+          "curvedBlankBack": true,
+          "softShadow": true,
+          "rtlDirection": 1,
+          "first": {
+            "time": 7205.80000000447,
+            "page": "Page274 / 548",
+            "current": {
+              "x": 0,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "incoming": {
+              "x": 6,
+              "y": 186.046875,
+              "width": 378,
+              "height": 619.90625,
+              "right": 384
+            },
+            "outgoing": {
+              "x": 0,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "hidden": "true",
+            "targets": 0,
+            "snapshot": {
+              "x": 6,
+              "y": 186.046875,
+              "width": 378,
+              "height": 619.90625,
+              "right": 384
+            },
+            "mask": {
+              "x": 6,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "face": {
+              "x": -6,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "edge": {
+              "x": 6,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "paper": {
+              "x": 40.824,
+              "y": 0,
+              "a": 0.04,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "paperOpacity": 0,
+            "back": "M 85.05 0 C 61.236 34.0956 28.35 105.3864 28.35 223.1712 C 28.35 396.7488 28.35 514.5336 85.05 619.92 Z",
+            "shadow": "url(#indopak-fold-_r_8_-shadow)",
+            "gradients": 2
+          },
+          "last": {
+            "time": 7523.80000000447,
+            "page": "Page274 / 548",
+            "current": {
+              "x": 0,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "incoming": {
+              "x": 6,
+              "y": 186.046875,
+              "width": 378,
+              "height": 619.90625,
+              "right": 384
+            },
+            "outgoing": {
+              "x": 0,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "hidden": "true",
+            "targets": 0,
+            "snapshot": {
+              "x": 6,
+              "y": 186.046875,
+              "width": 378,
+              "height": 619.90625,
+              "right": 384
+            },
+            "mask": {
+              "x": 383.92,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "face": {
+              "x": -383.92,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "edge": {
+              "x": 383.92,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "paper": {
+              "x": 40.8021,
+              "y": 0,
+              "a": 0.0405142,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "paperOpacity": 0.0015067,
+            "back": "M 85.05 0 C 61.236 34.0956 28.35 105.3864 28.35 223.1712 C 28.35 396.7488 28.35 514.5336 85.05 619.92 Z",
+            "shadow": "url(#indopak-fold-_r_8_-shadow)",
+            "gradients": 2
+          },
+          "settled": {
+            "time": 8073.70000000298,
+            "page": "Page274 / 548",
+            "current": {
+              "x": 0,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "incoming": {
+              "x": 6,
+              "y": 186.046875,
+              "width": 378,
+              "height": 619.90625,
+              "right": 384
+            },
+            "outgoing": null,
+            "snapshot": null,
+            "mask": null,
+            "face": null,
+            "edge": null,
+            "paper": null,
+            "paperOpacity": null
+          }
+        },
+        "focusNext": {
+          "frames": 21,
+          "stationaryInk": true,
+          "curvedBlankBack": true,
+          "softShadow": true,
+          "rtlDirection": 1,
+          "first": {
+            "time": 8809.30000000447,
+            "page": "275 / 548",
+            "current": {
+              "x": 0,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "incoming": {
+              "x": 6,
+              "y": 112.046875,
+              "width": 378,
+              "height": 619.90625,
+              "right": 384
+            },
+            "outgoing": {
+              "x": 0,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "hidden": "true",
+            "targets": 0,
+            "snapshot": {
+              "x": 6,
+              "y": 112.046875,
+              "width": 378,
+              "height": 619.90625,
+              "right": 384
+            },
+            "mask": {
+              "x": 6,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "face": {
+              "x": -6,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "edge": {
+              "x": 6,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "paper": {
+              "x": 40.824,
+              "y": 0,
+              "a": 0.04,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "paperOpacity": 0,
+            "back": "M 85.05 0 C 61.236 34.0956 28.35 105.3864 28.35 223.1712 C 28.35 396.7488 28.35 514.5336 85.05 619.92 Z",
+            "shadow": "url(#indopak-fold-_r_9_-shadow)",
+            "gradients": 2
+          },
+          "last": {
+            "time": 9140.60000000149,
+            "page": "275 / 548",
+            "current": {
+              "x": 0,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "incoming": {
+              "x": 6,
+              "y": 112.046875,
+              "width": 378,
+              "height": 619.90625,
+              "right": 384
+            },
+            "outgoing": {
+              "x": 0,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "hidden": "true",
+            "targets": 0,
+            "snapshot": {
+              "x": 6,
+              "y": 112.046875,
+              "width": 378,
+              "height": 619.90625,
+              "right": 384
+            },
+            "mask": {
+              "x": 384,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "face": {
+              "x": -384,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "edge": {
+              "x": 384,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "paper": {
+              "x": 40.824,
+              "y": 0,
+              "a": 0.0400003,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "paperOpacity": 8.71931e-07,
+            "back": "M 85.05 0 C 61.236 34.0956 28.35 105.3864 28.35 223.1712 C 28.35 396.7488 28.35 514.5336 85.05 619.92 Z",
+            "shadow": "url(#indopak-fold-_r_9_-shadow)",
+            "gradients": 2
+          },
+          "settled": {
+            "time": 9273.60000000149,
+            "page": "275 / 548",
+            "current": {
+              "x": 0,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "incoming": {
+              "x": 6,
+              "y": 112.046875,
+              "width": 378,
+              "height": 619.90625,
+              "right": 384
+            },
+            "outgoing": null,
+            "snapshot": null,
+            "mask": null,
+            "face": null,
+            "edge": null,
+            "paper": null,
+            "paperOpacity": null
+          }
+        },
+        "focusPrevious": {
+          "frames": 18,
+          "stationaryInk": true,
+          "curvedBlankBack": true,
+          "softShadow": true,
+          "rtlDirection": -1,
+          "first": {
+            "time": 9857.60000000149,
+            "page": "274 / 548",
+            "current": {
+              "x": 0,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "incoming": {
+              "x": 6,
+              "y": 112.046875,
+              "width": 378,
+              "height": 619.90625,
+              "right": 384
+            },
+            "outgoing": {
+              "x": 0,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "hidden": "true",
+            "targets": 0,
+            "snapshot": {
+              "x": 6,
+              "y": 112.046875,
+              "width": 378,
+              "height": 619.90625,
+              "right": 384
+            },
+            "mask": {
+              "x": -6,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "face": {
+              "x": 6,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "edge": {
+              "x": 384,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "paper": {
+              "x": -40.824,
+              "y": 0,
+              "a": 0.04,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "paperOpacity": 0,
+            "back": "M 85.05 0 C 61.236 34.0956 28.35 105.3864 28.35 223.1712 C 28.35 396.7488 28.35 514.5336 85.05 619.92 Z",
+            "shadow": "url(#indopak-fold-_r_a_-shadow)",
+            "gradients": 2
+          },
+          "last": {
+            "time": 10173.80000000447,
+            "page": "274 / 548",
+            "current": {
+              "x": 0,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "incoming": {
+              "x": 6,
+              "y": 112.046875,
+              "width": 378,
+              "height": 619.90625,
+              "right": 384
+            },
+            "outgoing": {
+              "x": 0,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "hidden": "true",
+            "targets": 0,
+            "snapshot": {
+              "x": 6,
+              "y": 112.046875,
+              "width": 377.9999694824219,
+              "height": 619.90625,
+              "right": 383.9999694824219
+            },
+            "mask": {
+              "x": -383.844,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "face": {
+              "x": 383.844,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "edge": {
+              "x": 6.15573,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "paper": {
+              "x": -40.7813,
+              "y": 0,
+              "a": 0.0410042,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "paperOpacity": 0.00294277,
+            "back": "M 85.05 0 C 61.236 34.0956 28.35 105.3864 28.35 223.1712 C 28.35 396.7488 28.35 514.5336 85.05 619.92 Z",
+            "shadow": "url(#indopak-fold-_r_a_-shadow)",
+            "gradients": 2
+          },
+          "settled": {
+            "time": 10223.80000000447,
+            "page": "274 / 548",
+            "current": {
+              "x": 0,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "incoming": {
+              "x": 6,
+              "y": 112.046875,
+              "width": 378,
+              "height": 619.90625,
+              "right": 384
+            },
+            "outgoing": null,
+            "snapshot": null,
+            "mask": null,
+            "face": null,
+            "edge": null,
+            "paper": null,
+            "paperOpacity": null
+          }
+        },
+        "focusUnlockSettled": true,
+        "scrolledLandscape": {
+          "frames": 18,
+          "stationaryInk": true,
+          "curvedBlankBack": true,
+          "softShadow": true,
+          "rtlDirection": 1,
+          "first": {
+            "time": 12745.20000000298,
+            "page": "Page275 / 548",
+            "current": {
+              "x": 0,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "incoming": {
+              "x": 6,
+              "y": 110,
+              "width": 832,
+              "height": 1364.46875,
+              "right": 838
+            },
+            "outgoing": {
+              "x": 0,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "hidden": "true",
+            "targets": 0,
+            "snapshot": {
+              "x": 6,
+              "y": -573,
+              "width": 832,
+              "height": 1364.46875,
+              "right": 838
+            },
+            "mask": {
+              "x": 6,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "face": {
+              "x": -6,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "edge": {
+              "x": 6,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "paper": {
+              "x": 60.48,
+              "y": 0,
+              "a": 0.04,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "paperOpacity": 0,
+            "back": "M 126 0 C 90.72 75.0464 42 231.9616 42 491.2128 C 42 873.2672 42 1132.5184 126 1364.48 Z",
+            "shadow": "url(#indopak-fold-_r_d_-shadow)",
+            "gradients": 2
+          },
+          "last": {
+            "time": 13061.5,
+            "page": "Page275 / 548",
+            "current": {
+              "x": 0,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "incoming": {
+              "x": 6,
+              "y": 110,
+              "width": 832,
+              "height": 1364.46875,
+              "right": 838
+            },
+            "outgoing": {
+              "x": 0,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "hidden": "true",
+            "targets": 0,
+            "snapshot": {
+              "x": 6,
+              "y": -573,
+              "width": 832,
+              "height": 1364.46875,
+              "right": 838
+            },
+            "mask": {
+              "x": 837.865,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "face": {
+              "x": -837.865,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "edge": {
+              "x": 837.865,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "paper": {
+              "x": 60.4551,
+              "y": 0,
+              "a": 0.040396,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "paperOpacity": 0.00116054,
+            "back": "M 126 0 C 90.72 75.0464 42 231.9616 42 491.2128 C 42 873.2672 42 1132.5184 126 1364.48 Z",
+            "shadow": "url(#indopak-fold-_r_d_-shadow)",
+            "gradients": 2
+          },
+          "settled": {
+            "time": 13190.20000000298,
+            "page": "Page275 / 548",
+            "current": {
+              "x": 0,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "incoming": {
+              "x": 6,
+              "y": 110,
+              "width": 832,
+              "height": 1364.46875,
+              "right": 838
+            },
+            "outgoing": null,
+            "snapshot": null,
+            "mask": null,
+            "face": null,
+            "edge": null,
+            "paper": null,
+            "paperOpacity": null
+          }
+        },
+        "scrolledLandscapePrevious": {
+          "frames": 22,
+          "stationaryInk": true,
+          "curvedBlankBack": true,
+          "softShadow": true,
+          "rtlDirection": -1,
+          "first": {
+            "time": 14300.90000000596,
+            "page": "Page274 / 548",
+            "current": {
+              "x": 0,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "incoming": {
+              "x": 6,
+              "y": 110,
+              "width": 832,
+              "height": 1364.46875,
+              "right": 838
+            },
+            "outgoing": {
+              "x": 0,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "hidden": "true",
+            "targets": 0,
+            "snapshot": {
+              "x": 6,
+              "y": 15,
+              "width": 832,
+              "height": 1364.46875,
+              "right": 838
+            },
+            "mask": {
+              "x": -6,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "face": {
+              "x": 6,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "edge": {
+              "x": 838,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "paper": {
+              "x": -60.48,
+              "y": 0,
+              "a": 0.04,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "paperOpacity": 0,
+            "back": "M 126 0 C 90.72 75.0464 42 231.9616 42 491.2128 C 42 873.2672 42 1132.5184 126 1364.48 Z",
+            "shadow": "url(#indopak-fold-_r_e_-shadow)",
+            "gradients": 2
+          },
+          "last": {
+            "time": 14630.5,
+            "page": "Page274 / 548",
+            "current": {
+              "x": 0,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "incoming": {
+              "x": 6,
+              "y": 110,
+              "width": 832,
+              "height": 1364.46875,
+              "right": 838
+            },
+            "outgoing": {
+              "x": 0,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "hidden": "true",
+            "targets": 0,
+            "snapshot": {
+              "x": 6,
+              "y": 15,
+              "width": 832.0000610351562,
+              "height": 1364.46875,
+              "right": 838.0000610351562
+            },
+            "mask": {
+              "x": -837.926,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "face": {
+              "x": 837.926,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "edge": {
+              "x": 6.07404,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "paper": {
+              "x": -60.4663,
+              "y": 0,
+              "a": 0.0402169,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "paperOpacity": 0.000635638,
+            "back": "M 126 0 C 90.72 75.0464 42 231.9616 42 491.2128 C 42 873.2672 42 1132.5184 126 1364.48 Z",
+            "shadow": "url(#indopak-fold-_r_e_-shadow)",
+            "gradients": 2
+          },
+          "settled": {
+            "time": 15173.5,
+            "page": "Page274 / 548",
+            "current": {
+              "x": 0,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "incoming": {
+              "x": 6,
+              "y": 110,
+              "width": 832,
+              "height": 1364.46875,
+              "right": 838
+            },
+            "outgoing": null,
+            "snapshot": null,
+            "mask": null,
+            "face": null,
+            "edge": null,
+            "paper": null,
+            "paperOpacity": null
+          }
+        },
+        "compact": {
+          "frames": 21,
+          "stationaryInk": true,
+          "curvedBlankBack": true,
+          "softShadow": true,
+          "rtlDirection": 1,
+          "first": {
+            "time": 16113.5,
+            "page": "Page275 / 548",
+            "current": {
+              "x": 0,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "incoming": {
+              "x": 6,
+              "y": 214.234375,
+              "width": 268,
+              "height": 439.515625,
+              "right": 274
+            },
+            "outgoing": {
+              "x": 0,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "hidden": "true",
+            "targets": 0,
+            "snapshot": {
+              "x": 6,
+              "y": 214.234375,
+              "width": 268,
+              "height": 439.515625,
+              "right": 274
+            },
+            "mask": {
+              "x": 6,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "face": {
+              "x": -6,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "edge": {
+              "x": 6,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "paper": {
+              "x": 28.944,
+              "y": 0,
+              "a": 0.04,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "paperOpacity": 0,
+            "back": "M 60.3 0 C 43.416 24.1736 20.1 74.7184 20.1 158.2272 C 20.1 281.2928 20.1 364.8016 60.3 439.52 Z",
+            "shadow": "url(#indopak-fold-_r_f_-shadow)",
+            "gradients": 2
+          },
+          "last": {
+            "time": 16440.70000000298,
+            "page": "Page275 / 548",
+            "current": {
+              "x": 0,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "incoming": {
+              "x": 6,
+              "y": 214.234375,
+              "width": 268,
+              "height": 439.515625,
+              "right": 274
+            },
+            "outgoing": {
+              "x": 0,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "hidden": "true",
+            "targets": 0,
+            "snapshot": {
+              "x": 6,
+              "y": 214.234375,
+              "width": 268,
+              "height": 439.515625,
+              "right": 274
+            },
+            "mask": {
+              "x": 273.999,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "face": {
+              "x": -273.999,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "edge": {
+              "x": 273.999,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "paper": {
+              "x": 28.9438,
+              "y": 0,
+              "a": 0.040008,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "paperOpacity": 2.35421e-05,
+            "back": "M 60.3 0 C 43.416 24.1736 20.1 74.7184 20.1 158.2272 C 20.1 281.2928 20.1 364.8016 60.3 439.52 Z",
+            "shadow": "url(#indopak-fold-_r_f_-shadow)",
+            "gradients": 2
+          },
+          "settled": {
+            "time": 16556.90000000596,
+            "page": "Page275 / 548",
+            "current": {
+              "x": 0,
+              "y": 0,
+              "a": 1,
+              "b": 0,
+              "c": 0,
+              "d": 1
+            },
+            "incoming": {
+              "x": 6,
+              "y": 214.234375,
+              "width": 268,
+              "height": 439.515625,
+              "right": 274
+            },
+            "outgoing": null,
+            "snapshot": null,
+            "mask": null,
+            "face": null,
+            "edge": null,
+            "paper": null,
+            "paperOpacity": null
+          }
+        },
+        "resizeSettled": true,
+        "reducedMotionChangeSettled": true,
+        "unmountCleanupAndRestore": true,
+        "variants": [
+          {
+            "language": "ur",
+            "dark": false,
+            "next": {
+              "frames": 19,
+              "stationaryInk": true,
+              "curvedBlankBack": true,
+              "softShadow": true,
+              "rtlDirection": 1,
+              "first": {
+                "time": 5963.19999999553,
+                "page": "صفحہ275 / 548",
+                "current": {
+                  "x": 0,
+                  "y": 0,
+                  "a": 1,
+                  "b": 0,
+                  "c": 0,
+                  "d": 1
+                },
+                "incoming": {
+                  "x": 6,
+                  "y": 186.046875,
+                  "width": 378,
+                  "height": 619.90625,
+                  "right": 384
+                },
+                "outgoing": {
+                  "x": 0,
+                  "y": 0,
+                  "a": 1,
+                  "b": 0,
+                  "c": 0,
+                  "d": 1
+                },
+                "hidden": "true",
+                "targets": 0,
+                "snapshot": {
+                  "x": 6,
+                  "y": 186.046875,
+                  "width": 378,
+                  "height": 619.90625,
+                  "right": 384
+                },
+                "mask": {
+                  "x": 6,
+                  "y": 0,
+                  "a": 1,
+                  "b": 0,
+                  "c": 0,
+                  "d": 1
+                },
+                "face": {
+                  "x": -6,
+                  "y": 0,
+                  "a": 1,
+                  "b": 0,
+                  "c": 0,
+                  "d": 1
+                },
+                "edge": {
+                  "x": 6,
+                  "y": 0,
+                  "a": 1,
+                  "b": 0,
+                  "c": 0,
+                  "d": 1
+                },
+                "paper": {
+                  "x": 40.824,
+                  "y": 0,
+                  "a": 0.04,
+                  "b": 0,
+                  "c": 0,
+                  "d": 1
+                },
+                "paperOpacity": 0,
+                "back": "M 85.05 0 C 61.236 34.0956 28.35 105.3864 28.35 223.1712 C 28.35 396.7488 28.35 514.5336 85.05 619.92 Z",
+                "shadow": "url(#indopak-fold-_r_7_-shadow)",
+                "gradients": 2
+              },
+              "last": {
+                "time": 6280.69999999553,
+                "page": "صفحہ275 / 548",
+                "current": {
+                  "x": 0,
+                  "y": 0,
+                  "a": 1,
+                  "b": 0,
+                  "c": 0,
+                  "d": 1
+                },
+                "incoming": {
+                  "x": 6,
+                  "y": 186.046875,
+                  "width": 378,
+                  "height": 619.90625,
+                  "right": 384
+                },
+                "outgoing": {
+                  "x": 0,
+                  "y": 0,
+                  "a": 1,
+                  "b": 0,
+                  "c": 0,
+                  "d": 1
+                },
+                "hidden": "true",
+                "targets": 0,
+                "snapshot": {
+                  "x": 6,
+                  "y": 186.046875,
+                  "width": 378,
+                  "height": 619.90625,
+                  "right": 384
+                },
+                "mask": {
+                  "x": 383.811,
+                  "y": 0,
+                  "a": 1,
+                  "b": 0,
+                  "c": 0,
+                  "d": 1
+                },
+                "face": {
+                  "x": -383.811,
+                  "y": 0,
+                  "a": 1,
+                  "b": 0,
+                  "c": 0,
+                  "d": 1
+                },
+                "edge": {
+                  "x": 383.811,
+                  "y": 0,
+                  "a": 1,
+                  "b": 0,
+                  "c": 0,
+                  "d": 1
+                },
+                "paper": {
+                  "x": 40.7722,
+                  "y": 0,
+                  "a": 0.0412188,
+                  "b": 0,
+                  "c": 0,
+                  "d": 1
+                },
+                "paperOpacity": 0.00357143,
+                "back": "M 85.05 0 C 61.236 34.0956 28.35 105.3864 28.35 223.1712 C 28.35 396.7488 28.35 514.5336 85.05 619.92 Z",
+                "shadow": "url(#indopak-fold-_r_7_-shadow)",
+                "gradients": 2
+              },
+              "settled": {
+                "time": 6313.89999999851,
+                "page": "صفحہ275 / 548",
+                "current": {
+                  "x": 0,
+                  "y": 0,
+                  "a": 1,
+                  "b": 0,
+                  "c": 0,
+                  "d": 1
+                },
+                "incoming": {
+                  "x": 6,
+                  "y": 186.046875,
+                  "width": 378,
+                  "height": 619.90625,
+                  "right": 384
+                },
+                "outgoing": null,
+                "snapshot": null,
+                "mask": null,
+                "face": null,
+                "edge": null,
+                "paper": null,
+                "paperOpacity": null
+              }
+            },
+            "previous": {
+              "frames": 18,
+              "stationaryInk": true,
+              "curvedBlankBack": true,
+              "softShadow": true,
+              "rtlDirection": -1,
+              "first": {
+                "time": 6880.69999999553,
+                "page": "صفحہ274 / 548",
+                "current": {
+                  "x": 0,
+                  "y": 0,
+                  "a": 1,
+                  "b": 0,
+                  "c": 0,
+                  "d": 1
+                },
+                "incoming": {
+                  "x": 6,
+                  "y": 186.046875,
+                  "width": 378,
+                  "height": 619.90625,
+                  "right": 384
+                },
+                "outgoing": {
+                  "x": 0,
+                  "y": 0,
+                  "a": 1,
+                  "b": 0,
+                  "c": 0,
+                  "d": 1
+                },
+                "hidden": "true",
+                "targets": 0,
+                "snapshot": {
+                  "x": 6,
+                  "y": 186.046875,
+                  "width": 378,
+                  "height": 619.90625,
+                  "right": 384
+                },
+                "mask": {
+                  "x": -6,
+                  "y": 0,
+                  "a": 1,
+                  "b": 0,
+                  "c": 0,
+                  "d": 1
+                },
+                "face": {
+                  "x": 6,
+                  "y": 0,
+                  "a": 1,
+                  "b": 0,
+                  "c": 0,
+                  "d": 1
+                },
+                "edge": {
+                  "x": 384,
+                  "y": 0,
+                  "a": 1,
+                  "b": 0,
+                  "c": 0,
+                  "d": 1
+                },
+                "paper": {
+                  "x": -40.824,
+                  "y": 0,
+                  "a": 0.04,
+                  "b": 0,
+                  "c": 0,
+                  "d": 1
+                },
+                "paperOpacity": 0,
+                "back": "M 85.05 0 C 61.236 34.0956 28.35 105.3864 28.35 223.1712 C 28.35 396.7488 28.35 514.5336 85.05 619.92 Z",
+                "shadow": "url(#indopak-fold-_r_8_-shadow)",
+                "gradients": 2
+              },
+              "last": {
+                "time": 7197.0999999940395,
+                "page": "صفحہ274 / 548",
+                "current": {
+                  "x": 0,
+                  "y": 0,
+                  "a": 1,
+                  "b": 0,
+                  "c": 0,
+                  "d": 1
+                },
+                "incoming": {
+                  "x": 6,
+                  "y": 186.046875,
+                  "width": 378,
+                  "height": 619.90625,
+                  "right": 384
+                },
+                "outgoing": {
+                  "x": 0,
+                  "y": 0,
+                  "a": 1,
+                  "b": 0,
+                  "c": 0,
+                  "d": 1
+                },
+                "hidden": "true",
+                "targets": 0,
+                "snapshot": {
+                  "x": 6,
+                  "y": 186.046875,
+                  "width": 377.9999694824219,
+                  "height": 619.90625,
+                  "right": 383.9999694824219
+                },
+                "mask": {
+                  "x": -383.844,
+                  "y": 0,
+                  "a": 1,
+                  "b": 0,
+                  "c": 0,
+                  "d": 1
+                },
+                "face": {
+                  "x": 383.844,
+                  "y": 0,
+                  "a": 1,
+                  "b": 0,
+                  "c": 0,
+                  "d": 1
+                },
+                "edge": {
+                  "x": 6.15573,
+                  "y": 0,
+                  "a": 1,
+                  "b": 0,
+                  "c": 0,
+                  "d": 1
+                },
+                "paper": {
+                  "x": -40.7813,
+                  "y": 0,
+                  "a": 0.0410042,
+                  "b": 0,
+                  "c": 0,
+                  "d": 1
+                },
+                "paperOpacity": 0.00294277,
+                "back": "M 85.05 0 C 61.236 34.0956 28.35 105.3864 28.35 223.1712 C 28.35 396.7488 28.35 514.5336 85.05 619.92 Z",
+                "shadow": "url(#indopak-fold-_r_8_-shadow)",
+                "gradients": 2
+              },
+              "settled": {
+                "time": 7280.5999999940395,
+                "page": "صفحہ274 / 548",
+                "current": {
+                  "x": 0,
+                  "y": 0,
+                  "a": 1,
+                  "b": 0,
+                  "c": 0,
+                  "d": 1
+                },
+                "incoming": {
+                  "x": 6,
+                  "y": 186.046875,
+                  "width": 378,
+                  "height": 619.90625,
+                  "right": 384
+                },
+                "outgoing": null,
+                "snapshot": null,
+                "mask": null,
+                "face": null,
+                "edge": null,
+                "paper": null,
+                "paperOpacity": null
+              }
+            }
+          },
+          {
+            "language": "en",
+            "dark": true,
+            "next": {
+              "frames": 17,
+              "stationaryInk": true,
+              "curvedBlankBack": true,
+              "softShadow": true,
+              "rtlDirection": 1,
+              "first": {
+                "time": 5770.80000000447,
+                "page": "Page275 / 548",
+                "current": {
+                  "x": 0,
+                  "y": 0,
+                  "a": 1,
+                  "b": 0,
+                  "c": 0,
+                  "d": 1
+                },
+                "incoming": {
+                  "x": 6,
+                  "y": 186.046875,
+                  "width": 378,
+                  "height": 619.90625,
+                  "right": 384
+                },
+                "outgoing": {
+                  "x": 0,
+                  "y": 0,
+                  "a": 1,
+                  "b": 0,
+                  "c": 0,
+                  "d": 1
+                },
+                "hidden": "true",
+                "targets": 0,
+                "snapshot": {
+                  "x": 6,
+                  "y": 186.046875,
+                  "width": 378,
+                  "height": 619.90625,
+                  "right": 384
+                },
+                "mask": {
+                  "x": 6,
+                  "y": 0,
+                  "a": 1,
+                  "b": 0,
+                  "c": 0,
+                  "d": 1
+                },
+                "face": {
+                  "x": -6,
+                  "y": 0,
+                  "a": 1,
+                  "b": 0,
+                  "c": 0,
+                  "d": 1
+                },
+                "edge": {
+                  "x": 6,
+                  "y": 0,
+                  "a": 1,
+                  "b": 0,
+                  "c": 0,
+                  "d": 1
+                },
+                "paper": {
+                  "x": 40.824,
+                  "y": 0,
+                  "a": 0.04,
+                  "b": 0,
+                  "c": 0,
+                  "d": 1
+                },
+                "paperOpacity": 0,
+                "back": "M 85.05 0 C 61.236 34.0956 28.35 105.3864 28.35 223.1712 C 28.35 396.7488 28.35 514.5336 85.05 619.92 Z",
+                "shadow": "url(#indopak-fold-_r_7_-shadow)",
+                "gradients": 2
+              },
+              "last": {
+                "time": 6087.20000000298,
+                "page": "Page275 / 548",
+                "current": {
+                  "x": 0,
+                  "y": 0,
+                  "a": 1,
+                  "b": 0,
+                  "c": 0,
+                  "d": 1
+                },
+                "incoming": {
+                  "x": 6,
+                  "y": 186.046875,
+                  "width": 378,
+                  "height": 619.90625,
+                  "right": 384
+                },
+                "outgoing": {
+                  "x": 0,
+                  "y": 0,
+                  "a": 1,
+                  "b": 0,
+                  "c": 0,
+                  "d": 1
+                },
+                "hidden": "true",
+                "targets": 0,
+                "snapshot": {
+                  "x": 6,
+                  "y": 186.046875,
+                  "width": 378,
+                  "height": 619.90625,
+                  "right": 384
+                },
+                "mask": {
+                  "x": 383.994,
+                  "y": 0,
+                  "a": 1,
+                  "b": 0,
+                  "c": 0,
+                  "d": 1
+                },
+                "face": {
+                  "x": -383.994,
+                  "y": 0,
+                  "a": 1,
+                  "b": 0,
+                  "c": 0,
+                  "d": 1
+                },
+                "edge": {
+                  "x": 383.994,
+                  "y": 0,
+                  "a": 1,
+                  "b": 0,
+                  "c": 0,
+                  "d": 1
+                },
+                "paper": {
+                  "x": 40.8224,
+                  "y": 0,
+                  "a": 0.0400372,
+                  "b": 0,
+                  "c": 0,
+                  "d": 1
+                },
+                "paperOpacity": 0.000108991,
+                "back": "M 85.05 0 C 61.236 34.0956 28.35 105.3864 28.35 223.1712 C 28.35 396.7488 28.35 514.5336 85.05 619.92 Z",
+                "shadow": "url(#indopak-fold-_r_7_-shadow)",
+                "gradients": 2
+              },
+              "settled": {
+                "time": 6136.9000000059605,
+                "page": "Page275 / 548",
+                "current": {
+                  "x": 0,
+                  "y": 0,
+                  "a": 1,
+                  "b": 0,
+                  "c": 0,
+                  "d": 1
+                },
+                "incoming": {
+                  "x": 6,
+                  "y": 186.046875,
+                  "width": 378,
+                  "height": 619.90625,
+                  "right": 384
+                },
+                "outgoing": null,
+                "snapshot": null,
+                "mask": null,
+                "face": null,
+                "edge": null,
+                "paper": null,
+                "paperOpacity": null
+              }
+            },
+            "previous": {
+              "frames": 18,
+              "stationaryInk": true,
+              "curvedBlankBack": true,
+              "softShadow": true,
+              "rtlDirection": -1,
+              "first": {
+                "time": 6716.80000000447,
+                "page": "Page274 / 548",
+                "current": {
+                  "x": 0,
+                  "y": 0,
+                  "a": 1,
+                  "b": 0,
+                  "c": 0,
+                  "d": 1
+                },
+                "incoming": {
+                  "x": 6,
+                  "y": 186.046875,
+                  "width": 378,
+                  "height": 619.90625,
+                  "right": 384
+                },
+                "outgoing": {
+                  "x": 0,
+                  "y": 0,
+                  "a": 1,
+                  "b": 0,
+                  "c": 0,
+                  "d": 1
+                },
+                "hidden": "true",
+                "targets": 0,
+                "snapshot": {
+                  "x": 6,
+                  "y": 186.046875,
+                  "width": 378,
+                  "height": 619.90625,
+                  "right": 384
+                },
+                "mask": {
+                  "x": -6,
+                  "y": 0,
+                  "a": 1,
+                  "b": 0,
+                  "c": 0,
+                  "d": 1
+                },
+                "face": {
+                  "x": 6,
+                  "y": 0,
+                  "a": 1,
+                  "b": 0,
+                  "c": 0,
+                  "d": 1
+                },
+                "edge": {
+                  "x": 384,
+                  "y": 0,
+                  "a": 1,
+                  "b": 0,
+                  "c": 0,
+                  "d": 1
+                },
+                "paper": {
+                  "x": -40.824,
+                  "y": 0,
+                  "a": 0.04,
+                  "b": 0,
+                  "c": 0,
+                  "d": 1
+                },
+                "paperOpacity": 0,
+                "back": "M 85.05 0 C 61.236 34.0956 28.35 105.3864 28.35 223.1712 C 28.35 396.7488 28.35 514.5336 85.05 619.92 Z",
+                "shadow": "url(#indopak-fold-_r_8_-shadow)",
+                "gradients": 2
+              },
+              "last": {
+                "time": 7037.4000000059605,
+                "page": "Page274 / 548",
+                "current": {
+                  "x": 0,
+                  "y": 0,
+                  "a": 1,
+                  "b": 0,
+                  "c": 0,
+                  "d": 1
+                },
+                "incoming": {
+                  "x": 6,
+                  "y": 186.046875,
+                  "width": 378,
+                  "height": 619.90625,
+                  "right": 384
+                },
+                "outgoing": {
+                  "x": 0,
+                  "y": 0,
+                  "a": 1,
+                  "b": 0,
+                  "c": 0,
+                  "d": 1
+                },
+                "hidden": "true",
+                "targets": 0,
+                "snapshot": {
+                  "x": 6,
+                  "y": 186.046875,
+                  "width": 377.9999694824219,
+                  "height": 619.90625,
+                  "right": 383.9999694824219
+                },
+                "mask": {
+                  "x": -383.684,
+                  "y": 0,
+                  "a": 1,
+                  "b": 0,
+                  "c": 0,
+                  "d": 1
+                },
+                "face": {
+                  "x": 383.684,
+                  "y": 0,
+                  "a": 1,
+                  "b": 0,
+                  "c": 0,
+                  "d": 1
+                },
+                "edge": {
+                  "x": 6.31649,
+                  "y": 0,
+                  "a": 1,
+                  "b": 0,
+                  "c": 0,
+                  "d": 1
+                },
+                "paper": {
+                  "x": -40.7372,
+                  "y": 0,
+                  "a": 0.0420409,
+                  "b": 0,
+                  "c": 0,
+                  "d": 1
+                },
+                "paperOpacity": 0.00598057,
+                "back": "M 85.05 0 C 61.236 34.0956 28.35 105.3864 28.35 223.1712 C 28.35 396.7488 28.35 514.5336 85.05 619.92 Z",
+                "shadow": "url(#indopak-fold-_r_8_-shadow)",
+                "gradients": 2
+              },
+              "settled": {
+                "time": 7086.9000000059605,
+                "page": "Page274 / 548",
+                "current": {
+                  "x": 0,
+                  "y": 0,
+                  "a": 1,
+                  "b": 0,
+                  "c": 0,
+                  "d": 1
+                },
+                "incoming": {
+                  "x": 6,
+                  "y": 186.046875,
+                  "width": 378,
+                  "height": 619.90625,
+                  "right": 384
+                },
+                "outgoing": null,
+                "snapshot": null,
+                "mask": null,
+                "face": null,
+                "edge": null,
+                "paper": null,
+                "paperOpacity": null
+              }
+            }
+          }
+        ]
+      },
+      "modals": [
+        {
+          "viewport": {
+            "width": 320,
+            "height": 568
+          },
+          "kind": "page",
+          "parent": {
+            "x": 12,
+            "y": 24,
+            "right": 296,
+            "bottom": 520
+          },
+          "bounds": {
+            "x": 24,
+            "y": 130,
+            "width": 260,
+            "height": 284,
+            "right": 284,
+            "bottom": 414
+          }
+        },
+        {
+          "viewport": {
+            "width": 320,
+            "height": 568
+          },
+          "kind": "surah",
+          "parent": {
+            "x": 12,
+            "y": 24,
+            "right": 296,
+            "bottom": 520
+          },
+          "bounds": {
+            "x": 24,
+            "y": 36,
+            "width": 260,
+            "height": 472,
+            "right": 284,
+            "bottom": 508
+          }
+        },
+        {
+          "viewport": {
+            "width": 320,
+            "height": 568
+          },
+          "kind": "juz",
+          "parent": {
+            "x": 12,
+            "y": 24,
+            "right": 296,
+            "bottom": 520
+          },
+          "bounds": {
+            "x": 24,
+            "y": 36,
+            "width": 260,
+            "height": 472,
+            "right": 284,
+            "bottom": 508
+          }
+        },
+        {
+          "viewport": {
+            "width": 320,
+            "height": 568
+          },
+          "kind": "bookmarks",
+          "parent": {
+            "x": 12,
+            "y": 24,
+            "right": 296,
+            "bottom": 520
+          },
+          "bounds": {
+            "x": 24,
+            "y": 126.5,
+            "width": 260,
+            "height": 291,
+            "right": 284,
+            "bottom": 417.5
+          }
+        },
+        {
+          "viewport": {
+            "width": 320,
+            "height": 568
+          },
+          "kind": "sources",
+          "parent": {
+            "x": 12,
+            "y": 24,
+            "right": 296,
+            "bottom": 520
+          },
+          "bounds": {
+            "x": 24,
+            "y": 172,
+            "width": 260,
+            "height": 200,
+            "right": 284,
+            "bottom": 372
+          }
+        },
+        {
+          "viewport": {
+            "width": 320,
+            "height": 568
+          },
+          "kind": "verse-list",
+          "parent": {
+            "x": 12,
+            "y": 24,
+            "right": 296,
+            "bottom": 520
+          },
+          "bounds": {
+            "x": 24,
+            "y": 36,
+            "width": 260,
+            "height": 472,
+            "right": 284,
+            "bottom": 508
+          }
+        },
+        {
+          "viewport": {
+            "width": 844,
+            "height": 390
+          },
+          "kind": "page",
+          "parent": {
+            "x": 12,
+            "y": 24,
+            "right": 820,
+            "bottom": 342
+          },
+          "bounds": {
+            "x": 156,
+            "y": 41,
+            "width": 520,
+            "height": 284,
+            "right": 676,
+            "bottom": 325
+          }
+        },
+        {
+          "viewport": {
+            "width": 844,
+            "height": 390
+          },
+          "kind": "surah",
+          "parent": {
+            "x": 12,
+            "y": 24,
+            "right": 820,
+            "bottom": 342
+          },
+          "bounds": {
+            "x": 156,
+            "y": 36,
+            "width": 520,
+            "height": 294,
+            "right": 676,
+            "bottom": 330
+          }
+        },
+        {
+          "viewport": {
+            "width": 844,
+            "height": 390
+          },
+          "kind": "juz",
+          "parent": {
+            "x": 12,
+            "y": 24,
+            "right": 820,
+            "bottom": 342
+          },
+          "bounds": {
+            "x": 156,
+            "y": 36,
+            "width": 520,
+            "height": 294,
+            "right": 676,
+            "bottom": 330
+          }
+        },
+        {
+          "viewport": {
+            "width": 844,
+            "height": 390
+          },
+          "kind": "bookmarks",
+          "parent": {
+            "x": 12,
+            "y": 24,
+            "right": 820,
+            "bottom": 342
+          },
+          "bounds": {
+            "x": 156,
+            "y": 37.5,
+            "width": 520,
+            "height": 291,
+            "right": 676,
+            "bottom": 328.5
+          }
+        },
+        {
+          "viewport": {
+            "width": 844,
+            "height": 390
+          },
+          "kind": "sources",
+          "parent": {
+            "x": 12,
+            "y": 24,
+            "right": 820,
+            "bottom": 342
+          },
+          "bounds": {
+            "x": 156,
+            "y": 83,
+            "width": 520,
+            "height": 200,
+            "right": 676,
+            "bottom": 283
+          }
+        },
+        {
+          "viewport": {
+            "width": 844,
+            "height": 390
+          },
+          "kind": "verse-list",
+          "parent": {
+            "x": 12,
+            "y": 24,
+            "right": 820,
+            "bottom": 342
+          },
+          "bounds": {
+            "x": 156,
+            "y": 36,
+            "width": 520,
+            "height": 294,
+            "right": 676,
+            "bottom": 330
+          }
+        }
+      ],
+      "offline": {
+        "passed": true,
+        "pages": [
+          547,
+          274
+        ],
+        "source": "bundled assets; no text or layout API requests"
+      },
+      "existingReader": true,
+      "rawReportSha256": "85ff2117cb8e43fe27600e5edf3787b75e5c36c72d907bd40bbfdd2f184c939a",
+      "runnerNote": "Outer shell reached its 360-second tool limit. The already-running child was not duplicated; it subsequently finished all assertions and wrote the complete failure-free report. The offline 548-page sweep took 277967ms including heavy outline-bound checks; this is not a device performance benchmark."
+    },
+    "navigation": {
+      "contexts": 23,
+      "checks": {
+        "oneEntryThreeTabsSearchResetAndTemporaryMemory": true,
+        "keyboardTabsAndEscape": true,
+        "canonicalSurahJuzAndCurrentPageVerseActions": true,
+        "pageCounterAndBookmarksStillSeparate": true,
+        "shortViewportListsAndPageEntry": true,
+        "existingReaderDataUnchanged": true,
+        "rtlKeyboardOrder": true
+      },
+      "profiles": 11,
+      "localizedLayouts": 66,
+      "insets": 5,
+      "enlargedText": 2,
+      "rawReportSha256": "c323e3d28d585e9bd2e1512d409f29bf23bed99dc21e242e1b95aefcfcc35479"
+    },
+    "playback": {
+      "contexts": 3,
+      "checks": {
+        "focusKeepsAudioPlayingWithoutRestart": {
+          "beforeFocus": {
+            "uri": "https://cdn.islamic.network/quran/audio/128/ar.alafasy/4906.mp3",
+            "position": 0.066379,
+            "duration": 6.266463,
+            "paused": false
+          },
+          "duringFocus": {
+            "uri": "https://cdn.islamic.network/quran/audio/128/ar.alafasy/4906.mp3",
+            "position": 0.493792,
+            "duration": 6.266463,
+            "paused": false
+          }
+        },
+        "naturalNextAyah": true,
+        "pauseResume": true,
+        "selectionIsSeparate": true,
+        "repeatOne": true,
+        "activeGestureDefersPageFollow": true,
+        "focusCrossPageFollow": true,
+        "crossPageFollow": true,
+        "manualBrowseDoesNotSnapBack": true,
+        "landscapeReveal": {
+          "bounds": {
+            "x": 147.8975067138672,
+            "y": 183.751220703125,
+            "width": 38.8314208984375,
+            "height": 72.1754150390625,
+            "right": 186.7289276123047,
+            "bottom": 255.9266357421875
+          },
+          "viewport": {
+            "x": 0,
+            "y": 110,
+            "width": 844,
+            "height": 226,
+            "right": 844,
+            "bottom": 336
+          }
+        },
+        "focusLandscapePlayback": {
+          "bounds": {
+            "x": 338.03070068359375,
+            "y": 330.6495361328125,
+            "width": 11.895721435546875,
+            "height": 22.11041259765625,
+            "right": 349.9264221191406,
+            "bottom": 352.75994873046875
+          },
+          "viewport": {
+            "x": 0,
+            "y": 0,
+            "width": 844,
+            "height": 430,
+            "right": 844,
+            "bottom": 430
+          }
+        },
+        "splitVerseStaysOnLaterPage": true,
+        "focusGatedFollow": true,
+        "readingMarkBookmarksAndOriginalReaderUntouched": true,
+        "closeClearsOnlyAudioHighlight": true,
+        "urduDarkFollow": true,
+        "realSequentialTranslationStaysOnSameAyah": true
+      },
+      "realMediaObservations": 21,
+      "expectedRangeRequestCancellations": [
+        "https://cdn.islamic.network/quran/audio/128/ar.alafasy/2249.mp3 net::ERR_ABORTED"
+      ],
+      "rawReportSha256": "82e691b5ac9a2a9e001ff6e0b869ddeef4326e7bca73ac8290d92dbccd90ac62"
+    },
+    "originalReaderAudio": {
+      "method": "Live Expo WEB export + Chromium; no native device and no mocked content/audio responses",
+      "url": "http://127.0.0.1:8113",
+      "results": [
+        {
+          "name": "phone",
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "firstTap": "55:5",
+          "repeatedTap": "55:5",
+          "nextTap": "55:7",
+          "plays": [
+            {
+              "uri": "https://cdn.islamic.network/quran/audio/128/ar.alafasy/4906.mp3",
+              "at": 2806.8000000044703
+            },
+            {
+              "uri": "https://cdn.islamic.network/quran/audio/128/ar.alafasy/4906.mp3",
+              "at": 4518.39999999851
+            },
+            {
+              "uri": "https://cdn.islamic.network/quran/audio/128/ar.alafasy/4908.mp3",
+              "at": 4701.80000000447
+            }
+          ],
+          "media": [
+            {
+              "uri": "https://cdn.islamic.network/quran/audio/128/ar.alafasy/4906.mp3",
+              "position": 0.215717,
+              "duration": 6.266463,
+              "paused": false
+            }
+          ],
+          "controls": {
+            "player": {
+              "top": 697,
+              "bottom": 737,
+              "left": 25,
+              "right": 277
+            },
+            "homeTab": {
+              "top": 765.5,
+              "bottom": 824.5,
+              "left": 25,
+              "right": 93
+            },
+            "height": 844
+          },
+          "errors": {
+            "page": [],
+            "console": [],
+            "http": [],
+            "requests": []
+          }
+        },
+        {
+          "name": "tablet",
+          "viewport": {
+            "width": 900,
+            "height": 1600
+          },
+          "firstTap": "55:5",
+          "repeatedTap": "55:5",
+          "nextTap": "55:7",
+          "plays": [
+            {
+              "uri": "https://cdn.islamic.network/quran/audio/128/ar.alafasy/4906.mp3",
+              "at": 3143.10000000149
+            },
+            {
+              "uri": "https://cdn.islamic.network/quran/audio/128/ar.alafasy/4906.mp3",
+              "at": 4267
+            },
+            {
+              "uri": "https://cdn.islamic.network/quran/audio/128/ar.alafasy/4908.mp3",
+              "at": 4466.69999999553
+            }
+          ],
+          "media": [
+            {
+              "uri": "https://cdn.islamic.network/quran/audio/128/ar.alafasy/4906.mp3",
+              "position": 0.249978,
+              "duration": 6.266463,
+              "paused": false
+            }
+          ],
+          "controls": {
+            "player": {
+              "top": 1453,
+              "bottom": 1493,
+              "left": 25,
+              "right": 787
+            },
+            "homeTab": {
+              "top": 1521.5,
+              "bottom": 1580.5,
+              "left": 229,
+              "right": 317.390625
+            },
+            "height": 1600
+          },
+          "errors": {
+            "page": [],
+            "console": [],
+            "http": [],
+            "requests": []
+          }
+        }
+      ]
+    },
+    "totalContextsIncludingNewFeatures": 112
+  },
+  "exports": {
+    "web": {
+      "result": "passed",
+      "method": "production static export",
+      "directory": "/home/user/.cache/islamic-validation/r104-web-final2",
+      "bundle": "_expo/static/js/web/index-c6828fd2d3fdb8f15be98025e4a5e212.js",
+      "bytes": 24194603,
+      "gzipBytes": 6649032,
+      "sha256": "5f9a6d7e29b623a9596c2f41fb70fee29ea88ddf5dcf4f0f6dd98e27f860e3e5",
+      "suppliedFontCopies": [
+        "assets/assets/fonts/IndopakNastaleeq.51aff7449ae51ff5b54ea98eed919504.ttf"
+      ]
+    },
+    "android": {
+      "result": "passed",
+      "method": "Hermes export, not an installed-device build/test",
+      "directory": "/home/user/.cache/islamic-validation/r104-android-final",
+      "bundle": "_expo/static/js/android/index-16d7d159cdea9af0abeb7f6dd8d0c51b.hbc",
+      "bytes": 29090997,
+      "gzipBytes": 8490187,
+      "sha256": "821e81e2110ff8f0de02e90e5ca5c19a098ac1bc7ea49c6951ed18cd0f9e5676",
+      "suppliedFontCopies": [
+        "assets/51aff7449ae51ff5b54ea98eed919504"
+      ]
+    },
+    "ios": {
+      "result": "passed",
+      "method": "Hermes export, not an installed-device build/test",
+      "directory": "/home/user/.cache/islamic-validation/r104-ios-final",
+      "bundle": "_expo/static/js/ios/index-8535d6aff40dff115e070936e24d456c.hbc",
+      "bytes": 29075643,
+      "gzipBytes": 8485992,
+      "sha256": "fd2e1caf115d7fa723510d3872c086fe837529f1b6514787beb2ed002b02ca23",
+      "suppliedFontCopies": [
+        "assets/51aff7449ae51ff5b54ea98eed919504"
+      ]
+    }
+  },
+  "integrity": {
+    "protectedTrackedPathsChecked": 456,
+    "protectedDiffEmpty": true,
+    "protectedPaths": [
+      "app.json",
+      "assets/fonts/IndopakNastaleeq.ttf",
+      "assets/tool-icons/99-names-of-allah-dark-palestine.webp",
+      "assets/tool-icons/99-names-of-allah-dark.webp",
+      "assets/tool-icons/99-names-of-allah-palestine.webp",
+      "assets/tool-icons/99-names-of-allah.webp",
+      "assets/tool-icons/adhan-dark.webp",
+      "assets/tool-icons/adhan.webp",
+      "assets/tool-icons/adhkar-dark-palestine.webp",
+      "assets/tool-icons/adhkar-dark.webp",
+      "assets/tool-icons/adhkar-palestine.webp",
+      "assets/tool-icons/adhkar.webp",
+      "assets/tool-icons/audio-dark-palestine.webp",
+      "assets/tool-icons/audio-dark.webp",
+      "assets/tool-icons/audio-palestine.webp",
+      "assets/tool-icons/audio.webp",
+      "assets/tool-icons/backup-dark-palestine.webp",
+      "assets/tool-icons/backup-dark.webp",
+      "assets/tool-icons/backup-palestine.webp",
+      "assets/tool-icons/backup.webp",
+      "assets/tool-icons/biometric-unlock-dark-palestine.webp",
+      "assets/tool-icons/biometric-unlock-dark.webp",
+      "assets/tool-icons/biometric-unlock-palestine.webp",
+      "assets/tool-icons/biometric-unlock.webp",
+      "assets/tool-icons/bookmarks-dark-palestine.webp",
+      "assets/tool-icons/bookmarks-dark.webp",
+      "assets/tool-icons/bookmarks-palestine.webp",
+      "assets/tool-icons/bookmarks.webp",
+      "assets/tool-icons/corrections-dark-palestine.webp",
+      "assets/tool-icons/corrections-palestine.webp",
+      "assets/tool-icons/cycle-dark-palestine.webp",
+      "assets/tool-icons/cycle-dark.webp",
+      "assets/tool-icons/cycle-palestine.webp",
+      "assets/tool-icons/cycle.webp",
+      "assets/tool-icons/cycles-dark-palestine.webp",
+      "assets/tool-icons/cycles-palestine.webp",
+      "assets/tool-icons/data-sources-dark-palestine.webp",
+      "assets/tool-icons/data-sources-dark.webp",
+      "assets/tool-icons/data-sources-palestine.webp",
+      "assets/tool-icons/data-sources.webp",
+      "assets/tool-icons/downloads-dark.webp",
+      "assets/tool-icons/downloads.webp",
+      "assets/tool-icons/duas-dark-palestine.webp",
+      "assets/tool-icons/duas-dark.webp",
+      "assets/tool-icons/duas-palestine.webp",
+      "assets/tool-icons/duas.webp",
+      "assets/tool-icons/eid-guide-dark-palestine.webp",
+      "assets/tool-icons/eid-guide-dark.webp",
+      "assets/tool-icons/eid-guide-palestine.webp",
+      "assets/tool-icons/eid-guide.webp",
+      "assets/tool-icons/evening-adhkar-dark.webp",
+      "assets/tool-icons/evening-adhkar.webp",
+      "assets/tool-icons/fasting-guide-dark-palestine.webp",
+      "assets/tool-icons/fasting-guide-dark.webp",
+      "assets/tool-icons/fasting-guide-palestine.webp",
+      "assets/tool-icons/fasting-guide.webp",
+      "assets/tool-icons/fasting-tracker-dark-palestine.webp",
+      "assets/tool-icons/fasting-tracker-dark.webp",
+      "assets/tool-icons/fasting-tracker-palestine.webp",
+      "assets/tool-icons/fasting-tracker.webp",
+      "assets/tool-icons/ghusl-dark-palestine.webp",
+      "assets/tool-icons/ghusl-dark.webp",
+      "assets/tool-icons/ghusl-palestine.webp",
+      "assets/tool-icons/ghusl.webp",
+      "assets/tool-icons/hadith-dark-palestine.webp",
+      "assets/tool-icons/hadith-dark.webp",
+      "assets/tool-icons/hadith-palestine.webp",
+      "assets/tool-icons/hadith.webp",
+      "assets/tool-icons/hajj-dark-palestine.webp",
+      "assets/tool-icons/hajj-dark.webp",
+      "assets/tool-icons/hajj-palestine.webp",
+      "assets/tool-icons/hajj.webp",
+      "assets/tool-icons/header-notifications-palestine-dark.webp",
+      "assets/tool-icons/header-notifications-palestine.webp",
+      "assets/tool-icons/header-settings-palestine-dark.webp",
+      "assets/tool-icons/header-settings-palestine.webp",
+      "assets/tool-icons/header-theme-palestine-dark.webp",
+      "assets/tool-icons/header-theme-palestine.webp",
+      "assets/tool-icons/hifz-dark-palestine.webp",
+      "assets/tool-icons/hifz-dark.webp",
+      "assets/tool-icons/hifz-palestine.webp",
+      "assets/tool-icons/hifz.webp",
+      "assets/tool-icons/hijri-dark-palestine.webp",
+      "assets/tool-icons/hijri-dark.webp",
+      "assets/tool-icons/hijri-palestine.webp",
+      "assets/tool-icons/hijri.webp",
+      "assets/tool-icons/hizb-dark-palestine.webp",
+      "assets/tool-icons/hizb-dark.webp",
+      "assets/tool-icons/hizb-palestine.webp",
+      "assets/tool-icons/hizb.webp",
+      "assets/tool-icons/holy-sites-dark.webp",
+      "assets/tool-icons/holy-sites.webp",
+      "assets/tool-icons/istihada-dark-palestine.webp",
+      "assets/tool-icons/istihada-dark.webp",
+      "assets/tool-icons/istihada-palestine.webp",
+      "assets/tool-icons/istihada.webp",
+      "assets/tool-icons/istikhara-guide-dark-palestine.webp",
+      "assets/tool-icons/istikhara-guide-dark.webp",
+      "assets/tool-icons/istikhara-guide-palestine.webp",
+      "assets/tool-icons/istikhara-guide.webp",
+      "assets/tool-icons/janazah-guide-dark-palestine.webp",
+      "assets/tool-icons/janazah-guide-dark.webp",
+      "assets/tool-icons/janazah-guide-palestine.webp",
+      "assets/tool-icons/janazah-guide.webp",
+      "assets/tool-icons/journal-dark-palestine.webp",
+      "assets/tool-icons/journal-dark.webp",
+      "assets/tool-icons/journal-palestine.webp",
+      "assets/tool-icons/journal.webp",
+      "assets/tool-icons/juz-dark-palestine.webp",
+      "assets/tool-icons/juz-dark.webp",
+      "assets/tool-icons/juz-palestine.webp",
+      "assets/tool-icons/juz.webp",
+      "assets/tool-icons/khatam-dark-palestine.webp",
+      "assets/tool-icons/khatam-dark.webp",
+      "assets/tool-icons/khatam-palestine.webp",
+      "assets/tool-icons/khatam.webp",
+      "assets/tool-icons/language-dark-palestine.webp",
+      "assets/tool-icons/language-dark.webp",
+      "assets/tool-icons/language-palestine.webp",
+      "assets/tool-icons/language.webp",
+      "assets/tool-icons/laylatul-qadr-dark-palestine.webp",
+      "assets/tool-icons/laylatul-qadr-dark.webp",
+      "assets/tool-icons/laylatul-qadr-palestine.webp",
+      "assets/tool-icons/laylatul-qadr.webp",
+      "assets/tool-icons/location-dark-palestine.webp",
+      "assets/tool-icons/location-dark.webp",
+      "assets/tool-icons/location-palestine.webp",
+      "assets/tool-icons/location.webp",
+      "assets/tool-icons/madinah-live-dark-palestine.webp",
+      "assets/tool-icons/madinah-live-dark.webp",
+      "assets/tool-icons/madinah-live-palestine.webp",
+      "assets/tool-icons/madinah-live.webp",
+      "assets/tool-icons/makkah-live-dark-palestine.webp",
+      "assets/tool-icons/makkah-live-dark.webp",
+      "assets/tool-icons/makkah-live-palestine.webp",
+      "assets/tool-icons/makkah-live.webp",
+      "assets/tool-icons/morning-adhkar-dark.webp",
+      "assets/tool-icons/morning-adhkar.webp",
+      "assets/tool-icons/mushaf-pages-dark.webp",
+      "assets/tool-icons/mushaf-pages.webp",
+      "assets/tool-icons/muslim-names-dark-palestine.webp",
+      "assets/tool-icons/muslim-names-dark.webp",
+      "assets/tool-icons/muslim-names-palestine.webp",
+      "assets/tool-icons/muslim-names.webp",
+      "assets/tool-icons/my-reports-dark-palestine.webp",
+      "assets/tool-icons/my-reports-dark.webp",
+      "assets/tool-icons/my-reports-palestine.webp",
+      "assets/tool-icons/my-reports.webp",
+      "assets/tool-icons/notes-dark-palestine.webp",
+      "assets/tool-icons/notes-dark.webp",
+      "assets/tool-icons/notes-palestine.webp",
+      "assets/tool-icons/notes.webp",
+      "assets/tool-icons/notifications-dark.webp",
+      "assets/tool-icons/notifications.webp",
+      "assets/tool-icons/offline-quran-dark-palestine.webp",
+      "assets/tool-icons/offline-quran-dark.webp",
+      "assets/tool-icons/offline-quran-palestine.webp",
+      "assets/tool-icons/offline-quran.webp",
+      "assets/tool-icons/pilgrimage-dark.webp",
+      "assets/tool-icons/pilgrimage.webp",
+      "assets/tool-icons/pray-rakah-dark-palestine.webp",
+      "assets/tool-icons/pray-rakah-dark.webp",
+      "assets/tool-icons/pray-rakah-palestine.webp",
+      "assets/tool-icons/pray-rakah.webp",
+      "assets/tool-icons/prayer-asr-dark-palestine.webp",
+      "assets/tool-icons/prayer-asr-dark.webp",
+      "assets/tool-icons/prayer-asr-palestine.webp",
+      "assets/tool-icons/prayer-asr.webp",
+      "assets/tool-icons/prayer-dhuhr-dark-palestine.webp",
+      "assets/tool-icons/prayer-dhuhr-dark.webp",
+      "assets/tool-icons/prayer-dhuhr-palestine.webp",
+      "assets/tool-icons/prayer-dhuhr.webp",
+      "assets/tool-icons/prayer-fajr-dark-palestine.webp",
+      "assets/tool-icons/prayer-fajr-dark.webp",
+      "assets/tool-icons/prayer-fajr-palestine.webp",
+      "assets/tool-icons/prayer-fajr.webp",
+      "assets/tool-icons/prayer-isha-dark-palestine.webp",
+      "assets/tool-icons/prayer-isha-dark.webp",
+      "assets/tool-icons/prayer-isha-palestine.webp",
+      "assets/tool-icons/prayer-isha.webp",
+      "assets/tool-icons/prayer-maghrib-dark-palestine.webp",
+      "assets/tool-icons/prayer-maghrib-dark.webp",
+      "assets/tool-icons/prayer-maghrib-palestine.webp",
+      "assets/tool-icons/prayer-maghrib.webp",
+      "assets/tool-icons/prayer-reminders-dark-palestine.webp",
+      "assets/tool-icons/prayer-reminders-dark.webp",
+      "assets/tool-icons/prayer-reminders-palestine.webp",
+      "assets/tool-icons/prayer-reminders.webp",
+      "assets/tool-icons/privacy-lock-dark-palestine.webp",
+      "assets/tool-icons/privacy-lock-dark.webp",
+      "assets/tool-icons/privacy-lock-palestine.webp",
+      "assets/tool-icons/privacy-lock.webp",
+      "assets/tool-icons/prophet-names-dark-palestine.webp",
+      "assets/tool-icons/prophet-names-dark.webp",
+      "assets/tool-icons/prophet-names-palestine.webp",
+      "assets/tool-icons/prophet-names.webp",
+      "assets/tool-icons/purity-dark-palestine.webp",
+      "assets/tool-icons/purity-dark.webp",
+      "assets/tool-icons/purity-palestine.webp",
+      "assets/tool-icons/purity.webp",
+      "assets/tool-icons/qada-fasts-2-dark-palestine.webp",
+      "assets/tool-icons/qada-fasts-2-palestine.webp",
+      "assets/tool-icons/qada-fasts-dark-palestine.webp",
+      "assets/tool-icons/qada-fasts-dark.webp",
+      "assets/tool-icons/qada-fasts-palestine.webp",
+      "assets/tool-icons/qada-fasts.webp",
+      "assets/tool-icons/qada-prayer-dark-palestine.webp",
+      "assets/tool-icons/qada-prayer-dark.webp",
+      "assets/tool-icons/qada-prayer-palestine.webp",
+      "assets/tool-icons/qada-prayer.webp",
+      "assets/tool-icons/qibla-dark-palestine.webp",
+      "assets/tool-icons/qibla-dark.webp",
+      "assets/tool-icons/qibla-palestine.webp",
+      "assets/tool-icons/qibla.webp",
+      "assets/tool-icons/quran-arabic-dark.webp",
+      "assets/tool-icons/quran-arabic.webp",
+      "assets/tool-icons/quran-dark-palestine.webp",
+      "assets/tool-icons/quran-dark.webp",
+      "assets/tool-icons/quran-english-dark.webp",
+      "assets/tool-icons/quran-english.webp",
+      "assets/tool-icons/quran-palestine.webp",
+      "assets/tool-icons/quran-reading-dark-palestine.webp",
+      "assets/tool-icons/quran-reading-dark.webp",
+      "assets/tool-icons/quran-reading-palestine.webp",
+      "assets/tool-icons/quran-reading.webp",
+      "assets/tool-icons/quran-search-dark.webp",
+      "assets/tool-icons/quran-search.webp",
+      "assets/tool-icons/quran-topics-dark.webp",
+      "assets/tool-icons/quran-topics.webp",
+      "assets/tool-icons/quran-vocabulary-dark.webp",
+      "assets/tool-icons/quran-vocabulary.webp",
+      "assets/tool-icons/quran.webp",
+      "assets/tool-icons/ramadan-dark-palestine.webp",
+      "assets/tool-icons/ramadan-dark.webp",
+      "assets/tool-icons/ramadan-palestine.webp",
+      "assets/tool-icons/ramadan-planner-dark-palestine.webp",
+      "assets/tool-icons/ramadan-planner-dark.webp",
+      "assets/tool-icons/ramadan-planner-palestine.webp",
+      "assets/tool-icons/ramadan-planner.webp",
+      "assets/tool-icons/ramadan.webp",
+      "assets/tool-icons/reader-settings-dark-palestine.webp",
+      "assets/tool-icons/reader-settings-dark.webp",
+      "assets/tool-icons/reader-settings-palestine.webp",
+      "assets/tool-icons/reader-settings.webp",
+      "assets/tool-icons/reading-plans-dark-palestine.webp",
+      "assets/tool-icons/reading-plans-dark.webp",
+      "assets/tool-icons/reading-plans-palestine.webp",
+      "assets/tool-icons/reading-plans.webp",
+      "assets/tool-icons/recitations-dark.webp",
+      "assets/tool-icons/recitations.webp",
+      "assets/tool-icons/ritual-arafat-dark-palestine.webp",
+      "assets/tool-icons/ritual-arafat-dark.webp",
+      "assets/tool-icons/ritual-arafat-palestine.webp",
+      "assets/tool-icons/ritual-arafat.webp",
+      "assets/tool-icons/ritual-ihram-dark-palestine.webp",
+      "assets/tool-icons/ritual-ihram-dark.webp",
+      "assets/tool-icons/ritual-ihram-palestine.webp",
+      "assets/tool-icons/ritual-ihram.webp",
+      "assets/tool-icons/ritual-jamarat-dark-palestine.webp",
+      "assets/tool-icons/ritual-jamarat-dark.webp",
+      "assets/tool-icons/ritual-jamarat-palestine.webp",
+      "assets/tool-icons/ritual-jamarat.webp",
+      "assets/tool-icons/ritual-mina-dark-palestine.webp",
+      "assets/tool-icons/ritual-mina-dark.webp",
+      "assets/tool-icons/ritual-mina-palestine.webp",
+      "assets/tool-icons/ritual-mina.webp",
+      "assets/tool-icons/ritual-sai-dark-palestine.webp",
+      "assets/tool-icons/ritual-sai-dark.webp",
+      "assets/tool-icons/ritual-sai-palestine.webp",
+      "assets/tool-icons/ritual-sai.webp",
+      "assets/tool-icons/ritual-shave-or-trim-hair-dark-palestine.webp",
+      "assets/tool-icons/ritual-shave-or-trim-hair-dark.webp",
+      "assets/tool-icons/ritual-shave-or-trim-hair-palestine.webp",
+      "assets/tool-icons/ritual-shave-or-trim-hair.webp",
+      "assets/tool-icons/ritual-tawaf-dark-palestine.webp",
+      "assets/tool-icons/ritual-tawaf-dark.webp",
+      "assets/tool-icons/ritual-tawaf-palestine.webp",
+      "assets/tool-icons/ritual-tawaf.webp",
+      "assets/tool-icons/sadaqah-dark-palestine.webp",
+      "assets/tool-icons/sadaqah-dark.webp",
+      "assets/tool-icons/sadaqah-palestine.webp",
+      "assets/tool-icons/sadaqah.webp",
+      "assets/tool-icons/salah-guide-dark-palestine.webp",
+      "assets/tool-icons/salah-guide-dark.webp",
+      "assets/tool-icons/salah-guide-palestine.webp",
+      "assets/tool-icons/salah-guide.webp",
+      "assets/tool-icons/salah-tracker-dark-palestine.webp",
+      "assets/tool-icons/salah-tracker-dark.webp",
+      "assets/tool-icons/salah-tracker-palestine.webp",
+      "assets/tool-icons/salah-tracker.webp",
+      "assets/tool-icons/settings-dark.webp",
+      "assets/tool-icons/settings.webp",
+      "assets/tool-icons/shahada-dark-palestine.webp",
+      "assets/tool-icons/shahada-dark.webp",
+      "assets/tool-icons/shahada-palestine.webp",
+      "assets/tool-icons/shahada.webp",
+      "assets/tool-icons/storage-dark-palestine.webp",
+      "assets/tool-icons/storage-dark.webp",
+      "assets/tool-icons/storage-palestine.webp",
+      "assets/tool-icons/storage.webp",
+      "assets/tool-icons/sunnah-prayers-dark-palestine.webp",
+      "assets/tool-icons/sunnah-prayers-dark.webp",
+      "assets/tool-icons/sunnah-prayers-palestine.webp",
+      "assets/tool-icons/sunnah-prayers.webp",
+      "assets/tool-icons/sunrise-dark.webp",
+      "assets/tool-icons/sunrise.webp",
+      "assets/tool-icons/tab-home-dark.webp",
+      "assets/tool-icons/tab-home-palestine-dark.webp",
+      "assets/tool-icons/tab-home-palestine.webp",
+      "assets/tool-icons/tab-home.webp",
+      "assets/tool-icons/tab-library-dark.webp",
+      "assets/tool-icons/tab-library-palestine-dark.webp",
+      "assets/tool-icons/tab-library-palestine.webp",
+      "assets/tool-icons/tab-library.webp",
+      "assets/tool-icons/tab-prayer-dark.webp",
+      "assets/tool-icons/tab-prayer-palestine-dark.webp",
+      "assets/tool-icons/tab-prayer-palestine.webp",
+      "assets/tool-icons/tab-prayer.webp",
+      "assets/tool-icons/tab-quran-dark.webp",
+      "assets/tool-icons/tab-quran-palestine-dark.webp",
+      "assets/tool-icons/tab-quran-palestine.webp",
+      "assets/tool-icons/tab-quran.webp",
+      "assets/tool-icons/tab-tools-dark.webp",
+      "assets/tool-icons/tab-tools-palestine-dark.webp",
+      "assets/tool-icons/tab-tools-palestine.webp",
+      "assets/tool-icons/tab-tools.webp",
+      "assets/tool-icons/tafsir-dark-palestine.webp",
+      "assets/tool-icons/tafsir-dark.webp",
+      "assets/tool-icons/tafsir-palestine.webp",
+      "assets/tool-icons/tafsir.webp",
+      "assets/tool-icons/tajweed-dark-palestine.webp",
+      "assets/tool-icons/tajweed-dark.webp",
+      "assets/tool-icons/tajweed-palestine.webp",
+      "assets/tool-icons/tajweed.webp",
+      "assets/tool-icons/taraweeh-guide-dark-palestine.webp",
+      "assets/tool-icons/taraweeh-guide-dark.webp",
+      "assets/tool-icons/taraweeh-guide-palestine.webp",
+      "assets/tool-icons/taraweeh-guide.webp",
+      "assets/tool-icons/tasbih-dark-palestine.webp",
+      "assets/tool-icons/tasbih-dark.webp",
+      "assets/tool-icons/tasbih-palestine.webp",
+      "assets/tool-icons/tasbih.webp",
+      "assets/tool-icons/theme-dark-palestine.webp",
+      "assets/tool-icons/theme-dark.webp",
+      "assets/tool-icons/theme-palestine.webp",
+      "assets/tool-icons/theme-switch-dark.webp",
+      "assets/tool-icons/theme-switch.webp",
+      "assets/tool-icons/theme.webp",
+      "assets/tool-icons/these-days-dark-palestine.webp",
+      "assets/tool-icons/these-days-dark.webp",
+      "assets/tool-icons/these-days-palestine.webp",
+      "assets/tool-icons/these-days.webp",
+      "assets/tool-icons/topics-dark-palestine.webp",
+      "assets/tool-icons/topics-palestine.webp",
+      "assets/tool-icons/translation-compare-dark.webp",
+      "assets/tool-icons/translation-compare.webp",
+      "assets/tool-icons/translations-dark-palestine.webp",
+      "assets/tool-icons/translations-dark.webp",
+      "assets/tool-icons/translations-palestine.webp",
+      "assets/tool-icons/translations.webp",
+      "assets/tool-icons/transliteration-dark-palestine.webp",
+      "assets/tool-icons/transliteration-dark.webp",
+      "assets/tool-icons/transliteration-palestine.webp",
+      "assets/tool-icons/transliteration.webp",
+      "assets/tool-icons/umrah-dark-palestine.webp",
+      "assets/tool-icons/umrah-dark.webp",
+      "assets/tool-icons/umrah-palestine.webp",
+      "assets/tool-icons/umrah-resources-dark-palestine.webp",
+      "assets/tool-icons/umrah-resources-dark.webp",
+      "assets/tool-icons/umrah-resources-palestine.webp",
+      "assets/tool-icons/umrah-resources.webp",
+      "assets/tool-icons/umrah.webp",
+      "assets/tool-icons/vocab-dark-palestine.webp",
+      "assets/tool-icons/vocab-palestine.webp",
+      "assets/tool-icons/weekly-summary-dark-palestine.webp",
+      "assets/tool-icons/weekly-summary-dark.webp",
+      "assets/tool-icons/weekly-summary-palestine.webp",
+      "assets/tool-icons/weekly-summary.webp",
+      "assets/tool-icons/womens-area-dark-palestine.webp",
+      "assets/tool-icons/womens-area-dark.webp",
+      "assets/tool-icons/womens-area-palestine.webp",
+      "assets/tool-icons/womens-area.webp",
+      "assets/tool-icons/worship-guides-dark-palestine.webp",
+      "assets/tool-icons/worship-guides-dark.webp",
+      "assets/tool-icons/worship-guides-palestine.webp",
+      "assets/tool-icons/worship-guides.webp",
+      "assets/tool-icons/wudu-guide-dark-palestine.webp",
+      "assets/tool-icons/wudu-guide-dark.webp",
+      "assets/tool-icons/wudu-guide-palestine.webp",
+      "assets/tool-icons/wudu-guide.webp",
+      "assets/tool-icons/zakat-dark-palestine.webp",
+      "assets/tool-icons/zakat-dark.webp",
+      "assets/tool-icons/zakat-fitr-dark-palestine.webp",
+      "assets/tool-icons/zakat-fitr-dark.webp",
+      "assets/tool-icons/zakat-fitr-palestine.webp",
+      "assets/tool-icons/zakat-fitr.webp",
+      "assets/tool-icons/zakat-palestine.webp",
+      "assets/tool-icons/zakat.webp",
+      "branding/android-icon-background.png",
+      "branding/android-icon-foreground.png",
+      "branding/android-icon-monochrome.png",
+      "branding/app-icon.png",
+      "branding/favicon.png",
+      "branding/ios-icon-dark.png",
+      "branding/ios-icon-light.png",
+      "branding/logo-mark-palestine.png",
+      "branding/logo-mark.png",
+      "branding/splash-icon.png",
+      "package-lock.json",
+      "package.json",
+      "resources/quran/indopak-taj-16/FONT-LICENSE.txt",
+      "resources/quran/indopak-taj-16/NOTICE.md",
+      "resources/quran/indopak-taj-16/structure.json",
+      "resources/quran/indopak-taj-16/taj-indopak-16-lines.db",
+      "src/components/IndopakAyahPopover.tsx",
+      "src/components/IndopakPageCanvas.tsx",
+      "src/components/IndopakPageFold.tsx",
+      "src/data/indopak16/glyphs.json",
+      "src/data/indopak16/meta.json",
+      "src/data/indopak16/pages-01.json",
+      "src/data/indopak16/pages-02.json",
+      "src/data/indopak16/pages-03.json",
+      "src/data/indopak16/pages-04.json",
+      "src/data/indopak16/pages-05.json",
+      "src/data/indopak16/pages-06.json",
+      "src/data/indopak16/pages-07.json",
+      "src/data/indopak16/pages-08.json",
+      "src/data/indopak16/pages-09.json",
+      "src/data/indopak16/pages-10.json",
+      "src/data/indopak16/pages-11.json",
+      "src/data/indopak16/pages-12.json",
+      "src/data/indopak16/pages-13.json",
+      "src/data/indopak16/pages-14.json",
+      "src/data/indopak16/pages-15.json",
+      "src/data/indopak16/pages-16.json",
+      "src/data/indopak16/pages-17.json",
+      "src/data/indopak16/pages-18.json",
+      "src/data/indopak16/shapes.json",
+      "src/services/audioEngine.ts",
+      "src/services/audioPlayerCopy.ts",
+      "src/services/audioService.ts",
+      "src/services/audioTranslation.ts",
+      "src/services/indopakChunks.ts",
+      "src/services/indopakCopy.ts",
+      "src/services/indopakFocus.ts",
+      "src/services/indopakFold.ts",
+      "src/services/indopakFont.ts",
+      "src/services/indopakInteraction.ts",
+      "src/services/indopakMushaf.ts",
+      "src/services/indopakNavigation.ts",
+      "src/services/indopakPlayback.ts",
+      "src/services/indopakSelection.ts",
+      "src/services/indopakState.ts",
+      "src/services/quranState.ts",
+      "src/services/translationPreferences.ts",
+      "src/services/useIndopakRecitation.ts"
+    ],
+    "fontBytes": 310912,
+    "fontSha256": "a6463e24e36651404e9eff52dae26e18e9ef0718eb620636a66a20026a75c563",
+    "originalCanvasSha256": "f5f96fe8360e25236e59e7aec067f81a864495a6d38ebfa6bb2382da4528ce4a",
+    "unchanged": [
+      "Original supplied Quran resources, text, 548-page layout, font and outline data",
+      "IndopakPageCanvas.tsx and word hit rectangles / outline transforms",
+      "Reader and audio storage/services outside the authorized reader gesture component",
+      "Original branding and shipped artwork",
+      "app.json, package.json and package-lock.json; no new app dependency/release setting"
+    ]
+  },
+  "runtimeSourceSha256": {
+    "App.tsx": "de53cc48baf68bf89ab7b2c75f971c16a1711bf7d60ffc0b75a5b64a0d645f90",
+    "src/components/IndopakMushafReader.tsx": "11ae2dbea428e8bb53e7cd1810341c16bdfd7ba3478a4653cf17f35a2f672ed9",
+    "src/components/AppShareQr.tsx": "d6b273638a1c3a587191a6cf74eff22a1727b50e2c0fab45d546da923f039dad",
+    "src/services/appShare.ts": "a67ba3fe319a2c09b8b295b98b92a66496d7589712e9151f904638c949786c1e",
+    "src/services/appShareCopy.ts": "7f6d2b7775a94cc444abbfcfe9d159a64a8aa92750e05d6c4a8db0ff4f3caec3",
+    "src/services/indopakZoom.ts": "4979e5578e242cb2c566caeb76938de70926389be957d289bf247e1a36d713d2",
+    "src/data/app-share-qr.json": "e4d84382297be9527dc6d0eaba96f7de5884a917d7d708fbd537217e518dc0a4"
+  },
+  "testHarnessSha256": {
+    "tests/app-share.test.cjs": "d31308d3caaafe4392851866bed07ffa1dd60511c8ae54a78da2aa00d3ad4d81",
+    "tests/indopak-zoom.test.cjs": "b50926009156a4de361ac77d75cfff33adfadefb181ba1e70de6a1b53e7ef70d",
+    "tests/verify-app-share-web.cjs": "52f7faaec5b6c66d2bedfa19f74317d077feddef30e7d1ea9b5dc3244162f977",
+    "tests/verify-app-share-qr.py": "8d18e38139bce77a4d08c0a946e13626c80b1c61d6172f9e2341c32804c2d8a6",
+    "tests/verify-indopak-zoom-web.cjs": "d6b3a65e984456a9f7a130c03aced8e5c11774b66e1aae973d9cb86baf51b1e2"
+  },
+  "screenshots": [
+    {
+      "path": "docs/screenshots/share-app-settings.png",
+      "bytes": 62233,
+      "sha256": "7019a4f1e526e33c35326a8987eb4da5633ebe552120c060c96be3f70c43660d",
+      "provenance": "Unaltered running production Expo WEB / Chromium screenshot at 390x844; not a native-device capture"
+    },
+    {
+      "path": "docs/screenshots/share-app-en.png",
+      "bytes": 24010,
+      "sha256": "1941f97b58b30b2be0b15ed64cc333d53e210c0fe765750dd7887accf410719a",
+      "provenance": "Unaltered running production Expo WEB / Chromium screenshot at 390x844; not a native-device capture"
+    },
+    {
+      "path": "docs/screenshots/share-app-ar-dark.png",
+      "bytes": 24930,
+      "sha256": "9773df2bc31cac7a5c171cc26d4df673e6ced68bd45e3fc6e1c95046db4e4fa6",
+      "provenance": "Unaltered running production Expo WEB / Chromium screenshot at 390x844; not a native-device capture"
+    },
+    {
+      "path": "docs/screenshots/focus-fit-r104.png",
+      "bytes": 111961,
+      "sha256": "abc2c62c12c86e5ea8e2bfbde64cb52eaabd405d3a72250312a46f66c5832267",
+      "provenance": "Unaltered running production Expo WEB / Chromium screenshot at 390x844; not a native-device capture"
+    },
+    {
+      "path": "docs/screenshots/focus-pinched-r104.png",
+      "bytes": 107568,
+      "sha256": "1986346ef4c2c2921c7f873598e5e975f40d8588039c8a42708961b70370a594",
+      "provenance": "Unaltered running production Expo WEB / Chromium screenshot at 390x844; not a native-device capture"
+    },
+    {
+      "path": "docs/screenshots/focus-pinched-ar-dark-r104.png",
+      "bytes": 86154,
+      "sha256": "739ef158111b990b5062f58e70df46ed91cbe413404f8652e6abed068386b80f",
+      "provenance": "Unaltered running production Expo WEB / Chromium screenshot at 390x844; not a native-device capture"
+    }
+  ],
+  "gallery": {
+    "path": "docs/share-focus-r104-gallery.html",
+    "selfContained": true,
+    "images": 6,
+    "newArtwork": false
+  },
+  "validationNotes": [
+    "Expo Clipboard web legacySetString returns true even if execCommand returns false. The new page uses the browser rejecting clipboard API directly; actual success and explicit denial were tested.",
+    "The new share label checker measures every non-whitespace glyph. Chromium adds an invisible soft-wrap-space Range box beyond its text container; that is not label clipping.",
+    "After intentional navigation to another printed page, the original-path DOM identity snapshot is renewed; a new page naturally has new nodes. Pinch, hold, Focus toggles and rotation on the same page retain nodes.",
+    "One preliminary zoom/media run observed playCalls 2 versus 1 with an unchanged source. Cause was not established. Four instrumented isolated reruns and the final instrumented full 8-context suite did not reproduce it; final actual source/time/play-call observations are retained above. No unrelated audio runtime was changed."
+  ],
+  "limitations": [
+    "Hermes exports are not installed Android/iOS builds or device gesture/share-sheet QA.",
+    "Native PanResponder/ScrollView arbitration, OEM system gestures, real camera scanning, OS Back, screen readers and physical-device performance still need device QA.",
+    "Native share outcomes do not prove message delivery; the UI makes no delivery-success claim.",
+    "OpenCV decoding of 49 rendered QR screenshots is not a claim that every physical camera or Play Store listing availability was tested.",
+    "Browser inset fixtures and source clocks are not native navigation-mode or audible-gap benchmarks.",
+    "Translation copy coverage is not professional linguistic review.",
+    "The isolated preliminary extra-Play observation remains an unconfirmed validation anomaly, not a claimed diagnosed/fixed audio defect.",
+    "No app deployment, store upload or release configuration change. Tajweed and Mufahras remain deferred."
+  ]
+}

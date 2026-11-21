@@ -23,6 +23,9 @@ import { SafeAreaProvider, initialWindowMetrics, useSafeAreaInsets } from 'react
 import { SystemNavigationBoundary, useSafeContentFrame } from './src/components/SystemNavigationBoundary';
 import { SystemModal as Modal } from './src/components/SystemModal';
 import { IndopakMushafReader } from './src/components/IndopakMushafReader';
+import { AppShareQr } from './src/components/AppShareQr';
+import { APP_PLAY_STORE_URL, shareAppLink } from './src/services/appShare';
+import { appShareText } from './src/services/appShareCopy';
 import { indopakText } from './src/services/indopakCopy';
 import { isIndopakReaderRoute } from './src/services/indopakInteraction';
 import { floatingTabBarWidth, FLOAT_BAR_PADDING } from './src/services/systemLayout';
@@ -12107,7 +12110,7 @@ function StorageScreen({navigation}:any){
     </ScrollView></Page>;
 }
 
-function SettingsStack(){const subtle=useSubtleTransitions();return <Stack.Navigator screenOptions={{...subtle,headerShown:false}}><Stack.Screen name="Settings" component={SettingsScreen}/><Stack.Screen name="Legal" component={LegalScreen}/><Stack.Screen name="Data sources" component={DataSourcesScreen}/><Stack.Screen name="Reader Settings" component={ReaderSettingsScreen}
+function SettingsStack(){const subtle=useSubtleTransitions();return <Stack.Navigator screenOptions={{...subtle,headerShown:false}}><Stack.Screen name="Settings" component={SettingsScreen}/><Stack.Screen name="Legal" component={LegalScreen}/><Stack.Screen name="Share App" component={ShareAppScreen}/><Stack.Screen name="Data sources" component={DataSourcesScreen}/><Stack.Screen name="Reader Settings" component={ReaderSettingsScreen}
       options={{presentation:'transparentModal',animation:'slide_from_bottom',contentStyle:{backgroundColor:'transparent'}}}/><Stack.Screen name="Privacy Lock" component={PrivacyLockScreen}/><Stack.Screen name="My Reports" component={ReportsScreen}/><Stack.Screen name="Backup" component={BackupScreen}/><Stack.Screen name="Storage" component={StorageScreen}/></Stack.Navigator>}
 
 /**
@@ -12231,6 +12234,43 @@ function LegalScreen({ route, navigation }: any) {
         </View>
       ))}
     </ScrollView></Page>;
+}
+
+function ShareAppScreen({ navigation }: any) {
+  const { language, rtl } = useLanguage();
+  const copy = (key: Parameters<typeof appShareText>[1]) => appShareText(language, key);
+  const [width, setWidth] = useState(0), [busy, setBusy] = useState(false);
+  const sharing = useRef(false);
+  const [note, setNote] = useState<'copied' | 'error' | null>(null);
+  const share = async () => {
+    if (sharing.current) return;
+    sharing.current = true; setBusy(true); setNote(null);
+    try { const result = await shareAppLink(language); if (result === 'copied') setNote('copied'); }
+    catch { setNote('error'); }
+    finally { sharing.current = false; setBusy(false); }
+  };
+  return <Page><ToolBar title={copy('title')} navigation={navigation} />
+    <ScrollView testID="app-share-page" {...SCROLL} contentContainerStyle={[s.dataPage, { gap: 18 }]}>
+      <Text style={s.dataTitle}>Islamic Companion</Text>
+      <Text style={s.intro}>{copy('scan')}</Text>
+      <View onLayout={({ nativeEvent: { layout } }) => setWidth(layout.width)} style={{ alignItems: 'center', width: '100%' }}>
+        {width > 0 && <AppShareQr availableWidth={width} label={copy('scan')} />}
+      </View>
+      <Tactile testID="app-share-button" accessibilityRole="button" accessibilityLabel={copy('button')}
+        accessibilityState={{ disabled: busy, busy }} aria-busy={busy} disabled={busy} onPress={() => { void share(); }}
+        style={[s.primary, { minHeight: 48, flexDirection: 'row', gap: 10, paddingHorizontal: 16 }]}>
+        {ico('share-outline', 21, C.white)}
+        <Text style={[s.primaryText, { flex: 1, minWidth: 0, textAlign: 'center' }]}>{copy('button')}</Text>
+      </Tactile>
+      {note && <Text testID="app-share-status" accessibilityLiveRegion="polite" style={s.intro}>{copy(note)}</Text>}
+      <Tactile testID="app-share-open" accessibilityRole="link" accessibilityLabel={copy('open')}
+        onPress={() => { setNote(null); void Linking.openURL(APP_PLAY_STORE_URL).catch(() => setNote('error')); }}
+        style={[s.secondary, { minHeight: 48 }]}>
+        <Text style={[s.secondaryText, { textAlign: 'center', flexShrink: 1 }]}>{copy('open')}</Text>
+      </Tactile>
+      <Text testID="app-share-url" selectable style={[s.meta, { writingDirection: 'ltr', textAlign: rtl ? 'right' : 'left' }]}>{APP_PLAY_STORE_URL}</Text>
+    </ScrollView>
+  </Page>;
 }
 
 function SettingsScreen({navigation}:any){
@@ -12457,6 +12497,15 @@ function SettingsScreen({navigation}:any){
             {ico(rtl ? 'arrow-back' : 'arrow-forward', 17, C.chevron)}
           </Pressable>
         ))}
+      </View>
+
+      <View style={[s.settings, { marginTop: 14 }]}>
+        <Tactile testID="settings-share-app" accessibilityRole="button" accessibilityLabel={appShareText(language, 'title')}
+          onPress={() => navigation.navigate('Share App')} style={s.settingsRow}>
+          {ico('share-outline', 20, C.green)}
+          <Text style={[s.settingName, { flex: 1, minWidth: 0, marginHorizontal: 12 }]}>{appShareText(language, 'title')}</Text>
+          {ico(rtl ? 'arrow-back' : 'arrow-forward', 17, C.chevron)}
+        </Tactile>
       </View>
 
       <View style={s.madeWith}>
