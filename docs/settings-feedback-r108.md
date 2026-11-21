@@ -36,6 +36,14 @@ The external form requests are intercepted **only in the browser test** with a h
 
 [Machine-readable evidence and source/export hashes](settings-feedback-r108.json) · [Actual running-app screenshot gallery](settings-feedback-r108-gallery.html).
 
+## Public web rollout
+
+Runtime commit **`1268eb9337bb41767b0703f7d8a0406af6e517f8`** was pushed and automatically deployed. Vercel production deployment **`dpl_H8GZYYTH8MAESvS7EE6fz61UbWth`** is **READY / PROMOTED**. The public alias serves the exact tested JavaScript bytes (SHA-256 `950b8a45fed33fb778bca6779cdd694a4be0b502fe0159896b3adb21a5c4dca8`).
+
+A fresh normal-motion browser checked the actual public page: **six English layouts and three external-tab activations**, including keyboard Enter and after reload, all passed with empty error arrays. Share app and the final dedication remained intact, and the exact external destination was preserved. Only the form navigation is intercepted in this test; the app page and bundle are the real deployed files.
+
+[Open the updated web app](https://deen-companion-preview-five.vercel.app/?v=1268eb9). Existing installed native apps require a new build to receive the button; no app-store release is implied.
+
 ## Reproduction
 
 ```sh

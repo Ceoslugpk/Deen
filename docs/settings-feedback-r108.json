@@ -11059,7 +11059,11 @@
     "typeScriptPassed": true,
     "readerContexts": 1,
     "readerArRahmanVisible": 78,
-    "readerAlBaqarahVisible": 286
+    "readerAlBaqarahVisible": 286,
+    "liveFeedbackContexts": 1,
+    "liveFeedbackLayouts": 6,
+    "liveExternalTabActivations": 3,
+    "totalBrowserContextsIncludingReaderAndLive": 24
   },
   "exports": {
     "web": {
@@ -11672,5 +11676,246 @@
     "Google form navigation is intercepted only in browser tests to prove destination/new-tab/no-referrer behavior without a submission; no claim of third-party availability or form content review.",
     "Native default-browser handoff/failure/duplicate-press paths use explicit unit bridge doubles and actual handler code. Hermes exports do not prove installed-device behavior. The OS controls the chosen external handler.",
     "No new app permissions, data clearing/migration/deletion, third-party analytics, account flow, dependency or app-store submission. No Tajweed or Mufahras change."
-  ]
+  ],
+  "rollout": {
+    "url": "https://deen-companion-preview-five.vercel.app/?v=1268eb9",
+    "commit": "1268eb9337bb41767b0703f7d8a0406af6e517f8",
+    "deploymentId": "dpl_H8GZYYTH8MAESvS7EE6fz61UbWth",
+    "bundle": "/_expo/static/js/web/index-8803bfd4f0e25e1b3f4395b2af250e56.js",
+    "bytes": 24208493,
+    "sha256": "950b8a45fed33fb778bca6779cdd694a4be0b502fe0159896b3adb21a5c4dca8",
+    "matchesTestedExport": true,
+    "state": "READY",
+    "readySubstate": "PROMOTED",
+    "liveBrowserChecksPassed": true,
+    "liveBrowserRegression": {
+      "url": "https://deen-companion-preview-five.vercel.app/?v=1268eb9",
+      "method": "Real production web, normal motion, actual Settings navigation and HTML anchor activation. The Google form navigation alone is intercepted with a harmless document to verify exact URL, new-tab isolation, keyboard activation and no prefetch/referrer; no form is submitted. Native browser handoff/failures use explicit unit bridge doubles, not installed device testing.",
+      "layouts": [
+        {
+          "language": "en",
+          "width": 280,
+          "height": 720,
+          "label": "Report or request a feature",
+          "tag": "A",
+          "href": "https://forms.gle/9jbqgcvUTBDV4g9Z6",
+          "target": "_blank",
+          "rel": "noopener noreferrer",
+          "direction": "ltr",
+          "previous": "settings-share-app",
+          "rect": {
+            "x": 21,
+            "y": 378,
+            "right": 259,
+            "bottom": 445,
+            "width": 238,
+            "height": 67
+          },
+          "safe": {
+            "x": 0,
+            "y": 0,
+            "right": 280,
+            "bottom": 720
+          }
+        },
+        {
+          "language": "en",
+          "width": 390,
+          "height": 844,
+          "label": "Report or request a feature",
+          "tag": "A",
+          "href": "https://forms.gle/9jbqgcvUTBDV4g9Z6",
+          "target": "_blank",
+          "rel": "noopener noreferrer",
+          "direction": "ltr",
+          "previous": "settings-share-app",
+          "rect": {
+            "x": 21,
+            "y": 536,
+            "right": 369,
+            "bottom": 589,
+            "width": 348,
+            "height": 53
+          },
+          "safe": {
+            "x": 0,
+            "y": 0,
+            "right": 390,
+            "bottom": 844
+          }
+        },
+        {
+          "language": "en",
+          "width": 240,
+          "height": 640,
+          "label": "Report or request a feature",
+          "tag": "A",
+          "href": "https://forms.gle/9jbqgcvUTBDV4g9Z6",
+          "target": "_blank",
+          "rel": "noopener noreferrer",
+          "direction": "ltr",
+          "previous": "settings-share-app",
+          "rect": {
+            "x": 21,
+            "y": 278,
+            "right": 219,
+            "bottom": 362,
+            "width": 198,
+            "height": 84
+          },
+          "safe": {
+            "x": 0,
+            "y": 0,
+            "right": 240,
+            "bottom": 640
+          }
+        },
+        {
+          "language": "en",
+          "width": 844,
+          "height": 390,
+          "label": "Report or request a feature",
+          "tag": "A",
+          "href": "https://forms.gle/9jbqgcvUTBDV4g9Z6",
+          "target": "_blank",
+          "rel": "noopener noreferrer",
+          "direction": "ltr",
+          "previous": "settings-share-app",
+          "rect": {
+            "x": 21,
+            "y": 278,
+            "right": 823,
+            "bottom": 331,
+            "width": 802,
+            "height": 53
+          },
+          "safe": {
+            "x": 0,
+            "y": 0,
+            "right": 844,
+            "bottom": 390
+          }
+        },
+        {
+          "language": "en",
+          "width": 900,
+          "height": 1100,
+          "label": "Report or request a feature",
+          "tag": "A",
+          "href": "https://forms.gle/9jbqgcvUTBDV4g9Z6",
+          "target": "_blank",
+          "rel": "noopener noreferrer",
+          "direction": "ltr",
+          "previous": "settings-share-app",
+          "rect": {
+            "x": 21,
+            "y": 832,
+            "right": 879,
+            "bottom": 885,
+            "width": 858,
+            "height": 53
+          },
+          "safe": {
+            "x": 0,
+            "y": 0,
+            "right": 900,
+            "bottom": 1100
+          }
+        },
+        {
+          "language": "en",
+          "width": 390,
+          "height": 844,
+          "label": "Report or request a feature",
+          "tag": "A",
+          "href": "https://forms.gle/9jbqgcvUTBDV4g9Z6",
+          "target": "_blank",
+          "rel": "noopener noreferrer",
+          "direction": "ltr",
+          "previous": "settings-share-app",
+          "rect": {
+            "x": 21,
+            "y": 536,
+            "right": 369,
+            "bottom": 589,
+            "width": 348,
+            "height": 53
+          },
+          "safe": {
+            "x": 0,
+            "y": 0,
+            "right": 390,
+            "bottom": 844
+          }
+        }
+      ],
+      "external": [
+        {
+          "language": "en",
+          "keyboard": false,
+          "url": "https://forms.gle/9jbqgcvUTBDV4g9Z6",
+          "newTab": true,
+          "openerIsNull": true,
+          "originalSettingsPreserved": true
+        },
+        {
+          "language": "en",
+          "keyboard": true,
+          "url": "https://forms.gle/9jbqgcvUTBDV4g9Z6",
+          "newTab": true,
+          "openerIsNull": true,
+          "originalSettingsPreserved": true
+        },
+        {
+          "language": "en",
+          "afterReload": true,
+          "keyboard": false,
+          "url": "https://forms.gle/9jbqgcvUTBDV4g9Z6",
+          "newTab": true,
+          "openerIsNull": true,
+          "originalSettingsPreserved": true
+        }
+      ],
+      "contexts": [
+        {
+          "language": "en",
+          "dark": false,
+          "normalMotion": true,
+          "userDataPreserved": true,
+          "externalRequests": [
+            {
+              "url": "https://forms.gle/9jbqgcvUTBDV4g9Z6",
+              "method": "GET",
+              "navigation": true,
+              "referer": null
+            },
+            {
+              "url": "https://forms.gle/9jbqgcvUTBDV4g9Z6",
+              "method": "GET",
+              "navigation": true,
+              "referer": null
+            },
+            {
+              "url": "https://forms.gle/9jbqgcvUTBDV4g9Z6",
+              "method": "GET",
+              "navigation": true,
+              "referer": null
+            }
+          ]
+        }
+      ],
+      "errors": [
+        {
+          "page": [],
+          "console": [],
+          "http": [],
+          "requests": []
+        }
+      ]
+    },
+    "liveFeedbackContexts": 1,
+    "liveLayouts": 6,
+    "liveExternalTabActivations": 3,
+    "formNavigationInterceptedOnlyInTest": true
+  }
 }
