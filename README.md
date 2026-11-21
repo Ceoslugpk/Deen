@@ -168,6 +168,10 @@ Alharamain, Sunnah TV and Makkah Live) — **Privacy Lock** (face, fingerprint o
 front of the app), **Backup** (encrypted, and yours to keep), **Storage**, **Data sources**
 (every service the app talks to, listed in plain words), **My Reports** and **Legal**.
 
+### Normal Quran reader scrolling
+
+The normal reader uses **measured variable-height virtualization**, not fabricated fixed ayah offsets. The blank-window regression after ayahs 13–14 is reproduced on the old build and fixed on the current one; complete Ar-Rahman and Al-Baqarah scans, distant reference jumps and Continue Reading are covered. [Cause, checks and actual before/after screenshots](docs/quran-reader-scroll-r106.md) · [Offline gallery](docs/quran-reader-scroll-r106-gallery.html).
+
 ### Settings and sharing
 
 - **Share app**, immediately below Privacy Policy / Terms of Use / Data Safety, with a bundled scannable QR for [Islamic on Google Play](https://play.google.com/store/apps/details?id=com.qashi.islamic).

@@ -27,6 +27,7 @@ import { AppShareQr } from './src/components/AppShareQr';
 import { APP_PLAY_STORE_URL, shareAppLink } from './src/services/appShare';
 import { appShareText } from './src/services/appShareCopy';
 import { settingsDedicationText } from './src/services/settingsDedication';
+import { createMeasuredVerseScroll, type ReaderScrollFailure } from './src/services/quranReaderScroll';
 import { indopakText } from './src/services/indopakCopy';
 import { isIndopakReaderRoute } from './src/services/indopakInteraction';
 import { floatingTabBarWidth, FLOAT_BAR_PADDING } from './src/services/systemLayout';
@@ -3801,10 +3802,12 @@ function ReaderScreen({route,navigation}:any){
   /* The list, so a verse can be scrolled to by its position in the surah
      rather than by measuring where it happens to be sitting. */
   const listRef=useRef<any>(null);
-  /* How many times the list has been asked again to reach a verse it could
-     not lay out. Counted so a verse that genuinely cannot be reached stops
-     being chased. */
-  const scrollRetries=useRef(0);
+  const verseCount=useRef(verses.length); verseCount.current=verses.length;
+  const verseScroll=useRef<ReturnType<typeof createMeasuredVerseScroll>|null>(null);
+  if(!verseScroll.current)verseScroll.current=createMeasuredVerseScroll({
+    getList:()=>listRef.current,getItemCount:()=>verseCount.current,
+  });
+  useFocusEffect(useCallback(()=>()=>{verseScroll.current?.cancel()},[]));
   const scrollY=useRef(0);
   const {rtl,language}=useLanguage();
   const ar = language === 'ar';
@@ -3840,25 +3843,17 @@ function ReaderScreen({route,navigation}:any){
      Continuing into a surah you already had open updated the chapter and left
      the target behind, so the reader landed at the top instead of the ayah. */
   useEffect(()=>{setTarget(focusVerse||null)},[focusVerse]);
-  /* Landing on the right ayah. `onLayout` cannot do this: the y it reports is
-     the gap since the previous sibling - about 12px for every verse - not the
-     offset inside the scroll content, so every continuation scrolled to the
-     top of the surah. The list is now asked to go to the verse by its place
-     in the surah, which needs no measuring at all. */
+  /* Real variable-height row measurements drive both scrolling and saved
+     positions. Distant targets can need a few measured batches; every retry
+     is cancelled on a different target, leaving the screen or user input. */
   useEffect(()=>{
     if(!target||!verses.length||restoredFor.current===target)return;
     const index=verses.findIndex(v=>v.verse_key===target);
     if(index<0)return;
+    const scroller=verseScroll.current!;
     restoredFor.current=target;
-    /* A fresh verse means a fresh chase. */
-    scrollRetries.current=0;
-    const jump=()=>listRef.current?.scrollToIndex({index,viewPosition:0,viewOffset:88,animated:false});
-    /* Asked more than once, and on purpose. The first ask goes by the
-       estimate and has the effect of drawing the rows near the ayah; each
-       one after it goes by what those rows actually measured, so the
-       reader closes on the ayah rather than landing near it once. */
-    const timers=[120,450,1000].map(ms=>setTimeout(jump,ms));
-    return()=>timers.forEach(clearTimeout);
+    scroller.start(index);
+    return()=>{if(scroller.cancel()&&restoredFor.current===target)restoredFor.current=null};
   },[verses,target]);
   useEffect(()=>{let live=true;loadReadingPosition().then(p=>{if(live)setSavedPosition(p)});return()=>{live=false}},[savedPosition?.verseKey]);
   const[chapters,setChapters]=useState<Chapter[]>([]);
@@ -3952,7 +3947,7 @@ function ReaderScreen({route,navigation}:any){
     const prev=i>0?verses[i-1]:null;
     const newJuz=!!v.juz&&(!prev||prev.juz!==v.juz);
     const newHizb=!!hizbOf(v)&&(!prev||hizbOf(prev)!==hizbOf(v));
-    return <View key={v.id||v.verse_key}>
+    return <View key={v.id||v.verse_key} testID={`reader-verse-${v.verse_key}`}>
   {newJuz&&<View style={s.sectionMarker}><View style={s.sectionRule}/><Text style={s.sectionMarkerText}>{tf(language,'JUZ {n}',{n:v.juz ?? ''})}</Text><View style={s.sectionRule}/></View>}
   {newHizb&&<View style={s.sectionMarker}><View style={s.sectionRule}/><Text style={s.sectionMarkerText}>{tf(language,'HIZB {n}',{n:hizbOf(v)})}</Text><View style={s.sectionRule}/></View>}
   <Pressable delayLongPress={500} onLongPress={()=>setNoteVerse(v)} onPress={()=>revealChrome()} style={[s.ayah,preferences.readingMode==='continuous'&&s.ayahContinuous,focusVerse===v.verse_key&&s.ayahSelected]}>
@@ -3982,67 +3977,11 @@ function ReaderScreen({route,navigation}:any){
     if(key)topVerse.current=key;
   },[]);
 
-  /* How tall an ayah is, for the list's own bookkeeping.
-
-     A list can only travel to a row it has already drawn. Ask it for the
-     hundred-and-fifty-sixth ayah of a surah - a row it has never laid
-     eyes on - and it does nothing whatsoever: no scroll, no error, no
-     second thought. That is why "2:156" from the search bar opened
-     Al-Baqarah at its first verse and stayed there.
-
-     Naming a height lets the list work out where every ayah sits without
-     having drawn it first, and lets it lay a trail to the end of the
-     surah rather than stopping where its own measurements run out.
-
-     It can only be an estimate - an ayah is two words or two lines, and
-     the reader's own text size changes it - so it is built from the very
-     settings that draw the row. The jump below is made twice, which is
-     what makes an estimate good enough: the first ask draws the rows,
-     and the second, now that those rows have been measured, uses their
-     real height and lands on the ayah itself. */
-  const rowHeight=useMemo(()=>{
-    /* Counted against Al-Baqarah drawn at the reader's own defaults on a
-       phone-width column, where an ayah measures 536px from the top of one
-       card to the next: some four and a half lines of Arabic, six and a bit
-       of translation, and the fixed furniture of the card around them.
-       A narrower column wraps the same words onto more lines, so the two
-       text blocks are scaled by the width of the screen doing the reading. */
-    const widthFactor=390/(Dimensions.get('window').width||390);
-    const arabic=(preferences.fontSize||30)*(preferences.lineHeight||1.9)*4.4*widthFactor;
-    const translation=preferences.showTranslation?(preferences.translationFontSize||16)*1.55*6.4*widthFactor:0;
-    const transliteration=preferences.showTransliteration?(preferences.translationFontSize||16)*1.55*2.2*widthFactor:0;
-    /* The number row, the juz and page line, and the card's own padding. */
-    return Math.round(arabic+translation+transliteration+126);
-  },[preferences.fontSize,preferences.lineHeight,preferences.showTranslation,
-     preferences.showTransliteration,preferences.translationFontSize]);
-  const getItemLayout=useCallback((_:any,index:number)=>({
-    length:rowHeight,index,offset:rowHeight*index,
-  }),[rowHeight]);
-
-  /* Heights vary — an ayah is two words or two lines — so the list cannot
-     always jump straight to a verse it has not laid out yet. When that
-     happens it says so, and the honest answer is to try again once the
-     layout has caught up rather than to leave the reader at the top. */
-  const onScrollToIndexFailed=useCallback((info:{index:number;highestMeasuredFrameIndex?:number;averageItemLength?:number})=>{
-    /* Walk towards the verse instead of asking for it again.
-       The list only knows the height of the rows it has already laid out,
-       which at first is a screenful or two. Asking again for a verse two
-       hundred rows down answers "I cannot" — and because nothing moved, no
-       further rows are laid out either, so asking again changes nothing.
-       The reader sat at the top of the surah and never moved: opening
-       "2:156" from the search bar showed Al-Baqarah from its first verse.
-
-       So each attempt scrolls to the furthest row the list *has* measured,
-       which lays out the rows beyond it, and then tries for the verse again.
-       Every round gets closer, and a surah is never more than a few rounds
-       away. The count stops the chase if the verse truly is not there. */
-    if(scrollRetries.current>=10){scrollRetries.current=0;return}
-    scrollRetries.current+=1;
-    const reach=Math.max(0,Math.min(info.highestMeasuredFrameIndex??0,info.index));
-    listRef.current?.scrollToOffset({offset:reach*(info.averageItemLength||96),animated:false});
-    setTimeout(()=>{
-      listRef.current?.scrollToIndex({index:info.index,viewPosition:0,viewOffset:88,animated:false});
-    },90);
+  /* Never supply a made-up fixed getItemLayout for these wrapping rows.
+     Doing so disables FlatList's cell measurement and creates blank windows
+     after the initial batch, even when every ayah is already loaded. */
+  const onScrollToIndexFailed=useCallback((info:ReaderScrollFailure)=>{
+    verseScroll.current?.failed(info);
   },[]);
 
   return <Page><Animated.View testID="reader-header" style={[s.readerBar,{transform:[{translateY:chromeY}]}]}><IconButton name={rtl?'arrow-forward':'arrow-back'} onPress={()=>goBackOrHome(navigation)}/>{!narrow&&(canStep(-1)?<Pressable accessibilityLabel={T('Previous section')} onPress={()=>step(-1)} style={s.surahStep}>{ico(rtl?'chevron-forward':'chevron-back',19,C.ink)}</Pressable>:<View style={s.surahStep}/>)}<View style={{alignItems:'center',flex:1,minWidth:0,overflow:'hidden'}}><Text style={s.readerName} numberOfLines={1}>{title}</Text><Text style={s.meta} numberOfLines={1}>{subtitle}</Text></View>{!narrow&&(canStep(1)?<Pressable accessibilityLabel={T('Next section')} onPress={()=>step(1)} style={s.surahStep}>{ico(rtl?'chevron-back':'chevron-forward',19,C.ink)}</Pressable>:<View style={s.surahStep}/>)}<View style={s.readerHeaderActions}>{section==='surah'&&<Pressable accessibilityLabel={T('Play this Surah')} onPress={()=>{void playSurahFromReader(full,rtl)}} style={s.readerIconBtn}>{ico('play-circle',20,C.ink)}</Pressable>}{section==='surah'&&<Pressable accessibilityLabel={T('Keep this Surah for offline')} onPress={()=>navigation.navigate('Downloads',{chapterId,surahName:full.name_simple})} style={s.readerIconBtn}>{ico('download-outline',20,C.ink)}</Pressable>}<Pressable accessibilityRole="switch" accessibilityState={{checked:focusOn}} accessibilityLabel={`${T('Focus mode')}: ${focusOn?T('On'):T('Off')}`} onPress={()=>update({focusMode:!focusOn})} style={s.readerIconBtn}>{ico(focusOn?'eye':'eye-outline',20,focusOn?C.gold:C.ink)}</Pressable><Pressable accessibilityLabel={T('Reader settings')} onPress={()=>navigation.navigate('Reader Settings')} style={s.readerIconBtn}>{ico('options-outline',20,C.ink)}</Pressable></View></Animated.View><View style={s.readerProgress}><Animated.View style={[s.preloadFill,{width:progressWidth as any}]}/></View>
@@ -4051,6 +3990,7 @@ function ReaderScreen({route,navigation}:any){
 isMushaf?<MushafPageView page={page||1} verses={verses} error={error} cached={cached} retry={load} preferences={preferences} rtl={rtl} T={T} language={language} input={input} setInput={setInput} goPage={goPage} navigation={navigation} arStyle={arStyle} bookmarks={bookmarks} savedPosition={savedPosition} onBookmark={(v:any)=>{void bookmark(v)}} onMark={(v:any)=>{void mark(v)}} onPlay={(v:any)=>{void playFromReader(full,v,rtl)}} onNote={(v:any)=>setNoteVerse(v)}/>
       </ScrollView>
     : <FlatList
+        testID="quran-reader-list"
         ref={listRef}
         data={verses}
         keyExtractor={(v:any)=>String(v.id||v.verse_key)}
@@ -4073,8 +4013,10 @@ isMushaf?<MushafPageView page={page||1} verses={verses} error={error} cached={ca
         onLayout={(e:any)=>{viewportHeight.current=e.nativeEvent.layout.height;measureSpan();}}
         viewabilityConfig={VERSE_VIEWABILITY}
         onViewableItemsChanged={onViewableVerses}
-        getItemLayout={getItemLayout}
         onScrollToIndexFailed={onScrollToIndexFailed}
+        onScrollBeginDrag={()=>{verseScroll.current?.cancel()}}
+        onTouchStart={()=>{verseScroll.current?.cancel()}}
+        {...(Platform.OS==='web'?{onWheel:()=>{verseScroll.current?.cancel()}}:{})}
         /* How much of the surah is held at once. Seven screens' worth is
            enough that a flick never finds a bare patch, and small enough
            that a two-hundred-verse surah is not all in memory at once. */
