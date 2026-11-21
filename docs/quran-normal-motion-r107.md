@@ -44,6 +44,16 @@ The current browser runner defaults to **normal motion** and scrolls with real w
 
 [Machine-readable evidence, source hashes and rollout checks](quran-normal-motion-r107.json) distinguish the live before state, intermediate diagnostic, passing final export and post-push verification.
 
+### Verified public rollout
+
+The corrected runtime commit **`7e4971cca9e72e118942ae2ab4a81b0c048ad77b`** was automatically deployed from the pushed `main` branch. Vercel reported production deployment **`dpl_BYpQMYeaQSFKNXnDV91NPfAr6zf7`** as **READY / PROMOTED**.
+
+The public alias was fetched independently and served the **exact tested JavaScript bytes** (`index-7d7cd4177cb9a4b83eb77c22c130bb04.js`, SHA-256 `5ad067f58efc11279bb7490c6dae002e8dabe77517d02fd4930e7ab24579a5bb`). A fresh normal-motion browser then ran real wheel scrolling against the actual public URL: **Ar-Rahman 78/78 and Al-Baqarah 286/286**, including opening the second surah after the first. All four distant jumps, Continue Reading, fast flick, rotation, saved-data checks and error assertions passed there too. No app JavaScript or Quran response was intercepted or replaced in this live test.
+
+[Open the corrected public app](https://deen-companion-preview-five.vercel.app/?v=7e4971c). Opening the link once loads the corrected runtime; clearing storage, notes or bookmarks is not required.
+
+Fresh **Android and iOS Hermes exports also passed**. Initial 256MB Node heap attempts exhausted the local build heap; sequential 320MB runs passed with unchanged code. These exports are not physical-device tests.
+
 ## Actual screenshots
 
 [Open the self-contained offline gallery](quran-normal-motion-r107-gallery.html).
@@ -53,7 +63,7 @@ The current browser runner defaults to **normal motion** and scrolls with real w
 - [After: Al-Baqarah through ayah 286 with normal motion](screenshots/reader-motion-2-end-r107.png)
 - [After: Urdu RTL through ayah 78 with normal motion](screenshots/reader-motion-ur-end-r107.png)
 
-All captures are unaltered running production-web / Chromium screenshots, not generated artwork or installed-device captures. The before capture comes from the actual public Vercel alias; the initial after captures come from the tested production export. Rollout verification records the live bundle separately.
+All captures are unaltered running production-web / Chromium screenshots, not generated artwork or installed-device captures. The before and English after captures come from the actual public Vercel alias. The Urdu capture comes from the byte-identical tested production export. Rollout verification records the live bundle separately.
 
 ## Reproduction
 

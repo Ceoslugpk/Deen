@@ -98,7 +98,9 @@ async function target(h,key){
    {name:'large-arabic-continuous',language:'en',viewport:{width:900,height:1100},prefs:{fontSize:44,showTranslation:false,readingMode:'continuous'}},
    {name:'phone-reduced-motion',language:'en',viewport:{width:390,height:844},motion:'reduce'},
   ];
-  for(const profile of profiles){
+  const selected=process.env.READER_PROFILE?profiles.filter(p=>p.name===process.env.READER_PROFILE):profiles;
+  assert.ok(selected.length,'READER_PROFILE must name an existing explicit profile');
+  for(const profile of selected){
    const h=await makePage(browser,profile);active=h.page;report.errors.push(h.errors);const result={...profile,motion:h.motion,walks:[],responses:h.responses};report.profiles.push(result);await openStart(h);
    result.walks.push(await scan(h,55,78,`${profile.name}-55`));
    if(profile.name==='phone'){
