@@ -1,0 +1,7323 @@
+{
+  "revision": "R105",
+  "baseCommit": "1bc7a1fdee79def8fa2f438279baab36c7c1ee65",
+  "scope": "Remove only the printed Share App URL; localize truthful action failure guidance; add the exact publisher dedication at the very end of Settings in all 22 UI languages; allow only Share App toolbar titles to wrap.",
+  "destination": "https://play.google.com/store/apps/details?id=com.qashi.islamic",
+  "englishDedication": "2026 © Islamic. This app is a hadiyah for my beloved parents and the entire Muslim Ummah. May Allah accept it as sadaqah jariyah and grant them His mercy and forgiveness.🤲❤️",
+  "languages": [
+    "en",
+    "ar",
+    "ur",
+    "fa",
+    "ps",
+    "fr",
+    "tr",
+    "ru",
+    "uz",
+    "kk",
+    "zh",
+    "vi",
+    "az",
+    "bs",
+    "bg",
+    "si",
+    "bn",
+    "hi",
+    "id",
+    "ms",
+    "ta",
+    "ml"
+  ],
+  "unit": {
+    "tests": 252,
+    "passed": 252,
+    "failed": 0,
+    "newTests": 7
+  },
+  "typeScript": {
+    "passed": true,
+    "exitCode": 0
+  },
+  "productionWeb": {
+    "method": "Actual production WEB, real navigation/layout/rendered QR and one actual browser clipboard success/denial path. Web Share returns and all-language repeated clipboard-status outcomes use explicit bridge doubles, not real OS sheets. Language persistence is a real Settings choice and same-profile reload, with one-time initial fixture storage. Outbound Play Store navigation is intercepted only in the test; no listing availability claim.",
+    "checks": {
+      "placementAndDefaultLayout": {
+        "name": "en-phone",
+        "language": "en",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 844,
+          "right": 390,
+          "bottom": 844
+        },
+        "qr": {
+          "x": 48,
+          "y": 224,
+          "width": 294,
+          "height": 294,
+          "right": 342,
+          "bottom": 518
+        },
+        "actions": [
+          {
+            "id": "app-share-button",
+            "x": 20,
+            "y": 556,
+            "width": 350,
+            "height": 48,
+            "right": 370,
+            "bottom": 604
+          },
+          {
+            "id": "app-share-open",
+            "x": 24,
+            "y": 622,
+            "width": 342,
+            "height": 48,
+            "right": 366,
+            "bottom": 670
+          }
+        ]
+      },
+      "shareBridgeAndRepeatedTapGuard": {
+        "title": "Share app",
+        "text": "Islamic Companion\nhttps://play.google.com/store/apps/details?id=com.qashi.islamic"
+      },
+      "cancelDoesNotCopyOrClaimSuccess": true,
+      "shareErrorIsHonest": true,
+      "realClipboardFallback": true,
+      "openStoreTarget": "https://play.google.com/store/apps/details?id=com.qashi.islamic",
+      "clipboardFailureIsNotReportedAsCopied": true,
+      "qrRendersOfflineWithoutQrService": true,
+      "backReturnsToSettingsAndReaderDataIsUntouched": true,
+      "liveLanguageSwitchAndPersistentLocalizedCopy": {
+        "liveShare": {
+          "name": "ar-live-switch",
+          "language": "ar",
+          "safe": {
+            "x": 0,
+            "y": 0,
+            "width": 390,
+            "height": 844,
+            "right": 390,
+            "bottom": 844
+          },
+          "qr": {
+            "x": 48,
+            "y": 224,
+            "width": 294,
+            "height": 294,
+            "right": 342,
+            "bottom": 518
+          },
+          "actions": [
+            {
+              "id": "app-share-button",
+              "x": 20,
+              "y": 556,
+              "width": 350,
+              "height": 48,
+              "right": 370,
+              "bottom": 604
+            },
+            {
+              "id": "app-share-open",
+              "x": 24,
+              "y": 622,
+              "width": 342,
+              "height": 48,
+              "right": 366,
+              "bottom": 670
+            }
+          ]
+        },
+        "restoredShare": {
+          "name": "ar-restored",
+          "language": "ar",
+          "safe": {
+            "x": 0,
+            "y": 0,
+            "width": 390,
+            "height": 844,
+            "right": 390,
+            "bottom": 844
+          },
+          "qr": {
+            "x": 48,
+            "y": 224,
+            "width": 294,
+            "height": 294,
+            "right": 342,
+            "bottom": 518
+          },
+          "actions": [
+            {
+              "id": "app-share-button",
+              "x": 20,
+              "y": 556,
+              "width": 350,
+              "height": 48,
+              "right": 370,
+              "bottom": 604
+            },
+            {
+              "id": "app-share-open",
+              "x": 24,
+              "y": 622,
+              "width": 342,
+              "height": 48,
+              "right": 366,
+              "bottom": 670
+            }
+          ]
+        }
+      }
+    },
+    "localized": [
+      {
+        "dark": true,
+        "width": 280,
+        "height": 720,
+        "name": "en-280",
+        "language": "en",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "qr": {
+          "x": 42,
+          "y": 253,
+          "width": 196,
+          "height": 196,
+          "right": 238,
+          "bottom": 449
+        },
+        "actions": [
+          {
+            "id": "app-share-button",
+            "x": 20,
+            "y": 487,
+            "width": 240,
+            "height": 52,
+            "right": 260,
+            "bottom": 539
+          },
+          {
+            "id": "app-share-open",
+            "x": 24,
+            "y": 557,
+            "width": 232,
+            "height": 48,
+            "right": 256,
+            "bottom": 605
+          }
+        ]
+      },
+      {
+        "dark": true,
+        "width": 390,
+        "height": 844,
+        "name": "en-390",
+        "language": "en",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 844,
+          "right": 390,
+          "bottom": 844
+        },
+        "qr": {
+          "x": 48,
+          "y": 224,
+          "width": 294,
+          "height": 294,
+          "right": 342,
+          "bottom": 518
+        },
+        "actions": [
+          {
+            "id": "app-share-button",
+            "x": 20,
+            "y": 556,
+            "width": 350,
+            "height": 48,
+            "right": 370,
+            "bottom": 604
+          },
+          {
+            "id": "app-share-open",
+            "x": 24,
+            "y": 622,
+            "width": 342,
+            "height": 48,
+            "right": 366,
+            "bottom": 670
+          }
+        ]
+      },
+      {
+        "dark": true,
+        "width": 240,
+        "height": 640,
+        "name": "compact",
+        "language": "en",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 240,
+          "height": 640,
+          "right": 240,
+          "bottom": 640
+        },
+        "qr": {
+          "x": 22,
+          "y": 272,
+          "width": 196,
+          "height": 196,
+          "right": 218,
+          "bottom": 468
+        },
+        "actions": [
+          {
+            "id": "app-share-button",
+            "x": 20,
+            "y": 506,
+            "width": 200,
+            "height": 52,
+            "right": 220,
+            "bottom": 558
+          },
+          {
+            "id": "app-share-open",
+            "x": 24,
+            "y": 576,
+            "width": 192,
+            "height": 48,
+            "right": 216,
+            "bottom": 624
+          }
+        ]
+      },
+      {
+        "dark": true,
+        "width": 844,
+        "height": 390,
+        "name": "landscape",
+        "language": "en",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 844,
+          "height": 390,
+          "right": 844,
+          "bottom": 390
+        },
+        "qr": {
+          "x": 275,
+          "y": 205,
+          "width": 294,
+          "height": 294,
+          "right": 569,
+          "bottom": 499
+        },
+        "actions": [
+          {
+            "id": "app-share-button",
+            "x": 20,
+            "y": 199,
+            "width": 804,
+            "height": 48,
+            "right": 824,
+            "bottom": 247
+          },
+          {
+            "id": "app-share-open",
+            "x": 24,
+            "y": 265,
+            "width": 796,
+            "height": 48,
+            "right": 820,
+            "bottom": 313
+          }
+        ]
+      },
+      {
+        "dark": true,
+        "width": 800,
+        "height": 1280,
+        "name": "tablet",
+        "language": "en",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 800,
+          "height": 1280,
+          "right": 800,
+          "bottom": 1280
+        },
+        "qr": {
+          "x": 253,
+          "y": 205,
+          "width": 294,
+          "height": 294,
+          "right": 547,
+          "bottom": 499
+        },
+        "actions": [
+          {
+            "id": "app-share-button",
+            "x": 20,
+            "y": 537,
+            "width": 760,
+            "height": 48,
+            "right": 780,
+            "bottom": 585
+          },
+          {
+            "id": "app-share-open",
+            "x": 24,
+            "y": 603,
+            "width": 752,
+            "height": 48,
+            "right": 776,
+            "bottom": 651
+          }
+        ]
+      },
+      {
+        "dark": true,
+        "width": 280,
+        "height": 720,
+        "name": "ar-280",
+        "language": "ar",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "qr": {
+          "x": 42,
+          "y": 253,
+          "width": 196,
+          "height": 196,
+          "right": 238,
+          "bottom": 449
+        },
+        "actions": [
+          {
+            "id": "app-share-button",
+            "x": 20,
+            "y": 487,
+            "width": 240,
+            "height": 48,
+            "right": 260,
+            "bottom": 535
+          },
+          {
+            "id": "app-share-open",
+            "x": 24,
+            "y": 553,
+            "width": 232,
+            "height": 48,
+            "right": 256,
+            "bottom": 601
+          }
+        ]
+      },
+      {
+        "dark": true,
+        "width": 390,
+        "height": 844,
+        "name": "ar-390",
+        "language": "ar",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 844,
+          "right": 390,
+          "bottom": 844
+        },
+        "qr": {
+          "x": 48,
+          "y": 224,
+          "width": 294,
+          "height": 294,
+          "right": 342,
+          "bottom": 518
+        },
+        "actions": [
+          {
+            "id": "app-share-button",
+            "x": 20,
+            "y": 556,
+            "width": 350,
+            "height": 48,
+            "right": 370,
+            "bottom": 604
+          },
+          {
+            "id": "app-share-open",
+            "x": 24,
+            "y": 622,
+            "width": 342,
+            "height": 48,
+            "right": 366,
+            "bottom": 670
+          }
+        ]
+      },
+      {
+        "dark": true,
+        "width": 280,
+        "height": 720,
+        "name": "ur-280",
+        "language": "ur",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "qr": {
+          "x": 42,
+          "y": 253,
+          "width": 196,
+          "height": 196,
+          "right": 238,
+          "bottom": 449
+        },
+        "actions": [
+          {
+            "id": "app-share-button",
+            "x": 20,
+            "y": 487,
+            "width": 240,
+            "height": 52,
+            "right": 260,
+            "bottom": 539
+          },
+          {
+            "id": "app-share-open",
+            "x": 24,
+            "y": 557,
+            "width": 232,
+            "height": 48,
+            "right": 256,
+            "bottom": 605
+          }
+        ]
+      },
+      {
+        "dark": true,
+        "width": 390,
+        "height": 844,
+        "name": "ur-390",
+        "language": "ur",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 844,
+          "right": 390,
+          "bottom": 844
+        },
+        "qr": {
+          "x": 48,
+          "y": 224,
+          "width": 294,
+          "height": 294,
+          "right": 342,
+          "bottom": 518
+        },
+        "actions": [
+          {
+            "id": "app-share-button",
+            "x": 20,
+            "y": 556,
+            "width": 350,
+            "height": 48,
+            "right": 370,
+            "bottom": 604
+          },
+          {
+            "id": "app-share-open",
+            "x": 24,
+            "y": 622,
+            "width": 342,
+            "height": 48,
+            "right": 366,
+            "bottom": 670
+          }
+        ]
+      },
+      {
+        "dark": false,
+        "width": 280,
+        "height": 720,
+        "name": "fr-280",
+        "language": "fr",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "qr": {
+          "x": 42,
+          "y": 253,
+          "width": 196,
+          "height": 196,
+          "right": 238,
+          "bottom": 449
+        },
+        "actions": [
+          {
+            "id": "app-share-button",
+            "x": 20,
+            "y": 487,
+            "width": 240,
+            "height": 52,
+            "right": 260,
+            "bottom": 539
+          },
+          {
+            "id": "app-share-open",
+            "x": 24,
+            "y": 557,
+            "width": 232,
+            "height": 48,
+            "right": 256,
+            "bottom": 605
+          }
+        ]
+      },
+      {
+        "dark": false,
+        "width": 390,
+        "height": 844,
+        "name": "fr-390",
+        "language": "fr",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 844,
+          "right": 390,
+          "bottom": 844
+        },
+        "qr": {
+          "x": 48,
+          "y": 224,
+          "width": 294,
+          "height": 294,
+          "right": 342,
+          "bottom": 518
+        },
+        "actions": [
+          {
+            "id": "app-share-button",
+            "x": 20,
+            "y": 556,
+            "width": 350,
+            "height": 48,
+            "right": 370,
+            "bottom": 604
+          },
+          {
+            "id": "app-share-open",
+            "x": 24,
+            "y": 622,
+            "width": 342,
+            "height": 48,
+            "right": 366,
+            "bottom": 670
+          }
+        ]
+      },
+      {
+        "dark": false,
+        "width": 280,
+        "height": 720,
+        "name": "tr-280",
+        "language": "tr",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "qr": {
+          "x": 42,
+          "y": 272,
+          "width": 196,
+          "height": 196,
+          "right": 238,
+          "bottom": 468
+        },
+        "actions": [
+          {
+            "id": "app-share-button",
+            "x": 20,
+            "y": 506,
+            "width": 240,
+            "height": 52,
+            "right": 260,
+            "bottom": 558
+          },
+          {
+            "id": "app-share-open",
+            "x": 24,
+            "y": 576,
+            "width": 232,
+            "height": 48,
+            "right": 256,
+            "bottom": 624
+          }
+        ]
+      },
+      {
+        "dark": false,
+        "width": 390,
+        "height": 844,
+        "name": "tr-390",
+        "language": "tr",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 844,
+          "right": 390,
+          "bottom": 844
+        },
+        "qr": {
+          "x": 48,
+          "y": 224,
+          "width": 294,
+          "height": 294,
+          "right": 342,
+          "bottom": 518
+        },
+        "actions": [
+          {
+            "id": "app-share-button",
+            "x": 20,
+            "y": 556,
+            "width": 350,
+            "height": 48,
+            "right": 370,
+            "bottom": 604
+          },
+          {
+            "id": "app-share-open",
+            "x": 24,
+            "y": 622,
+            "width": 342,
+            "height": 48,
+            "right": 366,
+            "bottom": 670
+          }
+        ]
+      },
+      {
+        "dark": false,
+        "width": 280,
+        "height": 720,
+        "name": "ru-280",
+        "language": "ru",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "qr": {
+          "x": 42,
+          "y": 253,
+          "width": 196,
+          "height": 196,
+          "right": 238,
+          "bottom": 449
+        },
+        "actions": [
+          {
+            "id": "app-share-button",
+            "x": 20,
+            "y": 487,
+            "width": 240,
+            "height": 52,
+            "right": 260,
+            "bottom": 539
+          },
+          {
+            "id": "app-share-open",
+            "x": 24,
+            "y": 557,
+            "width": 232,
+            "height": 48,
+            "right": 256,
+            "bottom": 605
+          }
+        ]
+      },
+      {
+        "dark": false,
+        "width": 390,
+        "height": 844,
+        "name": "ru-390",
+        "language": "ru",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 844,
+          "right": 390,
+          "bottom": 844
+        },
+        "qr": {
+          "x": 48,
+          "y": 224,
+          "width": 294,
+          "height": 294,
+          "right": 342,
+          "bottom": 518
+        },
+        "actions": [
+          {
+            "id": "app-share-button",
+            "x": 20,
+            "y": 556,
+            "width": 350,
+            "height": 48,
+            "right": 370,
+            "bottom": 604
+          },
+          {
+            "id": "app-share-open",
+            "x": 24,
+            "y": 622,
+            "width": 342,
+            "height": 48,
+            "right": 366,
+            "bottom": 670
+          }
+        ]
+      },
+      {
+        "dark": false,
+        "width": 280,
+        "height": 720,
+        "name": "bn-280",
+        "language": "bn",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "qr": {
+          "x": 42,
+          "y": 253,
+          "width": 196,
+          "height": 196,
+          "right": 238,
+          "bottom": 449
+        },
+        "actions": [
+          {
+            "id": "app-share-button",
+            "x": 20,
+            "y": 487,
+            "width": 240,
+            "height": 48,
+            "right": 260,
+            "bottom": 535
+          },
+          {
+            "id": "app-share-open",
+            "x": 24,
+            "y": 553,
+            "width": 232,
+            "height": 48,
+            "right": 256,
+            "bottom": 601
+          }
+        ]
+      },
+      {
+        "dark": false,
+        "width": 390,
+        "height": 844,
+        "name": "bn-390",
+        "language": "bn",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 844,
+          "right": 390,
+          "bottom": 844
+        },
+        "qr": {
+          "x": 48,
+          "y": 224,
+          "width": 294,
+          "height": 294,
+          "right": 342,
+          "bottom": 518
+        },
+        "actions": [
+          {
+            "id": "app-share-button",
+            "x": 20,
+            "y": 556,
+            "width": 350,
+            "height": 48,
+            "right": 370,
+            "bottom": 604
+          },
+          {
+            "id": "app-share-open",
+            "x": 24,
+            "y": 622,
+            "width": 342,
+            "height": 48,
+            "right": 366,
+            "bottom": 670
+          }
+        ]
+      },
+      {
+        "dark": false,
+        "width": 280,
+        "height": 720,
+        "name": "ms-280",
+        "language": "ms",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "qr": {
+          "x": 42,
+          "y": 253,
+          "width": 196,
+          "height": 196,
+          "right": 238,
+          "bottom": 449
+        },
+        "actions": [
+          {
+            "id": "app-share-button",
+            "x": 20,
+            "y": 487,
+            "width": 240,
+            "height": 52,
+            "right": 260,
+            "bottom": 539
+          },
+          {
+            "id": "app-share-open",
+            "x": 24,
+            "y": 557,
+            "width": 232,
+            "height": 48,
+            "right": 256,
+            "bottom": 605
+          }
+        ]
+      },
+      {
+        "dark": false,
+        "width": 390,
+        "height": 844,
+        "name": "ms-390",
+        "language": "ms",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 844,
+          "right": 390,
+          "bottom": 844
+        },
+        "qr": {
+          "x": 48,
+          "y": 224,
+          "width": 294,
+          "height": 294,
+          "right": 342,
+          "bottom": 518
+        },
+        "actions": [
+          {
+            "id": "app-share-button",
+            "x": 20,
+            "y": 556,
+            "width": 350,
+            "height": 48,
+            "right": 370,
+            "bottom": 604
+          },
+          {
+            "id": "app-share-open",
+            "x": 24,
+            "y": 622,
+            "width": 342,
+            "height": 48,
+            "right": 366,
+            "bottom": 670
+          }
+        ]
+      },
+      {
+        "dark": false,
+        "width": 280,
+        "height": 720,
+        "name": "ta-280",
+        "language": "ta",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "qr": {
+          "x": 42,
+          "y": 272,
+          "width": 196,
+          "height": 196,
+          "right": 238,
+          "bottom": 468
+        },
+        "actions": [
+          {
+            "id": "app-share-button",
+            "x": 20,
+            "y": 506,
+            "width": 240,
+            "height": 52,
+            "right": 260,
+            "bottom": 558
+          },
+          {
+            "id": "app-share-open",
+            "x": 24,
+            "y": 576,
+            "width": 232,
+            "height": 48,
+            "right": 256,
+            "bottom": 624
+          }
+        ]
+      },
+      {
+        "dark": false,
+        "width": 390,
+        "height": 844,
+        "name": "ta-390",
+        "language": "ta",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 844,
+          "right": 390,
+          "bottom": 844
+        },
+        "qr": {
+          "x": 48,
+          "y": 224,
+          "width": 294,
+          "height": 294,
+          "right": 342,
+          "bottom": 518
+        },
+        "actions": [
+          {
+            "id": "app-share-button",
+            "x": 20,
+            "y": 556,
+            "width": 350,
+            "height": 52,
+            "right": 370,
+            "bottom": 608
+          },
+          {
+            "id": "app-share-open",
+            "x": 24,
+            "y": 626,
+            "width": 342,
+            "height": 48,
+            "right": 366,
+            "bottom": 674
+          }
+        ]
+      },
+      {
+        "dark": false,
+        "width": 280,
+        "height": 720,
+        "name": "zh-280",
+        "language": "zh",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "qr": {
+          "x": 42,
+          "y": 253,
+          "width": 196,
+          "height": 196,
+          "right": 238,
+          "bottom": 449
+        },
+        "actions": [
+          {
+            "id": "app-share-button",
+            "x": 20,
+            "y": 487,
+            "width": 240,
+            "height": 48,
+            "right": 260,
+            "bottom": 535
+          },
+          {
+            "id": "app-share-open",
+            "x": 24,
+            "y": 553,
+            "width": 232,
+            "height": 48,
+            "right": 256,
+            "bottom": 601
+          }
+        ]
+      },
+      {
+        "dark": false,
+        "width": 390,
+        "height": 844,
+        "name": "zh-390",
+        "language": "zh",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 844,
+          "right": 390,
+          "bottom": 844
+        },
+        "qr": {
+          "x": 48,
+          "y": 224,
+          "width": 294,
+          "height": 294,
+          "right": 342,
+          "bottom": 518
+        },
+        "actions": [
+          {
+            "id": "app-share-button",
+            "x": 20,
+            "y": 556,
+            "width": 350,
+            "height": 48,
+            "right": 370,
+            "bottom": 604
+          },
+          {
+            "id": "app-share-open",
+            "x": 24,
+            "y": 622,
+            "width": 342,
+            "height": 48,
+            "right": 366,
+            "bottom": 670
+          }
+        ]
+      },
+      {
+        "dark": true,
+        "width": 280,
+        "height": 720,
+        "name": "fa-280",
+        "language": "fa",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "qr": {
+          "x": 42,
+          "y": 253,
+          "width": 196,
+          "height": 196,
+          "right": 238,
+          "bottom": 449
+        },
+        "actions": [
+          {
+            "id": "app-share-button",
+            "x": 20,
+            "y": 487,
+            "width": 240,
+            "height": 52,
+            "right": 260,
+            "bottom": 539
+          },
+          {
+            "id": "app-share-open",
+            "x": 24,
+            "y": 557,
+            "width": 232,
+            "height": 48,
+            "right": 256,
+            "bottom": 605
+          }
+        ]
+      },
+      {
+        "dark": true,
+        "width": 390,
+        "height": 844,
+        "name": "fa-390",
+        "language": "fa",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 844,
+          "right": 390,
+          "bottom": 844
+        },
+        "qr": {
+          "x": 48,
+          "y": 224,
+          "width": 294,
+          "height": 294,
+          "right": 342,
+          "bottom": 518
+        },
+        "actions": [
+          {
+            "id": "app-share-button",
+            "x": 20,
+            "y": 556,
+            "width": 350,
+            "height": 48,
+            "right": 370,
+            "bottom": 604
+          },
+          {
+            "id": "app-share-open",
+            "x": 24,
+            "y": 622,
+            "width": 342,
+            "height": 48,
+            "right": 366,
+            "bottom": 670
+          }
+        ]
+      },
+      {
+        "dark": false,
+        "width": 280,
+        "height": 720,
+        "name": "id-280",
+        "language": "id",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "qr": {
+          "x": 42,
+          "y": 253,
+          "width": 196,
+          "height": 196,
+          "right": 238,
+          "bottom": 449
+        },
+        "actions": [
+          {
+            "id": "app-share-button",
+            "x": 20,
+            "y": 487,
+            "width": 240,
+            "height": 52,
+            "right": 260,
+            "bottom": 539
+          },
+          {
+            "id": "app-share-open",
+            "x": 24,
+            "y": 557,
+            "width": 232,
+            "height": 48,
+            "right": 256,
+            "bottom": 605
+          }
+        ]
+      },
+      {
+        "dark": false,
+        "width": 390,
+        "height": 844,
+        "name": "id-390",
+        "language": "id",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 844,
+          "right": 390,
+          "bottom": 844
+        },
+        "qr": {
+          "x": 48,
+          "y": 224,
+          "width": 294,
+          "height": 294,
+          "right": 342,
+          "bottom": 518
+        },
+        "actions": [
+          {
+            "id": "app-share-button",
+            "x": 20,
+            "y": 556,
+            "width": 350,
+            "height": 48,
+            "right": 370,
+            "bottom": 604
+          },
+          {
+            "id": "app-share-open",
+            "x": 24,
+            "y": 622,
+            "width": 342,
+            "height": 48,
+            "right": 366,
+            "bottom": 670
+          }
+        ]
+      },
+      {
+        "dark": false,
+        "width": 280,
+        "height": 720,
+        "name": "hi-280",
+        "language": "hi",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "qr": {
+          "x": 42,
+          "y": 253,
+          "width": 196,
+          "height": 196,
+          "right": 238,
+          "bottom": 449
+        },
+        "actions": [
+          {
+            "id": "app-share-button",
+            "x": 20,
+            "y": 487,
+            "width": 240,
+            "height": 48,
+            "right": 260,
+            "bottom": 535
+          },
+          {
+            "id": "app-share-open",
+            "x": 24,
+            "y": 553,
+            "width": 232,
+            "height": 48,
+            "right": 256,
+            "bottom": 601
+          }
+        ]
+      },
+      {
+        "dark": false,
+        "width": 390,
+        "height": 844,
+        "name": "hi-390",
+        "language": "hi",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 844,
+          "right": 390,
+          "bottom": 844
+        },
+        "qr": {
+          "x": 48,
+          "y": 224,
+          "width": 294,
+          "height": 294,
+          "right": 342,
+          "bottom": 518
+        },
+        "actions": [
+          {
+            "id": "app-share-button",
+            "x": 20,
+            "y": 556,
+            "width": 350,
+            "height": 48,
+            "right": 370,
+            "bottom": 604
+          },
+          {
+            "id": "app-share-open",
+            "x": 24,
+            "y": 622,
+            "width": 342,
+            "height": 48,
+            "right": 366,
+            "bottom": 670
+          }
+        ]
+      },
+      {
+        "dark": false,
+        "width": 280,
+        "height": 720,
+        "name": "ml-280",
+        "language": "ml",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "qr": {
+          "x": 42,
+          "y": 272,
+          "width": 196,
+          "height": 196,
+          "right": 238,
+          "bottom": 468
+        },
+        "actions": [
+          {
+            "id": "app-share-button",
+            "x": 20,
+            "y": 506,
+            "width": 240,
+            "height": 66,
+            "right": 260,
+            "bottom": 572
+          },
+          {
+            "id": "app-share-open",
+            "x": 24,
+            "y": 590,
+            "width": 232,
+            "height": 48,
+            "right": 256,
+            "bottom": 638
+          }
+        ]
+      },
+      {
+        "dark": false,
+        "width": 390,
+        "height": 844,
+        "name": "ml-390",
+        "language": "ml",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 844,
+          "right": 390,
+          "bottom": 844
+        },
+        "qr": {
+          "x": 48,
+          "y": 224,
+          "width": 294,
+          "height": 294,
+          "right": 342,
+          "bottom": 518
+        },
+        "actions": [
+          {
+            "id": "app-share-button",
+            "x": 20,
+            "y": 556,
+            "width": 350,
+            "height": 48,
+            "right": 370,
+            "bottom": 604
+          },
+          {
+            "id": "app-share-open",
+            "x": 24,
+            "y": 622,
+            "width": 342,
+            "height": 48,
+            "right": 366,
+            "bottom": 670
+          }
+        ]
+      },
+      {
+        "dark": false,
+        "width": 280,
+        "height": 720,
+        "name": "uz-280",
+        "language": "uz",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "qr": {
+          "x": 42,
+          "y": 272,
+          "width": 196,
+          "height": 196,
+          "right": 238,
+          "bottom": 468
+        },
+        "actions": [
+          {
+            "id": "app-share-button",
+            "x": 20,
+            "y": 506,
+            "width": 240,
+            "height": 52,
+            "right": 260,
+            "bottom": 558
+          },
+          {
+            "id": "app-share-open",
+            "x": 24,
+            "y": 576,
+            "width": 232,
+            "height": 48,
+            "right": 256,
+            "bottom": 624
+          }
+        ]
+      },
+      {
+        "dark": false,
+        "width": 390,
+        "height": 844,
+        "name": "uz-390",
+        "language": "uz",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 844,
+          "right": 390,
+          "bottom": 844
+        },
+        "qr": {
+          "x": 48,
+          "y": 224,
+          "width": 294,
+          "height": 294,
+          "right": 342,
+          "bottom": 518
+        },
+        "actions": [
+          {
+            "id": "app-share-button",
+            "x": 20,
+            "y": 556,
+            "width": 350,
+            "height": 48,
+            "right": 370,
+            "bottom": 604
+          },
+          {
+            "id": "app-share-open",
+            "x": 24,
+            "y": 622,
+            "width": 342,
+            "height": 48,
+            "right": 366,
+            "bottom": 670
+          }
+        ]
+      },
+      {
+        "dark": false,
+        "width": 280,
+        "height": 720,
+        "name": "kk-280",
+        "language": "kk",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "qr": {
+          "x": 42,
+          "y": 272,
+          "width": 196,
+          "height": 196,
+          "right": 238,
+          "bottom": 468
+        },
+        "actions": [
+          {
+            "id": "app-share-button",
+            "x": 20,
+            "y": 506,
+            "width": 240,
+            "height": 52,
+            "right": 260,
+            "bottom": 558
+          },
+          {
+            "id": "app-share-open",
+            "x": 24,
+            "y": 576,
+            "width": 232,
+            "height": 48,
+            "right": 256,
+            "bottom": 624
+          }
+        ]
+      },
+      {
+        "dark": false,
+        "width": 390,
+        "height": 844,
+        "name": "kk-390",
+        "language": "kk",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 844,
+          "right": 390,
+          "bottom": 844
+        },
+        "qr": {
+          "x": 48,
+          "y": 224,
+          "width": 294,
+          "height": 294,
+          "right": 342,
+          "bottom": 518
+        },
+        "actions": [
+          {
+            "id": "app-share-button",
+            "x": 20,
+            "y": 556,
+            "width": 350,
+            "height": 48,
+            "right": 370,
+            "bottom": 604
+          },
+          {
+            "id": "app-share-open",
+            "x": 24,
+            "y": 622,
+            "width": 342,
+            "height": 48,
+            "right": 366,
+            "bottom": 670
+          }
+        ]
+      },
+      {
+        "dark": false,
+        "width": 280,
+        "height": 720,
+        "name": "vi-280",
+        "language": "vi",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "qr": {
+          "x": 42,
+          "y": 253,
+          "width": 196,
+          "height": 196,
+          "right": 238,
+          "bottom": 449
+        },
+        "actions": [
+          {
+            "id": "app-share-button",
+            "x": 20,
+            "y": 487,
+            "width": 240,
+            "height": 52,
+            "right": 260,
+            "bottom": 539
+          },
+          {
+            "id": "app-share-open",
+            "x": 24,
+            "y": 557,
+            "width": 232,
+            "height": 48,
+            "right": 256,
+            "bottom": 605
+          }
+        ]
+      },
+      {
+        "dark": false,
+        "width": 390,
+        "height": 844,
+        "name": "vi-390",
+        "language": "vi",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 844,
+          "right": 390,
+          "bottom": 844
+        },
+        "qr": {
+          "x": 48,
+          "y": 224,
+          "width": 294,
+          "height": 294,
+          "right": 342,
+          "bottom": 518
+        },
+        "actions": [
+          {
+            "id": "app-share-button",
+            "x": 20,
+            "y": 556,
+            "width": 350,
+            "height": 48,
+            "right": 370,
+            "bottom": 604
+          },
+          {
+            "id": "app-share-open",
+            "x": 24,
+            "y": 622,
+            "width": 342,
+            "height": 48,
+            "right": 366,
+            "bottom": 670
+          }
+        ]
+      },
+      {
+        "dark": false,
+        "width": 280,
+        "height": 720,
+        "name": "az-280",
+        "language": "az",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "qr": {
+          "x": 42,
+          "y": 272,
+          "width": 196,
+          "height": 196,
+          "right": 238,
+          "bottom": 468
+        },
+        "actions": [
+          {
+            "id": "app-share-button",
+            "x": 20,
+            "y": 506,
+            "width": 240,
+            "height": 52,
+            "right": 260,
+            "bottom": 558
+          },
+          {
+            "id": "app-share-open",
+            "x": 24,
+            "y": 576,
+            "width": 232,
+            "height": 48,
+            "right": 256,
+            "bottom": 624
+          }
+        ]
+      },
+      {
+        "dark": false,
+        "width": 390,
+        "height": 844,
+        "name": "az-390",
+        "language": "az",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 844,
+          "right": 390,
+          "bottom": 844
+        },
+        "qr": {
+          "x": 48,
+          "y": 224,
+          "width": 294,
+          "height": 294,
+          "right": 342,
+          "bottom": 518
+        },
+        "actions": [
+          {
+            "id": "app-share-button",
+            "x": 20,
+            "y": 556,
+            "width": 350,
+            "height": 48,
+            "right": 370,
+            "bottom": 604
+          },
+          {
+            "id": "app-share-open",
+            "x": 24,
+            "y": 622,
+            "width": 342,
+            "height": 48,
+            "right": 366,
+            "bottom": 670
+          }
+        ]
+      },
+      {
+        "dark": false,
+        "width": 280,
+        "height": 720,
+        "name": "bs-280",
+        "language": "bs",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "qr": {
+          "x": 42,
+          "y": 253,
+          "width": 196,
+          "height": 196,
+          "right": 238,
+          "bottom": 449
+        },
+        "actions": [
+          {
+            "id": "app-share-button",
+            "x": 20,
+            "y": 487,
+            "width": 240,
+            "height": 52,
+            "right": 260,
+            "bottom": 539
+          },
+          {
+            "id": "app-share-open",
+            "x": 24,
+            "y": 557,
+            "width": 232,
+            "height": 48,
+            "right": 256,
+            "bottom": 605
+          }
+        ]
+      },
+      {
+        "dark": false,
+        "width": 390,
+        "height": 844,
+        "name": "bs-390",
+        "language": "bs",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 844,
+          "right": 390,
+          "bottom": 844
+        },
+        "qr": {
+          "x": 48,
+          "y": 224,
+          "width": 294,
+          "height": 294,
+          "right": 342,
+          "bottom": 518
+        },
+        "actions": [
+          {
+            "id": "app-share-button",
+            "x": 20,
+            "y": 556,
+            "width": 350,
+            "height": 48,
+            "right": 370,
+            "bottom": 604
+          },
+          {
+            "id": "app-share-open",
+            "x": 24,
+            "y": 622,
+            "width": 342,
+            "height": 48,
+            "right": 366,
+            "bottom": 670
+          }
+        ]
+      },
+      {
+        "dark": false,
+        "width": 280,
+        "height": 720,
+        "name": "bg-280",
+        "language": "bg",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "qr": {
+          "x": 42,
+          "y": 253,
+          "width": 196,
+          "height": 196,
+          "right": 238,
+          "bottom": 449
+        },
+        "actions": [
+          {
+            "id": "app-share-button",
+            "x": 20,
+            "y": 487,
+            "width": 240,
+            "height": 52,
+            "right": 260,
+            "bottom": 539
+          },
+          {
+            "id": "app-share-open",
+            "x": 24,
+            "y": 557,
+            "width": 232,
+            "height": 48,
+            "right": 256,
+            "bottom": 605
+          }
+        ]
+      },
+      {
+        "dark": false,
+        "width": 390,
+        "height": 844,
+        "name": "bg-390",
+        "language": "bg",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 844,
+          "right": 390,
+          "bottom": 844
+        },
+        "qr": {
+          "x": 48,
+          "y": 224,
+          "width": 294,
+          "height": 294,
+          "right": 342,
+          "bottom": 518
+        },
+        "actions": [
+          {
+            "id": "app-share-button",
+            "x": 20,
+            "y": 556,
+            "width": 350,
+            "height": 48,
+            "right": 370,
+            "bottom": 604
+          },
+          {
+            "id": "app-share-open",
+            "x": 24,
+            "y": 622,
+            "width": 342,
+            "height": 48,
+            "right": 366,
+            "bottom": 670
+          }
+        ]
+      },
+      {
+        "dark": false,
+        "width": 280,
+        "height": 720,
+        "name": "si-280",
+        "language": "si",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "qr": {
+          "x": 42,
+          "y": 290,
+          "width": 196,
+          "height": 196,
+          "right": 238,
+          "bottom": 486
+        },
+        "actions": [
+          {
+            "id": "app-share-button",
+            "x": 20,
+            "y": 524,
+            "width": 240,
+            "height": 52,
+            "right": 260,
+            "bottom": 576
+          },
+          {
+            "id": "app-share-open",
+            "x": 24,
+            "y": 594,
+            "width": 232,
+            "height": 48,
+            "right": 256,
+            "bottom": 642
+          }
+        ]
+      },
+      {
+        "dark": false,
+        "width": 390,
+        "height": 844,
+        "name": "si-390",
+        "language": "si",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 844,
+          "right": 390,
+          "bottom": 844
+        },
+        "qr": {
+          "x": 48,
+          "y": 233,
+          "width": 294,
+          "height": 294,
+          "right": 342,
+          "bottom": 527
+        },
+        "actions": [
+          {
+            "id": "app-share-button",
+            "x": 20,
+            "y": 565,
+            "width": 350,
+            "height": 48,
+            "right": 370,
+            "bottom": 613
+          },
+          {
+            "id": "app-share-open",
+            "x": 24,
+            "y": 631,
+            "width": 342,
+            "height": 48,
+            "right": 366,
+            "bottom": 679
+          }
+        ]
+      },
+      {
+        "dark": false,
+        "width": 280,
+        "height": 720,
+        "name": "ps-280",
+        "language": "ps",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "qr": {
+          "x": 42,
+          "y": 272,
+          "width": 196,
+          "height": 196,
+          "right": 238,
+          "bottom": 468
+        },
+        "actions": [
+          {
+            "id": "app-share-button",
+            "x": 20,
+            "y": 506,
+            "width": 240,
+            "height": 52,
+            "right": 260,
+            "bottom": 558
+          },
+          {
+            "id": "app-share-open",
+            "x": 24,
+            "y": 576,
+            "width": 232,
+            "height": 48,
+            "right": 256,
+            "bottom": 624
+          }
+        ]
+      },
+      {
+        "dark": false,
+        "width": 390,
+        "height": 844,
+        "name": "ps-390",
+        "language": "ps",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 844,
+          "right": 390,
+          "bottom": 844
+        },
+        "qr": {
+          "x": 48,
+          "y": 224,
+          "width": 294,
+          "height": 294,
+          "right": 342,
+          "bottom": 518
+        },
+        "actions": [
+          {
+            "id": "app-share-button",
+            "x": 20,
+            "y": 556,
+            "width": 350,
+            "height": 48,
+            "right": 370,
+            "bottom": 604
+          },
+          {
+            "id": "app-share-open",
+            "x": 24,
+            "y": 622,
+            "width": 342,
+            "height": 48,
+            "right": 366,
+            "bottom": 670
+          }
+        ]
+      }
+    ],
+    "dedications": [
+      {
+        "language": "en",
+        "name": "en-phone-light",
+        "direction": "ltr",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 844,
+          "right": 390,
+          "bottom": 844
+        },
+        "rect": {
+          "x": 20,
+          "y": 652,
+          "width": 350,
+          "height": 96,
+          "right": 370,
+          "bottom": 748
+        },
+        "text": "2026 © Islamic. This app is a hadiyah for my beloved parents and the entire Muslim Ummah. May Allah accept it as sadaqah jariyah and grant them His mercy and forgiveness.🤲❤️"
+      },
+      {
+        "language": "en",
+        "name": "en-offline",
+        "direction": "ltr",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 844,
+          "right": 390,
+          "bottom": 844
+        },
+        "rect": {
+          "x": 20,
+          "y": 652,
+          "width": 350,
+          "height": 96,
+          "right": 370,
+          "bottom": 748
+        },
+        "text": "2026 © Islamic. This app is a hadiyah for my beloved parents and the entire Muslim Ummah. May Allah accept it as sadaqah jariyah and grant them His mercy and forgiveness.🤲❤️"
+      },
+      {
+        "language": "ar",
+        "name": "ar-live-switch",
+        "direction": "rtl",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 844,
+          "right": 390,
+          "bottom": 844
+        },
+        "rect": {
+          "x": 20,
+          "y": 672,
+          "width": 350,
+          "height": 76,
+          "right": 370,
+          "bottom": 748
+        },
+        "text": "2026 © Islamic. هذا التطبيق هدية لوالديَّ الحبيبين وللأمة الإسلامية جمعاء. أسأل الله أن يتقبّله صدقةً جاريةً، وأن يشملهم برحمته ومغفرته.🤲❤️"
+      },
+      {
+        "language": "ar",
+        "name": "ar-restored",
+        "direction": "rtl",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 844,
+          "right": 390,
+          "bottom": 844
+        },
+        "rect": {
+          "x": 20,
+          "y": 672,
+          "width": 350,
+          "height": 76,
+          "right": 370,
+          "bottom": 748
+        },
+        "text": "2026 © Islamic. هذا التطبيق هدية لوالديَّ الحبيبين وللأمة الإسلامية جمعاء. أسأل الله أن يتقبّله صدقةً جاريةً، وأن يشملهم برحمته ومغفرته.🤲❤️"
+      },
+      {
+        "language": "en",
+        "name": "en-280",
+        "direction": "ltr",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "rect": {
+          "x": 20,
+          "y": 508,
+          "width": 240,
+          "height": 116,
+          "right": 260,
+          "bottom": 624
+        },
+        "text": "2026 © Islamic. This app is a hadiyah for my beloved parents and the entire Muslim Ummah. May Allah accept it as sadaqah jariyah and grant them His mercy and forgiveness.🤲❤️"
+      },
+      {
+        "language": "en",
+        "name": "en-390",
+        "direction": "ltr",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 844,
+          "right": 390,
+          "bottom": 844
+        },
+        "rect": {
+          "x": 20,
+          "y": 652,
+          "width": 350,
+          "height": 96,
+          "right": 370,
+          "bottom": 748
+        },
+        "text": "2026 © Islamic. This app is a hadiyah for my beloved parents and the entire Muslim Ummah. May Allah accept it as sadaqah jariyah and grant them His mercy and forgiveness.🤲❤️"
+      },
+      {
+        "language": "en",
+        "name": "compact",
+        "direction": "ltr",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 240,
+          "height": 640,
+          "right": 240,
+          "bottom": 640
+        },
+        "rect": {
+          "x": 20,
+          "y": 408,
+          "width": 200,
+          "height": 136,
+          "right": 220,
+          "bottom": 544
+        },
+        "text": "2026 © Islamic. This app is a hadiyah for my beloved parents and the entire Muslim Ummah. May Allah accept it as sadaqah jariyah and grant them His mercy and forgiveness.🤲❤️"
+      },
+      {
+        "language": "en",
+        "name": "landscape",
+        "direction": "ltr",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 844,
+          "height": 390,
+          "right": 844,
+          "bottom": 390
+        },
+        "rect": {
+          "x": 102,
+          "y": 334,
+          "width": 640,
+          "height": 56,
+          "right": 742,
+          "bottom": 390
+        },
+        "text": "2026 © Islamic. This app is a hadiyah for my beloved parents and the entire Muslim Ummah. May Allah accept it as sadaqah jariyah and grant them His mercy and forgiveness.🤲❤️"
+      },
+      {
+        "language": "en",
+        "name": "tablet",
+        "direction": "ltr",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 800,
+          "height": 1280,
+          "right": 800,
+          "bottom": 1280
+        },
+        "rect": {
+          "x": 80,
+          "y": 1128,
+          "width": 640,
+          "height": 56,
+          "right": 720,
+          "bottom": 1184
+        },
+        "text": "2026 © Islamic. This app is a hadiyah for my beloved parents and the entire Muslim Ummah. May Allah accept it as sadaqah jariyah and grant them His mercy and forgiveness.🤲❤️"
+      },
+      {
+        "language": "ar",
+        "name": "ar-280",
+        "direction": "rtl",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "rect": {
+          "x": 20,
+          "y": 528,
+          "width": 240,
+          "height": 96,
+          "right": 260,
+          "bottom": 624
+        },
+        "text": "2026 © Islamic. هذا التطبيق هدية لوالديَّ الحبيبين وللأمة الإسلامية جمعاء. أسأل الله أن يتقبّله صدقةً جاريةً، وأن يشملهم برحمته ومغفرته.🤲❤️"
+      },
+      {
+        "language": "ar",
+        "name": "ar-390",
+        "direction": "rtl",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 844,
+          "right": 390,
+          "bottom": 844
+        },
+        "rect": {
+          "x": 20,
+          "y": 672,
+          "width": 350,
+          "height": 76,
+          "right": 370,
+          "bottom": 748
+        },
+        "text": "2026 © Islamic. هذا التطبيق هدية لوالديَّ الحبيبين وللأمة الإسلامية جمعاء. أسأل الله أن يتقبّله صدقةً جاريةً، وأن يشملهم برحمته ومغفرته.🤲❤️"
+      },
+      {
+        "language": "ur",
+        "name": "ur-280",
+        "direction": "rtl",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "rect": {
+          "x": 20,
+          "y": 528,
+          "width": 240,
+          "height": 96,
+          "right": 260,
+          "bottom": 624
+        },
+        "text": "2026 © Islamic. یہ ایپ میرے پیارے والدین اور پوری امتِ مسلمہ کے لیے ایک ہدیہ ہے۔ اللہ اسے صدقۂ جاریہ کے طور پر قبول فرمائے اور انہیں اپنی رحمت و مغفرت عطا فرمائے۔🤲❤️"
+      },
+      {
+        "language": "ur",
+        "name": "ur-390",
+        "direction": "rtl",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 844,
+          "right": 390,
+          "bottom": 844
+        },
+        "rect": {
+          "x": 20,
+          "y": 672,
+          "width": 350,
+          "height": 76,
+          "right": 370,
+          "bottom": 748
+        },
+        "text": "2026 © Islamic. یہ ایپ میرے پیارے والدین اور پوری امتِ مسلمہ کے لیے ایک ہدیہ ہے۔ اللہ اسے صدقۂ جاریہ کے طور پر قبول فرمائے اور انہیں اپنی رحمت و مغفرت عطا فرمائے۔🤲❤️"
+      },
+      {
+        "language": "fr",
+        "name": "fr-280",
+        "direction": "ltr",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "rect": {
+          "x": 20,
+          "y": 468,
+          "width": 240,
+          "height": 156,
+          "right": 260,
+          "bottom": 624
+        },
+        "text": "2026 © Islamic. Cette application est un cadeau pour mes parents bien-aimés et pour toute la communauté musulmane. Qu’Allah l’accepte comme une aumône perpétuelle (sadaqah jariyah) et leur accorde Sa miséricorde et Son pardon.🤲❤️"
+      },
+      {
+        "language": "fr",
+        "name": "fr-390",
+        "direction": "ltr",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 844,
+          "right": 390,
+          "bottom": 844
+        },
+        "rect": {
+          "x": 20,
+          "y": 632,
+          "width": 350,
+          "height": 116,
+          "right": 370,
+          "bottom": 748
+        },
+        "text": "2026 © Islamic. Cette application est un cadeau pour mes parents bien-aimés et pour toute la communauté musulmane. Qu’Allah l’accepte comme une aumône perpétuelle (sadaqah jariyah) et leur accorde Sa miséricorde et Son pardon.🤲❤️"
+      },
+      {
+        "language": "tr",
+        "name": "tr-280",
+        "direction": "ltr",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "rect": {
+          "x": 20,
+          "y": 488,
+          "width": 240,
+          "height": 136,
+          "right": 260,
+          "bottom": 624
+        },
+        "text": "2026 © Islamic. Bu uygulama, sevgili anne babama ve tüm Müslüman ümmetine bir hediyedir. Allah bunu sadaka-i cariye olarak kabul etsin, onlara rahmetini ve mağfiretini ihsan eylesin.🤲❤️"
+      },
+      {
+        "language": "tr",
+        "name": "tr-390",
+        "direction": "ltr",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 844,
+          "right": 390,
+          "bottom": 844
+        },
+        "rect": {
+          "x": 20,
+          "y": 652,
+          "width": 350,
+          "height": 96,
+          "right": 370,
+          "bottom": 748
+        },
+        "text": "2026 © Islamic. Bu uygulama, sevgili anne babama ve tüm Müslüman ümmetine bir hediyedir. Allah bunu sadaka-i cariye olarak kabul etsin, onlara rahmetini ve mağfiretini ihsan eylesin.🤲❤️"
+      },
+      {
+        "language": "ru",
+        "name": "ru-280",
+        "direction": "ltr",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "rect": {
+          "x": 20,
+          "y": 508,
+          "width": 240,
+          "height": 116,
+          "right": 260,
+          "bottom": 624
+        },
+        "text": "2026 © Islamic. Это приложение — подарок моим любимым родителям и всей мусульманской умме. Пусть Аллах примет его как садака джария и дарует им Свою милость и прощение.🤲❤️"
+      },
+      {
+        "language": "ru",
+        "name": "ru-390",
+        "direction": "ltr",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 844,
+          "right": 390,
+          "bottom": 844
+        },
+        "rect": {
+          "x": 20,
+          "y": 672,
+          "width": 350,
+          "height": 76,
+          "right": 370,
+          "bottom": 748
+        },
+        "text": "2026 © Islamic. Это приложение — подарок моим любимым родителям и всей мусульманской умме. Пусть Аллах примет его как садака джария и дарует им Свою милость и прощение.🤲❤️"
+      },
+      {
+        "language": "bn",
+        "name": "bn-280",
+        "direction": "ltr",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "rect": {
+          "x": 20,
+          "y": 528,
+          "width": 240,
+          "height": 96,
+          "right": 260,
+          "bottom": 624
+        },
+        "text": "2026 © Islamic. এই অ্যাপটি আমার প্রিয় বাবা-মা এবং সমগ্র মুসলিম উম্মাহর জন্য একটি হাদিয়া। আল্লাহ এটিকে সদকায়ে জারিয়া হিসেবে কবুল করুন এবং তাঁদের তাঁর রহমত ও মাগফিরাত দান করুন।🤲❤️"
+      },
+      {
+        "language": "bn",
+        "name": "bn-390",
+        "direction": "ltr",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 844,
+          "right": 390,
+          "bottom": 844
+        },
+        "rect": {
+          "x": 20,
+          "y": 672,
+          "width": 350,
+          "height": 76,
+          "right": 370,
+          "bottom": 748
+        },
+        "text": "2026 © Islamic. এই অ্যাপটি আমার প্রিয় বাবা-মা এবং সমগ্র মুসলিম উম্মাহর জন্য একটি হাদিয়া। আল্লাহ এটিকে সদকায়ে জারিয়া হিসেবে কবুল করুন এবং তাঁদের তাঁর রহমত ও মাগফিরাত দান করুন।🤲❤️"
+      },
+      {
+        "language": "ms",
+        "name": "ms-280",
+        "direction": "ltr",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "rect": {
+          "x": 20,
+          "y": 488,
+          "width": 240,
+          "height": 136,
+          "right": 260,
+          "bottom": 624
+        },
+        "text": "2026 © Islamic. Aplikasi ini ialah hadiah untuk ibu bapa tercinta saya dan seluruh umat Islam. Semoga Allah menerimanya sebagai sedekah jariah serta mengurniakan rahmat dan keampunan-Nya kepada mereka.🤲❤️"
+      },
+      {
+        "language": "ms",
+        "name": "ms-390",
+        "direction": "ltr",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 844,
+          "right": 390,
+          "bottom": 844
+        },
+        "rect": {
+          "x": 20,
+          "y": 652,
+          "width": 350,
+          "height": 96,
+          "right": 370,
+          "bottom": 748
+        },
+        "text": "2026 © Islamic. Aplikasi ini ialah hadiah untuk ibu bapa tercinta saya dan seluruh umat Islam. Semoga Allah menerimanya sebagai sedekah jariah serta mengurniakan rahmat dan keampunan-Nya kepada mereka.🤲❤️"
+      },
+      {
+        "language": "ta",
+        "name": "ta-280",
+        "direction": "ltr",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "rect": {
+          "x": 20,
+          "y": 468,
+          "width": 240,
+          "height": 156,
+          "right": 260,
+          "bottom": 624
+        },
+        "text": "2026 © Islamic. இந்தச் செயலி என் அன்பிற்குரிய பெற்றோருக்கும் முழு முஸ்லிம் உம்மத்திற்கும் ஒரு அன்பளிப்பாகும். அல்லாஹ் இதை சதகா ஜாரியாவாக ஏற்றுக்கொண்டு, அவர்களுக்கு தனது அருளையும் மன்னிப்பையும் வழங்குவானாக.🤲❤️"
+      },
+      {
+        "language": "ta",
+        "name": "ta-390",
+        "direction": "ltr",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 844,
+          "right": 390,
+          "bottom": 844
+        },
+        "rect": {
+          "x": 20,
+          "y": 652,
+          "width": 350,
+          "height": 96,
+          "right": 370,
+          "bottom": 748
+        },
+        "text": "2026 © Islamic. இந்தச் செயலி என் அன்பிற்குரிய பெற்றோருக்கும் முழு முஸ்லிம் உம்மத்திற்கும் ஒரு அன்பளிப்பாகும். அல்லாஹ் இதை சதகா ஜாரியாவாக ஏற்றுக்கொண்டு, அவர்களுக்கு தனது அருளையும் மன்னிப்பையும் வழங்குவானாக.🤲❤️"
+      },
+      {
+        "language": "zh",
+        "name": "zh-280",
+        "direction": "ltr",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "rect": {
+          "x": 20,
+          "y": 508,
+          "width": 240,
+          "height": 116,
+          "right": 260,
+          "bottom": 624
+        },
+        "text": "2026 © Islamic. 此应用是献给我挚爱的父母和全体穆斯林乌玛的一份礼物。愿真主悦纳它为长久的施舍（sadaqah jariyah），并赐予他们祂的慈悯与宽恕。🤲❤️"
+      },
+      {
+        "language": "zh",
+        "name": "zh-390",
+        "direction": "ltr",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 844,
+          "right": 390,
+          "bottom": 844
+        },
+        "rect": {
+          "x": 20,
+          "y": 672,
+          "width": 350,
+          "height": 76,
+          "right": 370,
+          "bottom": 748
+        },
+        "text": "2026 © Islamic. 此应用是献给我挚爱的父母和全体穆斯林乌玛的一份礼物。愿真主悦纳它为长久的施舍（sadaqah jariyah），并赐予他们祂的慈悯与宽恕。🤲❤️"
+      },
+      {
+        "language": "fa",
+        "name": "fa-280",
+        "direction": "rtl",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "rect": {
+          "x": 20,
+          "y": 508,
+          "width": 240,
+          "height": 116,
+          "right": 260,
+          "bottom": 624
+        },
+        "text": "2026 © Islamic. این برنامه هدیه‌ای برای پدر و مادر عزیزم و تمام امت مسلمان است. خداوند آن را به‌عنوان صدقهٔ جاریه بپذیرد و رحمت و آمرزش خویش را نصیبشان فرماید.🤲❤️"
+      },
+      {
+        "language": "fa",
+        "name": "fa-390",
+        "direction": "rtl",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 844,
+          "right": 390,
+          "bottom": 844
+        },
+        "rect": {
+          "x": 20,
+          "y": 672,
+          "width": 350,
+          "height": 76,
+          "right": 370,
+          "bottom": 748
+        },
+        "text": "2026 © Islamic. این برنامه هدیه‌ای برای پدر و مادر عزیزم و تمام امت مسلمان است. خداوند آن را به‌عنوان صدقهٔ جاریه بپذیرد و رحمت و آمرزش خویش را نصیبشان فرماید.🤲❤️"
+      },
+      {
+        "language": "id",
+        "name": "id-280",
+        "direction": "ltr",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "rect": {
+          "x": 20,
+          "y": 584,
+          "width": 240,
+          "height": 136,
+          "right": 260,
+          "bottom": 720
+        },
+        "text": "2026 © Islamic. Aplikasi ini adalah hadiah untuk kedua orang tua tercinta saya dan seluruh umat Muslim. Semoga Allah menerimanya sebagai sedekah jariyah serta melimpahkan rahmat dan ampunan-Nya kepada mereka.🤲❤️"
+      },
+      {
+        "language": "id",
+        "name": "id-390",
+        "direction": "ltr",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 844,
+          "right": 390,
+          "bottom": 844
+        },
+        "rect": {
+          "x": 20,
+          "y": 632,
+          "width": 350,
+          "height": 116,
+          "right": 370,
+          "bottom": 748
+        },
+        "text": "2026 © Islamic. Aplikasi ini adalah hadiah untuk kedua orang tua tercinta saya dan seluruh umat Muslim. Semoga Allah menerimanya sebagai sedekah jariyah serta melimpahkan rahmat dan ampunan-Nya kepada mereka.🤲❤️"
+      },
+      {
+        "language": "hi",
+        "name": "hi-280",
+        "direction": "ltr",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "rect": {
+          "x": 20,
+          "y": 528,
+          "width": 240,
+          "height": 96,
+          "right": 260,
+          "bottom": 624
+        },
+        "text": "2026 © Islamic. यह ऐप मेरे प्यारे माता-पिता और पूरी मुस्लिम उम्मत के लिए एक हदिया है। अल्लाह इसे सदक़ा-ए-जारिया के रूप में क़बूल फ़रमाए और उन्हें अपनी रहमत और मग़फ़िरत अता फ़रमाए।🤲❤️"
+      },
+      {
+        "language": "hi",
+        "name": "hi-390",
+        "direction": "ltr",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 844,
+          "right": 390,
+          "bottom": 844
+        },
+        "rect": {
+          "x": 20,
+          "y": 672,
+          "width": 350,
+          "height": 76,
+          "right": 370,
+          "bottom": 748
+        },
+        "text": "2026 © Islamic. यह ऐप मेरे प्यारे माता-पिता और पूरी मुस्लिम उम्मत के लिए एक हदिया है। अल्लाह इसे सदक़ा-ए-जारिया के रूप में क़बूल फ़रमाए और उन्हें अपनी रहमत और मग़फ़िरत अता फ़रमाए।🤲❤️"
+      },
+      {
+        "language": "ml",
+        "name": "ml-280",
+        "direction": "ltr",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "rect": {
+          "x": 20,
+          "y": 468,
+          "width": 240,
+          "height": 156,
+          "right": 260,
+          "bottom": 624
+        },
+        "text": "2026 © Islamic. ഈ ആപ്പ് എന്റെ പ്രിയപ്പെട്ട മാതാപിതാക്കൾക്കും മുഴുവൻ മുസ്‌ലിം സമൂഹത്തിനുമുള്ള ഒരു സമ്മാനമാണ്. അല്ലാഹു ഇത് സ്വദഖ ജാരിയയായി സ്വീകരിക്കുകയും അവർക്ക് തന്റെ കാരുണ്യവും പാപമോചനവും നൽകുകയും ചെയ്യുമാറാകട്ടെ.🤲❤️"
+      },
+      {
+        "language": "ml",
+        "name": "ml-390",
+        "direction": "ltr",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 844,
+          "right": 390,
+          "bottom": 844
+        },
+        "rect": {
+          "x": 20,
+          "y": 632,
+          "width": 350,
+          "height": 116,
+          "right": 370,
+          "bottom": 748
+        },
+        "text": "2026 © Islamic. ഈ ആപ്പ് എന്റെ പ്രിയപ്പെട്ട മാതാപിതാക്കൾക്കും മുഴുവൻ മുസ്‌ലിം സമൂഹത്തിനുമുള്ള ഒരു സമ്മാനമാണ്. അല്ലാഹു ഇത് സ്വദഖ ജാരിയയായി സ്വീകരിക്കുകയും അവർക്ക് തന്റെ കാരുണ്യവും പാപമോചനവും നൽകുകയും ചെയ്യുമാറാകട്ടെ.🤲❤️"
+      },
+      {
+        "language": "uz",
+        "name": "uz-280",
+        "direction": "ltr",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "rect": {
+          "x": 20,
+          "y": 508,
+          "width": 240,
+          "height": 116,
+          "right": 260,
+          "bottom": 624
+        },
+        "text": "2026 © Islamic. Ушбу илова азиз ота-онамга ва бутун мусулмон умматига ҳадядир. Аллоҳ уни садақаи жория сифатида қабул қилсин ҳамда уларга Ўз раҳмати ва мағфиратини ато этсин.🤲❤️"
+      },
+      {
+        "language": "uz",
+        "name": "uz-390",
+        "direction": "ltr",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 844,
+          "right": 390,
+          "bottom": 844
+        },
+        "rect": {
+          "x": 20,
+          "y": 652,
+          "width": 350,
+          "height": 96,
+          "right": 370,
+          "bottom": 748
+        },
+        "text": "2026 © Islamic. Ушбу илова азиз ота-онамга ва бутун мусулмон умматига ҳадядир. Аллоҳ уни садақаи жория сифатида қабул қилсин ҳамда уларга Ўз раҳмати ва мағфиратини ато этсин.🤲❤️"
+      },
+      {
+        "language": "kk",
+        "name": "kk-280",
+        "direction": "ltr",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "rect": {
+          "x": 20,
+          "y": 508,
+          "width": 240,
+          "height": 116,
+          "right": 260,
+          "bottom": 624
+        },
+        "text": "2026 © Islamic. Бұл қолданба — сүйікті ата-анама және бүкіл мұсылман үмбетіне арналған сый. Алла оны садақа жария ретінде қабыл етіп, оларға Өзінің рақымы мен кешірімін нәсіп етсін.🤲❤️"
+      },
+      {
+        "language": "kk",
+        "name": "kk-390",
+        "direction": "ltr",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 844,
+          "right": 390,
+          "bottom": 844
+        },
+        "rect": {
+          "x": 20,
+          "y": 652,
+          "width": 350,
+          "height": 96,
+          "right": 370,
+          "bottom": 748
+        },
+        "text": "2026 © Islamic. Бұл қолданба — сүйікті ата-анама және бүкіл мұсылман үмбетіне арналған сый. Алла оны садақа жария ретінде қабыл етіп, оларға Өзінің рақымы мен кешірімін нәсіп етсін.🤲❤️"
+      },
+      {
+        "language": "vi",
+        "name": "vi-280",
+        "direction": "ltr",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "rect": {
+          "x": 20,
+          "y": 468,
+          "width": 240,
+          "height": 156,
+          "right": 260,
+          "bottom": 624
+        },
+        "text": "2026 © Islamic. Ứng dụng này là món quà dành tặng cha mẹ kính yêu của tôi và toàn thể cộng đồng Muslim. Cầu xin Allah chấp nhận đây là một sự bố thí lâu dài (sadaqah jariyah) và ban cho họ lòng thương xót cùng sự tha thứ của Ngài.🤲❤️"
+      },
+      {
+        "language": "vi",
+        "name": "vi-390",
+        "direction": "ltr",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 844,
+          "right": 390,
+          "bottom": 844
+        },
+        "rect": {
+          "x": 20,
+          "y": 632,
+          "width": 350,
+          "height": 116,
+          "right": 370,
+          "bottom": 748
+        },
+        "text": "2026 © Islamic. Ứng dụng này là món quà dành tặng cha mẹ kính yêu của tôi và toàn thể cộng đồng Muslim. Cầu xin Allah chấp nhận đây là một sự bố thí lâu dài (sadaqah jariyah) và ban cho họ lòng thương xót cùng sự tha thứ của Ngài.🤲❤️"
+      },
+      {
+        "language": "az",
+        "name": "az-280",
+        "direction": "ltr",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "rect": {
+          "x": 20,
+          "y": 488,
+          "width": 240,
+          "height": 136,
+          "right": 260,
+          "bottom": 624
+        },
+        "text": "2026 © Islamic. Bu tətbiq əziz valideynlərimə və bütün müsəlman ümmətinə bir hədiyyədir. Allah bunu sədəqeyi-cariyə olaraq qəbul etsin, onlara Öz rəhmətini və məğfirətini bəxş etsin.🤲❤️"
+      },
+      {
+        "language": "az",
+        "name": "az-390",
+        "direction": "ltr",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 844,
+          "right": 390,
+          "bottom": 844
+        },
+        "rect": {
+          "x": 20,
+          "y": 652,
+          "width": 350,
+          "height": 96,
+          "right": 370,
+          "bottom": 748
+        },
+        "text": "2026 © Islamic. Bu tətbiq əziz valideynlərimə və bütün müsəlman ümmətinə bir hədiyyədir. Allah bunu sədəqeyi-cariyə olaraq qəbul etsin, onlara Öz rəhmətini və məğfirətini bəxş etsin.🤲❤️"
+      },
+      {
+        "language": "bs",
+        "name": "bs-280",
+        "direction": "ltr",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "rect": {
+          "x": 20,
+          "y": 508,
+          "width": 240,
+          "height": 116,
+          "right": 260,
+          "bottom": 624
+        },
+        "text": "2026 © Islamic. Ova aplikacija je hedija mojim voljenim roditeljima i cijelom muslimanskom ummetu. Neka je Allah primi kao trajnu sadaku i podari im Svoju milost i oprost.🤲❤️"
+      },
+      {
+        "language": "bs",
+        "name": "bs-390",
+        "direction": "ltr",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 844,
+          "right": 390,
+          "bottom": 844
+        },
+        "rect": {
+          "x": 20,
+          "y": 652,
+          "width": 350,
+          "height": 96,
+          "right": 370,
+          "bottom": 748
+        },
+        "text": "2026 © Islamic. Ova aplikacija je hedija mojim voljenim roditeljima i cijelom muslimanskom ummetu. Neka je Allah primi kao trajnu sadaku i podari im Svoju milost i oprost.🤲❤️"
+      },
+      {
+        "language": "bg",
+        "name": "bg-280",
+        "direction": "ltr",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "rect": {
+          "x": 20,
+          "y": 508,
+          "width": 240,
+          "height": 116,
+          "right": 260,
+          "bottom": 624
+        },
+        "text": "2026 © Islamic. Това приложение е подарък за моите обични родители и за цялата мюсюлманска общност. Нека Аллах го приеме като садака джария и ги дари със Своята милост и опрощение.🤲❤️"
+      },
+      {
+        "language": "bg",
+        "name": "bg-390",
+        "direction": "ltr",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 844,
+          "right": 390,
+          "bottom": 844
+        },
+        "rect": {
+          "x": 20,
+          "y": 652,
+          "width": 350,
+          "height": 96,
+          "right": 370,
+          "bottom": 748
+        },
+        "text": "2026 © Islamic. Това приложение е подарък за моите обични родители и за цялата мюсюлманска общност. Нека Аллах го приеме като садака джария и ги дари със Своята милост и опрощение.🤲❤️"
+      },
+      {
+        "language": "si",
+        "name": "si-280",
+        "direction": "ltr",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "rect": {
+          "x": 20,
+          "y": 488,
+          "width": 240,
+          "height": 136,
+          "right": 260,
+          "bottom": 624
+        },
+        "text": "2026 © Islamic. මෙම යෙදුම මාගේ ආදරණීය දෙමාපියන්ට සහ සමස්ත මුස්ලිම් උම්මාවට පිරිනමන ත්‍යාගයකි. අල්ලාහ් මෙය සදකා ජාරියා ලෙස පිළිගෙන, ඔවුන්ට ඔහුගේ දයාව සහ සමාව ලබා දෙත්වා.🤲❤️"
+      },
+      {
+        "language": "si",
+        "name": "si-390",
+        "direction": "ltr",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 844,
+          "right": 390,
+          "bottom": 844
+        },
+        "rect": {
+          "x": 20,
+          "y": 652,
+          "width": 350,
+          "height": 96,
+          "right": 370,
+          "bottom": 748
+        },
+        "text": "2026 © Islamic. මෙම යෙදුම මාගේ ආදරණීය දෙමාපියන්ට සහ සමස්ත මුස්ලිම් උම්මාවට පිරිනමන ත්‍යාගයකි. අල්ලාහ් මෙය සදකා ජාරියා ලෙස පිළිගෙන, ඔවුන්ට ඔහුගේ දයාව සහ සමාව ලබා දෙත්වා.🤲❤️"
+      },
+      {
+        "language": "ps",
+        "name": "ps-280",
+        "direction": "rtl",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "rect": {
+          "x": 20,
+          "y": 508,
+          "width": 240,
+          "height": 116,
+          "right": 260,
+          "bottom": 624
+        },
+        "text": "2026 © Islamic. دا اپ زما ګرانو مور او پلار او ټول مسلمان امت ته یوه ډالۍ ده. الله دې دا د صدقې جاریې په توګه قبول کړي او هغوی ته دې خپل رحمت او مغفرت ورپه برخه کړي.🤲❤️"
+      },
+      {
+        "language": "ps",
+        "name": "ps-390",
+        "direction": "rtl",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 844,
+          "right": 390,
+          "bottom": 844
+        },
+        "rect": {
+          "x": 20,
+          "y": 672,
+          "width": 350,
+          "height": 76,
+          "right": 370,
+          "bottom": 748
+        },
+        "text": "2026 © Islamic. دا اپ زما ګرانو مور او پلار او ټول مسلمان امت ته یوه ډالۍ ده. الله دې دا د صدقې جاریې په توګه قبول کړي او هغوی ته دې خپل رحمت او مغفرت ورپه برخه کړي.🤲❤️"
+      }
+    ],
+    "localizedStatuses": [
+      {
+        "language": "en",
+        "width": 280,
+        "copied": "Link copied. Paste it into a message.",
+        "error": "Could not complete this action. Please try again or open Google Play."
+      },
+      {
+        "language": "en",
+        "width": 390,
+        "copied": "Link copied. Paste it into a message.",
+        "error": "Could not complete this action. Please try again or open Google Play."
+      },
+      {
+        "language": "ar",
+        "width": 280,
+        "copied": "نُسخ الرابط. الصقه في رسالة.",
+        "error": "تعذّر إكمال هذا الإجراء. يرجى المحاولة مجددًا أو فتح Google Play."
+      },
+      {
+        "language": "ar",
+        "width": 390,
+        "copied": "نُسخ الرابط. الصقه في رسالة.",
+        "error": "تعذّر إكمال هذا الإجراء. يرجى المحاولة مجددًا أو فتح Google Play."
+      },
+      {
+        "language": "ur",
+        "width": 280,
+        "copied": "لنک کاپی ہو گیا۔ اسے پیغام میں پیسٹ کریں۔",
+        "error": "یہ عمل مکمل نہیں ہو سکا۔ دوبارہ کوشش کریں یا Google Play کھولیں۔"
+      },
+      {
+        "language": "ur",
+        "width": 390,
+        "copied": "لنک کاپی ہو گیا۔ اسے پیغام میں پیسٹ کریں۔",
+        "error": "یہ عمل مکمل نہیں ہو سکا۔ دوبارہ کوشش کریں یا Google Play کھولیں۔"
+      },
+      {
+        "language": "fr",
+        "width": 280,
+        "copied": "Lien copié. Collez-le dans un message.",
+        "error": "Cette action a échoué. Réessayez ou ouvrez Google Play."
+      },
+      {
+        "language": "fr",
+        "width": 390,
+        "copied": "Lien copié. Collez-le dans un message.",
+        "error": "Cette action a échoué. Réessayez ou ouvrez Google Play."
+      },
+      {
+        "language": "tr",
+        "width": 280,
+        "copied": "Bağlantı kopyalandı. Bir mesaja yapıştırın.",
+        "error": "Bu işlem tamamlanamadı. Tekrar deneyin veya Google Play’i açın."
+      },
+      {
+        "language": "tr",
+        "width": 390,
+        "copied": "Bağlantı kopyalandı. Bir mesaja yapıştırın.",
+        "error": "Bu işlem tamamlanamadı. Tekrar deneyin veya Google Play’i açın."
+      },
+      {
+        "language": "ru",
+        "width": 280,
+        "copied": "Ссылка скопирована. Вставьте её в сообщение.",
+        "error": "Не удалось выполнить действие. Повторите попытку или откройте Google Play."
+      },
+      {
+        "language": "ru",
+        "width": 390,
+        "copied": "Ссылка скопирована. Вставьте её в сообщение.",
+        "error": "Не удалось выполнить действие. Повторите попытку или откройте Google Play."
+      },
+      {
+        "language": "bn",
+        "width": 280,
+        "copied": "লিংক কপি হয়েছে। এটি একটি বার্তায় পেস্ট করুন।",
+        "error": "এই কাজটি সম্পূর্ণ করা যায়নি। আবার চেষ্টা করুন অথবা Google Play খুলুন।"
+      },
+      {
+        "language": "bn",
+        "width": 390,
+        "copied": "লিংক কপি হয়েছে। এটি একটি বার্তায় পেস্ট করুন।",
+        "error": "এই কাজটি সম্পূর্ণ করা যায়নি। আবার চেষ্টা করুন অথবা Google Play খুলুন।"
+      },
+      {
+        "language": "ms",
+        "width": 280,
+        "copied": "Pautan disalin. Tampalkannya ke dalam mesej.",
+        "error": "Tindakan ini tidak dapat diselesaikan. Cuba lagi atau buka Google Play."
+      },
+      {
+        "language": "ms",
+        "width": 390,
+        "copied": "Pautan disalin. Tampalkannya ke dalam mesej.",
+        "error": "Tindakan ini tidak dapat diselesaikan. Cuba lagi atau buka Google Play."
+      },
+      {
+        "language": "ta",
+        "width": 280,
+        "copied": "இணைப்பு நகலெடுக்கப்பட்டது. செய்தியில் ஒட்டவும்.",
+        "error": "இந்தச் செயலை முடிக்க முடியவில்லை. மீண்டும் முயற்சிக்கவும் அல்லது Google Play ஐத் திறக்கவும்."
+      },
+      {
+        "language": "ta",
+        "width": 390,
+        "copied": "இணைப்பு நகலெடுக்கப்பட்டது. செய்தியில் ஒட்டவும்.",
+        "error": "இந்தச் செயலை முடிக்க முடியவில்லை. மீண்டும் முயற்சிக்கவும் அல்லது Google Play ஐத் திறக்கவும்."
+      },
+      {
+        "language": "zh",
+        "width": 280,
+        "copied": "链接已复制。请粘贴到消息中。",
+        "error": "无法完成此操作。请重试或打开 Google Play。"
+      },
+      {
+        "language": "zh",
+        "width": 390,
+        "copied": "链接已复制。请粘贴到消息中。",
+        "error": "无法完成此操作。请重试或打开 Google Play。"
+      },
+      {
+        "language": "fa",
+        "width": 280,
+        "copied": "پیوند کپی شد. آن را در یک پیام جای‌گذاری کنید.",
+        "error": "این کار انجام نشد. دوباره تلاش کنید یا Google Play را باز کنید."
+      },
+      {
+        "language": "fa",
+        "width": 390,
+        "copied": "پیوند کپی شد. آن را در یک پیام جای‌گذاری کنید.",
+        "error": "این کار انجام نشد. دوباره تلاش کنید یا Google Play را باز کنید."
+      },
+      {
+        "language": "id",
+        "width": 280,
+        "copied": "Tautan disalin. Tempelkan ke pesan.",
+        "error": "Tindakan ini tidak dapat diselesaikan. Coba lagi atau buka Google Play."
+      },
+      {
+        "language": "id",
+        "width": 390,
+        "copied": "Tautan disalin. Tempelkan ke pesan.",
+        "error": "Tindakan ini tidak dapat diselesaikan. Coba lagi atau buka Google Play."
+      },
+      {
+        "language": "hi",
+        "width": 280,
+        "copied": "लिंक कॉपी हो गया। इसे किसी संदेश में पेस्ट करें।",
+        "error": "यह काम पूरा नहीं हो सका। फिर कोशिश करें या Google Play खोलें।"
+      },
+      {
+        "language": "hi",
+        "width": 390,
+        "copied": "लिंक कॉपी हो गया। इसे किसी संदेश में पेस्ट करें।",
+        "error": "यह काम पूरा नहीं हो सका। फिर कोशिश करें या Google Play खोलें।"
+      },
+      {
+        "language": "ml",
+        "width": 280,
+        "copied": "ലിങ്ക് പകർത്തി. ഒരു സന്ദേശത്തിൽ ഒട്ടിക്കുക.",
+        "error": "ഈ പ്രവർത്തനം പൂർത്തിയാക്കാനായില്ല. വീണ്ടും ശ്രമിക്കുക അല്ലെങ്കിൽ Google Play തുറക്കുക."
+      },
+      {
+        "language": "ml",
+        "width": 390,
+        "copied": "ലിങ്ക് പകർത്തി. ഒരു സന്ദേശത്തിൽ ഒട്ടിക്കുക.",
+        "error": "ഈ പ്രവർത്തനം പൂർത്തിയാക്കാനായില്ല. വീണ്ടും ശ്രമിക്കുക അല്ലെങ്കിൽ Google Play തുറക്കുക."
+      },
+      {
+        "language": "uz",
+        "width": 280,
+        "copied": "Ҳавола нусхаланди. Уни хабарга жойланг.",
+        "error": "Бу амал бажарилмади. Қайта уриниб кўринг ёки Google Play орқали очинг."
+      },
+      {
+        "language": "uz",
+        "width": 390,
+        "copied": "Ҳавола нусхаланди. Уни хабарга жойланг.",
+        "error": "Бу амал бажарилмади. Қайта уриниб кўринг ёки Google Play орқали очинг."
+      },
+      {
+        "language": "kk",
+        "width": 280,
+        "copied": "Сілтеме көшірілді. Оны хабарламаға қойыңыз.",
+        "error": "Бұл әрекет орындалмады. Қайталап көріңіз немесе Google Play арқылы ашыңыз."
+      },
+      {
+        "language": "kk",
+        "width": 390,
+        "copied": "Сілтеме көшірілді. Оны хабарламаға қойыңыз.",
+        "error": "Бұл әрекет орындалмады. Қайталап көріңіз немесе Google Play арқылы ашыңыз."
+      },
+      {
+        "language": "vi",
+        "width": 280,
+        "copied": "Đã sao chép liên kết. Hãy dán vào tin nhắn.",
+        "error": "Không thể hoàn tất thao tác. Hãy thử lại hoặc mở Google Play."
+      },
+      {
+        "language": "vi",
+        "width": 390,
+        "copied": "Đã sao chép liên kết. Hãy dán vào tin nhắn.",
+        "error": "Không thể hoàn tất thao tác. Hãy thử lại hoặc mở Google Play."
+      },
+      {
+        "language": "az",
+        "width": 280,
+        "copied": "Keçid kopyalandı. Onu mesaja yapışdırın.",
+        "error": "Bu əməliyyat tamamlanmadı. Yenidən cəhd edin və ya Google Play-i açın."
+      },
+      {
+        "language": "az",
+        "width": 390,
+        "copied": "Keçid kopyalandı. Onu mesaja yapışdırın.",
+        "error": "Bu əməliyyat tamamlanmadı. Yenidən cəhd edin və ya Google Play-i açın."
+      },
+      {
+        "language": "bs",
+        "width": 280,
+        "copied": "Link je kopiran. Zalijepite ga u poruku.",
+        "error": "Radnja nije dovršena. Pokušajte ponovo ili otvorite Google Play."
+      },
+      {
+        "language": "bs",
+        "width": 390,
+        "copied": "Link je kopiran. Zalijepite ga u poruku.",
+        "error": "Radnja nije dovršena. Pokušajte ponovo ili otvorite Google Play."
+      },
+      {
+        "language": "bg",
+        "width": 280,
+        "copied": "Връзката е копирана. Поставете я в съобщение.",
+        "error": "Действието не бе завършено. Опитайте отново или отворете Google Play."
+      },
+      {
+        "language": "bg",
+        "width": 390,
+        "copied": "Връзката е копирана. Поставете я в съобщение.",
+        "error": "Действието не бе завършено. Опитайте отново или отворете Google Play."
+      },
+      {
+        "language": "si",
+        "width": 280,
+        "copied": "සබැඳිය පිටපත් විය. එය පණිවිඩයක අලවන්න.",
+        "error": "මෙම ක්‍රියාව සම්පූර්ණ කළ නොහැකි විය. නැවත උත්සාහ කරන්න හෝ Google Play විවෘත කරන්න."
+      },
+      {
+        "language": "si",
+        "width": 390,
+        "copied": "සබැඳිය පිටපත් විය. එය පණිවිඩයක අලවන්න.",
+        "error": "මෙම ක්‍රියාව සම්පූර්ණ කළ නොහැකි විය. නැවත උත්සාහ කරන්න හෝ Google Play විවෘත කරන්න."
+      },
+      {
+        "language": "ps",
+        "width": 280,
+        "copied": "لینک کاپي شو. په پیغام کې یې ونښلوئ.",
+        "error": "دا کار بشپړ نه شو. بیا هڅه وکړئ یا Google Play پرانیزئ."
+      },
+      {
+        "language": "ps",
+        "width": 390,
+        "copied": "لینک کاپي شو. په پیغام کې یې ونښلوئ.",
+        "error": "دا کار بشپړ نه شو. بیا هڅه وکړئ یا Google Play پرانیزئ."
+      }
+    ],
+    "errors": [
+      {
+        "page": [],
+        "console": [],
+        "http": [],
+        "requests": []
+      },
+      {
+        "page": [],
+        "console": [],
+        "http": [],
+        "requests": []
+      },
+      {
+        "page": [],
+        "console": [],
+        "http": [],
+        "requests": []
+      },
+      {
+        "page": [],
+        "console": [],
+        "http": [],
+        "requests": []
+      },
+      {
+        "page": [],
+        "console": [],
+        "http": [],
+        "requests": []
+      },
+      {
+        "page": [],
+        "console": [],
+        "http": [],
+        "requests": []
+      },
+      {
+        "page": [],
+        "console": [],
+        "http": [],
+        "requests": []
+      },
+      {
+        "page": [],
+        "console": [],
+        "http": [],
+        "requests": []
+      },
+      {
+        "page": [],
+        "console": [],
+        "http": [],
+        "requests": []
+      },
+      {
+        "page": [],
+        "console": [],
+        "http": [],
+        "requests": []
+      },
+      {
+        "page": [],
+        "console": [],
+        "http": [],
+        "requests": []
+      },
+      {
+        "page": [],
+        "console": [],
+        "http": [],
+        "requests": []
+      },
+      {
+        "page": [],
+        "console": [],
+        "http": [],
+        "requests": []
+      },
+      {
+        "page": [],
+        "console": [],
+        "http": [],
+        "requests": []
+      },
+      {
+        "page": [],
+        "console": [],
+        "http": [],
+        "requests": []
+      },
+      {
+        "page": [],
+        "console": [],
+        "http": [],
+        "requests": []
+      },
+      {
+        "page": [],
+        "console": [],
+        "http": [],
+        "requests": []
+      },
+      {
+        "page": [],
+        "console": [],
+        "http": [],
+        "requests": []
+      },
+      {
+        "page": [],
+        "console": [],
+        "http": [],
+        "requests": []
+      },
+      {
+        "page": [],
+        "console": [],
+        "http": [],
+        "requests": []
+      },
+      {
+        "page": [],
+        "console": [],
+        "http": [],
+        "requests": []
+      },
+      {
+        "page": [],
+        "console": [],
+        "http": [],
+        "requests": []
+      },
+      {
+        "page": [],
+        "console": [],
+        "http": [],
+        "requests": []
+      },
+      {
+        "page": [],
+        "console": [],
+        "http": [],
+        "requests": []
+      }
+    ],
+    "qrDecode": {
+      "decoder": "OpenCV 4.11.0 QRCodeDetector",
+      "count": 51,
+      "results": [
+        {
+          "file": "qr-ar-280.png",
+          "width": 196,
+          "height": 196,
+          "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+        },
+        {
+          "file": "qr-ar-390.png",
+          "width": 294,
+          "height": 294,
+          "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+        },
+        {
+          "file": "qr-ar-live-switch.png",
+          "width": 294,
+          "height": 294,
+          "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+        },
+        {
+          "file": "qr-ar-restored.png",
+          "width": 294,
+          "height": 294,
+          "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+        },
+        {
+          "file": "qr-az-280.png",
+          "width": 196,
+          "height": 196,
+          "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+        },
+        {
+          "file": "qr-az-390.png",
+          "width": 294,
+          "height": 294,
+          "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+        },
+        {
+          "file": "qr-bg-280.png",
+          "width": 196,
+          "height": 196,
+          "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+        },
+        {
+          "file": "qr-bg-390.png",
+          "width": 294,
+          "height": 294,
+          "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+        },
+        {
+          "file": "qr-bn-280.png",
+          "width": 196,
+          "height": 196,
+          "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+        },
+        {
+          "file": "qr-bn-390.png",
+          "width": 294,
+          "height": 294,
+          "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+        },
+        {
+          "file": "qr-bs-280.png",
+          "width": 196,
+          "height": 196,
+          "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+        },
+        {
+          "file": "qr-bs-390.png",
+          "width": 294,
+          "height": 294,
+          "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+        },
+        {
+          "file": "qr-compact.png",
+          "width": 196,
+          "height": 196,
+          "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+        },
+        {
+          "file": "qr-en-280.png",
+          "width": 196,
+          "height": 196,
+          "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+        },
+        {
+          "file": "qr-en-390.png",
+          "width": 294,
+          "height": 294,
+          "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+        },
+        {
+          "file": "qr-en-phone.png",
+          "width": 294,
+          "height": 294,
+          "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+        },
+        {
+          "file": "qr-fa-280.png",
+          "width": 196,
+          "height": 196,
+          "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+        },
+        {
+          "file": "qr-fa-390.png",
+          "width": 294,
+          "height": 294,
+          "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+        },
+        {
+          "file": "qr-fr-280.png",
+          "width": 196,
+          "height": 196,
+          "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+        },
+        {
+          "file": "qr-fr-390.png",
+          "width": 294,
+          "height": 294,
+          "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+        },
+        {
+          "file": "qr-hi-280.png",
+          "width": 196,
+          "height": 196,
+          "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+        },
+        {
+          "file": "qr-hi-390.png",
+          "width": 294,
+          "height": 294,
+          "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+        },
+        {
+          "file": "qr-id-280.png",
+          "width": 196,
+          "height": 196,
+          "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+        },
+        {
+          "file": "qr-id-390.png",
+          "width": 294,
+          "height": 294,
+          "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+        },
+        {
+          "file": "qr-kk-280.png",
+          "width": 196,
+          "height": 196,
+          "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+        },
+        {
+          "file": "qr-kk-390.png",
+          "width": 294,
+          "height": 294,
+          "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+        },
+        {
+          "file": "qr-landscape.png",
+          "width": 294,
+          "height": 294,
+          "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+        },
+        {
+          "file": "qr-ml-280.png",
+          "width": 196,
+          "height": 196,
+          "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+        },
+        {
+          "file": "qr-ml-390.png",
+          "width": 294,
+          "height": 294,
+          "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+        },
+        {
+          "file": "qr-ms-280.png",
+          "width": 196,
+          "height": 196,
+          "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+        },
+        {
+          "file": "qr-ms-390.png",
+          "width": 294,
+          "height": 294,
+          "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+        },
+        {
+          "file": "qr-offline.png",
+          "width": 294,
+          "height": 294,
+          "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+        },
+        {
+          "file": "qr-ps-280.png",
+          "width": 196,
+          "height": 196,
+          "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+        },
+        {
+          "file": "qr-ps-390.png",
+          "width": 294,
+          "height": 294,
+          "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+        },
+        {
+          "file": "qr-ru-280.png",
+          "width": 196,
+          "height": 196,
+          "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+        },
+        {
+          "file": "qr-ru-390.png",
+          "width": 294,
+          "height": 294,
+          "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+        },
+        {
+          "file": "qr-si-280.png",
+          "width": 196,
+          "height": 196,
+          "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+        },
+        {
+          "file": "qr-si-390.png",
+          "width": 294,
+          "height": 294,
+          "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+        },
+        {
+          "file": "qr-ta-280.png",
+          "width": 196,
+          "height": 196,
+          "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+        },
+        {
+          "file": "qr-ta-390.png",
+          "width": 294,
+          "height": 294,
+          "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+        },
+        {
+          "file": "qr-tablet.png",
+          "width": 294,
+          "height": 294,
+          "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+        },
+        {
+          "file": "qr-tr-280.png",
+          "width": 196,
+          "height": 196,
+          "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+        },
+        {
+          "file": "qr-tr-390.png",
+          "width": 294,
+          "height": 294,
+          "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+        },
+        {
+          "file": "qr-ur-280.png",
+          "width": 196,
+          "height": 196,
+          "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+        },
+        {
+          "file": "qr-ur-390.png",
+          "width": 294,
+          "height": 294,
+          "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+        },
+        {
+          "file": "qr-uz-280.png",
+          "width": 196,
+          "height": 196,
+          "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+        },
+        {
+          "file": "qr-uz-390.png",
+          "width": 294,
+          "height": 294,
+          "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+        },
+        {
+          "file": "qr-vi-280.png",
+          "width": 196,
+          "height": 196,
+          "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+        },
+        {
+          "file": "qr-vi-390.png",
+          "width": 294,
+          "height": 294,
+          "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+        },
+        {
+          "file": "qr-zh-280.png",
+          "width": 196,
+          "height": 196,
+          "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+        },
+        {
+          "file": "qr-zh-390.png",
+          "width": 294,
+          "height": 294,
+          "decoded": "https://play.google.com/store/apps/details?id=com.qashi.islamic"
+        }
+      ]
+    }
+  },
+  "focusRegression": {
+    "method": "Running production WEB, real touch/keyboard/buttons and original bundled pages; simulated insets, not native-device QA",
+    "checks": {
+      "ayahActionsAndEscape": true,
+      "repeatedTogglesAndFocusedRotation": true,
+      "swipesAndCancellation": true,
+      "keyboardEntryAndUnlock": true,
+      "topRowAyahActionsAndUnlockDoNotOverlap": true,
+      "leavingRestoresNormalMode": true,
+      "existingReaderDataUntouched": true,
+      "legacyZoomIgnoredWithoutDataDeletion": true
+    },
+    "profiles": [
+      {
+        "name": "compact",
+        "width": 240,
+        "height": 640,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 240,
+          "height": 640,
+          "right": 240,
+          "bottom": 640
+        },
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "width": 240,
+          "height": 640,
+          "right": 240,
+          "bottom": 640
+        },
+        "paper": {
+          "x": 6,
+          "y": 133.046875,
+          "width": 228,
+          "height": 373.90625,
+          "right": 234,
+          "bottom": 506.953125
+        },
+        "control": {
+          "x": 188,
+          "y": 8,
+          "width": 44,
+          "height": 44,
+          "right": 232,
+          "bottom": 52
+        },
+        "outline": {
+          "paths": 160,
+          "outside": [],
+          "overlapping": []
+        },
+        "label": "Unlock · Focus mode"
+      },
+      {
+        "name": "cover",
+        "width": 280,
+        "height": 720,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "paper": {
+          "x": 6,
+          "y": 140.234375,
+          "width": 268,
+          "height": 439.515625,
+          "right": 274,
+          "bottom": 579.75
+        },
+        "control": {
+          "x": 228,
+          "y": 8,
+          "width": 44,
+          "height": 44,
+          "right": 272,
+          "bottom": 52
+        },
+        "outline": {
+          "paths": 160,
+          "outside": [],
+          "overlapping": []
+        },
+        "label": "Unlock · Focus mode"
+      },
+      {
+        "name": "small",
+        "width": 320,
+        "height": 568,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 320,
+          "height": 568,
+          "right": 320,
+          "bottom": 568
+        },
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "width": 320,
+          "height": 568,
+          "right": 320,
+          "bottom": 568
+        },
+        "paper": {
+          "x": 6,
+          "y": 31.4375,
+          "width": 308,
+          "height": 505.109375,
+          "right": 314,
+          "bottom": 536.546875
+        },
+        "control": {
+          "x": 268,
+          "y": 8,
+          "width": 44,
+          "height": 44,
+          "right": 312,
+          "bottom": 52
+        },
+        "outline": {
+          "paths": 160,
+          "outside": [],
+          "overlapping": []
+        },
+        "label": "Unlock · Focus mode"
+      },
+      {
+        "name": "phone",
+        "width": 390,
+        "height": 844,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 844,
+          "right": 390,
+          "bottom": 844
+        },
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 844,
+          "right": 390,
+          "bottom": 844
+        },
+        "paper": {
+          "x": 6,
+          "y": 112.046875,
+          "width": 378,
+          "height": 619.90625,
+          "right": 384,
+          "bottom": 731.953125
+        },
+        "control": {
+          "x": 338,
+          "y": 8,
+          "width": 44,
+          "height": 44,
+          "right": 382,
+          "bottom": 52
+        },
+        "outline": {
+          "paths": 160,
+          "outside": [],
+          "overlapping": []
+        },
+        "label": "Unlock · Focus mode"
+      },
+      {
+        "name": "near-paper-ratio",
+        "width": 390,
+        "height": 640,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 640,
+          "right": 390,
+          "bottom": 640
+        },
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 640,
+          "right": 390,
+          "bottom": 640
+        },
+        "paper": {
+          "x": 15.0625,
+          "y": 24.890625,
+          "width": 359.875,
+          "height": 590.21875,
+          "right": 374.9375,
+          "bottom": 615.109375
+        },
+        "control": {
+          "x": 338,
+          "y": 8,
+          "width": 44,
+          "height": 44,
+          "right": 382,
+          "bottom": 52
+        },
+        "outline": {
+          "paths": 160,
+          "outside": [],
+          "overlapping": []
+        },
+        "label": "Unlock · Focus mode"
+      },
+      {
+        "name": "landscape",
+        "width": 844,
+        "height": 390,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 844,
+          "height": 390,
+          "right": 844,
+          "bottom": 390
+        },
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "width": 844,
+          "height": 390,
+          "right": 844,
+          "bottom": 390
+        },
+        "paper": {
+          "x": 306.75,
+          "y": 6,
+          "width": 230.484375,
+          "height": 378,
+          "right": 537.234375,
+          "bottom": 384
+        },
+        "control": {
+          "x": 792,
+          "y": 8,
+          "width": 44,
+          "height": 44,
+          "right": 836,
+          "bottom": 52
+        },
+        "outline": {
+          "paths": 160,
+          "outside": [],
+          "overlapping": []
+        },
+        "label": "Unlock · Focus mode"
+      },
+      {
+        "name": "tablet",
+        "width": 800,
+        "height": 1280,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 800,
+          "height": 1280,
+          "right": 800,
+          "bottom": 1280
+        },
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "width": 800,
+          "height": 1280,
+          "right": 800,
+          "bottom": 1280
+        },
+        "paper": {
+          "x": 13.421875,
+          "y": 6,
+          "width": 773.15625,
+          "height": 1268,
+          "right": 786.578125,
+          "bottom": 1274
+        },
+        "control": {
+          "x": 748,
+          "y": 8,
+          "width": 44,
+          "height": 44,
+          "right": 792,
+          "bottom": 52
+        },
+        "outline": {
+          "paths": 160,
+          "outside": [],
+          "overlapping": []
+        },
+        "label": "Unlock · Focus mode"
+      },
+      {
+        "name": "tablet-landscape",
+        "width": 1280,
+        "height": 800,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 1280,
+          "height": 800,
+          "right": 1280,
+          "bottom": 800
+        },
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "width": 1280,
+          "height": 800,
+          "right": 1280,
+          "bottom": 800
+        },
+        "paper": {
+          "x": 399.75,
+          "y": 6,
+          "width": 480.484375,
+          "height": 788,
+          "right": 880.234375,
+          "bottom": 794
+        },
+        "control": {
+          "x": 1228,
+          "y": 8,
+          "width": 44,
+          "height": 44,
+          "right": 1272,
+          "bottom": 52
+        },
+        "outline": {
+          "paths": 160,
+          "outside": [],
+          "overlapping": []
+        },
+        "label": "Unlock · Focus mode"
+      },
+      {
+        "name": "desktop",
+        "width": 1440,
+        "height": 900,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 1440,
+          "height": 900,
+          "right": 1440,
+          "bottom": 900
+        },
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "width": 1440,
+          "height": 900,
+          "right": 1440,
+          "bottom": 900
+        },
+        "paper": {
+          "x": 449.265625,
+          "y": 6,
+          "width": 541.453125,
+          "height": 888,
+          "right": 990.71875,
+          "bottom": 894
+        },
+        "control": {
+          "x": 1388,
+          "y": 8,
+          "width": 44,
+          "height": 44,
+          "right": 1432,
+          "bottom": 52
+        },
+        "outline": {
+          "paths": 160,
+          "outside": [],
+          "overlapping": []
+        },
+        "label": "Unlock · Focus mode"
+      }
+    ],
+    "insets": [
+      {
+        "name": "gestures",
+        "safe": {
+          "x": 0,
+          "y": 24,
+          "width": 390,
+          "height": 796,
+          "right": 390,
+          "bottom": 820
+        },
+        "viewport": {
+          "x": 0,
+          "y": 24,
+          "width": 390,
+          "height": 796,
+          "right": 390,
+          "bottom": 820
+        },
+        "paper": {
+          "x": 6,
+          "y": 112.046875,
+          "width": 378,
+          "height": 619.90625,
+          "right": 384,
+          "bottom": 731.953125
+        },
+        "control": {
+          "x": 338,
+          "y": 32,
+          "width": 44,
+          "height": 44,
+          "right": 382,
+          "bottom": 76
+        },
+        "outline": {
+          "paths": 160,
+          "outside": [],
+          "overlapping": []
+        },
+        "label": "Unlock · Focus mode"
+      },
+      {
+        "name": "buttons",
+        "safe": {
+          "x": 0,
+          "y": 24,
+          "width": 390,
+          "height": 772,
+          "right": 390,
+          "bottom": 796
+        },
+        "viewport": {
+          "x": 0,
+          "y": 24,
+          "width": 390,
+          "height": 772,
+          "right": 390,
+          "bottom": 796
+        },
+        "paper": {
+          "x": 6,
+          "y": 100.046875,
+          "width": 378,
+          "height": 619.90625,
+          "right": 384,
+          "bottom": 719.953125
+        },
+        "control": {
+          "x": 338,
+          "y": 32,
+          "width": 44,
+          "height": 44,
+          "right": 382,
+          "bottom": 76
+        },
+        "outline": {
+          "paths": 160,
+          "outside": [],
+          "overlapping": []
+        },
+        "label": "Unlock · Focus mode"
+      },
+      {
+        "name": "larger-keys",
+        "safe": {
+          "x": 0,
+          "y": 30,
+          "width": 280,
+          "height": 626,
+          "right": 280,
+          "bottom": 656
+        },
+        "viewport": {
+          "x": 0,
+          "y": 30,
+          "width": 280,
+          "height": 626,
+          "right": 280,
+          "bottom": 656
+        },
+        "paper": {
+          "x": 6,
+          "y": 123.234375,
+          "width": 268,
+          "height": 439.515625,
+          "right": 274,
+          "bottom": 562.75
+        },
+        "control": {
+          "x": 228,
+          "y": 38,
+          "width": 44,
+          "height": 44,
+          "right": 272,
+          "bottom": 82
+        },
+        "outline": {
+          "paths": 160,
+          "outside": [],
+          "overlapping": []
+        },
+        "label": "Unlock · Focus mode"
+      },
+      {
+        "name": "right-keys",
+        "safe": {
+          "x": 0,
+          "y": 24,
+          "width": 796,
+          "height": 366,
+          "right": 796,
+          "bottom": 390
+        },
+        "viewport": {
+          "x": 0,
+          "y": 24,
+          "width": 796,
+          "height": 366,
+          "right": 796,
+          "bottom": 390
+        },
+        "paper": {
+          "x": 290.078125,
+          "y": 30,
+          "width": 215.84375,
+          "height": 354,
+          "right": 505.921875,
+          "bottom": 384
+        },
+        "control": {
+          "x": 744,
+          "y": 32,
+          "width": 44,
+          "height": 44,
+          "right": 788,
+          "bottom": 76
+        },
+        "outline": {
+          "paths": 160,
+          "outside": [],
+          "overlapping": []
+        },
+        "label": "Unlock · Focus mode"
+      },
+      {
+        "name": "left-keys",
+        "safe": {
+          "x": 48,
+          "y": 24,
+          "width": 796,
+          "height": 366,
+          "right": 844,
+          "bottom": 390
+        },
+        "viewport": {
+          "x": 48,
+          "y": 24,
+          "width": 796,
+          "height": 366,
+          "right": 844,
+          "bottom": 390
+        },
+        "paper": {
+          "x": 338.078125,
+          "y": 30,
+          "width": 215.84375,
+          "height": 354,
+          "right": 553.921875,
+          "bottom": 384
+        },
+        "control": {
+          "x": 792,
+          "y": 32,
+          "width": 44,
+          "height": 44,
+          "right": 836,
+          "bottom": 76
+        },
+        "outline": {
+          "paths": 160,
+          "outside": [],
+          "overlapping": []
+        },
+        "label": "Unlock · Focus mode"
+      }
+    ],
+    "localized": [
+      {
+        "language": "en",
+        "width": 280,
+        "focusLabel": "Focus mode",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "paper": {
+          "x": 6,
+          "y": 140.234375,
+          "width": 268,
+          "height": 439.515625,
+          "right": 274,
+          "bottom": 579.75
+        },
+        "control": {
+          "x": 228,
+          "y": 8,
+          "width": 44,
+          "height": 44,
+          "right": 272,
+          "bottom": 52
+        },
+        "outline": {
+          "paths": 160,
+          "outside": [],
+          "overlapping": []
+        },
+        "label": "Unlock · Focus mode"
+      },
+      {
+        "language": "en",
+        "width": 390,
+        "focusLabel": "Focus mode",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 720,
+          "right": 390,
+          "bottom": 720
+        },
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 720,
+          "right": 390,
+          "bottom": 720
+        },
+        "paper": {
+          "x": 6,
+          "y": 50.046875,
+          "width": 378,
+          "height": 619.90625,
+          "right": 384,
+          "bottom": 669.953125
+        },
+        "control": {
+          "x": 338,
+          "y": 8,
+          "width": 44,
+          "height": 44,
+          "right": 382,
+          "bottom": 52
+        },
+        "outline": {
+          "paths": 160,
+          "outside": [],
+          "overlapping": []
+        },
+        "label": "Unlock · Focus mode"
+      },
+      {
+        "language": "ar",
+        "width": 280,
+        "focusLabel": "وضع التركيز",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "paper": {
+          "x": 6,
+          "y": 140.234375,
+          "width": 268,
+          "height": 439.515625,
+          "right": 274,
+          "bottom": 579.75
+        },
+        "control": {
+          "x": 228,
+          "y": 8,
+          "width": 44,
+          "height": 44,
+          "right": 272,
+          "bottom": 52
+        },
+        "outline": {
+          "paths": 160,
+          "outside": [],
+          "overlapping": []
+        },
+        "label": "فتح القفل · وضع التركيز"
+      },
+      {
+        "language": "ar",
+        "width": 390,
+        "focusLabel": "وضع التركيز",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 720,
+          "right": 390,
+          "bottom": 720
+        },
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 720,
+          "right": 390,
+          "bottom": 720
+        },
+        "paper": {
+          "x": 6,
+          "y": 50.046875,
+          "width": 378,
+          "height": 619.90625,
+          "right": 384,
+          "bottom": 669.953125
+        },
+        "control": {
+          "x": 338,
+          "y": 8,
+          "width": 44,
+          "height": 44,
+          "right": 382,
+          "bottom": 52
+        },
+        "outline": {
+          "paths": 160,
+          "outside": [],
+          "overlapping": []
+        },
+        "label": "فتح القفل · وضع التركيز"
+      },
+      {
+        "language": "ur",
+        "width": 280,
+        "focusLabel": "فوکس موڈ",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "paper": {
+          "x": 6,
+          "y": 140.234375,
+          "width": 268,
+          "height": 439.515625,
+          "right": 274,
+          "bottom": 579.75
+        },
+        "control": {
+          "x": 228,
+          "y": 8,
+          "width": 44,
+          "height": 44,
+          "right": 272,
+          "bottom": 52
+        },
+        "outline": {
+          "paths": 160,
+          "outside": [],
+          "overlapping": []
+        },
+        "label": "ان لاک کریں · فوکس موڈ"
+      },
+      {
+        "language": "ur",
+        "width": 390,
+        "focusLabel": "فوکس موڈ",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 720,
+          "right": 390,
+          "bottom": 720
+        },
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 720,
+          "right": 390,
+          "bottom": 720
+        },
+        "paper": {
+          "x": 6,
+          "y": 50.046875,
+          "width": 378,
+          "height": 619.90625,
+          "right": 384,
+          "bottom": 669.953125
+        },
+        "control": {
+          "x": 338,
+          "y": 8,
+          "width": 44,
+          "height": 44,
+          "right": 382,
+          "bottom": 52
+        },
+        "outline": {
+          "paths": 160,
+          "outside": [],
+          "overlapping": []
+        },
+        "label": "ان لاک کریں · فوکس موڈ"
+      },
+      {
+        "language": "fa",
+        "width": 280,
+        "focusLabel": "حالت تمرکز",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "paper": {
+          "x": 6,
+          "y": 140.234375,
+          "width": 268,
+          "height": 439.515625,
+          "right": 274,
+          "bottom": 579.75
+        },
+        "control": {
+          "x": 228,
+          "y": 8,
+          "width": 44,
+          "height": 44,
+          "right": 272,
+          "bottom": 52
+        },
+        "outline": {
+          "paths": 160,
+          "outside": [],
+          "overlapping": []
+        },
+        "label": "باز کردن قفل · حالت تمرکز"
+      },
+      {
+        "language": "fa",
+        "width": 390,
+        "focusLabel": "حالت تمرکز",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 720,
+          "right": 390,
+          "bottom": 720
+        },
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 720,
+          "right": 390,
+          "bottom": 720
+        },
+        "paper": {
+          "x": 6,
+          "y": 50.046875,
+          "width": 378,
+          "height": 619.90625,
+          "right": 384,
+          "bottom": 669.953125
+        },
+        "control": {
+          "x": 338,
+          "y": 8,
+          "width": 44,
+          "height": 44,
+          "right": 382,
+          "bottom": 52
+        },
+        "outline": {
+          "paths": 160,
+          "outside": [],
+          "overlapping": []
+        },
+        "label": "باز کردن قفل · حالت تمرکز"
+      },
+      {
+        "language": "ps",
+        "width": 280,
+        "focusLabel": "د تمرکز حالت",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "paper": {
+          "x": 6,
+          "y": 140.234375,
+          "width": 268,
+          "height": 439.515625,
+          "right": 274,
+          "bottom": 579.75
+        },
+        "control": {
+          "x": 228,
+          "y": 8,
+          "width": 44,
+          "height": 44,
+          "right": 272,
+          "bottom": 52
+        },
+        "outline": {
+          "paths": 160,
+          "outside": [],
+          "overlapping": []
+        },
+        "label": "خلاصول · د تمرکز حالت"
+      },
+      {
+        "language": "ps",
+        "width": 390,
+        "focusLabel": "د تمرکز حالت",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 720,
+          "right": 390,
+          "bottom": 720
+        },
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 720,
+          "right": 390,
+          "bottom": 720
+        },
+        "paper": {
+          "x": 6,
+          "y": 50.046875,
+          "width": 378,
+          "height": 619.90625,
+          "right": 384,
+          "bottom": 669.953125
+        },
+        "control": {
+          "x": 338,
+          "y": 8,
+          "width": 44,
+          "height": 44,
+          "right": 382,
+          "bottom": 52
+        },
+        "outline": {
+          "paths": 160,
+          "outside": [],
+          "overlapping": []
+        },
+        "label": "خلاصول · د تمرکز حالت"
+      },
+      {
+        "language": "fr",
+        "width": 280,
+        "focusLabel": "Mode concentration",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "paper": {
+          "x": 6,
+          "y": 140.234375,
+          "width": 268,
+          "height": 439.515625,
+          "right": 274,
+          "bottom": 579.75
+        },
+        "control": {
+          "x": 228,
+          "y": 8,
+          "width": 44,
+          "height": 44,
+          "right": 272,
+          "bottom": 52
+        },
+        "outline": {
+          "paths": 160,
+          "outside": [],
+          "overlapping": []
+        },
+        "label": "Déverrouiller · Mode concentration"
+      },
+      {
+        "language": "fr",
+        "width": 390,
+        "focusLabel": "Mode concentration",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 720,
+          "right": 390,
+          "bottom": 720
+        },
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 720,
+          "right": 390,
+          "bottom": 720
+        },
+        "paper": {
+          "x": 6,
+          "y": 50.046875,
+          "width": 378,
+          "height": 619.90625,
+          "right": 384,
+          "bottom": 669.953125
+        },
+        "control": {
+          "x": 338,
+          "y": 8,
+          "width": 44,
+          "height": 44,
+          "right": 382,
+          "bottom": 52
+        },
+        "outline": {
+          "paths": 160,
+          "outside": [],
+          "overlapping": []
+        },
+        "label": "Déverrouiller · Mode concentration"
+      },
+      {
+        "language": "tr",
+        "width": 280,
+        "focusLabel": "Odak modu",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "paper": {
+          "x": 6,
+          "y": 140.234375,
+          "width": 268,
+          "height": 439.515625,
+          "right": 274,
+          "bottom": 579.75
+        },
+        "control": {
+          "x": 228,
+          "y": 8,
+          "width": 44,
+          "height": 44,
+          "right": 272,
+          "bottom": 52
+        },
+        "outline": {
+          "paths": 160,
+          "outside": [],
+          "overlapping": []
+        },
+        "label": "Kilidi aç · Odak modu"
+      },
+      {
+        "language": "tr",
+        "width": 390,
+        "focusLabel": "Odak modu",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 720,
+          "right": 390,
+          "bottom": 720
+        },
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 720,
+          "right": 390,
+          "bottom": 720
+        },
+        "paper": {
+          "x": 6,
+          "y": 50.046875,
+          "width": 378,
+          "height": 619.90625,
+          "right": 384,
+          "bottom": 669.953125
+        },
+        "control": {
+          "x": 338,
+          "y": 8,
+          "width": 44,
+          "height": 44,
+          "right": 382,
+          "bottom": 52
+        },
+        "outline": {
+          "paths": 160,
+          "outside": [],
+          "overlapping": []
+        },
+        "label": "Kilidi aç · Odak modu"
+      },
+      {
+        "language": "ru",
+        "width": 280,
+        "focusLabel": "Режим фокуса",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "paper": {
+          "x": 6,
+          "y": 140.234375,
+          "width": 268,
+          "height": 439.515625,
+          "right": 274,
+          "bottom": 579.75
+        },
+        "control": {
+          "x": 228,
+          "y": 8,
+          "width": 44,
+          "height": 44,
+          "right": 272,
+          "bottom": 52
+        },
+        "outline": {
+          "paths": 160,
+          "outside": [],
+          "overlapping": []
+        },
+        "label": "Разблокировать · Режим фокуса"
+      },
+      {
+        "language": "ru",
+        "width": 390,
+        "focusLabel": "Режим фокуса",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 720,
+          "right": 390,
+          "bottom": 720
+        },
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 720,
+          "right": 390,
+          "bottom": 720
+        },
+        "paper": {
+          "x": 6,
+          "y": 50.046875,
+          "width": 378,
+          "height": 619.90625,
+          "right": 384,
+          "bottom": 669.953125
+        },
+        "control": {
+          "x": 338,
+          "y": 8,
+          "width": 44,
+          "height": 44,
+          "right": 382,
+          "bottom": 52
+        },
+        "outline": {
+          "paths": 160,
+          "outside": [],
+          "overlapping": []
+        },
+        "label": "Разблокировать · Режим фокуса"
+      },
+      {
+        "language": "uz",
+        "width": 280,
+        "focusLabel": "Диққат режими",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "paper": {
+          "x": 6,
+          "y": 140.234375,
+          "width": 268,
+          "height": 439.515625,
+          "right": 274,
+          "bottom": 579.75
+        },
+        "control": {
+          "x": 228,
+          "y": 8,
+          "width": 44,
+          "height": 44,
+          "right": 272,
+          "bottom": 52
+        },
+        "outline": {
+          "paths": 160,
+          "outside": [],
+          "overlapping": []
+        },
+        "label": "Қулфни очиш · Диққат режими"
+      },
+      {
+        "language": "uz",
+        "width": 390,
+        "focusLabel": "Диққат режими",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 720,
+          "right": 390,
+          "bottom": 720
+        },
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 720,
+          "right": 390,
+          "bottom": 720
+        },
+        "paper": {
+          "x": 6,
+          "y": 50.046875,
+          "width": 378,
+          "height": 619.90625,
+          "right": 384,
+          "bottom": 669.953125
+        },
+        "control": {
+          "x": 338,
+          "y": 8,
+          "width": 44,
+          "height": 44,
+          "right": 382,
+          "bottom": 52
+        },
+        "outline": {
+          "paths": 160,
+          "outside": [],
+          "overlapping": []
+        },
+        "label": "Қулфни очиш · Диққат режими"
+      },
+      {
+        "language": "kk",
+        "width": 280,
+        "focusLabel": "Шоғырлану режимі",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "paper": {
+          "x": 6,
+          "y": 140.234375,
+          "width": 268,
+          "height": 439.515625,
+          "right": 274,
+          "bottom": 579.75
+        },
+        "control": {
+          "x": 228,
+          "y": 8,
+          "width": 44,
+          "height": 44,
+          "right": 272,
+          "bottom": 52
+        },
+        "outline": {
+          "paths": 160,
+          "outside": [],
+          "overlapping": []
+        },
+        "label": "Құлыпты ашу · Шоғырлану режимі"
+      },
+      {
+        "language": "kk",
+        "width": 390,
+        "focusLabel": "Шоғырлану режимі",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 720,
+          "right": 390,
+          "bottom": 720
+        },
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 720,
+          "right": 390,
+          "bottom": 720
+        },
+        "paper": {
+          "x": 6,
+          "y": 50.046875,
+          "width": 378,
+          "height": 619.90625,
+          "right": 384,
+          "bottom": 669.953125
+        },
+        "control": {
+          "x": 338,
+          "y": 8,
+          "width": 44,
+          "height": 44,
+          "right": 382,
+          "bottom": 52
+        },
+        "outline": {
+          "paths": 160,
+          "outside": [],
+          "overlapping": []
+        },
+        "label": "Құлыпты ашу · Шоғырлану режимі"
+      },
+      {
+        "language": "zh",
+        "width": 280,
+        "focusLabel": "专注模式",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "paper": {
+          "x": 6,
+          "y": 140.234375,
+          "width": 268,
+          "height": 439.515625,
+          "right": 274,
+          "bottom": 579.75
+        },
+        "control": {
+          "x": 228,
+          "y": 8,
+          "width": 44,
+          "height": 44,
+          "right": 272,
+          "bottom": 52
+        },
+        "outline": {
+          "paths": 160,
+          "outside": [],
+          "overlapping": []
+        },
+        "label": "解锁 · 专注模式"
+      },
+      {
+        "language": "zh",
+        "width": 390,
+        "focusLabel": "专注模式",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 720,
+          "right": 390,
+          "bottom": 720
+        },
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 720,
+          "right": 390,
+          "bottom": 720
+        },
+        "paper": {
+          "x": 6,
+          "y": 50.046875,
+          "width": 378,
+          "height": 619.90625,
+          "right": 384,
+          "bottom": 669.953125
+        },
+        "control": {
+          "x": 338,
+          "y": 8,
+          "width": 44,
+          "height": 44,
+          "right": 382,
+          "bottom": 52
+        },
+        "outline": {
+          "paths": 160,
+          "outside": [],
+          "overlapping": []
+        },
+        "label": "解锁 · 专注模式"
+      },
+      {
+        "language": "vi",
+        "width": 280,
+        "focusLabel": "Chế độ tập trung",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "paper": {
+          "x": 6,
+          "y": 140.234375,
+          "width": 268,
+          "height": 439.515625,
+          "right": 274,
+          "bottom": 579.75
+        },
+        "control": {
+          "x": 228,
+          "y": 8,
+          "width": 44,
+          "height": 44,
+          "right": 272,
+          "bottom": 52
+        },
+        "outline": {
+          "paths": 160,
+          "outside": [],
+          "overlapping": []
+        },
+        "label": "Mở khóa · Chế độ tập trung"
+      },
+      {
+        "language": "vi",
+        "width": 390,
+        "focusLabel": "Chế độ tập trung",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 720,
+          "right": 390,
+          "bottom": 720
+        },
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 720,
+          "right": 390,
+          "bottom": 720
+        },
+        "paper": {
+          "x": 6,
+          "y": 50.046875,
+          "width": 378,
+          "height": 619.90625,
+          "right": 384,
+          "bottom": 669.953125
+        },
+        "control": {
+          "x": 338,
+          "y": 8,
+          "width": 44,
+          "height": 44,
+          "right": 382,
+          "bottom": 52
+        },
+        "outline": {
+          "paths": 160,
+          "outside": [],
+          "overlapping": []
+        },
+        "label": "Mở khóa · Chế độ tập trung"
+      },
+      {
+        "language": "az",
+        "width": 280,
+        "focusLabel": "Fokus rejimi",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "paper": {
+          "x": 6,
+          "y": 140.234375,
+          "width": 268,
+          "height": 439.515625,
+          "right": 274,
+          "bottom": 579.75
+        },
+        "control": {
+          "x": 228,
+          "y": 8,
+          "width": 44,
+          "height": 44,
+          "right": 272,
+          "bottom": 52
+        },
+        "outline": {
+          "paths": 160,
+          "outside": [],
+          "overlapping": []
+        },
+        "label": "Kilidi aç · Fokus rejimi"
+      },
+      {
+        "language": "az",
+        "width": 390,
+        "focusLabel": "Fokus rejimi",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 720,
+          "right": 390,
+          "bottom": 720
+        },
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 720,
+          "right": 390,
+          "bottom": 720
+        },
+        "paper": {
+          "x": 6,
+          "y": 50.046875,
+          "width": 378,
+          "height": 619.90625,
+          "right": 384,
+          "bottom": 669.953125
+        },
+        "control": {
+          "x": 338,
+          "y": 8,
+          "width": 44,
+          "height": 44,
+          "right": 382,
+          "bottom": 52
+        },
+        "outline": {
+          "paths": 160,
+          "outside": [],
+          "overlapping": []
+        },
+        "label": "Kilidi aç · Fokus rejimi"
+      },
+      {
+        "language": "bs",
+        "width": 280,
+        "focusLabel": "Način fokusa",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "paper": {
+          "x": 6,
+          "y": 140.234375,
+          "width": 268,
+          "height": 439.515625,
+          "right": 274,
+          "bottom": 579.75
+        },
+        "control": {
+          "x": 228,
+          "y": 8,
+          "width": 44,
+          "height": 44,
+          "right": 272,
+          "bottom": 52
+        },
+        "outline": {
+          "paths": 160,
+          "outside": [],
+          "overlapping": []
+        },
+        "label": "Otključaj · Način fokusa"
+      },
+      {
+        "language": "bs",
+        "width": 390,
+        "focusLabel": "Način fokusa",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 720,
+          "right": 390,
+          "bottom": 720
+        },
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 720,
+          "right": 390,
+          "bottom": 720
+        },
+        "paper": {
+          "x": 6,
+          "y": 50.046875,
+          "width": 378,
+          "height": 619.90625,
+          "right": 384,
+          "bottom": 669.953125
+        },
+        "control": {
+          "x": 338,
+          "y": 8,
+          "width": 44,
+          "height": 44,
+          "right": 382,
+          "bottom": 52
+        },
+        "outline": {
+          "paths": 160,
+          "outside": [],
+          "overlapping": []
+        },
+        "label": "Otključaj · Način fokusa"
+      },
+      {
+        "language": "bg",
+        "width": 280,
+        "focusLabel": "Режим на съсредоточаване",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "paper": {
+          "x": 6,
+          "y": 140.234375,
+          "width": 268,
+          "height": 439.515625,
+          "right": 274,
+          "bottom": 579.75
+        },
+        "control": {
+          "x": 228,
+          "y": 8,
+          "width": 44,
+          "height": 44,
+          "right": 272,
+          "bottom": 52
+        },
+        "outline": {
+          "paths": 160,
+          "outside": [],
+          "overlapping": []
+        },
+        "label": "Отключи · Режим на съсредоточаване"
+      },
+      {
+        "language": "bg",
+        "width": 390,
+        "focusLabel": "Режим на съсредоточаване",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 720,
+          "right": 390,
+          "bottom": 720
+        },
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 720,
+          "right": 390,
+          "bottom": 720
+        },
+        "paper": {
+          "x": 6,
+          "y": 50.046875,
+          "width": 378,
+          "height": 619.90625,
+          "right": 384,
+          "bottom": 669.953125
+        },
+        "control": {
+          "x": 338,
+          "y": 8,
+          "width": 44,
+          "height": 44,
+          "right": 382,
+          "bottom": 52
+        },
+        "outline": {
+          "paths": 160,
+          "outside": [],
+          "overlapping": []
+        },
+        "label": "Отключи · Режим на съсредоточаване"
+      },
+      {
+        "language": "si",
+        "width": 280,
+        "focusLabel": "අවධාන මාදිලිය",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "paper": {
+          "x": 6,
+          "y": 140.234375,
+          "width": 268,
+          "height": 439.515625,
+          "right": 274,
+          "bottom": 579.75
+        },
+        "control": {
+          "x": 228,
+          "y": 8,
+          "width": 44,
+          "height": 44,
+          "right": 272,
+          "bottom": 52
+        },
+        "outline": {
+          "paths": 160,
+          "outside": [],
+          "overlapping": []
+        },
+        "label": "අගුළු හරින්න · අවධාන මාදිලිය"
+      },
+      {
+        "language": "si",
+        "width": 390,
+        "focusLabel": "අවධාන මාදිලිය",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 720,
+          "right": 390,
+          "bottom": 720
+        },
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 720,
+          "right": 390,
+          "bottom": 720
+        },
+        "paper": {
+          "x": 6,
+          "y": 50.046875,
+          "width": 378,
+          "height": 619.90625,
+          "right": 384,
+          "bottom": 669.953125
+        },
+        "control": {
+          "x": 338,
+          "y": 8,
+          "width": 44,
+          "height": 44,
+          "right": 382,
+          "bottom": 52
+        },
+        "outline": {
+          "paths": 160,
+          "outside": [],
+          "overlapping": []
+        },
+        "label": "අගුළු හරින්න · අවධාන මාදිලිය"
+      },
+      {
+        "language": "bn",
+        "width": 280,
+        "focusLabel": "ফোকাস মোড",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "paper": {
+          "x": 6,
+          "y": 140.234375,
+          "width": 268,
+          "height": 439.515625,
+          "right": 274,
+          "bottom": 579.75
+        },
+        "control": {
+          "x": 228,
+          "y": 8,
+          "width": 44,
+          "height": 44,
+          "right": 272,
+          "bottom": 52
+        },
+        "outline": {
+          "paths": 160,
+          "outside": [],
+          "overlapping": []
+        },
+        "label": "আনলক · ফোকাস মোড"
+      },
+      {
+        "language": "bn",
+        "width": 390,
+        "focusLabel": "ফোকাস মোড",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 720,
+          "right": 390,
+          "bottom": 720
+        },
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 720,
+          "right": 390,
+          "bottom": 720
+        },
+        "paper": {
+          "x": 6,
+          "y": 50.046875,
+          "width": 378,
+          "height": 619.90625,
+          "right": 384,
+          "bottom": 669.953125
+        },
+        "control": {
+          "x": 338,
+          "y": 8,
+          "width": 44,
+          "height": 44,
+          "right": 382,
+          "bottom": 52
+        },
+        "outline": {
+          "paths": 160,
+          "outside": [],
+          "overlapping": []
+        },
+        "label": "আনলক · ফোকাস মোড"
+      },
+      {
+        "language": "hi",
+        "width": 280,
+        "focusLabel": "फ़ोकस मोड",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "paper": {
+          "x": 6,
+          "y": 140.234375,
+          "width": 268,
+          "height": 439.515625,
+          "right": 274,
+          "bottom": 579.75
+        },
+        "control": {
+          "x": 228,
+          "y": 8,
+          "width": 44,
+          "height": 44,
+          "right": 272,
+          "bottom": 52
+        },
+        "outline": {
+          "paths": 160,
+          "outside": [],
+          "overlapping": []
+        },
+        "label": "अनलॉक · फ़ोकस मोड"
+      },
+      {
+        "language": "hi",
+        "width": 390,
+        "focusLabel": "फ़ोकस मोड",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 720,
+          "right": 390,
+          "bottom": 720
+        },
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 720,
+          "right": 390,
+          "bottom": 720
+        },
+        "paper": {
+          "x": 6,
+          "y": 50.046875,
+          "width": 378,
+          "height": 619.90625,
+          "right": 384,
+          "bottom": 669.953125
+        },
+        "control": {
+          "x": 338,
+          "y": 8,
+          "width": 44,
+          "height": 44,
+          "right": 382,
+          "bottom": 52
+        },
+        "outline": {
+          "paths": 160,
+          "outside": [],
+          "overlapping": []
+        },
+        "label": "अनलॉक · फ़ोकस मोड"
+      },
+      {
+        "language": "id",
+        "width": 280,
+        "focusLabel": "Mode fokus",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "paper": {
+          "x": 6,
+          "y": 140.234375,
+          "width": 268,
+          "height": 439.515625,
+          "right": 274,
+          "bottom": 579.75
+        },
+        "control": {
+          "x": 228,
+          "y": 8,
+          "width": 44,
+          "height": 44,
+          "right": 272,
+          "bottom": 52
+        },
+        "outline": {
+          "paths": 160,
+          "outside": [],
+          "overlapping": []
+        },
+        "label": "Buka kunci · Mode fokus"
+      },
+      {
+        "language": "id",
+        "width": 390,
+        "focusLabel": "Mode fokus",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 720,
+          "right": 390,
+          "bottom": 720
+        },
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 720,
+          "right": 390,
+          "bottom": 720
+        },
+        "paper": {
+          "x": 6,
+          "y": 50.046875,
+          "width": 378,
+          "height": 619.90625,
+          "right": 384,
+          "bottom": 669.953125
+        },
+        "control": {
+          "x": 338,
+          "y": 8,
+          "width": 44,
+          "height": 44,
+          "right": 382,
+          "bottom": 52
+        },
+        "outline": {
+          "paths": 160,
+          "outside": [],
+          "overlapping": []
+        },
+        "label": "Buka kunci · Mode fokus"
+      },
+      {
+        "language": "ms",
+        "width": 280,
+        "focusLabel": "Mod fokus",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "paper": {
+          "x": 6,
+          "y": 140.234375,
+          "width": 268,
+          "height": 439.515625,
+          "right": 274,
+          "bottom": 579.75
+        },
+        "control": {
+          "x": 228,
+          "y": 8,
+          "width": 44,
+          "height": 44,
+          "right": 272,
+          "bottom": 52
+        },
+        "outline": {
+          "paths": 160,
+          "outside": [],
+          "overlapping": []
+        },
+        "label": "Buka kunci · Mod fokus"
+      },
+      {
+        "language": "ms",
+        "width": 390,
+        "focusLabel": "Mod fokus",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 720,
+          "right": 390,
+          "bottom": 720
+        },
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 720,
+          "right": 390,
+          "bottom": 720
+        },
+        "paper": {
+          "x": 6,
+          "y": 50.046875,
+          "width": 378,
+          "height": 619.90625,
+          "right": 384,
+          "bottom": 669.953125
+        },
+        "control": {
+          "x": 338,
+          "y": 8,
+          "width": 44,
+          "height": 44,
+          "right": 382,
+          "bottom": 52
+        },
+        "outline": {
+          "paths": 160,
+          "outside": [],
+          "overlapping": []
+        },
+        "label": "Buka kunci · Mod fokus"
+      },
+      {
+        "language": "ta",
+        "width": 280,
+        "focusLabel": "கவனப் பயன்முறை",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "paper": {
+          "x": 6,
+          "y": 140.234375,
+          "width": 268,
+          "height": 439.515625,
+          "right": 274,
+          "bottom": 579.75
+        },
+        "control": {
+          "x": 228,
+          "y": 8,
+          "width": 44,
+          "height": 44,
+          "right": 272,
+          "bottom": 52
+        },
+        "outline": {
+          "paths": 160,
+          "outside": [],
+          "overlapping": []
+        },
+        "label": "பூட்டைத் திற · கவனப் பயன்முறை"
+      },
+      {
+        "language": "ta",
+        "width": 390,
+        "focusLabel": "கவனப் பயன்முறை",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 720,
+          "right": 390,
+          "bottom": 720
+        },
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 720,
+          "right": 390,
+          "bottom": 720
+        },
+        "paper": {
+          "x": 6,
+          "y": 50.046875,
+          "width": 378,
+          "height": 619.90625,
+          "right": 384,
+          "bottom": 669.953125
+        },
+        "control": {
+          "x": 338,
+          "y": 8,
+          "width": 44,
+          "height": 44,
+          "right": 382,
+          "bottom": 52
+        },
+        "outline": {
+          "paths": 160,
+          "outside": [],
+          "overlapping": []
+        },
+        "label": "பூட்டைத் திற · கவனப் பயன்முறை"
+      },
+      {
+        "language": "ml",
+        "width": 280,
+        "focusLabel": "ഏകാഗ്രതാ മോഡ്",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "width": 280,
+          "height": 720,
+          "right": 280,
+          "bottom": 720
+        },
+        "paper": {
+          "x": 6,
+          "y": 140.234375,
+          "width": 268,
+          "height": 439.515625,
+          "right": 274,
+          "bottom": 579.75
+        },
+        "control": {
+          "x": 228,
+          "y": 8,
+          "width": 44,
+          "height": 44,
+          "right": 272,
+          "bottom": 52
+        },
+        "outline": {
+          "paths": 160,
+          "outside": [],
+          "overlapping": []
+        },
+        "label": "അൺലോക്ക് · ഏകാഗ്രതാ മോഡ്"
+      },
+      {
+        "language": "ml",
+        "width": 390,
+        "focusLabel": "ഏകാഗ്രതാ മോഡ്",
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 720,
+          "right": 390,
+          "bottom": 720
+        },
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 720,
+          "right": 390,
+          "bottom": 720
+        },
+        "paper": {
+          "x": 6,
+          "y": 50.046875,
+          "width": 378,
+          "height": 619.90625,
+          "right": 384,
+          "bottom": 669.953125
+        },
+        "control": {
+          "x": 338,
+          "y": 8,
+          "width": 44,
+          "height": 44,
+          "right": 382,
+          "bottom": 52
+        },
+        "outline": {
+          "paths": 160,
+          "outside": [],
+          "overlapping": []
+        },
+        "label": "അൺലോക്ക് · ഏകാഗ്രതാ മോഡ്"
+      }
+    ],
+    "errors": [
+      {
+        "page": [],
+        "console": [],
+        "http": [],
+        "requests": []
+      },
+      {
+        "page": [],
+        "console": [],
+        "http": [],
+        "requests": []
+      },
+      {
+        "page": [],
+        "console": [],
+        "http": [],
+        "requests": []
+      },
+      {
+        "page": [],
+        "console": [],
+        "http": [],
+        "requests": []
+      },
+      {
+        "page": [],
+        "console": [],
+        "http": [],
+        "requests": []
+      },
+      {
+        "page": [],
+        "console": [],
+        "http": [],
+        "requests": []
+      },
+      {
+        "page": [],
+        "console": [],
+        "http": [],
+        "requests": []
+      },
+      {
+        "page": [],
+        "console": [],
+        "http": [],
+        "requests": []
+      },
+      {
+        "page": [],
+        "console": [],
+        "http": [],
+        "requests": []
+      },
+      {
+        "page": [],
+        "console": [],
+        "http": [],
+        "requests": []
+      },
+      {
+        "page": [],
+        "console": [],
+        "http": [],
+        "requests": []
+      },
+      {
+        "page": [],
+        "console": [],
+        "http": [],
+        "requests": []
+      },
+      {
+        "page": [],
+        "console": [],
+        "http": [],
+        "requests": []
+      },
+      {
+        "page": [],
+        "console": [],
+        "http": [],
+        "requests": []
+      },
+      {
+        "page": [],
+        "console": [],
+        "http": [],
+        "requests": []
+      },
+      {
+        "page": [],
+        "console": [],
+        "http": [],
+        "requests": []
+      },
+      {
+        "page": [],
+        "console": [],
+        "http": [],
+        "requests": []
+      },
+      {
+        "page": [],
+        "console": [],
+        "http": [],
+        "requests": []
+      },
+      {
+        "page": [],
+        "console": [],
+        "http": [],
+        "requests": []
+      },
+      {
+        "page": [],
+        "console": [],
+        "http": [],
+        "requests": []
+      },
+      {
+        "page": [],
+        "console": [],
+        "http": [],
+        "requests": []
+      },
+      {
+        "page": [],
+        "console": [],
+        "http": [],
+        "requests": []
+      },
+      {
+        "page": [],
+        "console": [],
+        "http": [],
+        "requests": []
+      },
+      {
+        "page": [],
+        "console": [],
+        "http": [],
+        "requests": []
+      }
+    ]
+  },
+  "freshBrowserSummary": {
+    "contexts": 48,
+    "shareContexts": 24,
+    "focusRegressionContexts": 24,
+    "shareLayouts": 50,
+    "dedicationLayouts": 51,
+    "localizedCopiedErrorPairs": 44,
+    "independentlyDecodedQrScreenshots": 51
+  },
+  "exports": {
+    "web": {
+      "passed": true,
+      "artifactDirectory": "/home/user/.cache/islamic-validation/r105-web-final2",
+      "bundle": "_expo/static/js/web/index-736b0914a49be3740440742255f2897c.js",
+      "bytes": 24201922,
+      "gzipBytes": 6652046,
+      "sha256": "7dda98eb1c4e8582a7b7e70580a12862144ad37a3a347a1738f8ce4569ceddec",
+      "originalFontCopies": [
+        "assets/assets/fonts/IndopakNastaleeq.51aff7449ae51ff5b54ea98eed919504.ttf"
+      ]
+    },
+    "android": {
+      "passed": true,
+      "artifactDirectory": "/home/user/.cache/islamic-validation/r105-android-final",
+      "bundle": "_expo/static/js/android/index-856ce1783e4fcc532d87d122590fa7b6.hbc",
+      "bytes": 29095674,
+      "gzipBytes": 8493534,
+      "sha256": "30edd6853c25f25cabf79301601a963cdc521efc56c15bfac5fa24e75e0e5e62",
+      "originalFontCopies": [
+        "assets/51aff7449ae51ff5b54ea98eed919504"
+      ]
+    },
+    "ios": {
+      "passed": true,
+      "artifactDirectory": "/home/user/.cache/islamic-validation/r105-ios-final",
+      "bundle": "_expo/static/js/ios/index-60025cecdf55bdb1185ae72d8092f395.hbc",
+      "bytes": 29084287,
+      "gzipBytes": 8490194,
+      "sha256": "cea6e37475babc9fb3b719bc27b5ea3195552df1bcd0a701a7b0830a8cc580e4",
+      "originalFontCopies": [
+        "assets/51aff7449ae51ff5b54ea98eed919504"
+      ]
+    }
+  },
+  "integrity": {
+    "baseCommit": "1bc7a1fdee79def8fa2f438279baab36c7c1ee65",
+    "r104ProtectedPathsStillUnchanged": 456,
+    "protectedTrackedPathsChecked": 473,
+    "protectedDiffEmpty": true,
+    "protectedPaths": [
+      "app.json",
+      "assets/fonts/IndopakNastaleeq.ttf",
+      "assets/tool-icons/99-names-of-allah-dark-palestine.webp",
+      "assets/tool-icons/99-names-of-allah-dark.webp",
+      "assets/tool-icons/99-names-of-allah-palestine.webp",
+      "assets/tool-icons/99-names-of-allah.webp",
+      "assets/tool-icons/adhan-dark.webp",
+      "assets/tool-icons/adhan.webp",
+      "assets/tool-icons/adhkar-dark-palestine.webp",
+      "assets/tool-icons/adhkar-dark.webp",
+      "assets/tool-icons/adhkar-palestine.webp",
+      "assets/tool-icons/adhkar.webp",
+      "assets/tool-icons/audio-dark-palestine.webp",
+      "assets/tool-icons/audio-dark.webp",
+      "assets/tool-icons/audio-palestine.webp",
+      "assets/tool-icons/audio.webp",
+      "assets/tool-icons/backup-dark-palestine.webp",
+      "assets/tool-icons/backup-dark.webp",
+      "assets/tool-icons/backup-palestine.webp",
+      "assets/tool-icons/backup.webp",
+      "assets/tool-icons/biometric-unlock-dark-palestine.webp",
+      "assets/tool-icons/biometric-unlock-dark.webp",
+      "assets/tool-icons/biometric-unlock-palestine.webp",
+      "assets/tool-icons/biometric-unlock.webp",
+      "assets/tool-icons/bookmarks-dark-palestine.webp",
+      "assets/tool-icons/bookmarks-dark.webp",
+      "assets/tool-icons/bookmarks-palestine.webp",
+      "assets/tool-icons/bookmarks.webp",
+      "assets/tool-icons/corrections-dark-palestine.webp",
+      "assets/tool-icons/corrections-palestine.webp",
+      "assets/tool-icons/cycle-dark-palestine.webp",
+      "assets/tool-icons/cycle-dark.webp",
+      "assets/tool-icons/cycle-palestine.webp",
+      "assets/tool-icons/cycle.webp",
+      "assets/tool-icons/cycles-dark-palestine.webp",
+      "assets/tool-icons/cycles-palestine.webp",
+      "assets/tool-icons/data-sources-dark-palestine.webp",
+      "assets/tool-icons/data-sources-dark.webp",
+      "assets/tool-icons/data-sources-palestine.webp",
+      "assets/tool-icons/data-sources.webp",
+      "assets/tool-icons/downloads-dark.webp",
+      "assets/tool-icons/downloads.webp",
+      "assets/tool-icons/duas-dark-palestine.webp",
+      "assets/tool-icons/duas-dark.webp",
+      "assets/tool-icons/duas-palestine.webp",
+      "assets/tool-icons/duas.webp",
+      "assets/tool-icons/eid-guide-dark-palestine.webp",
+      "assets/tool-icons/eid-guide-dark.webp",
+      "assets/tool-icons/eid-guide-palestine.webp",
+      "assets/tool-icons/eid-guide.webp",
+      "assets/tool-icons/evening-adhkar-dark.webp",
+      "assets/tool-icons/evening-adhkar.webp",
+      "assets/tool-icons/fasting-guide-dark-palestine.webp",
+      "assets/tool-icons/fasting-guide-dark.webp",
+      "assets/tool-icons/fasting-guide-palestine.webp",
+      "assets/tool-icons/fasting-guide.webp",
+      "assets/tool-icons/fasting-tracker-dark-palestine.webp",
+      "assets/tool-icons/fasting-tracker-dark.webp",
+      "assets/tool-icons/fasting-tracker-palestine.webp",
+      "assets/tool-icons/fasting-tracker.webp",
+      "assets/tool-icons/ghusl-dark-palestine.webp",
+      "assets/tool-icons/ghusl-dark.webp",
+      "assets/tool-icons/ghusl-palestine.webp",
+      "assets/tool-icons/ghusl.webp",
+      "assets/tool-icons/hadith-dark-palestine.webp",
+      "assets/tool-icons/hadith-dark.webp",
+      "assets/tool-icons/hadith-palestine.webp",
+      "assets/tool-icons/hadith.webp",
+      "assets/tool-icons/hajj-dark-palestine.webp",
+      "assets/tool-icons/hajj-dark.webp",
+      "assets/tool-icons/hajj-palestine.webp",
+      "assets/tool-icons/hajj.webp",
+      "assets/tool-icons/header-notifications-palestine-dark.webp",
+      "assets/tool-icons/header-notifications-palestine.webp",
+      "assets/tool-icons/header-settings-palestine-dark.webp",
+      "assets/tool-icons/header-settings-palestine.webp",
+      "assets/tool-icons/header-theme-palestine-dark.webp",
+      "assets/tool-icons/header-theme-palestine.webp",
+      "assets/tool-icons/hifz-dark-palestine.webp",
+      "assets/tool-icons/hifz-dark.webp",
+      "assets/tool-icons/hifz-palestine.webp",
+      "assets/tool-icons/hifz.webp",
+      "assets/tool-icons/hijri-dark-palestine.webp",
+      "assets/tool-icons/hijri-dark.webp",
+      "assets/tool-icons/hijri-palestine.webp",
+      "assets/tool-icons/hijri.webp",
+      "assets/tool-icons/hizb-dark-palestine.webp",
+      "assets/tool-icons/hizb-dark.webp",
+      "assets/tool-icons/hizb-palestine.webp",
+      "assets/tool-icons/hizb.webp",
+      "assets/tool-icons/holy-sites-dark.webp",
+      "assets/tool-icons/holy-sites.webp",
+      "assets/tool-icons/istihada-dark-palestine.webp",
+      "assets/tool-icons/istihada-dark.webp",
+      "assets/tool-icons/istihada-palestine.webp",
+      "assets/tool-icons/istihada.webp",
+      "assets/tool-icons/istikhara-guide-dark-palestine.webp",
+      "assets/tool-icons/istikhara-guide-dark.webp",
+      "assets/tool-icons/istikhara-guide-palestine.webp",
+      "assets/tool-icons/istikhara-guide.webp",
+      "assets/tool-icons/janazah-guide-dark-palestine.webp",
+      "assets/tool-icons/janazah-guide-dark.webp",
+      "assets/tool-icons/janazah-guide-palestine.webp",
+      "assets/tool-icons/janazah-guide.webp",
+      "assets/tool-icons/journal-dark-palestine.webp",
+      "assets/tool-icons/journal-dark.webp",
+      "assets/tool-icons/journal-palestine.webp",
+      "assets/tool-icons/journal.webp",
+      "assets/tool-icons/juz-dark-palestine.webp",
+      "assets/tool-icons/juz-dark.webp",
+      "assets/tool-icons/juz-palestine.webp",
+      "assets/tool-icons/juz.webp",
+      "assets/tool-icons/khatam-dark-palestine.webp",
+      "assets/tool-icons/khatam-dark.webp",
+      "assets/tool-icons/khatam-palestine.webp",
+      "assets/tool-icons/khatam.webp",
+      "assets/tool-icons/language-dark-palestine.webp",
+      "assets/tool-icons/language-dark.webp",
+      "assets/tool-icons/language-palestine.webp",
+      "assets/tool-icons/language.webp",
+      "assets/tool-icons/laylatul-qadr-dark-palestine.webp",
+      "assets/tool-icons/laylatul-qadr-dark.webp",
+      "assets/tool-icons/laylatul-qadr-palestine.webp",
+      "assets/tool-icons/laylatul-qadr.webp",
+      "assets/tool-icons/location-dark-palestine.webp",
+      "assets/tool-icons/location-dark.webp",
+      "assets/tool-icons/location-palestine.webp",
+      "assets/tool-icons/location.webp",
+      "assets/tool-icons/madinah-live-dark-palestine.webp",
+      "assets/tool-icons/madinah-live-dark.webp",
+      "assets/tool-icons/madinah-live-palestine.webp",
+      "assets/tool-icons/madinah-live.webp",
+      "assets/tool-icons/makkah-live-dark-palestine.webp",
+      "assets/tool-icons/makkah-live-dark.webp",
+      "assets/tool-icons/makkah-live-palestine.webp",
+      "assets/tool-icons/makkah-live.webp",
+      "assets/tool-icons/morning-adhkar-dark.webp",
+      "assets/tool-icons/morning-adhkar.webp",
+      "assets/tool-icons/mushaf-pages-dark.webp",
+      "assets/tool-icons/mushaf-pages.webp",
+      "assets/tool-icons/muslim-names-dark-palestine.webp",
+      "assets/tool-icons/muslim-names-dark.webp",
+      "assets/tool-icons/muslim-names-palestine.webp",
+      "assets/tool-icons/muslim-names.webp",
+      "assets/tool-icons/my-reports-dark-palestine.webp",
+      "assets/tool-icons/my-reports-dark.webp",
+      "assets/tool-icons/my-reports-palestine.webp",
+      "assets/tool-icons/my-reports.webp",
+      "assets/tool-icons/notes-dark-palestine.webp",
+      "assets/tool-icons/notes-dark.webp",
+      "assets/tool-icons/notes-palestine.webp",
+      "assets/tool-icons/notes.webp",
+      "assets/tool-icons/notifications-dark.webp",
+      "assets/tool-icons/notifications.webp",
+      "assets/tool-icons/offline-quran-dark-palestine.webp",
+      "assets/tool-icons/offline-quran-dark.webp",
+      "assets/tool-icons/offline-quran-palestine.webp",
+      "assets/tool-icons/offline-quran.webp",
+      "assets/tool-icons/pilgrimage-dark.webp",
+      "assets/tool-icons/pilgrimage.webp",
+      "assets/tool-icons/pray-rakah-dark-palestine.webp",
+      "assets/tool-icons/pray-rakah-dark.webp",
+      "assets/tool-icons/pray-rakah-palestine.webp",
+      "assets/tool-icons/pray-rakah.webp",
+      "assets/tool-icons/prayer-asr-dark-palestine.webp",
+      "assets/tool-icons/prayer-asr-dark.webp",
+      "assets/tool-icons/prayer-asr-palestine.webp",
+      "assets/tool-icons/prayer-asr.webp",
+      "assets/tool-icons/prayer-dhuhr-dark-palestine.webp",
+      "assets/tool-icons/prayer-dhuhr-dark.webp",
+      "assets/tool-icons/prayer-dhuhr-palestine.webp",
+      "assets/tool-icons/prayer-dhuhr.webp",
+      "assets/tool-icons/prayer-fajr-dark-palestine.webp",
+      "assets/tool-icons/prayer-fajr-dark.webp",
+      "assets/tool-icons/prayer-fajr-palestine.webp",
+      "assets/tool-icons/prayer-fajr.webp",
+      "assets/tool-icons/prayer-isha-dark-palestine.webp",
+      "assets/tool-icons/prayer-isha-dark.webp",
+      "assets/tool-icons/prayer-isha-palestine.webp",
+      "assets/tool-icons/prayer-isha.webp",
+      "assets/tool-icons/prayer-maghrib-dark-palestine.webp",
+      "assets/tool-icons/prayer-maghrib-dark.webp",
+      "assets/tool-icons/prayer-maghrib-palestine.webp",
+      "assets/tool-icons/prayer-maghrib.webp",
+      "assets/tool-icons/prayer-reminders-dark-palestine.webp",
+      "assets/tool-icons/prayer-reminders-dark.webp",
+      "assets/tool-icons/prayer-reminders-palestine.webp",
+      "assets/tool-icons/prayer-reminders.webp",
+      "assets/tool-icons/privacy-lock-dark-palestine.webp",
+      "assets/tool-icons/privacy-lock-dark.webp",
+      "assets/tool-icons/privacy-lock-palestine.webp",
+      "assets/tool-icons/privacy-lock.webp",
+      "assets/tool-icons/prophet-names-dark-palestine.webp",
+      "assets/tool-icons/prophet-names-dark.webp",
+      "assets/tool-icons/prophet-names-palestine.webp",
+      "assets/tool-icons/prophet-names.webp",
+      "assets/tool-icons/purity-dark-palestine.webp",
+      "assets/tool-icons/purity-dark.webp",
+      "assets/tool-icons/purity-palestine.webp",
+      "assets/tool-icons/purity.webp",
+      "assets/tool-icons/qada-fasts-2-dark-palestine.webp",
+      "assets/tool-icons/qada-fasts-2-palestine.webp",
+      "assets/tool-icons/qada-fasts-dark-palestine.webp",
+      "assets/tool-icons/qada-fasts-dark.webp",
+      "assets/tool-icons/qada-fasts-palestine.webp",
+      "assets/tool-icons/qada-fasts.webp",
+      "assets/tool-icons/qada-prayer-dark-palestine.webp",
+      "assets/tool-icons/qada-prayer-dark.webp",
+      "assets/tool-icons/qada-prayer-palestine.webp",
+      "assets/tool-icons/qada-prayer.webp",
+      "assets/tool-icons/qibla-dark-palestine.webp",
+      "assets/tool-icons/qibla-dark.webp",
+      "assets/tool-icons/qibla-palestine.webp",
+      "assets/tool-icons/qibla.webp",
+      "assets/tool-icons/quran-arabic-dark.webp",
+      "assets/tool-icons/quran-arabic.webp",
+      "assets/tool-icons/quran-dark-palestine.webp",
+      "assets/tool-icons/quran-dark.webp",
+      "assets/tool-icons/quran-english-dark.webp",
+      "assets/tool-icons/quran-english.webp",
+      "assets/tool-icons/quran-palestine.webp",
+      "assets/tool-icons/quran-reading-dark-palestine.webp",
+      "assets/tool-icons/quran-reading-dark.webp",
+      "assets/tool-icons/quran-reading-palestine.webp",
+      "assets/tool-icons/quran-reading.webp",
+      "assets/tool-icons/quran-search-dark.webp",
+      "assets/tool-icons/quran-search.webp",
+      "assets/tool-icons/quran-topics-dark.webp",
+      "assets/tool-icons/quran-topics.webp",
+      "assets/tool-icons/quran-vocabulary-dark.webp",
+      "assets/tool-icons/quran-vocabulary.webp",
+      "assets/tool-icons/quran.webp",
+      "assets/tool-icons/ramadan-dark-palestine.webp",
+      "assets/tool-icons/ramadan-dark.webp",
+      "assets/tool-icons/ramadan-palestine.webp",
+      "assets/tool-icons/ramadan-planner-dark-palestine.webp",
+      "assets/tool-icons/ramadan-planner-dark.webp",
+      "assets/tool-icons/ramadan-planner-palestine.webp",
+      "assets/tool-icons/ramadan-planner.webp",
+      "assets/tool-icons/ramadan.webp",
+      "assets/tool-icons/reader-settings-dark-palestine.webp",
+      "assets/tool-icons/reader-settings-dark.webp",
+      "assets/tool-icons/reader-settings-palestine.webp",
+      "assets/tool-icons/reader-settings.webp",
+      "assets/tool-icons/reading-plans-dark-palestine.webp",
+      "assets/tool-icons/reading-plans-dark.webp",
+      "assets/tool-icons/reading-plans-palestine.webp",
+      "assets/tool-icons/reading-plans.webp",
+      "assets/tool-icons/recitations-dark.webp",
+      "assets/tool-icons/recitations.webp",
+      "assets/tool-icons/ritual-arafat-dark-palestine.webp",
+      "assets/tool-icons/ritual-arafat-dark.webp",
+      "assets/tool-icons/ritual-arafat-palestine.webp",
+      "assets/tool-icons/ritual-arafat.webp",
+      "assets/tool-icons/ritual-ihram-dark-palestine.webp",
+      "assets/tool-icons/ritual-ihram-dark.webp",
+      "assets/tool-icons/ritual-ihram-palestine.webp",
+      "assets/tool-icons/ritual-ihram.webp",
+      "assets/tool-icons/ritual-jamarat-dark-palestine.webp",
+      "assets/tool-icons/ritual-jamarat-dark.webp",
+      "assets/tool-icons/ritual-jamarat-palestine.webp",
+      "assets/tool-icons/ritual-jamarat.webp",
+      "assets/tool-icons/ritual-mina-dark-palestine.webp",
+      "assets/tool-icons/ritual-mina-dark.webp",
+      "assets/tool-icons/ritual-mina-palestine.webp",
+      "assets/tool-icons/ritual-mina.webp",
+      "assets/tool-icons/ritual-sai-dark-palestine.webp",
+      "assets/tool-icons/ritual-sai-dark.webp",
+      "assets/tool-icons/ritual-sai-palestine.webp",
+      "assets/tool-icons/ritual-sai.webp",
+      "assets/tool-icons/ritual-shave-or-trim-hair-dark-palestine.webp",
+      "assets/tool-icons/ritual-shave-or-trim-hair-dark.webp",
+      "assets/tool-icons/ritual-shave-or-trim-hair-palestine.webp",
+      "assets/tool-icons/ritual-shave-or-trim-hair.webp",
+      "assets/tool-icons/ritual-tawaf-dark-palestine.webp",
+      "assets/tool-icons/ritual-tawaf-dark.webp",
+      "assets/tool-icons/ritual-tawaf-palestine.webp",
+      "assets/tool-icons/ritual-tawaf.webp",
+      "assets/tool-icons/sadaqah-dark-palestine.webp",
+      "assets/tool-icons/sadaqah-dark.webp",
+      "assets/tool-icons/sadaqah-palestine.webp",
+      "assets/tool-icons/sadaqah.webp",
+      "assets/tool-icons/salah-guide-dark-palestine.webp",
+      "assets/tool-icons/salah-guide-dark.webp",
+      "assets/tool-icons/salah-guide-palestine.webp",
+      "assets/tool-icons/salah-guide.webp",
+      "assets/tool-icons/salah-tracker-dark-palestine.webp",
+      "assets/tool-icons/salah-tracker-dark.webp",
+      "assets/tool-icons/salah-tracker-palestine.webp",
+      "assets/tool-icons/salah-tracker.webp",
+      "assets/tool-icons/settings-dark.webp",
+      "assets/tool-icons/settings.webp",
+      "assets/tool-icons/shahada-dark-palestine.webp",
+      "assets/tool-icons/shahada-dark.webp",
+      "assets/tool-icons/shahada-palestine.webp",
+      "assets/tool-icons/shahada.webp",
+      "assets/tool-icons/storage-dark-palestine.webp",
+      "assets/tool-icons/storage-dark.webp",
+      "assets/tool-icons/storage-palestine.webp",
+      "assets/tool-icons/storage.webp",
+      "assets/tool-icons/sunnah-prayers-dark-palestine.webp",
+      "assets/tool-icons/sunnah-prayers-dark.webp",
+      "assets/tool-icons/sunnah-prayers-palestine.webp",
+      "assets/tool-icons/sunnah-prayers.webp",
+      "assets/tool-icons/sunrise-dark.webp",
+      "assets/tool-icons/sunrise.webp",
+      "assets/tool-icons/tab-home-dark.webp",
+      "assets/tool-icons/tab-home-palestine-dark.webp",
+      "assets/tool-icons/tab-home-palestine.webp",
+      "assets/tool-icons/tab-home.webp",
+      "assets/tool-icons/tab-library-dark.webp",
+      "assets/tool-icons/tab-library-palestine-dark.webp",
+      "assets/tool-icons/tab-library-palestine.webp",
+      "assets/tool-icons/tab-library.webp",
+      "assets/tool-icons/tab-prayer-dark.webp",
+      "assets/tool-icons/tab-prayer-palestine-dark.webp",
+      "assets/tool-icons/tab-prayer-palestine.webp",
+      "assets/tool-icons/tab-prayer.webp",
+      "assets/tool-icons/tab-quran-dark.webp",
+      "assets/tool-icons/tab-quran-palestine-dark.webp",
+      "assets/tool-icons/tab-quran-palestine.webp",
+      "assets/tool-icons/tab-quran.webp",
+      "assets/tool-icons/tab-tools-dark.webp",
+      "assets/tool-icons/tab-tools-palestine-dark.webp",
+      "assets/tool-icons/tab-tools-palestine.webp",
+      "assets/tool-icons/tab-tools.webp",
+      "assets/tool-icons/tafsir-dark-palestine.webp",
+      "assets/tool-icons/tafsir-dark.webp",
+      "assets/tool-icons/tafsir-palestine.webp",
+      "assets/tool-icons/tafsir.webp",
+      "assets/tool-icons/tajweed-dark-palestine.webp",
+      "assets/tool-icons/tajweed-dark.webp",
+      "assets/tool-icons/tajweed-palestine.webp",
+      "assets/tool-icons/tajweed.webp",
+      "assets/tool-icons/taraweeh-guide-dark-palestine.webp",
+      "assets/tool-icons/taraweeh-guide-dark.webp",
+      "assets/tool-icons/taraweeh-guide-palestine.webp",
+      "assets/tool-icons/taraweeh-guide.webp",
+      "assets/tool-icons/tasbih-dark-palestine.webp",
+      "assets/tool-icons/tasbih-dark.webp",
+      "assets/tool-icons/tasbih-palestine.webp",
+      "assets/tool-icons/tasbih.webp",
+      "assets/tool-icons/theme-dark-palestine.webp",
+      "assets/tool-icons/theme-dark.webp",
+      "assets/tool-icons/theme-palestine.webp",
+      "assets/tool-icons/theme-switch-dark.webp",
+      "assets/tool-icons/theme-switch.webp",
+      "assets/tool-icons/theme.webp",
+      "assets/tool-icons/these-days-dark-palestine.webp",
+      "assets/tool-icons/these-days-dark.webp",
+      "assets/tool-icons/these-days-palestine.webp",
+      "assets/tool-icons/these-days.webp",
+      "assets/tool-icons/topics-dark-palestine.webp",
+      "assets/tool-icons/topics-palestine.webp",
+      "assets/tool-icons/translation-compare-dark.webp",
+      "assets/tool-icons/translation-compare.webp",
+      "assets/tool-icons/translations-dark-palestine.webp",
+      "assets/tool-icons/translations-dark.webp",
+      "assets/tool-icons/translations-palestine.webp",
+      "assets/tool-icons/translations.webp",
+      "assets/tool-icons/transliteration-dark-palestine.webp",
+      "assets/tool-icons/transliteration-dark.webp",
+      "assets/tool-icons/transliteration-palestine.webp",
+      "assets/tool-icons/transliteration.webp",
+      "assets/tool-icons/umrah-dark-palestine.webp",
+      "assets/tool-icons/umrah-dark.webp",
+      "assets/tool-icons/umrah-palestine.webp",
+      "assets/tool-icons/umrah-resources-dark-palestine.webp",
+      "assets/tool-icons/umrah-resources-dark.webp",
+      "assets/tool-icons/umrah-resources-palestine.webp",
+      "assets/tool-icons/umrah-resources.webp",
+      "assets/tool-icons/umrah.webp",
+      "assets/tool-icons/vocab-dark-palestine.webp",
+      "assets/tool-icons/vocab-palestine.webp",
+      "assets/tool-icons/weekly-summary-dark-palestine.webp",
+      "assets/tool-icons/weekly-summary-dark.webp",
+      "assets/tool-icons/weekly-summary-palestine.webp",
+      "assets/tool-icons/weekly-summary.webp",
+      "assets/tool-icons/womens-area-dark-palestine.webp",
+      "assets/tool-icons/womens-area-dark.webp",
+      "assets/tool-icons/womens-area-palestine.webp",
+      "assets/tool-icons/womens-area.webp",
+      "assets/tool-icons/worship-guides-dark-palestine.webp",
+      "assets/tool-icons/worship-guides-dark.webp",
+      "assets/tool-icons/worship-guides-palestine.webp",
+      "assets/tool-icons/worship-guides.webp",
+      "assets/tool-icons/wudu-guide-dark-palestine.webp",
+      "assets/tool-icons/wudu-guide-dark.webp",
+      "assets/tool-icons/wudu-guide-palestine.webp",
+      "assets/tool-icons/wudu-guide.webp",
+      "assets/tool-icons/zakat-dark-palestine.webp",
+      "assets/tool-icons/zakat-dark.webp",
+      "assets/tool-icons/zakat-fitr-dark-palestine.webp",
+      "assets/tool-icons/zakat-fitr-dark.webp",
+      "assets/tool-icons/zakat-fitr-palestine.webp",
+      "assets/tool-icons/zakat-fitr.webp",
+      "assets/tool-icons/zakat-palestine.webp",
+      "assets/tool-icons/zakat.webp",
+      "branding/android-icon-background.png",
+      "branding/android-icon-foreground.png",
+      "branding/android-icon-monochrome.png",
+      "branding/app-icon.png",
+      "branding/favicon.png",
+      "branding/ios-icon-dark.png",
+      "branding/ios-icon-light.png",
+      "branding/logo-mark-palestine.png",
+      "branding/logo-mark.png",
+      "branding/splash-icon.png",
+      "docs/screenshots/focus-fit-r104.png",
+      "docs/screenshots/focus-pinched-ar-dark-r104.png",
+      "docs/screenshots/focus-pinched-r104.png",
+      "docs/screenshots/share-app-ar-dark.png",
+      "docs/screenshots/share-app-en.png",
+      "docs/screenshots/share-app-settings.png",
+      "docs/share-focus-r104-gallery.html",
+      "docs/share-focus-r104.json",
+      "docs/share-focus-r104.md",
+      "package-lock.json",
+      "package.json",
+      "resources/quran/indopak-taj-16/FONT-LICENSE.txt",
+      "resources/quran/indopak-taj-16/NOTICE.md",
+      "resources/quran/indopak-taj-16/structure.json",
+      "resources/quran/indopak-taj-16/taj-indopak-16-lines.db",
+      "scripts/build-app-share-qr.cjs",
+      "src/components/AppShareQr.tsx",
+      "src/components/IndopakAyahPopover.tsx",
+      "src/components/IndopakMushafReader.tsx",
+      "src/components/IndopakPageCanvas.tsx",
+      "src/components/IndopakPageFold.tsx",
+      "src/data/app-share-qr.json",
+      "src/data/indopak16/glyphs.json",
+      "src/data/indopak16/meta.json",
+      "src/data/indopak16/pages-01.json",
+      "src/data/indopak16/pages-02.json",
+      "src/data/indopak16/pages-03.json",
+      "src/data/indopak16/pages-04.json",
+      "src/data/indopak16/pages-05.json",
+      "src/data/indopak16/pages-06.json",
+      "src/data/indopak16/pages-07.json",
+      "src/data/indopak16/pages-08.json",
+      "src/data/indopak16/pages-09.json",
+      "src/data/indopak16/pages-10.json",
+      "src/data/indopak16/pages-11.json",
+      "src/data/indopak16/pages-12.json",
+      "src/data/indopak16/pages-13.json",
+      "src/data/indopak16/pages-14.json",
+      "src/data/indopak16/pages-15.json",
+      "src/data/indopak16/pages-16.json",
+      "src/data/indopak16/pages-17.json",
+      "src/data/indopak16/pages-18.json",
+      "src/data/indopak16/shapes.json",
+      "src/services/audioEngine.ts",
+      "src/services/audioPlayerCopy.ts",
+      "src/services/audioService.ts",
+      "src/services/audioTranslation.ts",
+      "src/services/indopakChunks.ts",
+      "src/services/indopakCopy.ts",
+      "src/services/indopakFocus.ts",
+      "src/services/indopakFold.ts",
+      "src/services/indopakFont.ts",
+      "src/services/indopakInteraction.ts",
+      "src/services/indopakMushaf.ts",
+      "src/services/indopakNavigation.ts",
+      "src/services/indopakPlayback.ts",
+      "src/services/indopakSelection.ts",
+      "src/services/indopakState.ts",
+      "src/services/indopakZoom.ts",
+      "src/services/languages.ts",
+      "src/services/localState.ts",
+      "src/services/quranState.ts",
+      "src/services/storage.ts",
+      "src/services/translationPreferences.ts",
+      "src/services/useIndopakRecitation.ts"
+    ],
+    "fontBytes": 310912,
+    "fontSha256": "a6463e24e36651404e9eff52dae26e18e9ef0718eb620636a66a20026a75c563",
+    "shareServiceRuntimeUnchanged": true,
+    "originalQrUnchanged": true,
+    "readerRuntimeSourcesUnchanged": true,
+    "historicalR104EvidenceUnchanged": true
+  },
+  "runtimeSourceSha256": {
+    "App.tsx": "e1a9dfa5131a90c18ca2009c72cb967d3bf242a55c1c2c1711450cc32b4e8d92",
+    "src/services/settingsDedication.ts": "3592e8bf6acbb68686a6945b2702e9543f4d083f8fd9430fa0243fe024c86e10",
+    "src/services/appShareCopy.ts": "0f25d82a2a7189111ee0e870dc8fe18e462b4247e121a43fe88caadb0bd354c7",
+    "src/services/appShare.ts": "6332ca49b042cd2f3923710c8e7199328d3ee1eac11bfd6b7f962797fa52371c",
+    "src/components/AppShareQr.tsx": "d6b273638a1c3a587191a6cf74eff22a1727b50e2c0fab45d546da923f039dad",
+    "src/data/app-share-qr.json": "e4d84382297be9527dc6d0eaba96f7de5884a917d7d708fbd537217e518dc0a4",
+    "src/components/IndopakMushafReader.tsx": "11ae2dbea428e8bb53e7cd1810341c16bdfd7ba3478a4653cf17f35a2f672ed9",
+    "src/services/indopakZoom.ts": "4979e5578e242cb2c566caeb76938de70926389be957d289bf247e1a36d713d2"
+  },
+  "testHarnessSha256": {
+    "tests/app-share.test.cjs": "2e1cf033c17468335ed799bfe0500deefc9eb5173c3b8262c121621c97532d1d",
+    "tests/settings-dedication.test.cjs": "0e51d2bb2698de99cd6a946762f678737c1874fe03e3a0ebc9ccfc2484dab43b",
+    "tests/verify-app-share-web.cjs": "a7aa1c8be1e3691bc4f3baa31c43aed22634b06e67da0b50b0b9eea28d9d8dec",
+    "tests/verify-app-share-qr.py": "8d18e38139bce77a4d08c0a946e13626c80b1c61d6172f9e2341c32804c2d8a6",
+    "tests/verify-indopak-focus-web.cjs": "a499a7cdf5570989206fb2a44dfe27ef2bed3933fc18b12649b85aeca3c8033c"
+  },
+  "logSha256": {
+    "/tmp/islamic-r105-unit.log": "2599ddcc09bf301207ed351e081b464385515437cd5c91e81299335c07bafdd1",
+    "/tmp/islamic-r105-tsc.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/tmp/islamic-r105-web-final2.log": "ed6e6c749d4a95f3a19ef997a48eb7d42e6f28d2d4f1f1e4532bb46e1e2a4b82",
+    "/tmp/islamic-r105-android-final.log": "5a0941796c53acac170efd1ef32789f932a7f171949e7507bc8f520cbe9c3c8d",
+    "/tmp/islamic-r105-ios-final.log": "dc207620b78e82ab7ea7098d4ffbbad27a7b1dc30104ca1fe96c8d95057b918a",
+    "/tmp/islamic-r105-share-final2.log": "e6b0f5a83b0143860e09f19c620488666b7d31f72678b81931be1b52050bede2",
+    "/tmp/islamic-r105-focus-regression.log": "c762b8444c3bbc8f401a64ce9247bdbb094118a1820d17aa3902588749ccbf0b"
+  },
+  "screenshots": [
+    {
+      "path": "docs/screenshots/settings-dedication-en-r105.png",
+      "bytes": 56314,
+      "width": 390,
+      "height": 844,
+      "sha256": "2a7b89a26031624eaeb302d9a7f5805e11a69c5541f154def8acddeea756f108"
+    },
+    {
+      "path": "docs/screenshots/share-app-en-r105.png",
+      "bytes": 21384,
+      "width": 390,
+      "height": 844,
+      "sha256": "af06a2efa1cd44a0494b13a3979ea23a8bea4a660d8fe58f8b2539ac43c105c2"
+    },
+    {
+      "path": "docs/screenshots/settings-dedication-ar-r105.png",
+      "bytes": 54569,
+      "width": 390,
+      "height": 844,
+      "sha256": "3878074b6ad818503f6ddd64f1432e311fec15312047f2262401ee3f43d85c1c"
+    },
+    {
+      "path": "docs/screenshots/share-app-ar-r105.png",
+      "bytes": 22300,
+      "width": 390,
+      "height": 844,
+      "sha256": "b99bee84b6fd18bfe5156e05f5f669784674c2850d5a93920782afd00f291770"
+    },
+    {
+      "path": "docs/screenshots/settings-dedication-ur-r105.png",
+      "bytes": 52151,
+      "width": 390,
+      "height": 844,
+      "sha256": "dae4f76c6a83fdae07e2486ded07c7be7250a74c08cdd68e65e0f50729c4a6e8"
+    },
+    {
+      "path": "docs/screenshots/share-app-ur-r105.png",
+      "bytes": 21881,
+      "width": 390,
+      "height": 844,
+      "sha256": "fe658f568d81b9357654181208da1ce48f347ce80fc61e06888d5303107a4ca5"
+    }
+  ],
+  "gallery": {
+    "path": "docs/settings-share-r105-gallery.html",
+    "bytes": 310226,
+    "sha256": "71d60bb920108acdc68fe699b6318515f9699a94528298fff39da250532761e9",
+    "embeddedOriginalPngs": 6,
+    "browserVerifiedOffline": true,
+    "decodedImageCount": 6,
+    "browserErrors": [],
+    "externalRequests": []
+  },
+  "validationNotes": [
+    "Per-visible-glyph checks exposed a genuinely truncated French Share App toolbar title at 280px. The opt-in wrapping toolbar now applies only to Share App; default toolbars retain their original single-line geometry. The final all-language run retained and passed the strict glyph checks.",
+    "A preliminary persistence test transferring complete application storage into a fresh HTTP-cache context observed three aborted background requests. Their root cause was not established. The final persistence test models the intended normal browser lifecycle: one-time initial test preference storage, a real Settings language choice and a same-profile reload, with no per-load re-seeding. No networking runtime was changed or claimed fixed, and all request-error assertions remain strict; the final 24 Share/settings contexts have empty error arrays.",
+    "The initial new unit tests had overly literal Arabic definite-article matching and a minimum character count inappropriate for concise Chinese. Those assertions were corrected to match the actual localized phrasing and retain language-specific dedication topic checks. The final entire 252-test suite passed.",
+    "The comprehensive 548-page offline sweep and instrumented pinch/audio R104 checks were not rerun for this copy-only revision. Their historical evidence, original reader sources, original font and supplied resources are unchanged. The full existing Focus browser regression was rerun on the current bundle and passed."
+  ],
+  "limitations": [
+    "Production Expo web/Chromium screenshots and native Hermes exports are not installed Android/iOS device, screen-reader, OS share-sheet, hardware gesture or real-camera QA.",
+    "Web Share outcomes use explicit browser bridge doubles. One EN clipboard success uses the actual browser clipboard; its denial case and all-language repeated copied/error statuses use explicit clipboard doubles, not a browser permission dialog. No recipient-delivery claim is made.",
+    "Google Play navigation is intercepted only in QA and verifies the exact destination, not listing availability or a published release.",
+    "All-language authored copy and rendered coverage are not professional linguistic review.",
+    "No deployment, store submission, new runtime dependency, generated artwork, user-data migration/deletion, Tajweed or Mufahras implementation is included."
+  ]
+}

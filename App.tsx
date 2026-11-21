@@ -26,6 +26,7 @@ import { IndopakMushafReader } from './src/components/IndopakMushafReader';
 import { AppShareQr } from './src/components/AppShareQr';
 import { APP_PLAY_STORE_URL, shareAppLink } from './src/services/appShare';
 import { appShareText } from './src/services/appShareCopy';
+import { settingsDedicationText } from './src/services/settingsDedication';
 import { indopakText } from './src/services/indopakCopy';
 import { isIndopakReaderRoute } from './src/services/indopakInteraction';
 import { floatingTabBarWidth, FLOAT_BAR_PADDING } from './src/services/systemLayout';
@@ -6375,7 +6376,7 @@ function ExploreHome({navigation}:any){
    `goBackOrHome` rather than calling `goBack()` itself: a screen that passes
    no navigator — or one sitting at the bottom of its stack — used to leave
    this arrow pointing at nothing. */
-function ToolBar({title,navigation,tool}:any){const {rtl,language}=useLanguage();return <View testID="screen-header" style={[s.readerBar,s.toolBar]}><IconButton name={rtl?'arrow-forward':'arrow-back'} label={tx(language,'Back')} onPress={()=>goBackOrHome(navigation)}/><Text numberOfLines={1} style={s.readerName}>{title}</Text>{tool?<ToolGraphic tool={tool} size={30}/>:<View style={{width:44}}/>}</View>}
+function ToolBar({title,navigation,tool,wrapTitle=false}:any){const {rtl,language}=useLanguage();return <View testID="screen-header" style={[s.readerBar,s.toolBar,wrapTitle&&{height:'auto',minHeight:56,paddingVertical:6}]}><IconButton name={rtl?'arrow-forward':'arrow-back'} label={tx(language,'Back')} onPress={()=>goBackOrHome(navigation)}/><Text numberOfLines={wrapTitle?undefined:1} style={s.readerName}>{title}</Text>{tool?<ToolGraphic tool={tool} size={30}/>:<View style={{width:44}}/>}</View>}
 /* Sixteen points, the usual navigational set. Left as the Latin abbreviations
    in both languages: they are the standard notation on a compass rather than
    prose, and an invented Arabic for "north-north-east" would be a guess
@@ -12237,7 +12238,7 @@ function LegalScreen({ route, navigation }: any) {
 }
 
 function ShareAppScreen({ navigation }: any) {
-  const { language, rtl } = useLanguage();
+  const { language } = useLanguage();
   const copy = (key: Parameters<typeof appShareText>[1]) => appShareText(language, key);
   const [width, setWidth] = useState(0), [busy, setBusy] = useState(false);
   const sharing = useRef(false);
@@ -12249,7 +12250,7 @@ function ShareAppScreen({ navigation }: any) {
     catch { setNote('error'); }
     finally { sharing.current = false; setBusy(false); }
   };
-  return <Page><ToolBar title={copy('title')} navigation={navigation} />
+  return <Page><ToolBar title={copy('title')} navigation={navigation} wrapTitle />
     <ScrollView testID="app-share-page" {...SCROLL} contentContainerStyle={[s.dataPage, { gap: 18 }]}>
       <Text style={s.dataTitle}>Islamic Companion</Text>
       <Text style={s.intro}>{copy('scan')}</Text>
@@ -12268,7 +12269,6 @@ function ShareAppScreen({ navigation }: any) {
         style={[s.secondary, { minHeight: 48 }]}>
         <Text style={[s.secondaryText, { textAlign: 'center', flexShrink: 1 }]}>{copy('open')}</Text>
       </Tactile>
-      <Text testID="app-share-url" selectable style={[s.meta, { writingDirection: 'ltr', textAlign: rtl ? 'right' : 'left' }]}>{APP_PLAY_STORE_URL}</Text>
     </ScrollView>
   </Page>;
 }
@@ -12326,7 +12326,7 @@ function SettingsScreen({navigation}:any){
 
 
   return <Page>
-    <ScrollView {...SCROLL} contentContainerStyle={s.scroll}>
+    <ScrollView testID="settings-page" {...SCROLL} contentContainerStyle={s.scroll}>
       {/* Settings is the root of its stack, so goBack() alone would sit there.
           goBackOrHome sends a reader who arrived by deep link back to the tabs. */}
       <View style={s.backRow}><IconButton name={rtl ? 'arrow-forward' : 'arrow-back'} label={tx(language,'Back')} onPress={() => goBackOrHome(navigation)} /></View>
@@ -12511,6 +12511,7 @@ function SettingsScreen({navigation}:any){
       <View style={s.madeWith}>
         <Text style={s.madeWithText}>{T('Made with')} ❤️ {T('for Ummah')}</Text>
       </View>
+      <Text testID="settings-dedication" style={[s.settingsDedication, { writingDirection: rtl ? 'rtl' : 'ltr' }]}>{settingsDedicationText(language)}</Text>
     </ScrollView>
   </Page>}
 import { DEFAULT_RECITER, editionsForLanguage, LANGUAGES, Language, LanguageCode, languageByCode, isRtl, pickEdition, HADITH_LANGUAGES, hadithLanguage } from './src/services/languages';
@@ -15510,6 +15511,7 @@ direction:{color:C.ink,fontSize:31,fontFamily:'DMSans_700Bold',marginTop:24},dir
   trackStatValue:{color:C.ink,fontFamily:'DMSans_700Bold',fontSize:22},trackStatLabel:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:11,marginTop:2},
   trackLegend:{flexDirection:'row',alignItems:'center',gap:6,marginTop:14},trackLegendText:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:11},
   madeWith:{alignItems:'center',paddingTop:28,paddingBottom:8},madeWithText:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:12},
+  settingsDedication:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:12,lineHeight:20,textAlign:'center',width:'100%',maxWidth:640,alignSelf:'center',marginTop:10,paddingHorizontal:8,paddingVertical:8},
   
   packingGroupHead:{flexDirection:'row',alignItems:'center',gap:8},packingGroupCount:{color:C.muted,fontFamily:'DMSans_600SemiBold',fontSize:11},
   packingGroupCaution:{borderColor:C.gold,borderWidth:1},

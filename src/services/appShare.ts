@@ -2,7 +2,7 @@ import { Platform, Share } from 'react-native';
 import { appShareText } from './appShareCopy';
 import qr from '../data/app-share-qr.json';
 
-/** The QR, visible link and share payload have exactly one destination. */
+/** The QR, store action and share payload have exactly one destination. */
 export const APP_PLAY_STORE_URL = qr.url;
 export const APP_SHARE_MESSAGE = `Islamic Companion\n${APP_PLAY_STORE_URL}`;
 export type AppShareResult = 'shared' | 'copied' | 'dismissed';

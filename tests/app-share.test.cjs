@@ -19,7 +19,7 @@ function harness(os = 'android', { webShare, result = { action: 'sharedAction' }
   return { api: load('src/services/appShare.ts'), calls };
 }
 
-test('one immutable Play Store destination drives the static QR, visible link and share message', () => {
+test('one immutable Play Store destination drives the static QR, store action and share message', () => {
   const h = harness();
   assert.equal(qr.url, target); assert.equal(h.api.APP_PLAY_STORE_URL, target);
   assert.equal(h.api.APP_SHARE_MESSAGE, `Islamic Companion\n${target}`);
@@ -103,19 +103,32 @@ test('all newly introduced page labels are localized in all 22 UI languages, inc
   assert.equal(copy('unknown', 'title'), 'Share app');
 });
 
-test('Share app is placed below privacy/legal pages and its independent route has Back, real sharing and an accessible selectable fallback', () => {
+test('Share app remains below privacy/legal pages with Back and functional share/store actions, without a printed URL', () => {
   const app = fs.readFileSync(path.join(root, 'App.tsx'), 'utf8');
   const settings = app.slice(app.indexOf('function SettingsScreen('), app.indexOf('const navigationRef'));
   assert.ok(settings.indexOf('settings-share-app') > settings.indexOf("['datasafety', T('Data Safety')]"));
   assert.ok(settings.indexOf('settings-share-app') < settings.indexOf('style={s.madeWith}'));
   assert.ok(app.includes('<Stack.Screen name="Share App" component={ShareAppScreen}/>'));
   const page = app.slice(app.indexOf('function ShareAppScreen('), app.indexOf('function SettingsScreen('));
-  assert.ok(page.includes('<ToolBar title={copy(\'title\')} navigation={navigation}'));
+  assert.ok(page.includes('<ToolBar title={copy(\'title\')} navigation={navigation} wrapTitle />'));
+  assert.ok(app.includes('wrapTitle=false')); assert.ok(app.includes('numberOfLines={wrapTitle?undefined:1}'));
   assert.ok(page.includes('await shareAppLink(language)')); assert.ok(page.includes('if (sharing.current) return'));
   assert.ok(page.includes('result === \'copied\'')); assert.ok(page.includes("catch { setNote('error'); }"));
   assert.ok(page.includes('Linking.openURL(APP_PLAY_STORE_URL).catch'));
-  assert.ok(page.includes('testID="app-share-url" selectable'));
+  assert.ok(!page.includes('testID="app-share-url"'));
+  assert.ok(!page.includes('>{APP_PLAY_STORE_URL}</Text>'));
+  assert.ok(page.includes('copy(\'scan\')')); assert.ok(page.includes('<AppShareQr'));
+  assert.ok(page.includes('testID="app-share-open"'));
   assert.ok(page.includes('accessibilityLiveRegion="polite"')); assert.ok(page.includes('minHeight: 48'));
+});
+
+test('errors in all 22 languages point to retry or Google Play, not selecting the now-hidden URL', () => {
+  const { appShareText: copy } = createLoader()('src/services/appShareCopy.ts');
+  const { LANGUAGES } = createLoader()('src/services/languages.ts');
+  const languages = LANGUAGES.filter(row => row.uiReady || row.uiPartial);
+  assert.equal(languages.length, 22);
+  for (const { code } of languages) assert.ok(copy(code, 'error').includes('Google Play'), code);
+  assert.equal(copy('en', 'error'), 'Could not complete this action. Please try again or open Google Play.');
 });
 
 test('QR is bundled, undecorated and black-on-white in both themes, with a four-module quiet zone and no runtime encoder/service', () => {

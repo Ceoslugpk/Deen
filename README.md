@@ -42,19 +42,21 @@ Captured from the running app (web build, 414 × 896) — real screens, not mock
 | <img src="docs/screenshots/07-library.png" alt="Library" width="260" /> <br /> **Library** — what you read, recite and remember | <img src="docs/screenshots/08-tools.png" alt="Tools" width="260" /> <br /> **Tools** — trackers and calculators |
 | <img src="docs/screenshots/09-qibla.png" alt="Qibla" width="260" /> <br /> **Qibla** — dial, Kaaba marker, sensor honesty | <img src="docs/screenshots/10-tasbih.png" alt="Tasbih" width="260" /> <br /> **Tasbih** — a quiet dhikr counter |
 
-### Share app and Focus-only pinch zoom
+### Settings, sharing and Focus-only pinch zoom
 
-New captures from the running production web build at **390 × 844**. Additional
-inset fixtures are documented with the validation. These are real screenshots, not
-native-device captures or redesigned mock-ups.
+Actual running production web captures at **390 × 844**, not native-device
+screenshots or redesigned mock-ups. Settings and Share App show the latest R105
+update; the unchanged Focus captures document R104.
 
 | | |
 | :--- | :--- |
-| <img src="docs/screenshots/share-app-en.png" alt="Share app with its real Play Store QR and family sharing button" width="260" /> <br /> **Share app** — below the privacy/legal pages in Settings | <img src="docs/screenshots/share-app-ar-dark.png" alt="Share app in Arabic and dark appearance" width="260" /> <br /> **Arabic / dark** — the QR stays black on white |
+| <img src="docs/screenshots/settings-dedication-en-r105.png" alt="End of Settings with the exact English dedication" width="260" /> <br /> **Settings / English** — dedication at the very end | <img src="docs/screenshots/settings-dedication-ar-r105.png" alt="End of Settings with the localized Arabic dedication in dark appearance" width="260" /> <br /> **Settings / Arabic** — complete, wrapping RTL dedication |
+| <img src="docs/screenshots/share-app-en-r105.png" alt="Share app with its real Play Store QR and family sharing button, without a printed URL" width="260" /> <br /> **Share app** — QR and sharing, without the printed URL | <img src="docs/screenshots/share-app-ar-r105.png" alt="Share app in Arabic and dark appearance, without a printed URL" width="260" /> <br /> **Arabic / dark** — the QR stays black on white |
 | <img src="docs/screenshots/focus-fit-r104.png" alt="Original 16-line page fitted in Focus with a fixed Unlock button" width="260" /> <br /> **Focus at fit** — original whole printed page | <img src="docs/screenshots/focus-pinched-r104.png" alt="Pinch-magnified original page with the Unlock button still fixed" width="260" /> <br /> **Pinch magnification** — pan to read the enlarged page; Unlock stays fixed |
 
-[Behavior, validation and all six new captures](docs/share-focus-r104.md) ·
-[Self-contained screenshot gallery](docs/share-focus-r104-gallery.html)
+[Current Settings/sharing checks and all six captures](docs/settings-share-r105.md) ·
+[Self-contained Settings/sharing gallery](docs/settings-share-r105-gallery.html) ·
+[Focus behavior and R104 baseline](docs/share-focus-r104.md)
 
 **Large-screen assets:** [Download 24 tablet and unfolded-foldable screenshots](docs/store-assets/Islamic-tablet-foldable-screenshots.zip)
 (8 per category). These are independently rendered **web-build viewport captures**, not
@@ -169,8 +171,10 @@ front of the app), **Backup** (encrypted, and yours to keep), **Storage**, **Dat
 ### Settings and sharing
 
 - **Share app**, immediately below Privacy Policy / Terms of Use / Data Safety, with a bundled scannable QR for [Islamic on Google Play](https://play.google.com/store/apps/details?id=com.qashi.islamic).
-- **“Share app with your friends and family”** opens the platform share flow. Unsupported web browsers can copy the link; cancellation/errors are not presented as successful sharing. The link also stays selectable, with a separate Google Play action.
-- New page labels cover all 22 interface languages, light/dark and RTL. No QR-service request, contact access or tracking is added. [Checks and screenshots](docs/share-focus-r104.md).
+- **“Share app with your friends and family”** opens the platform share flow. Unsupported web browsers can copy the link; cancellation/errors are not presented as successful sharing. The raw URL is **not printed on the screen**; the QR, shared/copied message and separate Google Play action keep the same destination.
+- Share App titles, explanations, actions and statuses cover **all 22 interface languages**, light/dark and RTL. Long Share App titles wrap on narrow screens; failure guidance offers retry or Google Play rather than referring to a removed link.
+- The **very end of Settings** has the publisher’s dedication to their beloved parents and the entire Muslim Ummah, localized in all 22 interface languages, with the exact supplied English wording, fixed **2026 © Islamic.** branding and **🤲❤️** ending.
+- No QR-service request, contact access, tracking, new dependency or user-data migration is added. [Current checks and screenshots](docs/settings-share-r105.md).
 
 ### Widgets and Live Activities
 

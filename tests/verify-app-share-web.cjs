@@ -11,7 +11,9 @@ const { chromium } = require('playwright');
 const { createLoader } = require('./helpers/load-typescript.cjs');
 const { makePage, box, pause } = require('./verify-indopak-web.cjs');
 const load = createLoader(); const { tx, loadCopy } = load('src/services/arabicCopy.ts'); const { appShareText: copy } = load('src/services/appShareCopy.ts');
-const output = process.env.APP_SHARE_ARTIFACTS_DIR || '/tmp/islamic-r104-share';
+const { settingsDedicationText: dedication } = load('src/services/settingsDedication.ts');
+const { LANGUAGES, isRtl } = load('src/services/languages.ts');
+const output = process.env.APP_SHARE_ARTIFACTS_DIR || '/tmp/islamic-r105-share';
 const target = 'https://play.google.com/store/apps/details?id=com.qashi.islamic';
 const oldKeys = ['@deen/quran/indopak-taj-16/state/v1', '@deen/quran/preferences/v1', '@deen/quran/position/v1', '@deen/quran/bookmarks/v1', '@deen/quran/notes/v1', '@deen/audio-settings/v1'];
 async function settings(page, language) {
@@ -43,31 +45,54 @@ async function fullLabel(locator) {
   });
   assert.deepEqual(clipped, [], 'Every visible label glyph fits its container and reachable button, without ellipses or clipping');
 }
+async function noPrintedUrl(page) {
+  assert.equal(await page.getByTestId('app-share-url').count(), 0, 'The printed URL is removed, not hidden with styling');
+  assert.doesNotMatch(await page.getByTestId('app-share-page').innerText(), /https?:\/\/|play\.google\.com\/store|com\.qashi\.islamic/);
+}
+async function dedicationLayout(page, language, name) {
+  const footer = page.getByTestId('settings-dedication'); await footer.scrollIntoViewIfNeeded(); await pause(page);
+  assert.equal(await footer.innerText(), dedication(language), 'The complete dedication follows the actual interface language');
+  assert.equal(await footer.evaluate(e => e === e.parentElement.lastElementChild), true, 'Dedication is the last Settings content, below the old Made with footer');
+  const safe = await box(page.getByTestId('system-safe-content').first()), rect = await box(footer);
+  assert.ok(rect.x >= safe.x && rect.right <= safe.right && rect.y >= safe.y && rect.bottom <= safe.bottom, `Full dedication is reachable: ${JSON.stringify({ language, rect, safe })}`);
+  await fullLabel(footer);
+  const direction = await footer.evaluate(e => getComputedStyle(e).direction);
+  assert.equal(direction, isRtl(language) ? 'rtl' : 'ltr');
+  await page.screenshot({ path: path.join(output, `settings-dedication-${name}.png`), animations: 'disabled' });
+  return { language, name, direction, safe, rect, text: dedication(language) };
+}
 async function layout(page, language, name) {
   const safe = await box(page.getByTestId('system-safe-content').first()), qr = await box(page.getByTestId('app-share-qr'));
   assert.ok(qr.width >= 147 && qr.width === qr.height && qr.x >= safe.x && qr.right <= safe.right, 'QR keeps a square scan-sized target inside the safe width');
   assert.ok(Math.abs(qr.width / 49 - Math.round(qr.width / 49)) < .001, 'Integer modules avoid blurred module edges');
   assert.equal(await page.getByTestId('app-share-button').innerText(), copy(language, 'button'));
+  assert.equal(await page.getByTestId('app-share-button').getAttribute('aria-label'), copy(language, 'button'));
+  assert.equal(await page.getByTestId('app-share-open').getAttribute('aria-label'), copy(language, 'open'));
+  const title = page.getByTestId('screen-header').last().getByText(copy(language, 'title'), { exact: true });
+  await title.waitFor(); await fullLabel(title);
+  assert.equal(await page.getByTestId('screen-header').last().getByRole('button').first().getAttribute('aria-label'), tx(language, 'Back'));
+  assert.equal(await page.getByTestId('app-share-qr').getAttribute('aria-label'), copy(language, 'scan'));
+  const explanation = page.getByTestId('app-share-page').getByText(copy(language, 'scan'), { exact: true });
+  await explanation.waitFor(); await fullLabel(explanation);
   const result = { name, language, safe, qr, actions: [] };
   for (const id of ['app-share-button', 'app-share-open']) {
     const action = page.getByTestId(id); await action.scrollIntoViewIfNeeded(); const r = await box(action);
     assert.ok(r.height >= 44 && r.x >= safe.x && r.right <= safe.right && r.y >= safe.y && r.bottom <= safe.bottom, `${id} is reachable inside the safe window`);
     await fullLabel(action); result.actions.push({ id, ...r });
   }
-  assert.equal(await page.getByTestId('app-share-url').innerText(), target);
-  const url = await page.getByTestId('app-share-url').evaluate(e => ({ userSelect: getComputedStyle(e).userSelect, width: e.clientWidth, scroll: e.scrollWidth, direction: getComputedStyle(e).direction }));
-  assert.equal(url.userSelect, 'text'); assert.ok(url.scroll <= url.width + 1, 'The selectable URL wraps instead of overflowing narrow/RTL panes');
+  await noPrintedUrl(page);
   await page.getByTestId('app-share-qr').screenshot({ path: path.join(output, `qr-${name}.png`) }); return result;
 }
 (async () => {
   fs.mkdirSync(output, { recursive: true }); const browser = await chromium.launch();
-  const report = { method: 'Actual production WEB, real navigation/layout/rendered QR and clipboard. Web Share returns are explicit browser bridge doubles, not real OS sheets. Outbound Play Store navigation is intercepted only in the test; no listing availability claim.', checks: {}, localized: [], errors: [], qrDecode: null };
+  const report = { method: 'Actual production WEB, real navigation/layout/rendered QR and one actual browser clipboard success/denial path. Web Share returns and all-language repeated clipboard-status outcomes use explicit bridge doubles, not real OS sheets. Language persistence is a real Settings choice and same-profile reload, with one-time initial fixture storage. Outbound Play Store navigation is intercepted only in the test; no listing availability claim.', checks: {}, localized: [], dedications: [], localizedStatuses: [], errors: [], qrDecode: null };
   let active;
   try {
     const own = await makePage(browser), { page } = own; active = page; report.errors.push(own.errors);
     await own.context.grantPermissions(['clipboard-read', 'clipboard-write']);
     const before = await page.evaluate(keys => Object.fromEntries(keys.map(k => [k, localStorage.getItem(k)])), oldKeys);
     await settings(page, 'en');
+    report.dedications.push(await dedicationLayout(page, 'en', 'en-phone-light'));
     const order = await page.getByRole('button').evaluateAll(nodes => nodes.filter(e => ['Privacy Policy','Terms of Use','Data Safety','Share app'].includes(e.textContent.trim())).map(e => ({ text: e.textContent.trim(), y: e.getBoundingClientRect().y })));
     assert.deepEqual(order.map(e => e.text), ['Privacy Policy','Terms of Use','Data Safety','Share app']); assert.ok(order.every((e, i) => i === 0 || e.y > order[i - 1].y));
     await page.screenshot({ path: path.join(output, 'settings-share-location.png'), animations: 'disabled' }); await open(page);
@@ -113,32 +138,92 @@ async function layout(page, language, name) {
     await page.getByTestId('app-share-button').click(); await page.waitForFunction(text => document.querySelector('[data-testid="app-share-status"]')?.textContent === text, copy('en', 'error'));
     report.checks.clipboardFailureIsNotReportedAsCopied = true;
     await own.context.setOffline(true);
-    await page.getByTestId('screen-header').last().getByRole('button').first().click(); await page.getByTestId('settings-share-app').waitFor(); await open(page);
+    await page.getByTestId('screen-header').last().getByRole('button').first().click(); await page.getByTestId('settings-share-app').waitFor();
+    report.dedications.push(await dedicationLayout(page, 'en', 'en-offline')); await open(page);
     await page.getByTestId('app-share-qr').screenshot({ path: path.join(output, 'qr-offline.png') }); report.checks.qrRendersOfflineWithoutQrService = true;
     assert.deepEqual(await page.evaluate(keys => Object.fromEntries(keys.map(k => [k, localStorage.getItem(k)])), oldKeys), before);
     await own.context.setOffline(false); await page.getByTestId('screen-header').last().getByRole('button').first().click(); await page.getByTestId('settings-share-app').waitFor();
-    report.checks.backReturnsToSettingsAndReaderDataIsUntouched = true; await own.context.close();
+    report.checks.backReturnsToSettingsAndReaderDataIsUntouched = true;
+    // One-time test-fixture storage, not an on-every-load init script: the
+    // actual Settings choice must survive a normal same-profile page reload.
+    // Do not transfer application ETags into a fresh empty HTTP cache, which
+    // is not the browser lifecycle this persistence check intends to model.
+    const seedKeys = [...oldKeys, '@deen/onboarding/v1', '@deen/language/v1', '@deen/location/v1', 'deen-theme-v1', 'deen-theme-name-v1'];
+    const localStorage = await page.evaluate(keys => keys.map(name => ({ name, value: window.localStorage.getItem(name) })).filter(row => row.value !== null), seedKeys);
+    await own.context.close();
+    const baseUrl = process.env.INDOPAK_URL || 'http://127.0.0.1:8106';
+    const persistent = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, reducedMotion: 'reduce', storageState: {
+      cookies: [], origins: [{ origin: new URL(baseUrl).origin, localStorage }],
+    } });
+    const persistentPage = await persistent.newPage(); active = persistentPage; persistentPage.setDefaultTimeout(25000);
+    const persistentErrors = { page: [], console: [], http: [], requests: [] }; report.errors.push(persistentErrors);
+    persistentPage.on('pageerror', e => persistentErrors.page.push(e.message));
+    persistentPage.on('console', m => { if (m.type() === 'error') persistentErrors.console.push(m.text()); });
+    persistentPage.on('response', r => { if (r.status() >= 400) persistentErrors.http.push(`${r.status()} ${r.url()}`); });
+    persistentPage.on('requestfailed', r => persistentErrors.requests.push(`${r.url()} ${r.failure()?.errorText}`));
+    await persistentPage.goto(baseUrl, { waitUntil: 'load', timeout: 60000 });
+    await persistentPage.getByRole('button', { name: 'Settings', exact: true }).click();
+    const appLanguage = persistentPage.getByRole('button', { name: 'Language: English', exact: true });
+    await appLanguage.scrollIntoViewIfNeeded(); await appLanguage.click();
+    await persistentPage.getByRole('textbox', { name: 'Search a language', exact: true }).fill('Arabic');
+    await persistentPage.getByRole('button', { name: /^العربية, Arabic,/ }).click();
+    await persistentPage.waitForFunction(text => document.querySelector('[data-testid="settings-dedication"]')?.textContent === text, dedication('ar'));
+    await persistentPage.waitForFunction(() => window.localStorage.getItem('@deen/language/v1') === 'ar');
+    report.dedications.push(await dedicationLayout(persistentPage, 'ar', 'ar-live-switch'));
+    await loadCopy('ar'); await open(persistentPage); const liveShare = await layout(persistentPage, 'ar', 'ar-live-switch');
+    await persistentPage.waitForLoadState('networkidle', { timeout: 25000 });
+    await persistentPage.reload({ waitUntil: 'load', timeout: 60000 });
+    await persistentPage.getByRole('button', { name: tx('ar', 'Settings'), exact: true }).click();
+    report.dedications.push(await dedicationLayout(persistentPage, 'ar', 'ar-restored'));
+    await open(persistentPage); const restoredShare = await layout(persistentPage, 'ar', 'ar-restored');
+    await persistentPage.waitForLoadState('networkidle', { timeout: 25000 });
+    assert.equal(await persistentPage.evaluate(() => window.localStorage.getItem('@deen/language/v1')), 'ar');
+    report.checks.liveLanguageSwitchAndPersistentLocalizedCopy = { liveShare, restoredShare }; await persistent.close();
 
-    for (const language of ['en','ar','ur','fa','ps','fr','tr','ru','uz','kk','zh','vi','az','bs','bg','si','bn','hi','id','ms','ta','ml']) {
+    for (const { code: language } of LANGUAGES.filter(row => row.uiReady || row.uiPartial)) {
       const dark = ['ar','ur','fa','en'].includes(language), h = await makePage(browser, language, dark); active = h.page; report.errors.push(h.errors);
-      await settings(h.page, language); assert.equal(await h.page.getByTestId('settings-share-app').getAttribute('aria-label'), copy(language, 'title')); await open(h.page);
+      await settings(h.page, language); assert.equal(await h.page.getByTestId('settings-share-app').getAttribute('aria-label'), copy(language, 'title'));
       for (const [width, height] of [[280,720],[390,844]]) {
         await h.page.setViewportSize({ width, height }); await pause(h.page);
+        report.dedications.push(await dedicationLayout(h.page, language, `${language}-${width}`)); await open(h.page);
         report.localized.push({ dark, width, height, ...(await layout(h.page, language, `${language}-${width}`)) });
         if (width === 390 && ['ar','ur'].includes(language)) { await h.page.getByTestId('app-share-page').evaluate(e => { e.scrollTop = 0; }); await pause(h.page); await h.page.screenshot({ path: path.join(output, `share-app-${language}-dark.png`), animations: 'disabled' }); }
+        // Explicit clipboard bridge doubles exercise both visible statuses in
+        // every locale at both widths. The separate EN case above uses the
+        // real browser clipboard, including its actual saved value.
+        await h.page.evaluate(() => {
+          Object.defineProperty(navigator, 'share', { configurable: true, value: undefined });
+          Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async text => { window.__localizedShareCopy = text; } } });
+        });
+        await h.page.getByTestId('app-share-button').click();
+        await h.page.waitForFunction(text => document.querySelector('[data-testid="app-share-status"]')?.textContent === text, copy(language, 'copied'));
+        await h.page.getByTestId('app-share-status').scrollIntoViewIfNeeded(); await fullLabel(h.page.getByTestId('app-share-status'));
+        assert.equal(await h.page.evaluate(() => window.__localizedShareCopy), `Islamic Companion\n${target}`);
+        assert.equal(await h.page.getByTestId('app-share-status').getAttribute('aria-live'), 'polite');
+        await h.page.evaluate(() => { navigator.clipboard.writeText = async () => { throw new DOMException('Denied', 'NotAllowedError'); }; });
+        await h.page.getByTestId('app-share-button').click();
+        await h.page.waitForFunction(text => document.querySelector('[data-testid="app-share-status"]')?.textContent === text, copy(language, 'error'));
+        await h.page.getByTestId('app-share-status').scrollIntoViewIfNeeded(); await fullLabel(h.page.getByTestId('app-share-status')); await noPrintedUrl(h.page);
+        report.localizedStatuses.push({ language, width, copied: copy(language, 'copied'), error: copy(language, 'error') });
+        await h.page.getByTestId('screen-header').last().getByRole('button').first().click(); await h.page.getByTestId('settings-share-app').waitFor();
       }
       if (language === 'en') {
         for (const [name, width, height] of [['compact',240,640],['landscape',844,390],['tablet',800,1280]]) {
-          await h.page.setViewportSize({ width, height }); await pause(h.page); report.localized.push({ dark, width, height, ...(await layout(h.page, language, name)) });
+          await h.page.setViewportSize({ width, height }); await pause(h.page);
+          report.dedications.push(await dedicationLayout(h.page, language, name)); await open(h.page);
+          report.localized.push({ dark, width, height, ...(await layout(h.page, language, name)) });
+          await h.page.getByTestId('screen-header').last().getByRole('button').first().click(); await h.page.getByTestId('settings-share-app').waitFor();
         }
       }
-      await h.page.getByTestId('screen-header').last().getByRole('button').first().click(); await h.page.getByTestId('settings-share-app').waitFor(); await h.context.close();
+      await h.context.close();
     }
     const decoded = spawnSync('python3', [path.join(__dirname, 'verify-app-share-qr.py'), output], { encoding: 'utf8', timeout: 120000 });
     if (decoded.status !== 0) throw new Error(`Independent rendered QR decode failed: ${decoded.stderr || decoded.stdout}`);
-    report.qrDecode = JSON.parse(decoded.stdout); assert.ok(report.qrDecode.count >= 49);
+    report.qrDecode = JSON.parse(decoded.stdout); assert.equal(report.qrDecode.count, report.localized.length + 4);
+    assert.equal(report.localizedStatuses.length, 44);
+    assert.equal(new Set(report.localizedStatuses.map(row => row.language)).size, 22);
     for (const errors of report.errors) for (const [kind, values] of Object.entries(errors)) assert.deepEqual(values, [], `${kind} errors`);
-    console.log(JSON.stringify({ checks: Object.keys(report.checks), layouts: report.localized.length + 1, contexts: report.errors.length, independentlyDecodedQrScreenshots: report.qrDecode.count }, null, 2));
+    console.log(JSON.stringify({ checks: Object.keys(report.checks), shareLayouts: report.localized.length + 3, dedicationLayouts: report.dedications.length, localizedStatusPairs: report.localizedStatuses.length, contexts: report.errors.length, independentlyDecodedQrScreenshots: report.qrDecode.count }, null, 2));
   } catch (error) { report.failure = error.stack || String(error); if (active && !active.isClosed()) await active.screenshot({ path: path.join(output, 'failure.png') }).catch(() => {}); throw error; }
   finally { fs.writeFileSync(path.join(output, 'report.json'), JSON.stringify(report, null, 2)); await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });
