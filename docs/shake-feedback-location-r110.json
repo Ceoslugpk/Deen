@@ -1,0 +1,360 @@
+{
+  "revision": "R110",
+  "approvedScope": "Optional native shake → confirmation → unchanged external form; explicit location blocks and corrected privacy. No automatic diagnostics.",
+  "baselineCommit": "f11890d39a2c33acba5c3a38c0152766ddb703dc",
+  "runtimeCommit": null,
+  "rollout": {
+    "status": "pending push and public verification"
+  },
+  "verification": {
+    "unit": {
+      "tests": 343,
+      "pass": 343,
+      "fail": 0,
+      "newTests": 59,
+      "skipped": 0
+    },
+    "typescript": "passed",
+    "productionExports": {
+      "web": [
+        {
+          "path": "_expo/static/js/web/index-12b28ac575619d6f10d229597632f78e.js",
+          "bytes": 24316289,
+          "sha256": "dd1e5e15803f946c663b1e82547af90e9fc3fc640893601e9dc50fefbb9d6ba3"
+        }
+      ],
+      "android": [
+        {
+          "path": "_expo/static/js/android/index-17f25deb8293d797f48e507860ffaf60.hbc",
+          "bytes": 29242029,
+          "sha256": "8f69200fe22eb9c01257407d22df4811b148d56edee0358f606e89f2ee737517"
+        }
+      ],
+      "ios": [
+        {
+          "path": "_expo/static/js/ios/index-9aba6001c3cb43d4125d058bcc294208.hbc",
+          "bytes": 29225074,
+          "sha256": "a4c6314267a8639e7f8c6f57d4dc8ba06ff35eb004351ac464e6b6f2263082af"
+        }
+      ]
+    },
+    "nativeValidation": "Explicit bridge/hook/view doubles and Hermes exports; not installed-device QA or a final APK/AAB.",
+    "webPolicy": {
+      "contexts": 22,
+      "layouts": 47,
+      "sectionLayoutChecks": 141,
+      "languages": [
+        "en",
+        "ar",
+        "ur",
+        "fr",
+        "tr",
+        "ru",
+        "bn",
+        "ms",
+        "ta",
+        "zh",
+        "fa",
+        "id",
+        "hi",
+        "ml",
+        "uz",
+        "kk",
+        "vi",
+        "az",
+        "bs",
+        "bg",
+        "si",
+        "ps"
+      ],
+      "motionAndGeolocationCalls": 0,
+      "errors": 0
+    },
+    "webManualFeedback": {
+      "contexts": 22,
+      "layouts": 48,
+      "externalNavigations": 24,
+      "errors": 0,
+      "formSubmitted": false,
+      "destinationIntercepted": true
+    },
+    "webReader": {
+      "contexts": 1,
+      "motion": "no-preference",
+      "walks": [
+        {
+          "surah": 55,
+          "seen": 78,
+          "maxMounted": 34
+        },
+        {
+          "surah": 2,
+          "seen": 286,
+          "maxMounted": 28
+        }
+      ],
+      "jumps": [
+        {
+          "key": "2:156",
+          "top": 74984,
+          "visible": [
+            "2:155",
+            "2:156",
+            "2:157"
+          ],
+          "mounted": 26
+        },
+        {
+          "key": "2:255",
+          "top": 132492,
+          "visible": [
+            "2:254",
+            "2:255"
+          ],
+          "mounted": 21
+        },
+        {
+          "key": "2:282",
+          "top": 148686,
+          "visible": [
+            "2:281",
+            "2:282"
+          ],
+          "mounted": 21
+        },
+        {
+          "key": "2:286",
+          "top": 152890,
+          "visible": [
+            "2:285",
+            "2:286"
+          ],
+          "mounted": 17
+        }
+      ],
+      "checks": {
+        "continueReading": {
+          "key": "2:156",
+          "top": 74984,
+          "visible": [
+            "2:155",
+            "2:156",
+            "2:157"
+          ],
+          "mounted": 26
+        },
+        "fastFlick": {
+          "top": 15000,
+          "visible": [
+            "2:34",
+            "2:35",
+            "2:36"
+          ]
+        },
+        "rotation": true
+      },
+      "errors": 0
+    },
+    "webIndopakShell": {
+      "contexts": 3,
+      "languages": [
+        "en",
+        "ar",
+        "ur"
+      ],
+      "checks": [
+        {
+          "language": "en",
+          "normalMotion": true,
+          "original16Lines": true,
+          "focusAndUnlock": true,
+          "physicalTopRightUnlock": true,
+          "rotation": true,
+          "tabChromeRestoredOnlyAfterLeavingReader": true,
+          "oldReaderAndAudioPreferencesPreserved": true,
+          "nativeShortcutAbsentOnWeb": true
+        },
+        {
+          "language": "ar",
+          "normalMotion": true,
+          "original16Lines": true,
+          "focusAndUnlock": true,
+          "physicalTopRightUnlock": true,
+          "rotation": true,
+          "tabChromeRestoredOnlyAfterLeavingReader": true,
+          "oldReaderAndAudioPreferencesPreserved": true,
+          "nativeShortcutAbsentOnWeb": true
+        },
+        {
+          "language": "ur",
+          "normalMotion": true,
+          "original16Lines": true,
+          "focusAndUnlock": true,
+          "physicalTopRightUnlock": true,
+          "rotation": true,
+          "tabChromeRestoredOnlyAfterLeavingReader": true,
+          "oldReaderAndAudioPreferencesPreserved": true,
+          "nativeShortcutAbsentOnWeb": true
+        }
+      ],
+      "errors": 0
+    },
+    "localBrowserContextsTotal": 48,
+    "offlineGallery": {
+      "embeddedScreenshots": 7,
+      "width": 390,
+      "height": 844,
+      "allDecode": true,
+      "noExternalRequests": true,
+      "noPageErrors": true
+    }
+  },
+  "permissions": {
+    "method": "Expo config introspection, no generated native project or final Gradle/AAR artifact.",
+    "explicitLocationBlocks": [
+      "android.permission.ACCESS_FINE_LOCATION",
+      "android.permission.ACCESS_COARSE_LOCATION",
+      "android.permission.ACCESS_BACKGROUND_LOCATION",
+      "android.permission.FOREGROUND_SERVICE_LOCATION"
+    ],
+    "mergerRemovals": [
+      "android.permission.ACCESS_FINE_LOCATION",
+      "android.permission.ACCESS_COARSE_LOCATION",
+      "android.permission.ACCESS_BACKGROUND_LOCATION",
+      "android.permission.FOREGROUND_SERVICE_LOCATION",
+      "android.permission.ACTIVITY_RECOGNITION",
+      "android.permission.SYSTEM_ALERT_WINDOW",
+      "android.permission.USE_FINGERPRINT"
+    ],
+    "effectivePermissions": [
+      "android.permission.INTERNET",
+      "android.permission.VIBRATE",
+      "android.permission.READ_EXTERNAL_STORAGE",
+      "android.permission.WRITE_EXTERNAL_STORAGE",
+      "android.permission.MODIFY_AUDIO_SETTINGS",
+      "android.permission.FOREGROUND_SERVICE",
+      "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
+      "android.permission.USE_BIOMETRIC",
+      "android.permission.SCHEDULE_EXACT_ALARM",
+      "android.permission.WAKE_LOCK",
+      "android.permission.RECEIVE_BOOT_COMPLETED",
+      "android.permission.POST_NOTIFICATIONS",
+      "android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"
+    ],
+    "unchangedEffectivePermissionsFromR109": true,
+    "iOSLocationUsageKeys": [],
+    "finalReleaseArtifactInspected": false
+  },
+  "integrity": {
+    "baselineTrackedPaths": 1250,
+    "changedExistingPaths": [
+      "App.tsx",
+      "README.md",
+      "app.json",
+      "src/components/SystemModal.tsx",
+      "tests/indopak-interaction.test.cjs",
+      "tests/system-navigation.test.cjs"
+    ],
+    "unchangedExistingPaths": 1244,
+    "protectedDataResourceAssetPaths": 484,
+    "protectedDataResourceAssetDigest": "f012f6cd94d59d4c5a8bff50182218539fbce2f4f6e2d6ee61b4ea54ea7f5019",
+    "functions": {
+      "baseline": "f11890d39a2c33acba5c3a38c0152766ddb703dc",
+      "functionsBefore": 250,
+      "functionsAfter": 251,
+      "unchangedExistingFunctions": 243,
+      "changed": [
+        "emitOverlay",
+        "useQiblaCompass",
+        "QiblaScreen",
+        "LegalScreen",
+        "SettingsScreen",
+        "Root",
+        "AppShell"
+      ],
+      "added": [
+        "AppShakeReport"
+      ],
+      "readerSha256": "d832f424f0980ae2ccd4e5a5a33074527f1da2bcd433307bead619afa391dc73",
+      "shareSha256": "5d2ed4edf9bcb068f58d5e7babd4e81d30a640d5ed2f6b23e785daaed2fd2973"
+    },
+    "runtimeSourceSha256": {
+      "App.tsx": "1713fe9a39dd5b2a006d9624e0280f6387889ab71a8d000070fdaa607379a09c",
+      "app.json": "a779f3658dad938cfa3f3874b91f7e1f6e612e670e1b50efc6add1631c5c96cf",
+      "src/components/SystemModal.tsx": "39f7d90185238a6f0966940656a6476fb824d923fbf21ad056f06b9cf32b23d9",
+      "src/components/ShakeReportShortcut.tsx": "110f07a82991d2d0c04fb9ef665b943359e062f33a1255f772110a603478da21",
+      "src/services/appAccelerometer.ts": "a9a81eaa8ec1ae8e6002c8548935cc1ec9763a6fedb32398bcfa81a3d980b035",
+      "src/services/appPrivacyCopy.ts": "dc28175c525ee8a466858cba20f5bd8656dacb3218c4ea8ad714e4e71773d893",
+      "src/services/guardedAppAlert.ts": "fc86e7f1c3b7388245307d989f60c36dd4680d242eac4961be62996725b0244f",
+      "src/services/shakeDetection.ts": "92c5c012cfaee4087f4b7da31ac9f7b0e74ddc84ebe4b1feed73195dc8ce2cdd",
+      "src/services/shakeReportController.ts": "c8f506a3b761b1674a986cb847c0cdac2c3eff5f8861f7548f7c19f4bb361ee7",
+      "src/services/shakeReportCopy.ts": "41a14c9860e8992229cf11cea89d5a0cce348c5225dc41b2d5ad005a1730bdb4",
+      "src/services/shakeReportGuard.ts": "8cc7c3c4d5ca8f5fc439e4641e71ef7b15b3799f1d3c17e72eab08cc9d657c29",
+      "src/services/shakeReportPreference.ts": "141a553661ba080e59dc3b9aed8e7fe9598bfceb269a608eca30266b2c26f09b"
+    },
+    "unchangedProtectedServiceSha256": {
+      "package.json": "df2eb97f055286244777966cd84cf10a8c36b932b1801c66c0edadb6d6177ace",
+      "package-lock.json": "79e6aef0884151c5860915bafca39d61ba58e01776678bb990d4b1ee0178de4d",
+      "src/services/localState.ts": "68012fe8fe0e3d51f164f1ebf1c565c4dfb259cb09d8aabdc6a0920cebd37880",
+      "src/services/cities.ts": "0fb23e3bb80ab0cded2fdfb0ecf69b41834e61cb7ce06e7acd7a317b95bc6802",
+      "src/services/magneticDeclination.ts": "2c6d5eb57805d684df5e3842a083b5c4412fb0d8396e24d0fd5060eb98bff2e5",
+      "src/services/appFeedback.ts": "b2b288c81fcda01dc2a1cdc98e9f8e014bbcfce57fa6f39114f0c331eb9b759f",
+      "src/services/appShare.ts": "6332ca49b042cd2f3923710c8e7199328d3ee1eac11bfd6b7f962797fa52371c",
+      "src/services/uiScheduling.ts": "915bf85ae328f4f8bc77fbc8e9f858073c6de43f202a0527ade181dd67bdf29f",
+      "src/services/uiScheduling.web.ts": "4171bf799b294783d699e2089f2c6a6ca9fdc23319f569877ad3870393fc0da8",
+      "src/services/quranReaderScroll.ts": "5e4f49c6afce3e6536d04e80c2f70895d45286d9a8594870f8cd75f103a90c55",
+      "src/components/IndopakMushafReader.tsx": "11ae2dbea428e8bb53e7cd1810341c16bdfd7ba3478a4653cf17f35a2f672ed9",
+      "src/components/Tactile.tsx": "e56cfadc0c865e46ed4306a34c6124f93ad1d7601b211e228e4fcfe96550d850"
+    }
+  },
+  "screenshots": [
+    {
+      "path": "docs/screenshots/privacy-location-en-r110.png",
+      "bytes": 58616,
+      "sha256": "be8877b9a2ebe13ec61adac32c4ac8b39b400731a9be96789bbd05dbab8497c2",
+      "source": "Actual running production web, 390x844; not a native capture or mockup."
+    },
+    {
+      "path": "docs/screenshots/privacy-location-ar-r110.png",
+      "bytes": 63324,
+      "sha256": "b724102f2a60c8fed3ff5743dc5b17cef61f9145b365a0c5e496b4166658124e",
+      "source": "Actual running production web, 390x844; not a native capture or mockup."
+    },
+    {
+      "path": "docs/screenshots/privacy-location-ur-r110.png",
+      "bytes": 68548,
+      "sha256": "5830095d6bc0b36d434b070901d1623ae3a572e76c2c606e4e333a347f3348f4",
+      "source": "Actual running production web, 390x844; not a native capture or mockup."
+    },
+    {
+      "path": "docs/screenshots/settings-feedback-en-r110.png",
+      "bytes": 55350,
+      "sha256": "d546780ddd50e15c8f19749a9bd4886d94bf26358d34d17f2eb31bdb1392fb61",
+      "source": "Actual running production web, 390x844; not a native capture or mockup."
+    },
+    {
+      "path": "docs/screenshots/settings-feedback-ar-r110.png",
+      "bytes": 53118,
+      "sha256": "e1829a50881f5b4a94c3422418e59691a8f2b01ef8abd61e882c07ed25271fb5",
+      "source": "Actual running production web, 390x844; not a native capture or mockup."
+    },
+    {
+      "path": "docs/screenshots/settings-feedback-ur-r110.png",
+      "bytes": 50661,
+      "sha256": "7a219d3d00e6170c24e4bd61c097c4690dc3e982a4d6f421c37a172f5577de5d",
+      "source": "Actual running production web, 390x844; not a native capture or mockup."
+    },
+    {
+      "path": "docs/screenshots/focus-preserved-r110.png",
+      "bytes": 109415,
+      "sha256": "60ad60390d24d9431030514268f5a69c4cd5fac396a081f0238da3c7ecb7499a",
+      "source": "Actual running production web, 390x844; not a native capture or mockup."
+    }
+  ],
+  "limitations": [
+    "No physical Android/iPhone/emulator, battery or sensor calibration QA.",
+    "No final APK/AAB/Gradle merged manifest or user-reported manifest supplied.",
+    "Google Form navigation intercepted; no form content/authentication/submission/delivery verified.",
+    "New native binary required; website deployment does not change installed Android permissions."
+  ]
+}

@@ -10,10 +10,11 @@ function PrayerStack(){const subtle=useSubtleTransitions();return <Stack.Navigat
 function ToolsStack(){const subtle=useSubtleTransitions();return <Stack.Navigator screenOptions={{...subtle,headerShown:false}}><Stack.Screen name="ToolsHome" component={ToolsHomeScreen}/><Stack.Screen name="Zakat" component={ZakatScreen}/><Stack.Screen name="Holy site channels" component={HolyChannelsScreen}/><Stack.Screen name="Women" component={WomenHubScreen}/><Stack.Screen name="Istihada" component={IstihadaScreen}/><Stack.Screen name="Ramadan Planner" component={RamadanPlannerScreen}/><Stack.Screen name="These Days" component={TheseDaysScreen}/><Stack.Screen name="Cycle" component={CycleScreen}/><Stack.Screen name="Qada" component={QadaScreen}/><Stack.Screen name="Qada Prayer" component={QadaPrayerScreen}/><Stack.Screen name="Sadaqah" component={SadaqahScreen}/>
       <Stack.Screen name="Sunnah Prayers" component={SunnahScreen}/><Stack.Screen name="Journal" component={JournalScreen}/><Stack.Screen name="Women Guides" component={WomenGuidesScreen}/><Stack.Screen name="Privacy Lock" component={PrivacyLockScreen}/><Stack.Screen name="Fasting" component={FastingScreen}/><Stack.Screen name="Weekly Summary" component={WeeklySummaryScreen}/><Stack.Screen name="Qibla" component={QiblaScreen}/><Stack.Screen name="Location Setup" component={LocationSetupScreen}/><Stack.Screen name="Notifications" component={NotificationScreen}/><Stack.Screen name="Salah Tracker" component={SalahTrackerScreen}/><Stack.Screen name="Adhan" component={AdhanScreen}/><Stack.Screen name="Hijri Calendar" component={HijriCalendarScreen}/><Stack.Screen name="Tasbih" component={TasbihScreen}/><Stack.Screen name="Umrah Packing" component={UmrahPackingScreen}/></Stack.Navigator>}
 
-import { Accelerometer, Magnetometer } from 'expo-sensors';
+import { Magnetometer } from 'expo-sensors';
+import { subscribeAppAccelerometer } from './src/services/appAccelerometer';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  AccessibilityInfo, ActivityIndicator, Alert, Animated, AppState, BackHandler, Easing, FlatList, Image, ImageBackground, Linking, Platform,
+  AccessibilityInfo, ActivityIndicator, Animated, AppState, BackHandler, Easing, FlatList, Image, ImageBackground, Linking, Platform,
   Pressable as BarePressable,
   I18nManager, RefreshControl, SafeAreaView, ScrollView, Share, StatusBar, StyleSheet, Switch, Text, TextInput,
   PanResponder, useColorScheme, useWindowDimensions, View, Dimensions, Keyboard
@@ -28,6 +29,10 @@ import { APP_PLAY_STORE_URL, shareAppLink } from './src/services/appShare';
 import { appShareText } from './src/services/appShareCopy';
 import { settingsDedicationText } from './src/services/settingsDedication';
 import { APP_FEEDBACK_URL, appFeedbackText, openAppFeedbackForm } from './src/services/appFeedback';
+import { ShakeReportSetting, ShakeReportShortcut } from './src/components/ShakeReportShortcut';
+import { AppAlert as Alert } from './src/services/guardedAppAlert';
+import { appPrivacyText, type AppPrivacyKey } from './src/services/appPrivacyCopy';
+import { setShakeReportOverlayActive, shakeReportRoute } from './src/services/shakeReportGuard';
 import { createMeasuredVerseScroll, type ReaderScrollFailure } from './src/services/quranReaderScroll';
 import { configureUiScheduling } from './src/services/uiScheduling';
 import { indopakText } from './src/services/indopakCopy';
@@ -36,7 +41,7 @@ import { floatingTabBarWidth, FLOAT_BAR_PADDING } from './src/services/systemLay
 import { WebView } from 'react-native-webview';
 import * as SplashScreen from 'expo-splash-screen';
 import { haptic, isHapticsSupported, setHapticsEnabled, withHaptic, type HapticKind } from './src/services/haptics';
-import { createNavigationContainerRef, NavigationContainer, StackActions, useFocusEffect, useNavigation } from '@react-navigation/native';
+import { createNavigationContainerRef, NavigationContainer, StackActions, useFocusEffect, useIsFocused, useNavigation } from '@react-navigation/native';
 const KFGQPCUthmanicHafs = require('./assets/fonts/KFGQPCUthmanicHafs.ttf');
 const IBMPlexSansArabic_400Regular = require('./assets/fonts/IBMPlexSansArabic-Regular.ttf');
 const IBMPlexSansArabic_600SemiBold = require('./assets/fonts/IBMPlexSansArabic-SemiBold.ttf');
@@ -858,7 +863,7 @@ const IndopakFocusContext = createContext<{ focusMode: boolean; setFocusMode: (v
 type OverlayEntry = { key: string; render: () => React.ReactNode; onDismiss?: () => void };
 let overlayEntries: OverlayEntry[] = [];
 const overlayListeners = new Set<() => void>();
-function emitOverlay() { overlayListeners.forEach((fn) => fn()); }
+function emitOverlay() { setShakeReportOverlayActive(overlayEntries.length > 0); overlayListeners.forEach((fn) => fn()); }
 function showOverlay(key: string, render: () => React.ReactNode, onDismiss?: () => void) {
   overlayEntries = [...overlayEntries.filter((entry) => entry.key !== key), { key, render, onDismiss }];
   emitOverlay();
@@ -6508,10 +6513,11 @@ function useQiblaCompass(
     let accSub: any = null;
     try {
       Magnetometer.setUpdateInterval(80);
-      Accelerometer.setUpdateInterval(80);
       magSub = Magnetometer.addListener((d: any) => { mag = d; compute(); });
-      accSub = Accelerometer.addListener((d: any) => { acc = d; compute(); });
+      accSub = subscribeAppAccelerometer((d) => { acc = d; compute(); }, 80);
     } catch {
+      alive = false;
+      try { magSub?.remove?.(); accSub?.remove?.(); } catch {}
       /* No sensor to subscribe to — on the web, or on hardware without
          one. Stay 'unavailable' and let the screen say so plainly rather
          than drawing an arrow that cannot move. */
@@ -6707,7 +6713,7 @@ function CompassBadge({ state, T }: { state: CompassState; T: (t: string) => str
   );
 }
 
-function QiblaScreen({navigation}:any){const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);const{location}=useAppLocation();const[direction,setDirection]=useState<number|null>(null);const[error,setError]=useState('');const compass=useQiblaCompass(direction!==null,location?.latitude??null,location?.longitude??null);const live=compass.quality!=='unavailable'&&compass.heading!==null;const load=async()=>{if(!location)return;setDirection(null);setError('');try{setDirection(await getQibla(location.latitude,location.longitude))}catch(e:any){setError(T(e.message))}};useEffect(()=>{load()},[location?.latitude,location?.longitude]);
+function QiblaScreen({navigation}:any){const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);const{location}=useAppLocation();const[direction,setDirection]=useState<number|null>(null);const[error,setError]=useState('');const qiblaFocused=useIsFocused();const[compassForeground,setCompassForeground]=useState(AppState.currentState==='active');useEffect(()=>{const sub=AppState.addEventListener('change',state=>setCompassForeground(state==='active'));return()=>sub.remove()},[]);const compass=useQiblaCompass(direction!==null&&qiblaFocused&&compassForeground,location?.latitude??null,location?.longitude??null);const live=compass.quality!=='unavailable'&&compass.heading!==null;const load=async()=>{if(!location)return;setDirection(null);setError('');try{setDirection(await getQibla(location.latitude,location.longitude))}catch(e:any){setError(T(e.message))}};useEffect(()=>{load()},[location?.latitude,location?.longitude]);
 /* How far the Kaaba is off the mark, shortest way round. Under about four
    degrees the phone is, for this purpose, pointing at Makkah. */
 /* Within a couple of kilometres the bearing stops meaning anything: the
@@ -12092,35 +12098,36 @@ function PanelHead({ tool, glyph, image, title, note }: { tool?: string; glyph?:
    They are kept as data next to the screen that renders them so that the
    text and the screen cannot drift, and so that a change to what the app
    sends over the network is a change to one list rather than a hunt. */
-type LegalDoc = { title: string; updated: string; sections: { heading: string; body: string }[] };
+type LegalDoc = { title: string; updated: string; sections: { heading: string; body: string; bodyKey?: AppPrivacyKey; headingKey?: AppPrivacyKey }[] };
 
 const LEGAL_DOCS: Record<string, LegalDoc> = {
   privacy: {
     title: 'Privacy Policy',
-    updated: '5 November 2026',
+    updated: '2026-10-26',
     sections: [
       { heading: 'Who this is',
         body: 'This app is published by Orin Developers. If you have a question about this policy, or about your data, write to Islamic@qashi.uz and we will answer.' },
       { heading: 'There is no account',
         body: 'The app does not ask you to sign up, log in, or give an email address. There is no account to close because there is no account, and there is therefore nothing we could identify you by even if we wanted to.' },
       { heading: 'What stays on your device',
-        body: 'Your prayer record, the surah and verse you last read, bookmarks, notes, reminder settings, the language you chose, the city you picked and any collection you have downloaded for offline use are stored on the device itself. They are never uploaded. Clearing the app\u2019s storage or uninstalling removes them completely.' },
+        body: appPrivacyText('en', 'stored'), bodyKey: 'stored' },
       { heading: 'What we collect',
-        body: 'Nothing. The app runs no analytics, no advertising identifier, no crash reporting that could be tied back to you, and no third-party tracking of any kind. We cannot see how many people use the app, which screens they open, or what they read.' },
+        body: appPrivacyText('en', 'collection'), bodyKey: 'collection' },
       { heading: 'What is sent over the network',
         body: 'When the app fetches something it sends only what that request needs — the coordinates of the city you selected, in order to work out prayer times and the direction of the qibla, or the identifier of the chapter, hadith or audio you asked for. Those requests carry no account, no device identifier and no history. They are not joined to one another.' },
       { heading: 'Who we ask',
         body: 'Quran text, prayer times, hadith, the Names, supplications and the countdown to Hajj come from api.islamicdata.uz. Recitation audio comes from cdn.islamic.network. The adhan recordings you choose are downloaded from audio.islamicdata.uz. Gold and silver prices used by the Zakat calculator come from misc.islamicdata.uz. Each receives the request needed to answer it and nothing about you.' },
-      { heading: 'Location',
-        body: 'The app works with a city you choose from a list, and with Makkah if you choose nothing. Location permission is optional: if you grant it, the device is asked once to resolve the nearest city, and that resolves to a city name. Your coordinates are not stored, not kept as a history, and not sent anywhere as a record of where you have been. Denying the permission costs you nothing but the convenience of the lookup.' },
+      { heading: 'Location', body: appPrivacyText('en', 'location'), bodyKey: 'location' },
+      { heading: 'Motion and shake to report', headingKey: 'motionTitle', body: appPrivacyText('en', 'motion'), bodyKey: 'motion' },
+      { heading: 'Voluntary reports and feature requests', headingKey: 'reportsTitle', body: appPrivacyText('en', 'reports'), bodyKey: 'reports' },
       { heading: 'Notifications',
         body: 'Reminders are scheduled on the device itself. Nothing about them, including which reminders you set, is sent anywhere.' },
       { heading: 'Data sharing and sale',
         body: 'We do not sell your data, and we have no data to sell. We do not share it with third parties for advertising, analytics, marketing or any other purpose. The services named above are asked for content, not told about you.' },
       { heading: 'Children',
-        body: 'The app is suitable for all ages and knowingly collects nothing from anyone, including children. It contains no advertising and no in-app purchases.' },
+        body: appPrivacyText('en', 'children'), bodyKey: 'children' },
       { heading: 'Your rights',
-        body: 'Because nothing is held about you, there is no profile to request, correct, export or erase. Everything you have created lives on your device and can be removed by clearing the app\u2019s storage in Settings or by uninstalling. If you believe we hold something about you, write to Islamic@qashi.uz.' },
+        body: appPrivacyText('en', 'rights'), bodyKey: 'rights' },
       { heading: 'Changes',
         body: 'If this policy changes, this page changes with it and the date at the top moves. Where a change is material we will say so in the app.' },
       { heading: 'Contact',
@@ -12153,14 +12160,17 @@ const LEGAL_DOCS: Record<string, LegalDoc> = {
   },
   datasafety: {
     title: 'Data Safety',
-    updated: '5 November 2026',
+    updated: '2026-10-26',
     sections: [
-      { heading: 'Collected', body: 'Nothing is collected. No account, no analytics, no advertising identifier, no crash reporting that identifies you, no third-party tracking.' },
-      { heading: 'Stored on device', body: 'Prayer record, reading position, bookmarks, notes, settings, chosen city, language, and anything downloaded for offline use. Removed by clearing storage or uninstalling. Never uploaded.' },
+      { heading: 'Collected', body: appPrivacyText('en', 'collection'), bodyKey: 'collection' },
+      { heading: 'Location', body: appPrivacyText('en', 'location'), bodyKey: 'location' },
+      { heading: 'Motion and shake to report', headingKey: 'motionTitle', body: appPrivacyText('en', 'motion'), bodyKey: 'motion' },
+      { heading: 'Voluntary reports and feature requests', headingKey: 'reportsTitle', body: appPrivacyText('en', 'reports'), bodyKey: 'reports' },
+      { heading: 'Stored on device', body: appPrivacyText('en', 'stored'), bodyKey: 'stored' },
       { heading: 'Shared', body: 'Nothing is sold, and nothing is shared with third parties for advertising, analytics or marketing.' },
       { heading: 'Sent in requests', body: 'The coordinates of the city you selected, and the identifiers of the content you asked for. Not linked to you, and not retained as a history.' },
       { heading: 'Encryption', body: 'Requests to the services named in the Privacy Policy are made over HTTPS.' },
-      { heading: 'Deletion', body: 'There is nothing held about you to delete. What is on the device can be cleared from Settings or by uninstalling.' },
+      { heading: 'Deletion', body: appPrivacyText('en', 'rights'), bodyKey: 'rights' },
       { heading: 'Independent review', body: 'No third party has reviewed these practices. They are stated here plainly so that you can judge them yourself, and so that they can be checked against what the app actually does.' },
     ],
   },
@@ -12180,8 +12190,8 @@ function LegalScreen({ route, navigation }: any) {
       <Text style={s.meta}>{T('Last updated')}: {doc.updated}</Text>
       {doc.sections.map((section) => (
         <View key={section.heading} style={{ marginTop: 18 }}>
-          <Text style={s.sourceTitle}>{T(section.heading)}</Text>
-          <Text style={s.intro}>{T(section.body)}</Text>
+          <Text style={s.sourceTitle}>{section.headingKey ? appPrivacyText(language, section.headingKey) : T(section.heading)}</Text>
+          <Text testID={section.bodyKey ? `legal-${section.bodyKey}` : undefined} style={s.intro}>{section.bodyKey ? appPrivacyText(language, section.bodyKey) : T(section.body)}</Text>
         </View>
       ))}
     </ScrollView></Page>;
@@ -12476,6 +12486,8 @@ function SettingsScreen({navigation}:any){
         </Tactile>
         {feedbackError && <Text testID="settings-report-feature-error" accessibilityLiveRegion="polite"
           style={[s.meta, { paddingHorizontal: 16, paddingVertical: 12 }]}>{appFeedbackText(language, 'error')}</Text>}
+        {Platform.OS !== 'web' && <ShakeReportSetting language={language} rtl={rtl} styles={s} accent={C.green} card={C.card} line={C.line}
+          icon={ico('phone-portrait-outline', 20, C.green)} />}
       </View>
 
       <View style={s.madeWith}>
@@ -13432,7 +13444,14 @@ function ExitPrompt() {
 /*
  * reaches every screen; the navigation state is carried across that rebuild.
  */
-function Root() {
+function AppShakeReport({ active, blocked, routeKey }: { active: boolean; blocked: boolean; routeKey: string }) {
+  const { language, rtl } = useLanguage();
+  const locked = useIsLocked();
+  return <ShakeReportShortcut active={active} blocked={blocked || locked} routeKey={routeKey}
+    language={language} rtl={rtl} styles={s} accent={C.green} card={C.card} line={C.line} />;
+}
+
+function Root({ shakeReady }: { shakeReady: boolean }) {
   const { dark, tick, swap } = useTheme();
   const subtle = useSubtleTransitions();
   /* The palette is a module-level object, so a theme change remounts the
@@ -13448,6 +13467,12 @@ function Root() {
   const { fontTick } = useQuranPreferences();
   const liveState = useRef<any>(undefined);
   const [indopakActive, setIndopakActive] = useState(false);
+  const [shakeRoute, setShakeRoute] = useState({ key: '', blocked: true });
+  const syncFocusedRoute = (state: any) => {
+    setIndopakActive(isIndopakReaderRoute(state));
+    const next = shakeReportRoute(state);
+    setShakeRoute(previous => previous.key === next.key && previous.blocked === next.blocked ? previous : next);
+  };
   const [indopakFocusMode, setIndopakFocusMode] = useState(false);
   const indopakFocus = useMemo(() => ({ focusMode: indopakActive && indopakFocusMode, setFocusMode: setIndopakFocusMode }), [indopakActive, indopakFocusMode]);
   useBackIntegration(navigationRef);
@@ -13468,8 +13493,8 @@ function Root() {
     <IndopakScreenContext.Provider value={indopakActive}>
     <IndopakFocusContext.Provider value={indopakFocus}>
     <NavigationContainer ref={navigationRef} key={(dark ? 'dark' : 'light') + ':' + tick + ':' + fontTick} initialState={liveState.current}
-      onReady={() => setIndopakActive(isIndopakReaderRoute(navigationRef.getRootState()))}
-      onStateChange={(state: any) => { liveState.current = state; setIndopakActive(isIndopakReaderRoute(state)); }}>
+      onReady={() => syncFocusedRoute(navigationRef.getRootState())}
+      onStateChange={(state: any) => { liveState.current = state; syncFocusedRoute(state); }}>
     <Stack.Navigator screenOptions={{...subtle,headerShown:false}}>
       <Stack.Screen name="Main" component={Tabs} />
       <Stack.Screen name="Settings" component={SettingsStack} />
@@ -13479,6 +13504,7 @@ function Root() {
       <Stack.Screen name="Inbox" component={NotificationInboxScreen} />
     </Stack.Navigator>
       <ExpoStatusBar style={dark ? 'light' : 'dark'} /><MiniPlayer /><OverlayHost /><ExitPrompt />
+      {Platform.OS !== 'web' && <AppShakeReport active={shakeReady && !indopakFocus.focusMode} blocked={shakeRoute.blocked} routeKey={shakeRoute.key} />}
     </NavigationContainer>
     </IndopakFocusContext.Provider>
     </IndopakScreenContext.Provider>
@@ -14971,7 +14997,7 @@ function AppShell() {
     {/* Nothing mounts until the saved language is known, so the very first
         frame is already in the right language and the right direction. The
         splash covers the read, which is a single storage lookup. */}
-    {ready && <Root />}
+    {ready && <Root shakeReady={!splash && onboarding === false} />}
     {splash && <View style={s.shellLayer}><Splash ready={bootSettled} progress={bootProgress} onDone={() => setSplash(false)} /></View>}
     {!splash && onboarding === true && <View style={s.shellLayer}><Onboarding onFinish={() => setOnboarding(false)} /></View>}
   </SystemNavigationBoundary>;

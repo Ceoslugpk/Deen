@@ -86,8 +86,11 @@ test('zoom panning and multi-touch are never claimed for page turns', () => {
 
 test('menu removal, freed reader space and mini-player placement are route-scoped, not global preferences', () => {
   const app = fs.readFileSync(path.join(__dirname,'../App.tsx'),'utf8');
-  assert.ok(app.includes('onReady={() => setIndopakActive(isIndopakReaderRoute(navigationRef.getRootState()))}'));
-  assert.match(app,/liveState.current = state; setIndopakActive\(isIndopakReaderRoute\(state\)\)/);
+  // Route bookkeeping is now shared with the native shake shortcut; the
+  // reader's chrome still derives from the same focused-route predicate.
+  assert.ok(app.includes('onReady={() => syncFocusedRoute(navigationRef.getRootState())}'));
+  assert.match(app,/liveState.current = state; syncFocusedRoute\(state\)/);
+  assert.match(app,/const syncFocusedRoute = \(state: any\) => \{\s*setIndopakActive\(isIndopakReaderRoute\(state\)\)/);
   assert.match(app,/if \(indopakActive\) return null;/);
   assert.match(app,/const bottom = indopakActive \? 16 \+ \(Platform.OS === 'ios' \? insets.bottom : 0\) : MINI_PLAYER_BOTTOM;/);
   const screen = app.slice(app.indexOf('function IndopakQuranScreen('),app.indexOf('function ReaderScreen('));

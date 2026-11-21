@@ -58,6 +58,10 @@ update; the unchanged Focus captures document R104.
 [Self-contained Settings/sharing gallery](docs/settings-share-r105-gallery.html) ·
 [Focus behavior and R104 baseline](docs/share-focus-r104.md)
 
+**Shake shortcut and location safeguards (R110):** [Implementation and validation](docs/shake-feedback-location-r110.md) ·
+[Seven real running-web captures](docs/shake-feedback-location-r110-gallery.html).
+The native-only shake prompt is not simulated in these screenshots; physical-device QA remains necessary.
+
 **Large-screen assets:** [Download 24 tablet and unfolded-foldable screenshots](docs/store-assets/Islamic-tablet-foldable-screenshots.zip)
 (8 per category). These are independently rendered **web-build viewport captures**, not
 native Android emulator screenshots. [Sizes, provenance and reproduction steps](docs/store-assets/README.md).
@@ -176,6 +180,8 @@ The normal reader uses **measured variable-height virtualization**, not fabricat
 
 - **Share app**, immediately below Privacy Policy / Terms of Use / Data Safety, with a bundled scannable QR for [Islamic on Google Play](https://play.google.com/store/apps/details?id=com.qashi.islamic).
 - **Report or request a feature**, directly below Share app, opens the [publisher’s feedback form](https://forms.gle/9jbqgcvUTBDV4g9Z6) in the user’s external browser. The action is localized in all 22 interface languages and sends no app data or prefilled answers. [Checks and actual screenshots](docs/settings-feedback-r108.md).
+- **Shake to report** is an optional Android/iOS shortcut below that report action, **off by default**. A deliberate shake shows a localized confirmation; only **Open report form** opens the existing external form. Foreground-only sensing pauses around Qibla, locks, dialogs, keyboard entry and Quran Focus. No automatic screenshots, logs, sensor uploads or reports. Web retains the manual button without requesting motion access.
+- **No device-location permission**: fine, coarse, background and location-foreground-service permissions are explicitly blocked in the Expo Android configuration. Manually selected cities/coordinates still power prayer times, Qibla and calendars. Corrected Privacy Policy/Data Safety wording is localized in all 22 UI languages. Native permission changes need a new binary; installed-device motion QA and final APK/AAB manifest inspection remain release checks. [R110 implementation and evidence](docs/shake-feedback-location-r110.md) · [Actual running-web gallery](docs/shake-feedback-location-r110-gallery.html).
 - **“Share app with your friends and family”** opens the platform share flow. Unsupported web browsers can copy the link; cancellation/errors are not presented as successful sharing. The raw URL is **not printed on the screen**; the QR, shared/copied message and separate Google Play action keep the same destination.
 - Share App titles, explanations, actions and statuses cover **all 22 interface languages**, light/dark and RTL. Long Share App titles wrap on narrow screens; failure guidance offers retry or Google Play rather than referring to a removed link.
 - The **very end of Settings** has the publisher’s dedication to their beloved parents and the entire Muslim Ummah, localized in all 22 interface languages, with the exact supplied English wording, fixed **2026 © Islamic.** branding and **🤲❤️** ending.

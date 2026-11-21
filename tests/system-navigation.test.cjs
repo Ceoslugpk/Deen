@@ -92,7 +92,8 @@ test('the app mounts one explicit root provider and the safe shell boundary', ()
 
 for (const platform of ['android', 'ios', 'web']) {
   test(`${platform} native modal keeps its props and uses the appropriate window boundary`, () => {
-    const NativeModal = () => null;
+    let tree;
+    const NativeModal = (props) => { tree = { type: NativeModal, props }; return null; };
     const SafeAreaProvider = () => null;
     const SystemNavigationBoundary = () => null;
     const { SystemModal } = createLoader({
@@ -102,7 +103,7 @@ for (const platform of ['android', 'ios', 'web']) {
     })('src/components/SystemModal.tsx');
     const onRequestClose = () => {};
     const child = React.createElement('span', null, 'Sheet controls');
-    const tree = SystemModal({ children: child, visible: true, transparent: true, animationType: 'slide', onRequestClose });
+    renderToStaticMarkup(React.createElement(SystemModal, { children: child, visible: true, transparent: true, animationType: 'slide', onRequestClose }));
     assert.equal(tree.type, NativeModal);
     assert.equal(tree.props.onRequestClose, onRequestClose);
     assert.equal(tree.props.transparent, true);

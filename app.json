@@ -26,6 +26,12 @@
     },
     "android": {
       "package": "com.qashi.islamic",
+      "blockedPermissions": [
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_BACKGROUND_LOCATION",
+        "android.permission.FOREGROUND_SERVICE_LOCATION"
+      ],
       "adaptiveIcon": {
         "backgroundColor": "#2D187D",
         "foregroundImage": "./assets/android-icon-foreground.png",
