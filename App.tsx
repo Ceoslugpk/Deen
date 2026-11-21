@@ -27,6 +27,7 @@ import { AppShareQr } from './src/components/AppShareQr';
 import { APP_PLAY_STORE_URL, shareAppLink } from './src/services/appShare';
 import { appShareText } from './src/services/appShareCopy';
 import { settingsDedicationText } from './src/services/settingsDedication';
+import { APP_FEEDBACK_URL, appFeedbackText, openAppFeedbackForm } from './src/services/appFeedback';
 import { createMeasuredVerseScroll, type ReaderScrollFailure } from './src/services/quranReaderScroll';
 import { configureUiScheduling } from './src/services/uiScheduling';
 import { indopakText } from './src/services/indopakCopy';
@@ -12225,6 +12226,15 @@ function ShareAppScreen({ navigation }: any) {
 function SettingsScreen({navigation}:any){
   const { language, rtl, setLanguage } = useLanguage();
   const T = (text: string) => tx(language, text);
+  const [feedbackBusy, setFeedbackBusy] = useState(false), [feedbackError, setFeedbackError] = useState(false);
+  const openingFeedback = useRef(false);
+  const openFeedback = async () => {
+    if (openingFeedback.current) return;
+    openingFeedback.current = true; setFeedbackBusy(true); setFeedbackError(false);
+    try { await openAppFeedbackForm(); }
+    catch { setFeedbackError(true); }
+    finally { openingFeedback.current = false; setFeedbackBusy(false); }
+  };
   /* The interface language is chosen from a list rather than a switch, now
      that there is more than one alternative to English. Only the languages
      with any copy of their own are offered: the rest would put an English
@@ -12455,6 +12465,17 @@ function SettingsScreen({navigation}:any){
           <Text style={[s.settingName, { flex: 1, minWidth: 0, marginHorizontal: 12 }]}>{appShareText(language, 'title')}</Text>
           {ico(rtl ? 'arrow-back' : 'arrow-forward', 17, C.chevron)}
         </Tactile>
+        <Tactile testID="settings-report-feature" accessibilityRole="link" accessibilityLabel={appFeedbackText(language, 'label')}
+          {...(Platform.OS === 'web' ? { href: APP_FEEDBACK_URL, hrefAttrs: { target: '_blank', rel: 'noopener noreferrer' } } : {})}
+          onPress={Platform.OS === 'web' ? undefined : () => { void openFeedback(); }}
+          disabled={feedbackBusy} accessibilityState={{ disabled: feedbackBusy, busy: feedbackBusy }} aria-busy={feedbackBusy}
+          style={s.settingsRow}>
+          {ico('chatbubble-ellipses-outline', 20, C.green)}
+          <Text style={[s.settingName, { flex: 1, minWidth: 0, marginHorizontal: 12 }]}>{appFeedbackText(language, 'label')}</Text>
+          {ico('open-outline', 17, C.chevron)}
+        </Tactile>
+        {feedbackError && <Text testID="settings-report-feature-error" accessibilityLiveRegion="polite"
+          style={[s.meta, { paddingHorizontal: 16, paddingVertical: 12 }]}>{appFeedbackText(language, 'error')}</Text>}
       </View>
 
       <View style={s.madeWith}>
