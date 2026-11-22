@@ -9,7 +9,7 @@
     <string name="widget_today" formatted="false">Днес</string>
     <string name="widget_reset" formatted="false">Нулирай</string>
     <string name="widget_now" formatted="false">Сега</string>
-    <string name="widget_failure" formatted="false">Промяната не можа да бъде потвърдена. Отворете отново Islamic, за да проверите запазения брояч.</string>
+    <string name="widget_failure" formatted="false">Промяната не можа да бъде потвърдена. Натиснете „Опитай отново“, за да проверите запазения брояч.</string>
     <string name="widget_open" formatted="false">Отваряне на Islamic</string>
     <string name="widget_choose" formatted="false">Изберете град в приложението</string>
     <string name="widget_expired" formatted="false">Отворете приложението за обновяване</string>
@@ -19,5 +19,8 @@
     <string name="widget_loading" formatted="false">Зареждане…</string>
     <string name="widget_preview_prayer_name" formatted="false">Фаджр</string>
     <string name="widget_preview_hijri" formatted="false">15 Джумада ал-ула 1448</string>
+    <string name="widget_preview_hijri_day" formatted="false">15</string>
+    <string name="widget_preview_hijri_month" formatted="false">Джумада ал-ула</string>
+    <string name="widget_preview_hijri_year" formatted="false">1448</string>
     <string name="widget_preview_gregorian" formatted="false">26 октомври 2026 г.</string>
 </resources>

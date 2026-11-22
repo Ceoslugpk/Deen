@@ -9,7 +9,7 @@
     <string name="widget_today" formatted="false">आज</string>
     <string name="widget_reset" formatted="false">रीसेट</string>
     <string name="widget_now" formatted="false">अभी</string>
-    <string name="widget_failure" formatted="false">इस बदलाव की पुष्टि नहीं हो सकी। सहेजी गई गिनती देखने के लिए Islamic फिर से खोलें।</string>
+    <string name="widget_failure" formatted="false">इस बदलाव की पुष्टि नहीं हो सकी। सहेजी गई गिनती देखने के लिए फिर कोशिश करें पर टैप करें।</string>
     <string name="widget_open" formatted="false">Islamic खोलें</string>
     <string name="widget_choose" formatted="false">ऐप में शहर चुनें</string>
     <string name="widget_expired" formatted="false">ताज़ा करने के लिए ऐप खोलें</string>
@@ -19,5 +19,8 @@
     <string name="widget_loading" formatted="false">लोड हो रहा है…</string>
     <string name="widget_preview_prayer_name" formatted="false">फ़ज्र</string>
     <string name="widget_preview_hijri" formatted="false">15 जुमादा-अल-ऊला 1448</string>
+    <string name="widget_preview_hijri_day" formatted="false">15</string>
+    <string name="widget_preview_hijri_month" formatted="false">जुमादा-अल-ऊला</string>
+    <string name="widget_preview_hijri_year" formatted="false">1448</string>
     <string name="widget_preview_gregorian" formatted="false">26 अक्तूबर 2026</string>
 </resources>

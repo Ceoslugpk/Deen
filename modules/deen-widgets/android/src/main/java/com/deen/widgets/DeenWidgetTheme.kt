@@ -7,6 +7,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceModifier
 import androidx.glance.ImageProvider
+import androidx.glance.LocalContext
 import androidx.glance.LocalSize
 import androidx.glance.appwidget.cornerRadius
 import androidx.glance.background
@@ -68,7 +69,7 @@ fun shapeFor(size: DpSize): WidgetShape = when {
 @Composable
 fun DeenWidgetContent(modifier: GlanceModifier = GlanceModifier, content: @Composable () -> Unit) {
     val size = LocalSize.current
-    val padding = if (size.width < 150.dp || size.height < 150.dp) 10.dp else 14.dp
+    val padding = widgetPadding(size).dp
     Box(modifier.fillMaxSize().background(ImageProvider(LocalWidgetPalette.current.card))
         .cornerRadius(26.dp).padding(padding),content = content)
 }
@@ -77,12 +78,15 @@ fun DeenWidgetContent(modifier: GlanceModifier = GlanceModifier, content: @Compo
 @Composable
 fun Eyebrow(text: String) {
     val palette = LocalWidgetPalette.current
+    val context = LocalContext.current
+    val size = LocalSize.current
+    val (font,lines) = widgetHeadingSpec(context,text,size.width.value-2*widgetPadding(size))
     Row(GlanceModifier.fillMaxWidth(),verticalAlignment = Alignment.CenterVertically) {
         Box(GlanceModifier.width(3.dp).height(11.dp).background(palette.accent).cornerRadius(2.dp)) {}
         GapW(2)
         Box(GlanceModifier.width(3.dp).height(6.dp).background(palette.secondary).cornerRadius(2.dp)) {}
         GapW(6)
-        Text(text,style = TextStyle(color = ColorProvider(palette.accent),fontSize = 10.sp,fontWeight = FontWeight.Bold),maxLines = 1)
+        Text(text,GlanceModifier.defaultWeight(),style = TextStyle(color = ColorProvider(palette.accent),fontSize = font.sp,fontWeight = FontWeight.Bold),maxLines = lines)
     }
 }
 

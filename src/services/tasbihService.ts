@@ -115,29 +115,60 @@ export const EMPTY_TASBIH: TasbihState = { phraseId: 'subhan-allah', goal: 33, c
 
 let state: TasbihState = EMPTY_TASBIH;
 const listeners = new Set<(next: TasbihState) => void>();
-
+export type TasbihFailureCode = 'TW_READ' | 'TW_IMPORT' | 'TW_COMMAND' | 'TW_DATA' | 'TW_BACKUP';
+export type TasbihStatus = { phase: 'idle' | 'loading' | 'ready' | 'error'; code?: TasbihFailureCode };
+let status: TasbihStatus = { phase: 'idle' };
+const statusListeners = new Set<(next: TasbihStatus) => void>();
+class TasbihFailure extends Error {
+  constructor(readonly code: TasbihFailureCode, cause?: unknown) {
+    super(typeof (cause as { message?: unknown })?.message === 'string' ? (cause as Error).message : code === 'TW_BACKUP' ? 'Counter could not be saved' : 'Saved counter unavailable');
+  }
+}
 const dayKey = (date = new Date()) => date.toISOString().slice(0, 10);
-
-function emit(next: TasbihState) {
-  state = next;
-  listeners.forEach((listener) => listener(state));
+function notify<T>(subscribers: Set<(value: T) => void>, value: T) {
+  // A failed screen subscriber cannot undo a durable native transaction.
+  subscribers.forEach(listener => { try { listener(value); } catch { /* UI will adopt the next acknowledged state */ } });
 }
-
+function setStatus(next: TasbihStatus) { status = next; notify(statusListeners, next); }
+function emit(next: TasbihState) { state = next; notify(listeners, state); }
+function fail(code: TasbihFailureCode, cause: unknown): never {
+  ready = false;
+  const error = cause instanceof TasbihFailure ? cause : new TasbihFailure(code, cause);
+  setStatus({ phase: 'error', code: error.code });
+  throw error;
+}
+/** Validate BEFORE rendering or mirroring. Malformed records are retained in
+ * their original stores, never replaced by a guessed zero/empty history. */
+function parseState(raw: string): TasbihState {
+  try {
+    const value = JSON.parse(raw);
+    const integer = (n: unknown) => typeof n === 'number' && Number.isSafeInteger(n) && n >= 0;
+    if (!value || Array.isArray(value) || typeof value !== 'object' || !integer(value.count) || !integer(value.goal) || value.goal < 1) throw Error('Invalid counter values');
+    const next = { ...EMPTY_TASBIH, ...value };
+    if (typeof next.phraseId !== 'string' || !integer(next.rounds) || !next.days || Array.isArray(next.days) || typeof next.days !== 'object'
+      || !Object.values(next.days).every(integer) || !Array.isArray(next.sessions)
+      || !next.sessions.every((session: TasbihSession) => session && typeof session.id === 'string' && typeof session.phrase === 'string'
+        && integer(session.count) && integer(session.goal) && typeof session.completedAt === 'number' && Number.isFinite(session.completedAt))) throw Error('Invalid counter history');
+    return next as TasbihState;
+  } catch { throw new TasbihFailure('TW_DATA', new Error('Saved counter is invalid; original data retained')); }
+}
 async function persist(next: TasbihState, nativeCommitted = false) {
-  const saved = await writeText(KEY, JSON.stringify(next));
-  // A failed backup mirror cannot undo an acknowledged native transaction.
-  // On web/iOS, however, never claim an unpersisted local change succeeded.
-  if (!saved && !nativeCommitted) throw new Error('Counter could not be saved');
-  emit(next);
+  if (nativeCommitted) emit(next);
+  let saved = false;
+  try { saved = await writeText(KEY, JSON.stringify(next)); } catch { /* handled below; native is still authoritative */ }
+  // A failed/thrown backup mirror cannot undo an acknowledged native command.
+  if (!saved && !nativeCommitted) throw new TasbihFailure('TW_BACKUP');
+  if (!nativeCommitted) emit(next);
 }
-
-
 export function subscribeTasbih(listener: (next: TasbihState) => void) {
   listeners.add(listener);
-  return () => {
-    listeners.delete(listener);
-  };
+  return () => { listeners.delete(listener); };
 }
+export function subscribeTasbihStatus(listener: (next: TasbihStatus) => void) {
+  statusListeners.add(listener);
+  return () => { statusListeners.delete(listener); };
+}
+export function getTasbihStatus(): TasbihStatus { return status; }
 
 // Android app and widgets use one transactional native authority. AsyncStorage
 // remains a non-destructive backup/web/iOS mirror, not a competing counter.
@@ -151,68 +182,81 @@ function serial<T>(work: () => Promise<T>): Promise<T> {
   return result;
 }
 async function hydrate(restore = false) {
-  const native = nativeTasbihAvailable();
-  if (native && !restore) {
-    // Native authority is read FIRST. A broken/unreadable AsyncStorage mirror
-    // must not block or replace an already initialized native counter.
-    const existing = await readNativeTasbihJson();
-    if (existing) {
-      await persist(JSON.parse(existing) as TasbihState, true);
-      ready = true;
-      return state;
-    }
-  }
-  let saved = state;
+  setStatus({ phase: 'loading' });
+  let stage: TasbihFailureCode = 'TW_READ';
   try {
-    const raw = await AsyncStorage.getItem(KEY);
-    if (raw) saved = { ...EMPTY_TASBIH, ...JSON.parse(raw) };
-  } catch { throw new Error('Saved counter could not be read; original data retained'); }
-  if (native) {
-    const raw = await commandTasbihJson(JSON.stringify({
-      op: restore ? 'restore' : 'init', state: saved,
-      label: currentPhrase(saved).transliteration,
-      idempotencyKey: `${commandSession}-${++commandNumber}`,
-    }));
-    if (!raw) throw new Error('Native counter did not acknowledge initialization');
-    saved = JSON.parse(raw) as TasbihState;
-  } else if (Platform.OS === 'ios' && !restore) {
-    // Preserve the existing Swift/AppGroup timestamp contract. Adopt widget
-    // taps BEFORE any global lifecycle publication can replace the snapshot.
-    const raw = await readSnapshotJson();
-    if (raw) {
-      const widget = JSON.parse(raw) as { tasbihAt?: number; tasbih?: { count?: number } };
-      const count = widget.tasbih?.count;
-      if ((widget.tasbihAt || 0) > lastPublishTime() && typeof count === 'number' && Number.isFinite(count)) {
-        saved = { ...saved, count: Math.max(0, Math.min(9999, Math.round(count))) };
+    const native = nativeTasbihAvailable();
+    if (native && !restore) {
+      const existing = await readNativeTasbihJson();
+      if (existing !== null) {
+        await persist(parseState(existing), true);
+        ready = true; setStatus({ phase: 'ready' });
+        return state;
       }
     }
-  }
-  await persist(saved, native);
-  ready = true;
-  return state;
+    let saved = state;
+    try {
+      const raw = await AsyncStorage.getItem(KEY);
+      if (raw !== null) saved = parseState(raw);
+    } catch (error) {
+      if (error instanceof TasbihFailure) throw error;
+      throw new Error('Saved counter could not be read; original data retained');
+    }
+    if (native) {
+      stage = 'TW_IMPORT';
+      const raw = await commandTasbihJson(JSON.stringify({
+        op: restore ? 'restore' : 'init', state: saved,
+        label: currentPhrase(saved).transliteration,
+        idempotencyKey: `${commandSession}-${++commandNumber}`,
+      }));
+      if (raw === null) throw new Error('Native counter did not acknowledge initialization');
+      saved = parseState(raw);
+    } else if (Platform.OS === 'ios' && !restore) {
+      // Preserve the existing Swift/AppGroup timestamp contract.
+      const raw = await readSnapshotJson();
+      if (raw) {
+        const widget = JSON.parse(raw) as { tasbihAt?: number; tasbih?: { count?: number } };
+        const count = widget.tasbih?.count;
+        if ((widget.tasbihAt || 0) > lastPublishTime() && typeof count === 'number' && Number.isFinite(count)) {
+          saved = { ...saved, count: Math.max(0, Math.min(9999, Math.round(count))) };
+        }
+      }
+    }
+    await persist(saved, native);
+    ready = true; setStatus({ phase: 'ready' });
+    return state;
+  } catch (error) { return fail(stage, error); }
 }
-/** Restore=true is used ONLY by the explicit backup-restore path. Ordinary
- * startup/resume must adopt native widget taps, not overwrite them. */
+/** A Retry/foreground read reconciles the saved state; it NEVER repeats an
+ * uncertain tap. Restore=true is reserved for explicit backup restoration. */
 export function loadTasbihState(restore = false): Promise<TasbihState> {
   return serial(() => hydrate(restore));
 }
-async function applyCommand(command: Record<string, unknown>, reduce: () => TasbihState) {
+async function ensureReady() {
+  // Stop queued mutations after a failure until a read/Retry succeeds. They
+  // must not blindly continue with new IDs after an ambiguous native write.
+  if (status.phase === 'error') throw new TasbihFailure(status.code || 'TW_READ');
   if (!ready) await hydrate();
-  if (nativeTasbihAvailable()) {
-    const raw = await commandTasbihJson(JSON.stringify({ ...command, idempotencyKey: `${commandSession}-${++commandNumber}` }));
-    if (!raw) throw new Error('Native counter did not acknowledge command');
-    await persist(JSON.parse(raw) as TasbihState, true);
-  } else await persist(reduce());
+}
+async function applyCommand(command: Record<string, unknown>, reduce: () => TasbihState) {
+  await ensureReady();
+  try {
+    if (nativeTasbihAvailable()) {
+      const raw = await commandTasbihJson(JSON.stringify({ ...command, idempotencyKey: `${commandSession}-${++commandNumber}` }));
+      if (raw === null) throw new Error('Native counter did not acknowledge command');
+      await persist(parseState(raw), true);
+    } else await persist(reduce());
+  } catch (error) { fail('TW_COMMAND', error); }
 }
 
 export function useTasbih(): TasbihState {
   const [value, setValue] = useState<TasbihState>(state);
-  useEffect(() => {
-    const unsubscribe = subscribeTasbih(setValue);
-    return () => {
-      unsubscribe();
-    };
-  }, []);
+  useEffect(() => { const unsubscribe = subscribeTasbih(setValue); setValue(state); return unsubscribe; }, []);
+  return value;
+}
+export function useTasbihStatus(): TasbihStatus {
+  const [value, setValue] = useState<TasbihStatus>(status);
+  useEffect(() => { const unsubscribe = subscribeTasbihStatus(setValue); setValue(status); return unsubscribe; }, []);
   return value;
 }
 
@@ -226,7 +270,7 @@ export function todayTotal(next: TasbihState = state) {
 
 export function tapTasbih(): Promise<boolean> {
   return serial(async () => {
-    if (!ready) await hydrate();
+    await ensureReady();
     const before = state.rounds;
     await applyCommand({ op: 'tap' }, () => {
       const key = dayKey(); const count = state.count + 1; const complete = count >= state.goal;
@@ -274,7 +318,7 @@ export function tasbihDays(value: TasbihState = state) {
 
 export function saveTasbihSession(): Promise<void> {
   return serial(async () => {
-    if (!ready) await hydrate();
+    await ensureReady();
     await applyCommand({ op: 'saveSession', label: currentPhrase().transliteration }, () => {
       if (!state.count) return state;
       const session: TasbihSession = { id: `${Date.now()}`, phrase: currentPhrase().transliteration, count: state.count, goal: state.goal, completedAt: Date.now() };

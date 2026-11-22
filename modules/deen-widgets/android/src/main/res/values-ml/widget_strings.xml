@@ -9,7 +9,7 @@
     <string name="widget_today" formatted="false">ഇന്ന്</string>
     <string name="widget_reset" formatted="false">പുനഃസജ്ജമാക്കുക</string>
     <string name="widget_now" formatted="false">ഇപ്പോൾ</string>
-    <string name="widget_failure" formatted="false">ഈ മാറ്റം സ്ഥിരീകരിക്കാനായില്ല. സംരക്ഷിച്ച എണ്ണം പരിശോധിക്കാൻ Islamic വീണ്ടും തുറക്കുക.</string>
+    <string name="widget_failure" formatted="false">ഈ മാറ്റം സ്ഥിരീകരിക്കാനായില്ല. സംരക്ഷിച്ച എണ്ണം പരിശോധിക്കാൻ വീണ്ടും ശ്രമിക്കുക എന്നതിൽ ടാപ്പ് ചെയ്യുക.</string>
     <string name="widget_open" formatted="false">Islamic തുറക്കുക</string>
     <string name="widget_choose" formatted="false">ആപ്പിൽ ഒരു നഗരം തിരഞ്ഞെടുക്കുക</string>
     <string name="widget_expired" formatted="false">പുതുക്കാൻ ആപ്പ് തുറക്കുക</string>
@@ -19,5 +19,8 @@
     <string name="widget_loading" formatted="false">ലോഡ് ചെയ്യുന്നു…</string>
     <string name="widget_preview_prayer_name" formatted="false">സുബ്ഹി</string>
     <string name="widget_preview_hijri" formatted="false">15 ജുമാദൽ ഊലാ 1448</string>
+    <string name="widget_preview_hijri_day" formatted="false">15</string>
+    <string name="widget_preview_hijri_month" formatted="false">ജുമാദൽ ഊലാ</string>
+    <string name="widget_preview_hijri_year" formatted="false">1448</string>
     <string name="widget_preview_gregorian" formatted="false">2026, ഒക്‌ടോബർ 26</string>
 </resources>

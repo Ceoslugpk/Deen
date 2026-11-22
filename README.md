@@ -197,9 +197,14 @@ counter with the app. Its city clock is host-ticked; background redraw/refill sc
 is inexact. All four Android widgets now share translucent glass gradients and fine rims,
 synchronize **Islamic / Palestine × light / dark** with the app, and request a prompt
 redraw when the selection changes (final timing belongs to Android/the launcher).
-Tasbih adds a larger count, visible phrase and goal progress, with the existing +1/Reset,
-goals and history unchanged. iOS retains WidgetKit, its native timer/Live Activity
-behavior and App Group `group.com.qashi.islamic` without a widget redesign.
+Compact cards now have measured spacing/type, a secondary AM/PM label and a clear
+Hijri day/month/year hierarchy, with matching picker previews. Tasbih keeps its existing
++1/Reset, goals and history, adds a stronger counting action, and offers an inline,
+read-only Retry if a change cannot be confirmed—never a second counter or data reset.
+The native IO/acknowledgment boundary and JS/native integration checks are hardened;
+the reported device closure still needs verification in the new Android build.
+iOS retains WidgetKit, its native timer/Live Activity behavior and App Group
+`group.com.qashi.islamic` without a native widget redesign.
 [Design, data flow and release/device verification boundaries](docs/widgets.md).
 The Android changes require a new native binary; a web deployment does not update
 installed home-screen widgets.

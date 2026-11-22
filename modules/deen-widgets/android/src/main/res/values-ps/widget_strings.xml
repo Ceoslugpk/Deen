@@ -9,7 +9,7 @@
     <string name="widget_today" formatted="false">نن</string>
     <string name="widget_reset" formatted="false">بیا تنظیمول</string>
     <string name="widget_now" formatted="false">اوس</string>
-    <string name="widget_failure" formatted="false">دا بدلون تایید نه شو. د خوندي شوي شمېر د کتلو لپاره Islamic بیا پرانیزئ.</string>
+    <string name="widget_failure" formatted="false">دا بدلون تایید نه شو. د خوندي شوي شمېر د کتلو لپاره بیا هڅه ووهئ.</string>
     <string name="widget_open" formatted="false">Islamic پرانیزئ</string>
     <string name="widget_choose" formatted="false">په اپ کې ښار وټاکئ</string>
     <string name="widget_expired" formatted="false">د تازه کولو لپاره اپ پرانیزئ</string>
@@ -19,5 +19,8 @@
     <string name="widget_loading" formatted="false">بارېږي…</string>
     <string name="widget_preview_prayer_name" formatted="false">فجر</string>
     <string name="widget_preview_hijri" formatted="false">15 جمادى الاولى 1448</string>
+    <string name="widget_preview_hijri_day" formatted="false">15</string>
+    <string name="widget_preview_hijri_month" formatted="false">جمادى الاولى</string>
+    <string name="widget_preview_hijri_year" formatted="false">1448</string>
     <string name="widget_preview_gregorian" formatted="false">AP ۱۴۰۵ لړم ۴</string>
 </resources>

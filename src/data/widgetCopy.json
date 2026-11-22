@@ -8,7 +8,7 @@
     "Saved ayah",
     "Loading…",
     "Now",
-    "Could not confirm this change. Reopen Islamic to check your saved counter."
+    "Could not confirm this change. Tap Retry to check your saved counter."
   ],
   "ar": [
     "فتح Islamic",
@@ -19,7 +19,7 @@
     "آية محفوظة",
     "جارٍ التحميل…",
     "الآن",
-    "تعذّر تأكيد هذا التغيير. أعد فتح Islamic للتحقق من عدّادك المحفوظ."
+    "تعذّر تأكيد هذا التغيير. اضغط على إعادة المحاولة للتحقق من عدّادك المحفوظ."
   ],
   "ur": [
     "Islamic کھولیں",
@@ -30,7 +30,7 @@
     "محفوظ آیت",
     "لوڈ ہو رہا ہے…",
     "ابھی",
-    "اس تبدیلی کی تصدیق نہیں ہو سکی۔ محفوظ شمار دیکھنے کے لیے Islamic دوبارہ کھولیں۔"
+    "اس تبدیلی کی تصدیق نہیں ہو سکی۔ محفوظ شمار دیکھنے کے لیے دوبارہ کوشش پر دبائیں۔"
   ],
   "fa": [
     "باز کردن Islamic",
@@ -41,7 +41,7 @@
     "آیهٔ ذخیره‌شده",
     "در حال بارگیری…",
     "اکنون",
-    "تأیید این تغییر ممکن نشد. برای بررسی شمارندۀ ذخیره‌شده، Islamic را دوباره باز کنید."
+    "تأیید این تغییر ممکن نشد. برای بررسی شمارندهٔ ذخیره‌شده، تلاش دوباره را بزنید."
   ],
   "ps": [
     "Islamic پرانیزئ",
@@ -52,7 +52,7 @@
     "خوندي شوی آیت",
     "بارېږي…",
     "اوس",
-    "دا بدلون تایید نه شو. د خوندي شوي شمېر د کتلو لپاره Islamic بیا پرانیزئ."
+    "دا بدلون تایید نه شو. د خوندي شوي شمېر د کتلو لپاره بیا هڅه ووهئ."
   ],
   "fr": [
     "Ouvrir Islamic",
@@ -63,7 +63,7 @@
     "Verset enregistré",
     "Chargement…",
     "Maintenant",
-    "Impossible de confirmer cette modification. Rouvrez Islamic pour vérifier votre compteur enregistré."
+    "Impossible de confirmer cette modification. Touchez Réessayer pour vérifier votre compteur enregistré."
   ],
   "tr": [
     "Islamic’i aç",
@@ -74,7 +74,7 @@
     "Kaydedilen ayet",
     "Yükleniyor…",
     "Şimdi",
-    "Bu değişiklik doğrulanamadı. Kayıtlı sayacınızı kontrol etmek için Islamic uygulamasını yeniden açın."
+    "Bu değişiklik doğrulanamadı. Kayıtlı sayacınızı kontrol etmek için Tekrar dene seçeneğine dokunun."
   ],
   "ru": [
     "Открыть Islamic",
@@ -85,7 +85,7 @@
     "Сохранённый аят",
     "Загрузка…",
     "Сейчас",
-    "Не удалось подтвердить изменение. Снова откройте Islamic, чтобы проверить сохранённый счётчик."
+    "Не удалось подтвердить изменение. Нажмите «Повторить», чтобы проверить сохранённый счётчик."
   ],
   "uz": [
     "Islamic’ни очиш",
@@ -96,7 +96,7 @@
     "Сақланган оят",
     "Юкланмоқда…",
     "Ҳозир",
-    "Бу ўзгаришни тасдиқлаб бўлмади. Сақланган саноқни текшириш учун Islamic иловасини қайта очинг."
+    "Бу ўзгаришни тасдиқлаб бўлмади. Сақланган саноқни текшириш учун «Қайта уриниш»ни босинг."
   ],
   "kk": [
     "Islamic қолданбасын ашу",
@@ -107,7 +107,7 @@
     "Сақталған аят",
     "Жүктелуде…",
     "Қазір",
-    "Бұл өзгерісті растау мүмкін болмады. Сақталған санақты тексеру үшін Islamic қолданбасын қайта ашыңыз."
+    "Бұл өзгерісті растау мүмкін болмады. Сақталған санақты тексеру үшін «Қайталау» түймесін басыңыз."
   ],
   "zh": [
     "打开 Islamic",
@@ -118,7 +118,7 @@
     "已保存的经文",
     "加载中…",
     "现在",
-    "无法确认此次更改。请重新打开 Islamic，查看已保存的计数。"
+    "无法确认此次更改。请点按“重试”，查看已保存的计数。"
   ],
   "vi": [
     "Mở Islamic",
@@ -129,7 +129,7 @@
     "Câu kinh đã lưu",
     "Đang tải…",
     "Bây giờ",
-    "Không thể xác nhận thay đổi này. Hãy mở lại Islamic để kiểm tra số đếm đã lưu."
+    "Không thể xác nhận thay đổi này. Nhấn Thử lại để kiểm tra số đếm đã lưu."
   ],
   "az": [
     "Islamic tətbiqini aç",
@@ -140,7 +140,7 @@
     "Saxlanmış ayə",
     "Yüklənir…",
     "İndi",
-    "Bu dəyişikliyi təsdiqləmək mümkün olmadı. Saxlanmış sayğacınızı yoxlamaq üçün Islamic tətbiqini yenidən açın."
+    "Bu dəyişikliyi təsdiqləmək mümkün olmadı. Saxlanmış sayğacınızı yoxlamaq üçün Yenidən cəhd et seçiminə toxunun."
   ],
   "bs": [
     "Otvori Islamic",
@@ -151,7 +151,7 @@
     "Sačuvani ajet",
     "Učitavanje…",
     "Sada",
-    "Nije moguće potvrditi ovu izmjenu. Ponovo otvorite Islamic da provjerite sačuvani brojač."
+    "Nije moguće potvrditi ovu izmjenu. Dodirnite Pokušaj ponovo da provjerite sačuvani brojač."
   ],
   "bg": [
     "Отваряне на Islamic",
@@ -162,7 +162,7 @@
     "Запазен аят",
     "Зареждане…",
     "Сега",
-    "Промяната не можа да бъде потвърдена. Отворете отново Islamic, за да проверите запазения брояч."
+    "Промяната не можа да бъде потвърдена. Натиснете „Опитай отново“, за да проверите запазения брояч."
   ],
   "si": [
     "Islamic විවෘත කරන්න",
@@ -173,7 +173,7 @@
     "සුරැකි ආයතය",
     "පූරණය වෙමින්…",
     "දැන්",
-    "මෙම වෙනස තහවුරු කළ නොහැකි විය. සුරැකි ගණන පරීක්ෂා කිරීමට Islamic නැවත විවෘත කරන්න."
+    "මෙම වෙනස තහවුරු කළ නොහැකි විය. සුරැකි ගණන පරීක්ෂා කිරීමට නැවත උත්සාහ කරන්න ඔබන්න."
   ],
   "bn": [
     "Islamic খুলুন",
@@ -184,7 +184,7 @@
     "সংরক্ষিত আয়াত",
     "লোড হচ্ছে…",
     "এখন",
-    "এই পরিবর্তন নিশ্চিত করা যায়নি। সংরক্ষিত গণনা দেখতে Islamic আবার খুলুন।"
+    "এই পরিবর্তন নিশ্চিত করা যায়নি। সংরক্ষিত গণনা দেখতে আবার চেষ্টা করুন-এ চাপুন।"
   ],
   "hi": [
     "Islamic खोलें",
@@ -195,7 +195,7 @@
     "सहेजी गई आयत",
     "लोड हो रहा है…",
     "अभी",
-    "इस बदलाव की पुष्टि नहीं हो सकी। सहेजी गई गिनती देखने के लिए Islamic फिर से खोलें।"
+    "इस बदलाव की पुष्टि नहीं हो सकी। सहेजी गई गिनती देखने के लिए फिर कोशिश करें पर टैप करें।"
   ],
   "id": [
     "Buka Islamic",
@@ -206,7 +206,7 @@
     "Ayat tersimpan",
     "Memuat…",
     "Sekarang",
-    "Perubahan ini tidak dapat dikonfirmasi. Buka kembali Islamic untuk memeriksa hitungan tersimpan Anda."
+    "Perubahan ini tidak dapat dikonfirmasi. Ketuk Coba lagi untuk memeriksa hitungan tersimpan Anda."
   ],
   "ms": [
     "Buka Islamic",
@@ -217,7 +217,7 @@
     "Ayat tersimpan",
     "Sedang memuatkan…",
     "Sekarang",
-    "Perubahan ini tidak dapat disahkan. Buka semula Islamic untuk menyemak kiraan anda yang disimpan."
+    "Perubahan ini tidak dapat disahkan. Ketik Cuba lagi untuk menyemak kiraan anda yang disimpan."
   ],
   "ta": [
     "Islamic-ஐத் திறக்கவும்",
@@ -228,7 +228,7 @@
     "சேமித்த வசனம்",
     "ஏற்றப்படுகிறது…",
     "இப்போது",
-    "இந்த மாற்றத்தை உறுதிப்படுத்த முடியவில்லை. சேமித்த எண்ணிக்கையைச் சரிபார்க்க Islamic செயலியை மீண்டும் திறக்கவும்."
+    "இந்த மாற்றத்தை உறுதிப்படுத்த முடியவில்லை. சேமித்த எண்ணிக்கையைச் சரிபார்க்க மீண்டும் முயலவும் என்பதைத் தட்டவும்."
   ],
   "ml": [
     "Islamic തുറക്കുക",
@@ -239,6 +239,6 @@
     "സൂക്ഷിച്ച ആയത്ത്",
     "ലോഡ് ചെയ്യുന്നു…",
     "ഇപ്പോൾ",
-    "ഈ മാറ്റം സ്ഥിരീകരിക്കാനായില്ല. സംരക്ഷിച്ച എണ്ണം പരിശോധിക്കാൻ Islamic വീണ്ടും തുറക്കുക."
+    "ഈ മാറ്റം സ്ഥിരീകരിക്കാനായില്ല. സംരക്ഷിച്ച എണ്ണം പരിശോധിക്കാൻ വീണ്ടും ശ്രമിക്കുക എന്നതിൽ ടാപ്പ് ചെയ്യുക."
   ]
 }

@@ -1,20 +1,30 @@
 package expo.modules.deenwidgets
 
 import android.content.Intent
-import com.deen.widgets.TasbihWidget
+import com.deen.widgets.TasbihBridge
+import com.deen.widgets.TasbihReply
 import com.deen.widgets.WidgetRepository
 import com.deen.widgets.WidgetRefreshWorker
-import androidx.glance.appwidget.updateAll
+import expo.modules.kotlin.Promise
 import expo.modules.kotlin.functions.Coroutine
 import expo.modules.kotlin.functions.Queues
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.withContext
 
 class DeenWidgetsModule : Module() {
     private var pendingDestination: String? = null
+    private val counterScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val counterBridge = TasbihBridge(counterScope)
     private fun context() = appContext.reactContext?.applicationContext ?: throw IllegalStateException("no_context")
+    private fun reply(promise: Promise) = object : TasbihReply {
+        override fun resolve(value: String?) { promise.resolve(value as Any?) }
+        override fun reject(code: String, cause: Throwable) { promise.reject(code,"Saved counter unavailable; no reset was performed",cause) }
+    }
     override fun definition() = ModuleDefinition {
         Name("DeenWidgetBridge")
         Events("onWidgetDestination")
@@ -30,16 +40,16 @@ class DeenWidgetsModule : Module() {
         AsyncFunction("refresh") Coroutine { withContext(Dispatchers.IO) { WidgetRefreshWorker.refresh(context()); true } }
         AsyncFunction("read") Coroutine { withContext(Dispatchers.IO) { WidgetRepository.json(context()) } }
         AsyncFunction("clear") Coroutine { withContext(Dispatchers.IO) { WidgetRepository.clearDerived(context()); WidgetRefreshWorker.refresh(context()); true } }
-        AsyncFunction("tasbihRead") Coroutine { withContext(Dispatchers.IO) { WidgetRepository.read(context())[WidgetRepository.TASBIH] } }
-        AsyncFunction("tasbihCommand") Coroutine { command: String -> withContext(Dispatchers.IO) {
-            val result = WidgetRepository.command(context(), command)
-            // Once persisted, a redraw failure must not turn a successful tap
-            // into an ambiguous/retryable counter command in JavaScript.
-            try { TasbihWidget().updateAll(context()) } catch (error: Exception) {
-                android.util.Log.e("DeenWidgets", "Counter saved; widget redraw deferred", error)
-            }
-            result
-        } }
+        // Capture the application context at invocation. Explicit Promise
+        // settlement contains IO/runtime failures and acknowledges persistence
+        // without waiting for launcher/Glance redraw work.
+        AsyncFunction("tasbihRead") { promise: Promise ->
+            counterBridge.read(context(),reply(promise)); Unit
+        }
+        AsyncFunction("tasbihCommand") { command: String, promise: Promise ->
+            counterBridge.command(context(),command,reply(promise)); Unit
+        }
+        OnDestroy { counterScope.cancel() }
         AsyncFunction("consumeDestination") {
             val intent = appContext.currentActivity?.intent
             val destination = pendingDestination ?: intent?.getStringExtra("deen_widget_destination")

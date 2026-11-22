@@ -5,4 +5,5 @@
     <color name="widget_fallback_muted">@color/widget_islamic_light_muted</color>
     <color name="widget_fallback_accent">@color/widget_islamic_light_accent</color>
     <color name="widget_fallback_secondary">@color/widget_islamic_light_secondary</color>
+    <color name="widget_fallback_on_primary">@color/widget_islamic_light_on_primary</color>
 </resources>

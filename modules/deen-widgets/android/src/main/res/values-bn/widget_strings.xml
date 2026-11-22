@@ -9,7 +9,7 @@
     <string name="widget_today" formatted="false">আজ</string>
     <string name="widget_reset" formatted="false">রিসেট</string>
     <string name="widget_now" formatted="false">এখন</string>
-    <string name="widget_failure" formatted="false">এই পরিবর্তন নিশ্চিত করা যায়নি। সংরক্ষিত গণনা দেখতে Islamic আবার খুলুন।</string>
+    <string name="widget_failure" formatted="false">এই পরিবর্তন নিশ্চিত করা যায়নি। সংরক্ষিত গণনা দেখতে আবার চেষ্টা করুন-এ চাপুন।</string>
     <string name="widget_open" formatted="false">Islamic খুলুন</string>
     <string name="widget_choose" formatted="false">অ্যাপে একটি শহর বেছে নিন</string>
     <string name="widget_expired" formatted="false">হালনাগাদ করতে অ্যাপ খুলুন</string>
@@ -19,5 +19,8 @@
     <string name="widget_loading" formatted="false">লোড হচ্ছে…</string>
     <string name="widget_preview_prayer_name" formatted="false">ফজর</string>
     <string name="widget_preview_hijri" formatted="false">15 জমাদিউল আউয়াল 1448</string>
+    <string name="widget_preview_hijri_day" formatted="false">15</string>
+    <string name="widget_preview_hijri_month" formatted="false">জমাদিউল আউয়াল</string>
+    <string name="widget_preview_hijri_year" formatted="false">1448</string>
     <string name="widget_preview_gregorian" formatted="false">২৬ অক্টোবর, ২০২৬</string>
 </resources>

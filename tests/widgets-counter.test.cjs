@@ -12,7 +12,7 @@ function harness(options={}){
   if(command.op==='reset')native.count=0;
   return JSON.stringify(native);
  },readSnapshotJson:async()=>options.iosSnapshot?JSON.stringify(options.iosSnapshot):null,lastPublishTime:()=>options.lastPublishTime??1000};
- const load=createLoader({'react':{useState(){},useEffect(){}},'react-native':{Platform:{OS:options.platform??'android'}},'@react-native-async-storage/async-storage':{getItem:async()=>{reads++;if(options.mirrorReadFailure)throw Error('mirror unreadable');return mirror;}},'./storage':{writeText:async(key,value)=>{assert.equal(key,'tasbih-state-v1');writes.push(JSON.parse(value));if(options.mirrorWriteFailure)return false;mirror=value;return true;}},'./widgetBridge':bridge});
+ const load=createLoader({'react':{useState(){},useEffect(){}},'react-native':{Platform:{OS:options.platform??'android'}},'@react-native-async-storage/async-storage':{getItem:async()=>{reads++;if(options.mirrorReadFailure)throw Error('mirror unreadable');return mirror;}},'./storage':{writeText:async(key,value)=>{assert.equal(key,'tasbih-state-v1');writes.push(JSON.parse(value));if(options.mirrorWriteThrows)throw Error('backup threw');if(options.mirrorWriteFailure)return false;mirror=value;return true;}},'./widgetBridge':bridge});
  const api=load('src/services/tasbihService.ts');api.subscribeTasbih(value=>events.push(clone(value)));
  return{api,commands,writes,events,options,setMirror(value){mirror=typeof value==='string'?value:JSON.stringify(value);},get mirror(){return mirror;},get native(){return native;},setNative(value){native=clone(value);},get reads(){return reads;}};
 }
@@ -57,4 +57,31 @@ test('iOS preserves its Swift/AppGroup timestamp contract before any new full pu
 });
 test('an older iOS widget stamp does not replace the newer app value',async()=>{
  const h=harness({supported:false,platform:'ios',iosSnapshot:{tasbihAt:500,tasbih:{count:2}}});assert.equal((await h.api.loadTasbihState()).count,8);
+});
+
+test('failed commands suspend already queued mutations until an explicit read succeeds; Retry never replays a tap',async()=>{
+ const h=harness({nativeState:original});await h.api.loadTasbihState();h.options.commandFailure=true;h.options.commitBeforeFailure=true;
+ const results=await Promise.allSettled([h.api.tapTasbih(),h.api.tapTasbih(),h.api.tapTasbih()]);assert.ok(results.every(result=>result.status==='rejected'));
+ assert.equal(h.commands.length,1);assert.equal(h.native.count,9);assert.equal(h.api.getTasbihStatus().phase,'error');assert.equal(h.api.getTasbihStatus().code,'TW_COMMAND');
+ h.options.commandFailure=false;await h.api.loadTasbihState();assert.equal(h.commands.length,1,'Read-only Retry cannot add an uncertain tap');assert.equal(h.events.at(-1).count,9);assert.equal(h.api.getTasbihStatus().phase,'ready');await h.api.tapTasbih();assert.equal(h.native.count,10);
+});
+test('a rejected native read has a stable diagnostic and can recover in the same process without initializing or clearing data',async()=>{
+ const h=harness({nativeState:original,nativeReadFailure:true}),statuses=[];const unsubscribe=h.api.subscribeTasbihStatus(value=>statuses.push({...value}));
+ await assert.rejects(h.api.loadTasbihState());assert.equal(h.api.getTasbihStatus().code,'TW_READ');assert.equal(h.commands.length,0);assert.equal(h.writes.length,0);
+ h.options.nativeReadFailure=false;await h.api.loadTasbihState();assert.equal(h.native.count,8);assert.deepEqual(h.native.sessions,original.sessions);assert.deepEqual(statuses.map(s=>s.phase),['loading','error','loading','ready']);unsubscribe();
+});
+test('initial import failures remain nondestructive and retryable without falling back to a second counter',async()=>{
+ const h=harness({commandFailure:true}),before=h.mirror;await assert.rejects(h.api.loadTasbihState());assert.equal(h.api.getTasbihStatus().code,'TW_IMPORT');assert.equal(h.native,null);assert.equal(h.mirror,before);
+ h.options.commandFailure=false;await h.api.loadTasbihState();assert.deepEqual(h.native,original);assert.deepEqual(h.commands.map(c=>c.op),['init','init']);assert.equal(h.api.getTasbihStatus().phase,'ready');
+});
+test('malformed native records never reach React subscribers or overwrite a valid backup',async()=>{
+ for(const record of [{...original,days:null},{...original,sessions:{}},{...original,sessions:[{id:'broken'}]},{...original,goal:0},{...original,count:'8'}]){
+  const h=harness({nativeState:record}),before=h.mirror;await assert.rejects(h.api.loadTasbihState());assert.equal(h.api.getTasbihStatus().code,'TW_DATA');assert.equal(h.events.length,0);assert.equal(h.writes.length,0);assert.equal(h.mirror,before);assert.deepEqual(h.native,record);
+ }
+});
+test('a thrown backup writer or UI subscriber cannot turn an acknowledged native change into a failed command',async()=>{
+ const h=harness({nativeState:original,mirrorWriteThrows:true});h.api.subscribeTasbih(()=>{throw Error('unmounted screen')});await h.api.loadTasbihState();await h.api.tapTasbih();assert.equal(h.native.count,9);assert.equal(h.events.at(-1).count,9);assert.equal(h.api.getTasbihStatus().phase,'ready');
+});
+test('loading/error status is independent of saved state and listeners can unsubscribe without mutating history',async()=>{
+ const h=harness({nativeState:original}),seen=[];assert.equal(h.api.getTasbihStatus().phase,'idle');const off=h.api.subscribeTasbihStatus(s=>seen.push(s.phase));await h.api.loadTasbihState();off();await h.api.loadTasbihState();assert.deepEqual(seen,['loading','ready']);assert.deepEqual(h.native,original);
 });

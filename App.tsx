@@ -110,7 +110,7 @@ import { addSearchHistory as addRecentSearch, clearSearchHistory as clearRecentS
 import { syncWidgets, syncWidgetAyah } from './src/services/widgetSync';
 import { widgetText } from './src/services/widgetCopy';
 import { widgetDestinationRoute } from './src/services/widgetNavigation';
-import { consumeWidgetDestination, subscribeWidgetDestination, widgetsAvailable } from './src/services/widgetBridge';
+import { consumeWidgetDestination, refreshWidgets, subscribeWidgetDestination, widgetsAvailable } from './src/services/widgetBridge';
 import { registerWidgetBackgroundTask } from './src/services/widgetBackground';
 import {
   clearMemorization, confidenceOf, demoteVerse, getMemorization, hiddenIndexes, isWord,
@@ -262,7 +262,7 @@ import { NAME_LANGUAGES } from './src/services/api';
 import { PROPHETS } from './src/content/prophets';
 import { NAMES_MEANING_AR } from './src/content/namesAr';
 import { countMuslimNames, findMuslimNames, letterCounts, loadMuslimNames, type MuslimName, type NameFilter } from './src/services/muslimNames';
-import { currentPhrase, dhikrMeaning, DHIKR_PHRASES, loadTasbihState, removeTasbihSession, resetTasbihCount, saveTasbihSession, setTasbihGoal, setTasbihPhrase, tasbihDays, tasbihLifetime, TASBIH_GOALS, tapTasbih, todayTotal, useTasbih } from './src/services/tasbihService';
+import { currentPhrase, dhikrMeaning, DHIKR_PHRASES, loadTasbihState, removeTasbihSession, resetTasbihCount, saveTasbihSession, setTasbihGoal, setTasbihPhrase, tasbihDays, tasbihLifetime, TASBIH_GOALS, tapTasbih, todayTotal, useTasbih, useTasbihStatus } from './src/services/tasbihService';
 import { formatSadaqah, loadSadaqahState, logSadaqah, removeSadaqah, resetSadaqah, sadaqahSummary, setSadaqahCurrency, useSadaqah } from './src/services/sadaqahService';
 import { loadSunnahState, resetSunnah, sunnahDayKey, sunnahForDay, sunnahHistory, sunnahSummary, SUNNAH_ORDER, SUNNAH_PRAYERS, toggleSunnah, useSunnah } from './src/services/sunnahService';
 import { journalSummary, loadJournalState, removeJournalEntry, resetJournal, saveJournalEntry, useJournal } from './src/services/journalService';
@@ -6807,8 +6807,8 @@ return <Page><ToolBar title={T('Qibla direction')} navigation={navigation}/>{!lo
    round goes round, and the one under your thumb is the one that moves. The
    number in the middle is there because you still want to know where you are,
    not because the counter needed a number. */
-function TasbihRing({ count, goal, size, onPress, label, children }: {
-  count: number; goal: number; size: number; onPress: () => void; label: string; children?: React.ReactNode;
+function TasbihRing({ count, goal, size, onPress, label, disabled = false, children }: {
+  count: number; goal: number; size: number; onPress: () => void; label: string; disabled?: boolean; children?: React.ReactNode;
 }) {
   const beads = Math.max(1, Math.min(goal, 99));
   const bead = beads > 60 ? 8 : beads > 40 ? 10 : beads > 24 ? 12 : 15;
@@ -6849,7 +6849,7 @@ function TasbihRing({ count, goal, size, onPress, label, children }: {
   }
 
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress}
+    <Pressable accessibilityRole="button" accessibilityLabel={label} disabled={disabled} accessibilityState={{disabled}} onPress={onPress}
       style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
       <View style={{ position: 'absolute', width: size, height: size, borderRadius: size / 2,
         borderWidth: 1, borderColor: C.line }} />
@@ -6864,6 +6864,8 @@ function TasbihRing({ count, goal, size, onPress, label, children }: {
 
 function TasbihScreen({ navigation }: any) {const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);const ar = language === 'ar';/* The reader's Arabic face, for the card they share. */const{preferences}=useQuranPreferences();
   const state = useTasbih();
+  const counterStatus = useTasbihStatus();
+  const canCount = counterStatus.phase === 'ready';
   const { width } = useWindowDimensions();
   const phrase = currentPhrase(state);
   const total = todayTotal(state);
@@ -6872,9 +6874,13 @@ function TasbihScreen({ navigation }: any) {const {rtl,language}=useLanguage();c
   useEffect(() => { if (!celebrated) return; const timer = setTimeout(() => setCelebrated(false), 1600); return () => clearTimeout(timer); }, [celebrated]);
   /* Native Android and the app share one transactional counter; startup and
      foreground reconciliation are owned by WidgetLifecycle, not this screen. */
-  const commandFailed = () => Alert.alert(T('Tasbih'), widgetText(language).failure);
-  const counterCommand = (work: Promise<unknown>) => { void work.catch(commandFailed); };
+  // Retry is a READ/reconciliation, never a replay of the failed tap. Keep
+  // feedback on this screen rather than opening repeated native alert loops.
+  const retryCounter = () => { void loadTasbihState().then(() => refreshWidgets()).catch(() => undefined); };
+  useEffect(() => { if (counterStatus.phase === 'idle') retryCounter(); }, [counterStatus.phase]);
+  const counterCommand = (work: () => Promise<unknown>) => { if (canCount) void work().catch(() => setCelebrated(false)); };
   const tap = async () => {
+    if (!canCount) return;
     Animated.sequence([
       Animated.timing(press, { toValue: 0.94, duration: 70, useNativeDriver: true }),
       Animated.spring(press, { toValue: 1, friction: 4, tension: 220, useNativeDriver: true }),
@@ -6886,7 +6892,7 @@ function TasbihScreen({ navigation }: any) {const {rtl,language}=useLanguage();c
         if (Platform.OS !== 'web') haptic('success');
         setCelebrated(true);
       }
-    } catch { commandFailed(); }
+    } catch { setCelebrated(false); }
   };
   const progress = Math.min(100, Math.round((state.count / state.goal) * 100));
   /**
@@ -6916,63 +6922,69 @@ function TasbihScreen({ navigation }: any) {const {rtl,language}=useLanguage();c
       <Text style={s.dataTitle}>{T('Dhikr counter')}</Text>
       <Text style={s.intro}>{T('Count privately on this device. Nothing is sent anywhere and no account is needed.')}</Text>
 
+      {!canCount && <View style={s.offlineNote} accessibilityLiveRegion="polite">
+        <Text style={s.offlineNoteText}>{counterStatus.phase === 'error' ? widgetText(language).failure : widgetText(language).loading}</Text>
+        {counterStatus.code && <Text selectable style={s.meta}>{counterStatus.code}</Text>}
+        {counterStatus.phase === 'error' && <Pressable accessibilityRole="button" accessibilityLabel={T('Retry')} onPress={retryCounter} style={[s.secondary, {marginTop: 10, alignSelf: rtl ? 'flex-end' : 'flex-start'}]}><Text style={s.secondaryText}>{T('Retry')}</Text></Pressable>}
+      </View>}
+
       <LinearGradient colors={[C.heroA, C.green]} style={s.summaryScore}>
         <View>
           <Text style={s.nextCardLabel}>{T('ALL TIME')}</Text>
-          <Text style={s.zakatNo}>{tasbihLifetime(state).toLocaleString('en-US')}</Text>
-          <Text style={s.weekScoreBody}>{tasbihDays(state)} {tasbihDays(state) === 1 ? T('day') : T('days')}</Text>
+          <Text style={s.zakatNo}>{canCount ? tasbihLifetime(state).toLocaleString('en-US') : '—'}</Text>
+          <Text style={s.weekScoreBody}>{canCount ? tasbihDays(state) : '—'} {tasbihDays(state) === 1 ? T('day') : T('days')}</Text>
         </View>
         <View style={{ alignItems: 'flex-end' }}>
           <Text style={s.nextCardLabel}>{T('TODAY')}</Text>
-          <Text style={s.zakatNo}>{total.toLocaleString('en-US')}</Text>
+          <Text style={s.zakatNo}>{canCount ? total.toLocaleString('en-US') : '—'}</Text>
           <Text style={s.weekScoreBody}>{phrase.transliteration}</Text>
         </View>
       </LinearGradient>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[s.choiceRow, s.tasbihRow]}>
-        {DHIKR_PHRASES.map((item) => <ChoicePill key={item.id} label={rtl ? item.arabic : item.transliteration} selected={item.id === state.phraseId} onPress={() => { counterCommand(setTasbihPhrase(item.id)); }} />)}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} pointerEvents={canCount ? 'auto' : 'none'} accessibilityElementsHidden={!canCount} importantForAccessibility={canCount ? 'auto' : 'no-hide-descendants'} style={{opacity: canCount ? 1 : 0.45}} contentContainerStyle={[s.choiceRow, s.tasbihRow]}>
+        {DHIKR_PHRASES.map((item) => <ChoicePill key={item.id} label={rtl ? item.arabic : item.transliteration} selected={item.id === state.phraseId} onPress={() => { counterCommand(() => setTasbihPhrase(item.id)); }} />)}
       </ScrollView>
 
       <View style={s.tasbihCard}>
         <Text style={s.tasbihAr}>{phrase.arabic}</Text>
         <Text style={s.directionText}>{dhikrMeaning(phrase, language)}</Text>
         <View style={{ alignItems: 'center' }}>
-          <TasbihRing count={state.count} goal={state.goal} size={width < 360 ? width - 60 : 268} onPress={tap} label={T('Count one dhikr')}>
+          <TasbihRing count={state.count} goal={state.goal} size={width < 360 ? width - 60 : 268} onPress={tap} disabled={!canCount} label={T('Count one dhikr')}>
             <Animated.View style={{ transform: [{ scale: press }], alignItems: 'center' }}>
-              <Text style={s.counterNo}>{state.count}</Text>
-              <Text style={s.counterGoal}>{celebrated ? T('COMPLETE') : (tf(language,'GOAL · {g}',{g:state.goal}))}</Text>
-              {!!state.rounds && <Text style={s.counterGoal}>{ar ? `${state.rounds} ${arNoun(state.rounds, 'دورة', 'دورتان', 'دورات', 'دورة')}` : tf(language,'{n} rounds',{n:state.rounds})}</Text>}
+              <Text style={s.counterNo}>{canCount ? state.count : '—'}</Text>
+              <Text style={s.counterGoal}>{!canCount ? (counterStatus.phase === 'error' ? T('Retry') : widgetText(language).loading) : celebrated ? T('COMPLETE') : (tf(language,'GOAL · {g}',{g:state.goal}))}</Text>
+              {canCount && !!state.rounds && <Text style={s.counterGoal}>{ar ? `${state.rounds} ${arNoun(state.rounds, 'دورة', 'دورتان', 'دورات', 'دورة')}` : tf(language,'{n} rounds',{n:state.rounds})}</Text>}
             </Animated.View>
           </TasbihRing>
         </View>
-        <View style={[s.hadithTrack, { marginTop: 18 }]}><View style={[s.hadithFill, { width: `${progress}%` }]} /></View>
+        <View style={[s.hadithTrack, { marginTop: 18 }]}><View style={[s.hadithFill, { width: `${canCount ? progress : 0}%` }]} /></View>
         <View style={[s.actionRow, { marginTop: 16 }]}>
-          <Tactile accessibilityLabel={T('Reset the current count')} onPress={() => counterCommand(resetTasbihCount())} style={s.secondary}>{ico('refresh-outline', 16, C.green)}<Text style={s.secondaryText}>{T('Reset')}</Text></Tactile>
-          <Tactile accessibilityLabel={T('Save this round to history')} onPress={() => counterCommand(saveTasbihSession())} style={s.secondary}>{ico('checkmark-outline', 16, C.green)}<Text style={s.secondaryText}>{T('Save round')}</Text></Tactile>
+          <Tactile disabled={!canCount} accessibilityLabel={T('Reset the current count')} onPress={() => counterCommand(resetTasbihCount)} style={s.secondary}>{ico('refresh-outline', 16, C.green)}<Text style={s.secondaryText}>{T('Reset')}</Text></Tactile>
+          <Tactile disabled={!canCount} accessibilityLabel={T('Save this round to history')} onPress={() => counterCommand(saveTasbihSession)} style={s.secondary}>{ico('checkmark-outline', 16, C.green)}<Text style={s.secondaryText}>{T('Save round')}</Text></Tactile>
           <Tactile accessibilityLabel={T('Share this dhikr as a card')} onPress={sharePhrase} style={s.secondary}>{ico('share-outline', 16, C.green)}<Text style={s.secondaryText}>{T('Share')}</Text></Tactile>
         </View>
       </View>
 
       <Section title={T('Goal')} />
-      <View style={[s.choiceRow, s.tasbihGoalRow]}>
-        {TASBIH_GOALS.map((goal) => <ChoicePill key={goal} label={`${goal}`} selected={goal === state.goal} onPress={() => { counterCommand(setTasbihGoal(goal)); }} />)}
+      <View pointerEvents={canCount ? 'auto' : 'none'} accessibilityElementsHidden={!canCount} importantForAccessibility={canCount ? 'auto' : 'no-hide-descendants'} style={[s.choiceRow, s.tasbihGoalRow, !canCount && {opacity: 0.45}]}>
+        {TASBIH_GOALS.map((goal) => <ChoicePill key={goal} label={`${goal}`} selected={goal === state.goal} onPress={() => { counterCommand(() => setTasbihGoal(goal)); }} />)}
       </View>
 
       <Section title={T('Today')} />
       <View style={s.dataCard}>
-        <View style={s.hadithProgressHead}><Text style={s.hadithProgressName}>{T('Counted today')}</Text><Text style={s.hadithProgressName}>{total}</Text></View>
-        <Text style={s.meta}>{tf(language,'Rounds completed on this phrase: {n}',{n:state.rounds})}</Text>
+        <View style={s.hadithProgressHead}><Text style={s.hadithProgressName}>{T('Counted today')}</Text><Text style={s.hadithProgressName}>{canCount ? total : '—'}</Text></View>
+        <Text style={s.meta}>{canCount ? tf(language,'Rounds completed on this phrase: {n}',{n:state.rounds}) : '—'}</Text>
       </View>
 
       <Section title={T('History')} />
-      {!state.sessions.length && <View style={s.empty}><Text style={s.dataBody}>{T('Saved rounds will appear here.')}</Text></View>}
-      {state.sessions.slice(0, 12).map((session) => <View key={session.id} style={s.dataCard}>
+      {canCount && !state.sessions.length && <View style={s.empty}><Text style={s.dataBody}>{T('Saved rounds will appear here.')}</Text></View>}
+      {(canCount ? state.sessions.slice(0, 12) : []).map((session) => <View key={session.id} style={s.dataCard}>
         <View style={s.hadithProgressHead}>
           <Text style={s.hadithProgressName}>{session.phrase}</Text>
           <Text style={s.meta}>{new Date(session.completedAt).toLocaleDateString()}</Text>
         </View>
         <Text style={s.dataBody}>{session.count} of {session.goal}</Text>
-        <Pressable accessibilityLabel={T('Remove this saved round')} onPress={() => counterCommand(removeTasbihSession(session.id))} style={{ marginTop: 8, alignSelf: 'flex-start' }}><Text style={s.dangerText}>{T('Remove')}</Text></Pressable>
+        <Pressable accessibilityLabel={T('Remove this saved round')} onPress={() => counterCommand(() => removeTasbihSession(session.id))} style={{ marginTop: 8, alignSelf: 'flex-start' }}><Text style={s.dangerText}>{T('Remove')}</Text></Pressable>
       </View>)}
     </ScrollView>
     {offscreenCard}

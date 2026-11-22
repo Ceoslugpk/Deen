@@ -9,7 +9,7 @@
     <string name="widget_today" formatted="false">امروز</string>
     <string name="widget_reset" formatted="false">بازنشانی</string>
     <string name="widget_now" formatted="false">اکنون</string>
-    <string name="widget_failure" formatted="false">تأیید این تغییر ممکن نشد. برای بررسی شمارندۀ ذخیره‌شده، Islamic را دوباره باز کنید.</string>
+    <string name="widget_failure" formatted="false">تأیید این تغییر ممکن نشد. برای بررسی شمارندهٔ ذخیره‌شده، تلاش دوباره را بزنید.</string>
     <string name="widget_open" formatted="false">باز کردن Islamic</string>
     <string name="widget_choose" formatted="false">در برنامه یک شهر انتخاب کنید</string>
     <string name="widget_expired" formatted="false">برای به‌روزرسانی برنامه را باز کنید</string>
@@ -19,5 +19,8 @@
     <string name="widget_loading" formatted="false">در حال بارگیری…</string>
     <string name="widget_preview_prayer_name" formatted="false">صبح</string>
     <string name="widget_preview_hijri" formatted="false">15 جمادی‌الاولیٰ 1448</string>
+    <string name="widget_preview_hijri_day" formatted="false">15</string>
+    <string name="widget_preview_hijri_month" formatted="false">جمادی‌الاولیٰ</string>
+    <string name="widget_preview_hijri_year" formatted="false">1448</string>
     <string name="widget_preview_gregorian" formatted="false">۴ آبان ۱۴۰۵</string>
 </resources>

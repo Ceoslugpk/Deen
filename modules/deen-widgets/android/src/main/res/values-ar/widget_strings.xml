@@ -9,7 +9,7 @@
     <string name="widget_today" formatted="false">اليوم</string>
     <string name="widget_reset" formatted="false">تصفير</string>
     <string name="widget_now" formatted="false">الآن</string>
-    <string name="widget_failure" formatted="false">تعذّر تأكيد هذا التغيير. أعد فتح Islamic للتحقق من عدّادك المحفوظ.</string>
+    <string name="widget_failure" formatted="false">تعذّر تأكيد هذا التغيير. اضغط على إعادة المحاولة للتحقق من عدّادك المحفوظ.</string>
     <string name="widget_open" formatted="false">فتح Islamic</string>
     <string name="widget_choose" formatted="false">اختر مدينة في التطبيق</string>
     <string name="widget_expired" formatted="false">افتح التطبيق للتحديث</string>
@@ -19,5 +19,8 @@
     <string name="widget_loading" formatted="false">جارٍ التحميل…</string>
     <string name="widget_preview_prayer_name" formatted="false">الفجر</string>
     <string name="widget_preview_hijri" formatted="false">15 جمادى الأولى 1448</string>
+    <string name="widget_preview_hijri_day" formatted="false">15</string>
+    <string name="widget_preview_hijri_month" formatted="false">جمادى الأولى</string>
+    <string name="widget_preview_hijri_year" formatted="false">1448</string>
     <string name="widget_preview_gregorian" formatted="false">26 أكتوبر 2026</string>
 </resources>

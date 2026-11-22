@@ -53,3 +53,13 @@ test('native redraw/scheduling observes durable state, uses host TextClock and i
  const code=name=>read(path.join(native,`src/main/java/com/deen/widgets/${name}.kt`));assert.ok(code('WidgetBase').includes('collectAsState(initial)'));assert.ok(code('WidgetBase').includes('SizeMode.Exact'));assert.ok(code('WidgetBase').includes('setLayoutDirection'));assert.ok(code('PrayerWidget').includes('setTimeZone'));assert.ok(code('PrayerWidget').includes('AndroidRemoteViews'));assert.ok(read(path.join(res,'layout/widget_clock.xml')).includes('<TextClock'));const worker=code('WidgetRefreshWorker');assert.ok(worker.includes('(30,TimeUnit.MINUTES)'));assert.ok(worker.includes('setInitialDelay'));assert.ok(!worker.includes('setExact'));assert.ok(!worker.includes('AlarmManager'));
  const repository=code('WidgetRepository');assert.ok(repository.includes('preferencesDataStore'));assert.ok(repository.includes('expectedConfig'));assert.ok(repository.includes('sameJson'));assert.ok(!repository.includes('.clear()'));assert.ok(!repository.includes('deleteFile'));
 });
+
+test('native counter APIs use an explicit Promise boundary and a lifecycle-cancelled IO supervisor',()=>{
+ const module=read(path.join(native,'src/main/java/expo/modules/deenwidgets/DeenWidgetsModule.kt'));
+ assert.match(module,/AsyncFunction\("tasbihRead"\) \{ promise: Promise ->[\s\S]*?counterBridge\.read\(context\(\),reply\(promise\)\); Unit/);
+ assert.match(module,/AsyncFunction\("tasbihCommand"\) \{ command: String, promise: Promise ->[\s\S]*?counterBridge\.command\(context\(\),command,reply\(promise\)\); Unit/);
+ assert.ok(module.includes('SupervisorJob() + Dispatchers.IO'));assert.ok(module.includes('OnDestroy { counterScope.cancel() }'));
+ const builder=read(path.join(root,'node_modules/expo-modules-core/android/src/main/java/expo/modules/kotlin/functions/AsyncFunctionBuilder.kt'));
+ assert.ok(builder.includes('P0::class == Promise::class'));assert.ok(builder.includes('p1: Promise'));assert.ok(builder.includes('AsyncFunctionWithPromiseComponent'));
+ // Source/API compatibility only. Full Expo DSL compilation/JNI/R8 remain a release gate.
+});

@@ -17,3 +17,8 @@ cd "$HARNESS"
   -Drobolectric.dependency.repo.url=https://repo.maven.apache.org/maven2 \
   -cp "$(cat .gradle/widget-test-classpath.txt)" \
   org.junit.runner.JUnitCore com.deen.widgets.WidgetNativeTest
+# Exercise the real JS service/exported adapter against production native
+# counter IO/DataStore in a separate Android VM over a test-only transport.
+# This still does not run Expo JNI/Hermes/R8 or a launcher/device.
+cd "$ROOT"
+"${NODE:-node}" --test tests/widgets-native.integration.cjs

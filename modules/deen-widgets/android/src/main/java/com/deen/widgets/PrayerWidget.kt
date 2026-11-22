@@ -1,5 +1,9 @@
 package com.deen.widgets
 
+import android.text.SpannableString
+import android.text.Spanned
+import android.text.style.AbsoluteSizeSpan
+import android.util.TypedValue
 import android.widget.RemoteViews
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
@@ -14,37 +18,46 @@ import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
 import androidx.glance.layout.padding
+import androidx.glance.semantics.contentDescription
+import androidx.glance.semantics.semantics
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import expo.modules.deenwidgets.R
 
-/** Absolute next-prayer time plus an OS-ticked city clock. Delayed background
- * work cannot turn this into a frozen/negative relative countdown. */
+/** An absolute Salah time, not a frozen relative countdown. Compact cards use
+ * one clear headline with a smaller day-period; the footer is city + OS clock. */
 class PrayerWidget : WidgetBase("prayer") {
     @Composable override fun WidgetBody(snap: DeenWidgetData.Snapshot) {
         val size = LocalSize.current
-        val compact = size.width.value < 200
-        val fontScale = LocalContext.current.resources.configuration.fontScale.coerceAtLeast(1f)
-        val expanded = size.width.value >= 220 && size.height.value >= 310*fontScale
-        val padding = if (size.width.value < 150 || size.height.value < 150) 10 else 14
-        val coreHeight = size.height.value - 2*padding - 14*fontScale - (if (snap.place.isNotBlank()) 14*fontScale+3 else 0f) - (if (size.height.value>=145) 14*fontScale else 0f)
-        val headlineBase = if (compact) 18 else 23
-        val timeBase = if (compact) 30 else 40
-        val fit = if (size.height.value<200) minOf(1f,coreHeight/((headlineBase+timeBase)*1.4f*fontScale)) else 1f
+        val context = LocalContext.current
+        val scale = context.resources.configuration.fontScale.coerceAtLeast(1f)
+        val narrow = size.width.value < 200
+        val expanded = size.width.value >= 220 && size.height.value >= 310*scale
+        val padding = widgetPadding(size)
+        val width = size.width.value - 2*padding
+        val displayPlace = if (narrow) snap.place.substringBefore(',').substringBefore('،').trim() else snap.place
+        val clockHeight = if (size.height.value >= 145) 14*scale else 0f
+        val placeHeight = if (!expanded && snap.place.isNotBlank()) widgetTextHeight(context,displayPlace,10,width,1)+3 else 0f
+        val mainHeight = (size.height.value-2*padding-widgetHeadingHeight(context,context.getString(R.string.widget_next),width)-clockHeight-placeHeight-10).coerceAtLeast(35f)
         val now = DeenWidgetData.resolveNow(snap)
         DeenWidgetContent(widgetOpenModifier("prayer")) {
-            if (snap.isEmpty || now.next == null) {
-                EmptyState(W(if (snap.configured) R.string.widget_expired else R.string.widget_choose))
-            } else Column(GlanceModifier.fillMaxSize()) {
+            if (snap.isEmpty || now.next == null) EmptyState(W(if (snap.configured) R.string.widget_expired else R.string.widget_choose))
+            else Column(GlanceModifier.fillMaxSize()) {
                 Eyebrow(W(R.string.widget_next))
+                Gap(if (size.height.value < 150) 5 else 8)
                 Column(GlanceModifier.defaultWeight().fillMaxWidth(),verticalAlignment = Alignment.CenterVertically) {
-                    Headline(now.next.label,(headlineBase*fit).toInt().coerceAtLeast(12))
-                    BigTime(now.next.time,(timeBase*fit).toInt().coerceAtLeast(20))
-                    if (expanded && snap.place.isNotBlank()) { Gap(3); Body(snap.place,11) }
+                    val labelSize = fitWidgetText(context,now.next.label,if (narrow) 17 else 21,11,width,mainHeight*0.4f,bold=true)
+                    val labelHeight = widgetTextHeight(context,now.next.label,labelSize,width,1,true)
+                    val timeHeight = mainHeight-labelHeight-2
+                    Headline(now.next.label,labelSize)
+                    Gap(2)
+                    NativePrayerTime(now.next.time,if (narrow) 34 else 44,width,timeHeight)
+                    if (expanded && snap.place.isNotBlank()) { Gap(4); Body(snap.place,11) }
                 }
                 if (expanded) {
+                    Gap(8)
                     GlassPanel(GlanceModifier.fillMaxWidth()) {
                         for (prayer in snap.today) FullRow {
                             val active = prayer.key == now.next.key
@@ -55,18 +68,45 @@ class PrayerWidget : WidgetBase("prayer") {
                         }
                     }
                     Gap(8)
-                }
-                if (!expanded && snap.place.isNotBlank()) { Body(snap.place,10); Gap(3) }
+                } else if (size.height.value >= 175) { Gap(5); GlassRule(); Gap(7) }
+                if (!expanded && snap.place.isNotBlank()) { Body(displayPlace,10,modifier=GlanceModifier.semantics { contentDescription = snap.place }); Gap(3) }
                 if (size.height.value >= 145) NativeCityClock(snap)
-                if (size.height.value >= 350) { Gap(3); Body(snap.method,10) }
+                if (size.height.value >= 350 && expanded) { Gap(3); Body(snap.method,10) }
             }
         }
     }
 }
+/** Native spans keep AM/PM secondary without splitting/reordering a localized
+ * time string or its accessibility label. No Latin-only UI label is added. */
+@Composable private fun NativePrayerTime(text: String, preferred: Int, width: Float, height: Float) {
+    val context = LocalContext.current
+    val split = Regex("^([\\p{Nd}]{1,2}:[\\p{Nd}]{2})\\s+(.+)$").matchEntire(text)
+    val suffix = split?.groups?.get(2)?.range?.first ?: text.length
+    var size = preferred
+    while (size > 16) {
+        val measured = if (split == null) widgetTextWidth(context,text,size,true) else
+            widgetTextWidth(context,text.substring(0,suffix),size,true)+widgetTextWidth(context,text.substring(suffix),kotlin.math.ceil(maxOf(10f,size*0.44f)).toInt(),true)
+        if (measured <= width && widgetTextHeight(context,text.substring(0,suffix),size,width,1,true) <= height) break
+        size--
+    }
+    // Android 14+ scales small/large type nonlinearly. A relative span could
+    // make a nominal 10sp period smaller than 10sp at large system type.
+    val styled = SpannableString(text).apply { if (suffix < length) setSpan(AbsoluteSizeSpan(kotlin.math.ceil(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP,maxOf(10f,size*0.44f),context.resources.displayMetrics)).toInt()),suffix,length,Spanned.SPAN_EXCLUSIVE_EXCLUSIVE) }
+    val views = RemoteViews(context.packageName,R.layout.widget_prayer_time).apply {
+        setTextViewText(R.id.widget_prayer_time,styled)
+        setTextViewTextSize(R.id.widget_prayer_time,TypedValue.COMPLEX_UNIT_SP,size.toFloat())
+        setTextColor(R.id.widget_prayer_time,context.getColor(LocalWidgetPalette.current.ink))
+        setContentDescription(R.id.widget_prayer_time,text)
+    }
+    val actualHeight = widgetTextHeight(context,text.substring(0,suffix),size,width,1,true)
+    AndroidRemoteViews(views,modifier = GlanceModifier.fillMaxWidth().height(actualHeight.dp))
+}
 @Composable private fun NativeCityClock(snap: DeenWidgetData.Snapshot) {
     val context = LocalContext.current
     val color = context.getColor(LocalWidgetPalette.current.muted)
-    val format = if (snap.timeFormat == "12") "h:mm:ss a" else "HH:mm:ss"
+    // Minute precision is intentional: do not compete visually with the next
+    // Salah's time. TextClock still advances natively without waking RN.
+    val format = if (snap.timeFormat == "12") "h:mm a" else "HH:mm"
     val views = RemoteViews(context.packageName,R.layout.widget_clock).apply {
         setString(R.id.widget_clock,"setTimeZone",snap.timezone)
         setCharSequence(R.id.widget_clock,"setFormat12Hour",format)
@@ -75,7 +115,5 @@ class PrayerWidget : WidgetBase("prayer") {
         setTextColor(R.id.widget_clock,color)
         setTextColor(R.id.widget_clock_label,color)
     }
-    // AndroidRemoteViews defaults to match-parent height even when its XML
-    // child wraps. Bound this footer so it cannot consume the headline space.
     AndroidRemoteViews(views,modifier = GlanceModifier.fillMaxWidth().height((14*context.resources.configuration.fontScale).dp))
 }
