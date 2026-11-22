@@ -40,7 +40,7 @@ test('all four native destinations target existing nested app screens; untrusted
 function hooks(){const slots=[];let index=0,pending=[];return{useRef(initial){const n=index++;return slots[n]||(slots[n]={current:initial});},useState(initial){const n=index++;if(!slots[n])slots[n]={value:initial};return[slots[n].value,value=>{slots[n].value=value;}];},useEffect(fn,deps){const n=index++,old=slots[n];if(!old||deps.some((value,i)=>!Object.is(value,old.deps?.[i])))pending.push(()=>{old?.cleanup?.();slots[n]={deps,cleanup:fn()};});},render(fn){index=0;const tree=fn();const next=pending;pending=[];next.forEach(fn=>fn());return tree;},unmount(){slots.forEach(slot=>slot?.cleanup?.());}};}
 function lifecycle(platform='android'){
  const h=hooks(),timers=new Map(),trace={sync:[],navigate:[],register:0,reads:0,removed:0};let id=0,change,event,pendingDestination='prayer';
- const env={language:{language:'en',ready:true},city:{location:{latitude:25.2,longitude:55.2,label:'Saved city',timezone:'Asia/Dubai'},hydrated:true},worship:{settings:{calculationMethod:9,madhab:'shafi',timeFormat:'24'},hydrated:true},theme:{dark:false,hydrated:true},counter:{phraseId:'subhan-allah',count:0,goal:33},read:async()=>({...env.counter,count:19})};
+ const env={language:{language:'en',ready:true},city:{location:{latitude:25.2,longitude:55.2,label:'Saved city',timezone:'Asia/Dubai'},hydrated:true},worship:{settings:{calculationMethod:9,madhab:'shafi',timeFormat:'24'},hydrated:true},theme:{theme:'islamic',dark:false,hydrated:true},counter:{phraseId:'subhan-allah',count:0,goal:33},read:async()=>({...env.counter,count:19})};
  const{widgetDestinationRoute}=createLoader()('src/services/widgetNavigation.ts');
  const globals={...h,Platform:{OS:platform},useLanguage:()=>env.language,useAppLocation:()=>env.city,useWorshipSettings:()=>env.worship,useTheme:()=>env.theme,useTasbih:()=>env.counter,currentPhrase:()=>({transliteration:'Subhan Allah'}),widgetsAvailable:()=>true,syncWidgets:async value=>{trace.sync.push(JSON.parse(JSON.stringify(value)));return true;},loadTasbihState:async()=>{trace.reads++;const adopted=await env.read();env.counter=adopted;return adopted;},consumeWidgetDestination:async()=>{const next=pendingDestination;pendingDestination=null;return next;},subscribeWidgetDestination:fn=>{event=fn;return()=>{event=null;trace.removed++;}},widgetDestinationRoute,navigateWhenReady:(...args)=>trace.navigate.push(JSON.parse(JSON.stringify(args))),registerWidgetBackgroundTask:async()=>{trace.register++;return true;},AppState:{addEventListener(name,fn){change=fn;return{remove(){change=null;trace.removed++;}}}},setTimeout:fn=>{const n=++id;timers.set(n,fn);return n;},clearTimeout:n=>timers.delete(n)};
  const compiled=ts.transpileModule(`${functionSource('WidgetLifecycle')}\nmodule.exports=WidgetLifecycle;`,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText;const module={exports:{}};vm.runInNewContext(compiled,{...globals,module,exports:module.exports});
@@ -65,4 +65,27 @@ test('web does not register native listeners or publish widgets',async()=>{const
 test('local Home prayer result is applied independently of optional network content, without a competing full widget publisher',async()=>{
  const code=functionSource('useHomeData');assert.match(code,/managedPrayerSnapshot\(location,settings\)\.then\(p=>\{setSnapshot\(p.snapshot\)/);assert.match(code,/Promise\.all\(\[prayerTask/);assert.ok(!/\bsyncWidgets\(/.test(code));assert.match(code,/syncWidgetAyah\(ayah,dateKey\)/);
  assert.ok(!functionSource('TasbihScreen').includes('syncWidgets('));assert.ok(functionSource('reloadAllState').includes('loadTasbihState(true)'));assert.ok(app.indexOf('<LocationProvider><WidgetLifecycle/><AppShell/>')>0);
+});
+
+test('Android family/brightness changes request fresh publications promptly and rapid switches coalesce to the latest choice',async()=>{
+ const h=lifecycle();h.render();await flush();h.render();h.tick();await flush();const reads=h.trace.reads;
+ assert.equal(h.trace.sync.at(-1).themeFamily,'islamic');
+ h.env.theme.theme='palestine';h.render();assert.equal(h.timers.size,1);h.tick();await flush();
+ assert.equal(h.trace.sync.at(-1).themeFamily,'palestine');assert.equal(h.trace.sync.at(-1).dark,false);
+ const before=h.trace.sync.length;
+ h.env.theme.dark=true;h.render();h.env.theme.theme='islamic';h.render();h.env.theme.theme='palestine';h.render();
+ assert.equal(h.timers.size,1);h.tick();await flush();assert.equal(h.trace.sync.length,before+1);
+ assert.equal(h.trace.sync.at(-1).themeFamily,'palestine');assert.equal(h.trace.sync.at(-1).dark,true);
+ assert.equal(h.trace.reads,reads,'Appearance must not reinitialize/read/reset the counter');assert.equal(h.trace.sync.at(-1).tasbih.count,19);h.h.unmount();
+});
+test('a pending foreground reconciliation uses the most recent Android palette, never the opening default',async()=>{
+ const h=lifecycle(),pending=deferred();h.env.read=()=>pending.promise;h.render();await flush();
+ h.env.theme.theme='palestine';h.env.theme.dark=true;h.render();h.tick();assert.equal(h.trace.sync.length,0);
+ pending.resolve({...h.env.counter,count:27});await flush();assert.equal(h.trace.sync[0].themeFamily,'palestine');assert.equal(h.trace.sync[0].dark,true);assert.equal(h.trace.sync[0].tasbih.count,27);h.h.unmount();
+});
+test('family-only changes do not alter iOS widget/Live Activity publication, while established light/dark changes still do',async()=>{
+ const h=lifecycle('ios');h.render();await flush();h.render();h.tick();await flush();const before=h.trace.sync.length;
+ h.env.theme.theme='palestine';h.render();assert.equal(h.timers.size,0);h.tick();await flush();assert.equal(h.trace.sync.length,before);
+ assert.equal(Object.hasOwn(h.trace.sync.at(-1),'themeFamily'),false);
+ h.env.theme.dark=true;h.render();h.tick();await flush();assert.equal(h.trace.sync.length,before+1);assert.equal(h.trace.sync.at(-1).dark,true);h.h.unmount();
 });

@@ -17,4 +17,7 @@
     <string name="widget_counter" formatted="false">Buka aplikasi untuk menyegerakkan pembilang</string>
     <string name="widget_saved" formatted="false">Ayat tersimpan</string>
     <string name="widget_loading" formatted="false">Sedang memuatkan…</string>
+    <string name="widget_preview_prayer_name" formatted="false">Subuh</string>
+    <string name="widget_preview_hijri" formatted="false">15 Jamadilawal 1448</string>
+    <string name="widget_preview_gregorian" formatted="false">26 Oktober 2026</string>
 </resources>

@@ -194,9 +194,14 @@ Four widget families — **Prayer**, **Ayah**, **Hijri** and **Tasbih** — plus
 web view. Android receives a 32-day selected-city prayer/Hijri calendar from the same
 calculator as the app, observes native DataStore state, and shares a transactional Tasbih
 counter with the app. Its city clock is host-ticked; background redraw/refill scheduling
-is inexact. iOS retains WidgetKit, its native timer/Live Activity behavior and App Group
-`group.com.qashi.islamic`. [Repair details and release/device verification boundaries](docs/widgets.md).
-The Android source repair requires a new native binary; a web deployment does not update
+is inexact. All four Android widgets now share translucent glass gradients and fine rims,
+synchronize **Islamic / Palestine × light / dark** with the app, and request a prompt
+redraw when the selection changes (final timing belongs to Android/the launcher).
+Tasbih adds a larger count, visible phrase and goal progress, with the existing +1/Reset,
+goals and history unchanged. iOS retains WidgetKit, its native timer/Live Activity
+behavior and App Group `group.com.qashi.islamic` without a widget redesign.
+[Design, data flow and release/device verification boundaries](docs/widgets.md).
+The Android changes require a new native binary; a web deployment does not update
 installed home-screen widgets.
 
 ### Languages

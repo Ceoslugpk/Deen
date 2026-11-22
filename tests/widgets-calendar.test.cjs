@@ -6,10 +6,10 @@ class ClockDate extends Date {constructor(...args){super(...(args.length?args:[f
 const city={latitude:24.8607,longitude:67.0011,label:'Karachi, Pakistan',timezone:'Asia/Karachi'};
 const input={location:city,calculationMethod:9,madhab:'shafi',timeFormat:'24',language:'en',dark:false};
 const verse={reference:'1:2',arabic:'الْحَمْدُ لِلَّهِ رَبِّ الْعَالَمِينَ',translation:'All praise is for Allah, Lord of all worlds.'};
-function harness(overrides={}){
+function harness(overrides={},platform='android'){
  const writes=[],cacheReads=[];
  const bridge={widgetsAvailable:()=>true,publishSnapshotJson:async raw=>{writes.push(JSON.parse(raw));return true;},readSnapshotJson:async()=>null,startActivity:async()=>true,...overrides};
- const load=createLoader({'react-native':{Platform:{OS:'android'}},'./localState':{loadDailyContent:async date=>{cacheReads.push(date);return null;}},'./widgetBridge':bridge},{Date:ClockDate});
+ const load=createLoader({'react-native':{Platform:{OS:platform}},'./localState':{loadDailyContent:async date=>{cacheReads.push(date);return null;}},'./widgetBridge':bridge},{Date:ClockDate});
  return {api:load('src/services/widgetSync.ts'),model:load('src/services/widgetSnapshot.ts'),prayers:load('src/services/prayerTimes.ts'),copy:load('src/services/widgetCopy.ts'),hijri:load('src/services/hijri.ts'),writes,cacheReads,bridge};
 }
 test('32-day runway is canonical selected-city times/epochs, never phone-zone reconstruction',()=>{
@@ -55,4 +55,28 @@ test('an old background snapshot never replaces the foreground input used for la
 });
 test('failed publications remain retryable, no stored config is a safe background no-op',async()=>{
  let attempts=0;const h=harness({publishSnapshotJson:async()=>++attempts>1});assert.equal(await h.api.syncWidgets(input),false);assert.equal(await h.api.syncWidgets(input),true);assert.equal(await h.api.refreshStoredWidgets(),false);assert.equal(await harness({widgetsAvailable:()=>false}).api.syncWidgets(input),false);
+});
+
+test('Android publishes all four appearances without rebuilding the calendar or changing the v1 light/dark field',()=>{
+ const h=harness(),first=h.api.buildWidgetSnapshot(input,new Date(fixed));
+ for(const themeFamily of ['islamic','palestine'])for(const dark of [false,true]){
+  const snap=h.api.buildWidgetSnapshot({...input,themeFamily,dark},new Date(fixed+60_000));
+  assert.equal(snap.config.themeFamily,themeFamily);assert.equal(snap.config.dark,dark);assert.equal(snap.theme,dark?'dark':'light');
+  assert.equal(snap.updatedAt,first.updatedAt);assert.equal(JSON.stringify(snap.days),JSON.stringify(first.days));assert.equal(snap.v,1);
+ }
+ assert.equal(h.api.buildWidgetSnapshot({...input,themeFamily:'unrecognized'},new Date(fixed)).config.themeFamily,'islamic');
+});
+test('background refill preserves the selected appearance inside the complete config precondition',async()=>{
+ const h=harness(),previous=h.api.buildWidgetSnapshot({...input,themeFamily:'palestine',dark:true},new Date(fixed));
+ h.bridge.readSnapshotJson=async()=>JSON.stringify(previous);await h.api.refreshStoredWidgets();
+ assert.equal(h.writes[0].config.themeFamily,'palestine');assert.equal(h.writes[0].theme,'dark');
+ assert.equal(JSON.parse(h.writes[0].expectedConfig).themeFamily,'palestine');assert.equal(JSON.parse(h.writes[0].expectedConfig).dark,true);
+});
+test('legacy config without a theme family remains refillable and defaults to Islamic without changing iOS payloads',async()=>{
+ const h=harness(),previous=h.api.buildWidgetSnapshot(input,new Date(fixed));delete previous.config.themeFamily;
+ h.bridge.readSnapshotJson=async()=>JSON.stringify(previous);assert.equal(await h.api.refreshStoredWidgets(),true);
+ assert.equal(h.writes[0].config.themeFamily,'islamic');assert.equal(Object.hasOwn(JSON.parse(h.writes[0].expectedConfig),'themeFamily'),false);
+ const iosApi=harness({},'ios').api,oldIos=iosApi.buildWidgetSnapshot(input,new Date(fixed));
+ const ios=iosApi.buildWidgetSnapshot({...input,themeFamily:'palestine',dark:true},new Date(fixed+60_000));
+ assert.equal(Object.hasOwn(ios.config,'themeFamily'),false);assert.equal(ios.theme,'dark');assert.equal(ios.v,1);assert.notEqual(ios.updatedAt,oldIos.updatedAt,'Preserve the existing iOS brightness-cache behavior');
 });

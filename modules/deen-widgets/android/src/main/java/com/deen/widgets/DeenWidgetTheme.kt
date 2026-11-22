@@ -1,17 +1,19 @@
 package com.deen.widgets
 
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Color
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceModifier
+import androidx.glance.ImageProvider
 import androidx.glance.LocalSize
 import androidx.glance.appwidget.cornerRadius
 import androidx.glance.background
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
 import androidx.glance.layout.Column
+import androidx.glance.layout.ColumnScope
 import androidx.glance.layout.Row
 import androidx.glance.layout.RowScope
 import androidx.glance.layout.Spacer
@@ -25,195 +27,98 @@ import androidx.glance.text.Text
 import androidx.glance.text.TextAlign
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
+import expo.modules.deenwidgets.R
 
-/**
- * The app's own ten brand colours, and the shapes the widgets are drawn with.
- *
- * These are copied rather than shared. A widget's classpath cannot see the
- * app's design tokens, and inventing a second palette here would be worse than
- * duplicating: a home screen widget that is nearly the right indigo reads as a
- * different app. These are the brand's own hexes, and anything a widget needs
- * beyond them is mixed from two brand colours.
- *
- * If the brand ever changes, this file and `src/design/brand.ts` move together.
- */
-object DeenTheme {
+/** The generator derives every resource from src/design/brand.ts. Explicit
+ * app-selected resources deliberately do not follow the launcher's night mode.
+ * This is translucent RemoteViews material, never a wallpaper-blur API. */
+data class WidgetPalette(
+    val card: Int, val inset: Int, val button: Int,
+    val ink: Int, val muted: Int, val accent: Int, val secondary: Int,
+    val onPrimary: Int, val rule: Int, val track: Int,
+)
 
-    // ---- the ten brand colours -------------------------------------------
-    val midnightInk = Color(0xFF14121F)
-    val deepIndigo = Color(0xFF2D187D)
-    val royalIndigo = Color(0xFF452D9F)
-    val violet = Color(0xFF5D40C3)
-    val lavender = Color(0xFF8B6BE8)
-    val mist = Color(0xFFE6DEFA)
-    val radiantGold = Color(0xFFDFB163)
-    val antiqueGold = Color(0xFFC28D3F)
-    val bronze = Color(0xFF9A611A)
-    val pearl = Color(0xFFF9F2EB)
-
-    /** The hero ground. Every widget sits on this, as the Prayer screen does. */
-    val hero = deepIndigo
-
-    /** Accents on the hero — the gold the app uses on its own indigo. */
-    val onHero = radiantGold
-
-    /** Body copy on the hero: Pearl, which is 12:1 on Deep Indigo. */
-    val onHeroBody = pearl
-
-    /** Labels and secondary lines: dimmed Pearl, still 5:1 on the hero. */
-    val onHeroMuted = Color(0xFFB9AEE0)
-
-    /** The chip the countdown sits in: Royal Indigo lifted off the hero. */
-    val pill = royalIndigo
-
-    /** A hairline between schedule rows — Mist at low strength on the hero. */
-    val rule = Color(0xFF3A2A78)
-
-    /** The light card the Ayah widget draws, like the reader's own verse card. */
-    val lightCard = Color(0xFFFDFAF6)
-    val lightInk = midnightInk
-    val lightMuted = Color(0xFF6B6478)
-
-    val radius = 20.dp
-    val pillRadius = 999.dp
+fun widgetPalette(family: String = "islamic", dark: Boolean = false): WidgetPalette = when {
+    family == "palestine" && dark -> WidgetPalette(
+        R.drawable.widget_glass_palestine_dark,R.drawable.widget_inset_palestine_dark,R.drawable.widget_button_palestine_dark,
+        R.color.widget_palestine_dark_ink,R.color.widget_palestine_dark_muted,R.color.widget_palestine_dark_accent,R.color.widget_palestine_dark_secondary,
+        R.color.widget_palestine_dark_on_primary,R.color.widget_palestine_dark_rule,R.color.widget_palestine_dark_track)
+    family == "palestine" -> WidgetPalette(
+        R.drawable.widget_glass_palestine_light,R.drawable.widget_inset_palestine_light,R.drawable.widget_button_palestine_light,
+        R.color.widget_palestine_light_ink,R.color.widget_palestine_light_muted,R.color.widget_palestine_light_accent,R.color.widget_palestine_light_secondary,
+        R.color.widget_palestine_light_on_primary,R.color.widget_palestine_light_rule,R.color.widget_palestine_light_track)
+    dark -> WidgetPalette(
+        R.drawable.widget_glass_islamic_dark,R.drawable.widget_inset_islamic_dark,R.drawable.widget_button_islamic_dark,
+        R.color.widget_islamic_dark_ink,R.color.widget_islamic_dark_muted,R.color.widget_islamic_dark_accent,R.color.widget_islamic_dark_secondary,
+        R.color.widget_islamic_dark_on_primary,R.color.widget_islamic_dark_rule,R.color.widget_islamic_dark_track)
+    else -> WidgetPalette(
+        R.drawable.widget_glass_islamic_light,R.drawable.widget_inset_islamic_light,R.drawable.widget_button_islamic_light,
+        R.color.widget_islamic_light_ink,R.color.widget_islamic_light_muted,R.color.widget_islamic_light_accent,R.color.widget_islamic_light_secondary,
+        R.color.widget_islamic_light_on_primary,R.color.widget_islamic_light_rule,R.color.widget_islamic_light_track)
 }
+val LocalWidgetPalette = staticCompositionLocalOf { widgetPalette() }
 
-/**
- * Which of the three widget shapes we are drawing.
- *
- * Read from the size the host reports rather than assumed from the family,
- * because launchers disagree about how big a "small" widget actually is, and a
- * widget that guesses wrong shows a clipped layout.
- */
 enum class WidgetShape { SMALL, MEDIUM, LARGE }
-
 fun shapeFor(size: DpSize): WidgetShape = when {
     size.width < 200.dp && size.height < 200.dp -> WidgetShape.SMALL
     size.height < 250.dp -> WidgetShape.MEDIUM
     else -> WidgetShape.LARGE
 }
 
-/** The hero ground, rounded to the app's card radius. */
 @Composable
 fun DeenWidgetContent(modifier: GlanceModifier = GlanceModifier, content: @Composable () -> Unit) {
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(DeenTheme.hero)
-            .cornerRadius(DeenTheme.radius)
-            .padding(14.dp),
-        content = content,
-    )
+    val size = LocalSize.current
+    val padding = if (size.width < 150.dp || size.height < 150.dp) 10.dp else 14.dp
+    Box(modifier.fillMaxSize().background(ImageProvider(LocalWidgetPalette.current.card))
+        .cornerRadius(26.dp).padding(padding),content = content)
 }
 
-/** The small gold label every widget opens with — 'NEXT ·', 'AYAH OF THE DAY'. */
+/** A restrained two-colour marker: indigo/gold or Palestine green/red. */
 @Composable
 fun Eyebrow(text: String) {
-    Text(
-        text = text,
-        style = TextStyle(
-            color = ColorProvider(DeenTheme.onHero),
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Start,
-        ),
-        maxLines = 1,
-    )
-}
-
-/** The headline: the prayer name, or the surah reference. */
-@Composable
-fun Headline(text: String, sizeSp: Int = 20) {
-    Text(
-        text = text,
-        style = TextStyle(
-            color = ColorProvider(DeenTheme.onHeroBody),
-            fontSize = sizeSp.sp,
-            fontWeight = FontWeight.Bold,
-        ),
-        maxLines = 1,
-    )
-}
-
-/** The big clock. Tabular figures would be ideal; Glance has no such setting. */
-@Composable
-fun BigTime(text: String, sizeSp: Int = 34) {
-    Text(
-        text = text,
-        style = TextStyle(
-            color = ColorProvider(DeenTheme.onHeroBody),
-            fontSize = sizeSp.sp,
-            fontWeight = FontWeight.Bold,
-        ),
-        maxLines = 1,
-    )
-}
-
-/** Supporting copy — the place, the hijri date, the translation. */
-@Composable
-fun Body(text: String, sizeSp: Int = 12, lines: Int = 1) {
-    Text(
-        text = text,
-        style = TextStyle(
-            color = ColorProvider(DeenTheme.onHeroMuted),
-            fontSize = sizeSp.sp,
-        ),
-        maxLines = lines,
-    )
-}
-
-/** The countdown chip, matching the pill under the Prayer screen's big clock. */
-@Composable
-fun CountdownPill(text: String) {
-    Box(
-        modifier = GlanceModifier
-            .background(DeenTheme.pill)
-            .cornerRadius(DeenTheme.pillRadius)
-            .padding(horizontal = 10.dp, vertical = 5.dp),
-    ) {
-        Text(
-            text = text,
-            style = TextStyle(
-                color = ColorProvider(DeenTheme.onHeroBody),
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium,
-            ),
-            maxLines = 1,
-        )
+    val palette = LocalWidgetPalette.current
+    Row(GlanceModifier.fillMaxWidth(),verticalAlignment = Alignment.CenterVertically) {
+        Box(GlanceModifier.width(3.dp).height(11.dp).background(palette.accent).cornerRadius(2.dp)) {}
+        GapW(2)
+        Box(GlanceModifier.width(3.dp).height(6.dp).background(palette.secondary).cornerRadius(2.dp)) {}
+        GapW(6)
+        Text(text,style = TextStyle(color = ColorProvider(palette.accent),fontSize = 10.sp,fontWeight = FontWeight.Bold),maxLines = 1)
     }
 }
 
-/** A full-width row, used by the schedule list. */
 @Composable
-fun FullRow(
-    verticalAlignment: Alignment.Vertical = Alignment.CenterVertically,
-    content: @Composable RowScope.() -> Unit,
-) {
-    Row(
-        modifier = GlanceModifier.fillMaxWidth(),
-        verticalAlignment = verticalAlignment,
-        content = content,
-    )
+fun Headline(text: String, sizeSp: Int = 22, lines: Int = 1) {
+    Text(text,style = TextStyle(color = ColorProvider(LocalWidgetPalette.current.ink),fontSize = sizeSp.sp,fontWeight = FontWeight.Bold),maxLines = lines)
 }
 
 @Composable
-fun Gap(dp: Int) {
-    Spacer(modifier = GlanceModifier.height(dp.dp))
+fun BigTime(text: String, sizeSp: Int = 38) {
+    Text(text,style = TextStyle(color = ColorProvider(LocalWidgetPalette.current.ink),fontSize = sizeSp.sp,fontWeight = FontWeight.Bold),maxLines = 1)
 }
 
 @Composable
-fun GapW(dp: Int) {
-    Spacer(modifier = GlanceModifier.width(dp.dp))
+fun Body(text: String, sizeSp: Int = 12, lines: Int = 1, modifier: GlanceModifier = GlanceModifier) {
+    Text(text,modifier,style = TextStyle(color = ColorProvider(LocalWidgetPalette.current.muted),fontSize = sizeSp.sp),maxLines = lines)
 }
 
-/** Centre the empty state, so a widget with no data still looks deliberate. */
+@Composable
+fun GlassPanel(modifier: GlanceModifier = GlanceModifier, content: @Composable ColumnScope.() -> Unit) {
+    Column(modifier.background(ImageProvider(LocalWidgetPalette.current.inset)).cornerRadius(16.dp).padding(10.dp),content = content)
+}
+
+@Composable
+fun GlassRule() { Box(GlanceModifier.fillMaxWidth().height(1.dp).background(LocalWidgetPalette.current.rule)) {} }
+
+@Composable
+fun FullRow(content: @Composable RowScope.() -> Unit) {
+    Row(GlanceModifier.fillMaxWidth(),verticalAlignment = Alignment.CenterVertically,content = content)
+}
+@Composable fun Gap(dp: Int) { Spacer(GlanceModifier.height(dp.dp)) }
+@Composable fun GapW(dp: Int) { Spacer(GlanceModifier.width(dp.dp)) }
+
 @Composable
 fun EmptyState(message: String) {
-    Column(
-        modifier = GlanceModifier.fillMaxSize(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Body(message, sizeSp = 12, lines = 2)
+    Column(GlanceModifier.fillMaxSize(),verticalAlignment = Alignment.CenterVertically,horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(message,style = TextStyle(color = ColorProvider(LocalWidgetPalette.current.muted),fontSize = 12.sp,textAlign = TextAlign.Center),maxLines = 4)
     }
 }

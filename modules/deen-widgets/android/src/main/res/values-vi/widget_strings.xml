@@ -17,4 +17,7 @@
     <string name="widget_counter" formatted="false">Mở ứng dụng để đồng bộ bộ đếm</string>
     <string name="widget_saved" formatted="false">Câu kinh đã lưu</string>
     <string name="widget_loading" formatted="false">Đang tải…</string>
+    <string name="widget_preview_prayer_name" formatted="false">Fajr</string>
+    <string name="widget_preview_hijri" formatted="false">15 Jumādá al-ūlá 1448</string>
+    <string name="widget_preview_gregorian" formatted="false">26 tháng 10, 2026</string>
 </resources>

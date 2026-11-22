@@ -6,9 +6,13 @@ export type WidgetPrayer = { name: WidgetPrayerName; label: string; time: string
 export type WidgetAyah = { ref: string; ar: string; text: string; surah: string };
 export type WidgetTasbih = { count: number; target: number; label: string };
 export type WidgetDay = { date: string; hijri: string; hijriShort: string; gregorian: string; prayers: WidgetPrayer[]; ayah: WidgetAyah | null };
+export type WidgetThemeFamily = 'islamic' | 'palestine';
 export type WidgetConfig = {
   location: { latitude: number; longitude: number; label?: string; timezone?: string } | null;
   calculationMethod: number; madhab: 'shafi' | 'hanafi'; timeFormat: '12' | '24'; language: string; dark: boolean;
+  /** Additive Android appearance. Missing in v1/older v2 means Islamic.
+   * Keep `WidgetSnapshot.theme` as light/dark for the unchanged Swift reader. */
+  themeFamily?: WidgetThemeFamily;
 };
 export type WidgetSnapshot = {
   v: 1; updatedAt: number; place: string; method: string; hijri: string; hijriShort: string;

@@ -2372,17 +2372,20 @@ async function preloadReflectionsAhead() {
  * the app's existing providers. */
 function WidgetLifecycle() {
   const {language,ready}=useLanguage(); const {location,hydrated:cityReady}=useAppLocation();
-  const {settings,hydrated}=useWorshipSettings(); const {dark,hydrated:themeReady}=useTheme(); const counter=useTasbih();
+  const {settings,hydrated}=useWorshipSettings(); const {theme,dark,hydrated:themeReady}=useTheme(); const counter=useTasbih();
+  // Only Android adopts the new family-aware glass design. The Swift widget
+  // and Live Activity retain their existing appearance/publication contract.
+  const themeFamily=Platform.OS==='android'?theme:undefined;
   const [counterReady,setCounterReady]=useState(false); const reconciling=useRef(false);
   const input={location,calculationMethod:settings.calculationMethod,madhab:settings.madhab,timeFormat:settings.timeFormat,
-    language,dark,tasbih:{count:counter.count,target:counter.goal,label:currentPhrase(counter).transliteration}};
+    language,dark,...(themeFamily?{themeFamily}:{}),tasbih:{count:counter.count,target:counter.goal,label:currentPhrase(counter).transliteration}};
   const current=useRef(input); current.current=input;
   const enabled=Platform.OS!=='web'&&ready&&hydrated&&cityReady&&themeReady&&widgetsAvailable();
   useEffect(()=>{
     if(!enabled||!counterReady)return;
     const timer=setTimeout(()=>{if(!reconciling.current)void syncWidgets(current.current)},150);
     return()=>clearTimeout(timer);
-  },[enabled,counterReady,location?.latitude,location?.longitude,location?.timezone,location?.label,settings.calculationMethod,settings.madhab,settings.timeFormat,language,dark,counter.count,counter.goal,counter.phraseId]);
+  },[enabled,counterReady,location?.latitude,location?.longitude,location?.timezone,location?.label,settings.calculationMethod,settings.madhab,settings.timeFormat,language,dark,themeFamily,counter.count,counter.goal,counter.phraseId]);
   useEffect(()=>{
     if(!enabled)return;
     let live=true; let resuming=Promise.resolve(); let pendingResumes=0;

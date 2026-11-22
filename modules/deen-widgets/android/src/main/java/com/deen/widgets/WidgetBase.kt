@@ -35,7 +35,7 @@ abstract class WidgetBase(private val destination: String) : GlanceAppWidget(err
             val prefs by WidgetRepository.observe(context).collectAsState(initial)
             val snap = DeenWidgetData.parse(prefs)
             val local = localizedContext(context,snap.language)
-            CompositionLocalProvider(LocalContext provides local) {
+            CompositionLocalProvider(LocalContext provides local,LocalWidgetPalette provides widgetPalette(snap.themeFamily,snap.dark)) {
                 // The launcher can use a different language from the app.
                 // An explicit RemoteViews root direction makes selected-app
                 // RTL work independently of the host's own configuration.

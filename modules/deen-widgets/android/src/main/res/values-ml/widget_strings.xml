@@ -17,4 +17,7 @@
     <string name="widget_counter" formatted="false">എണ്ണം സമന്വയിപ്പിക്കാൻ ആപ്പ് തുറക്കുക</string>
     <string name="widget_saved" formatted="false">സൂക്ഷിച്ച ആയത്ത്</string>
     <string name="widget_loading" formatted="false">ലോഡ് ചെയ്യുന്നു…</string>
+    <string name="widget_preview_prayer_name" formatted="false">സുബ്ഹി</string>
+    <string name="widget_preview_hijri" formatted="false">15 ജുമാദൽ ഊലാ 1448</string>
+    <string name="widget_preview_gregorian" formatted="false">2026, ഒക്‌ടോബർ 26</string>
 </resources>

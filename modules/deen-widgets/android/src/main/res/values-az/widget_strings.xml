@@ -17,4 +17,7 @@
     <string name="widget_counter" formatted="false">Sayğacı sinxronlaşdırmaq üçün tətbiqi açın</string>
     <string name="widget_saved" formatted="false">Saxlanmış ayə</string>
     <string name="widget_loading" formatted="false">Yüklənir…</string>
+    <string name="widget_preview_prayer_name" formatted="false">Sübh</string>
+    <string name="widget_preview_hijri" formatted="false">15 Cəmadiyələvvəl 1448</string>
+    <string name="widget_preview_gregorian" formatted="false">26 oktyabr 2026</string>
 </resources>

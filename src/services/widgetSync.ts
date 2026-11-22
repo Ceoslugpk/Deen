@@ -33,8 +33,13 @@ function time(raw: string, format: '12' | '24', language: string): string {
 let calendarCache: { key: string; days: WidgetDay[]; builtAt: number } | undefined;
 export function buildWidgetSnapshot(input: WidgetSyncInput, now = new Date()): WidgetSnapshot {
   const timezone = zone(input), language = input.language || 'en', date = dateInZone(now, timezone);
-  const config: WidgetConfig = { location: input.location, calculationMethod: input.calculationMethod, madhab: input.madhab, timeFormat: input.timeFormat, language, dark: input.dark === true };
-  const key = JSON.stringify({ ...config, date, timezone });
+  const config: WidgetConfig = { location: input.location, calculationMethod: input.calculationMethod, madhab: input.madhab, timeFormat: input.timeFormat, language, dark: input.dark === true,
+    ...(Platform.OS === 'android' ? {themeFamily: input.themeFamily === 'palestine' ? 'palestine' as const : 'islamic' as const} : {}) };
+  // Appearance belongs in the full config precondition so stale background
+  // work cannot restore an old theme. It does not change prayer calculations:
+  // a theme switch reuses the runway and requests redraw without rebuilding it.
+  const {dark: _dark, themeFamily: _themeFamily, ...calendarConfig} = config;
+  const key = JSON.stringify({ ...(Platform.OS === 'android' ? calendarConfig : config), date, timezone });
   if (calendarCache?.key !== key) {
     const [y,m,d] = date.split('-').map(Number);
     const valid = input.location && Number.isFinite(input.location.latitude) && Number.isFinite(input.location.longitude)

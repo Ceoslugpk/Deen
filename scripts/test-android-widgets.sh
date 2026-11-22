@@ -13,7 +13,7 @@ mkdir -p "$SCRATCH"
 export JAVA_TOOL_OPTIONS="${JAVA_TOOL_OPTIONS:-} -XX:ActiveProcessorCount=2 -Djava.io.tmpdir=\"$SCRATCH\""
 "$GRADLE" --no-daemon --console=plain -p "$HARNESS" exportDebugUnitTestClasspath
 cd "$HARNESS"
-"$JAVA" -Xmx256m -XX:MaxMetaspaceSize=192m -XX:ActiveProcessorCount=2 -Xss512k \
+"$JAVA" -Xmx256m -XX:MaxMetaspaceSize=192m -XX:ActiveProcessorCount=2 -Xss512k -Dfile.encoding=UTF-8 \
   -Drobolectric.dependency.repo.url=https://repo.maven.apache.org/maven2 \
   -cp "$(cat .gradle/widget-test-classpath.txt)" \
   org.junit.runner.JUnitCore com.deen.widgets.WidgetNativeTest

@@ -17,4 +17,7 @@
     <string name="widget_counter" formatted="false">د تسبیح شمېر د همغږي کولو لپاره اپ پرانیزئ</string>
     <string name="widget_saved" formatted="false">خوندي شوی آیت</string>
     <string name="widget_loading" formatted="false">بارېږي…</string>
+    <string name="widget_preview_prayer_name" formatted="false">فجر</string>
+    <string name="widget_preview_hijri" formatted="false">15 جمادى الاولى 1448</string>
+    <string name="widget_preview_gregorian" formatted="false">AP ۱۴۰۵ لړم ۴</string>
 </resources>

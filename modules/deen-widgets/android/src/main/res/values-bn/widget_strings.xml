@@ -17,4 +17,7 @@
     <string name="widget_counter" formatted="false">গণনা সমন্বয় করতে অ্যাপ খুলুন</string>
     <string name="widget_saved" formatted="false">সংরক্ষিত আয়াত</string>
     <string name="widget_loading" formatted="false">লোড হচ্ছে…</string>
+    <string name="widget_preview_prayer_name" formatted="false">ফজর</string>
+    <string name="widget_preview_hijri" formatted="false">15 জমাদিউল আউয়াল 1448</string>
+    <string name="widget_preview_gregorian" formatted="false">২৬ অক্টোবর, ২০২৬</string>
 </resources>

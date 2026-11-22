@@ -17,7 +17,7 @@ object DeenWidgetData {
     data class Snapshot(
         val updatedAt: Long = 0, val place: String = "", val method: String = "", val hijri: String = "", val hijriShort: String = "",
         val today: List<Prayer> = emptyList(), val upcoming: List<Prayer> = emptyList(), val ayah: Ayah? = null, val tasbih: Tasbih? = null,
-        val dark: Boolean = false, val language: String = "en", val timezone: String = TimeZone.getDefault().id, val gregorian: String = "",
+        val dark: Boolean = false, val themeFamily: String = "islamic", val language: String = "en", val timezone: String = TimeZone.getDefault().id, val gregorian: String = "",
         val expired: Boolean = false, val configured: Boolean = false, val savedAyah: Boolean = false, val timeFormat: String = "24",
     ) { val isEmpty: Boolean get() = today.isEmpty() }
     fun parse(prefs: Preferences, now: Long = System.currentTimeMillis()): Snapshot {
@@ -52,7 +52,9 @@ object DeenWidgetData {
         return Snapshot(updatedAt=root.optLong("updatedAt"),place=root.optString("place"),method=root.optString("method"),
             hijri=selected?.optString("hijri") ?: "",hijriShort=selected?.optString("hijriShort") ?: "",
             today=prayers(selected?.optJSONArray(if (days != null) "prayers" else "today")),upcoming=all.filter { it.at > now }.sortedBy { it.at },
-            ayah=ayah,tasbih=tasbih,dark=root.optString("theme")=="dark",language=root.optString("language","en"),timezone=timezone,
+            ayah=ayah,tasbih=tasbih,dark=root.optString("theme")=="dark",
+            themeFamily=if (root.optJSONObject("config")?.optString("themeFamily")=="palestine") "palestine" else "islamic",
+            language=root.optString("language","en"),timezone=timezone,
             gregorian=selected?.optString("gregorian").orEmpty(),expired=raw!=null && selected==null,configured=configured,savedAyah=saved,
             timeFormat=root.optJSONObject("config")?.optString("timeFormat","24") ?: "24")
     }

@@ -1,6 +1,11 @@
 package com.deen.widgets
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Rect
+import android.widget.ProgressBar
+import java.io.File
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -27,6 +32,7 @@ import org.junit.runners.MethodSorters
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
 
 /** Real Android/Glance/DataStore APIs under Robolectric, not a phone/launcher
  * or full Expo release build. Production source and resources are compiled. */
@@ -41,7 +47,7 @@ class WidgetNativeTest {
     private fun snapshot(now: Long=System.currentTimeMillis()): JSONObject {
         val date=DeenWidgetData.dateKey(now,"UTC")
         fun prayer(name: String,at: Long)=JSONObject().put("name",name).put("label",name).put("time","05:30").put("at",at)
-        val today=JSONArray().put(prayer("Fajr",now-120_000)).put(prayer("Sunrise",now+60_000)).put(prayer("Dhuhr",now+120_000))
+        val today=JSONArray().put(prayer("Fajr",now-120_000)).put(prayer("Sunrise",now+60_000)).put(prayer("Dhuhr",now+120_000)).put(prayer("Asr",now+180_000)).put(prayer("Maghrib",now+240_000)).put(prayer("Isha",now+300_000))
         val day=JSONObject().put("date",date).put("hijri","20 Jumādá al-ūlá 1448").put("hijriShort","20 Jumādá al-ūlá").put("gregorian",date).put("prayers",today)
             .put("ayah",JSONObject().put("ref","1:2").put("ar","الْحَمْدُ لِلَّهِ رَبِّ الْعَالَمِينَ").put("text","All praise is for Allah, Lord of all worlds.").put("surah",""))
         return JSONObject().put("v",1).put("schema",2).put("updatedAt",now).put("date",date).put("timezone","UTC").put("language","en").put("theme","light")
@@ -154,7 +160,7 @@ class WidgetNativeTest {
             val expected = when(widget) {
                 is PrayerWidget -> "Dhuhr"
                 is AyahWidget -> "الْحَمْدُ لِلَّهِ رَبِّ الْعَالَمِينَ"
-                is TasbihWidget -> "7 / 33"
+                is TasbihWidget -> "7"
                 else -> "20 Jumādá al-ūlá 1448"
             }
             assertTrue("${widget.javaClass.simpleName} $size must render its actual data",texts(view).contains(expected))
@@ -169,7 +175,7 @@ class WidgetNativeTest {
             val content=texts(views.apply(context,FrameLayout(context)))
             val expected=when(widget) {
                 is PrayerWidget -> context.getString(R.string.widget_choose)
-                is TasbihWidget -> "11 / 33"
+                is TasbihWidget -> "11"
                 else -> context.getString(R.string.widget_open)
             }
             assertTrue("${widget.javaClass.simpleName} must not be an invisible card",content.contains(expected))
@@ -210,7 +216,7 @@ class WidgetNativeTest {
             val views=withTimeout(20_000) { TasbihWidget().compose(context,size=DpSize(300.dp,180.dp)) }
             val view=views.apply(context,FrameLayout(context))
             assertEquals(language,View.LAYOUT_DIRECTION_RTL,view.findViewById<View>(R.id.widget_direction).layoutDirection)
-            assertTrue(texts(view).contains("7 / 33"))
+            assertTrue(texts(view).contains("7"));assertTrue(texts(view).contains("/ 33"))
         }
     }
     @Test fun s_v1SnapshotStillDecodesWithoutChangingOrDeletingItsFields() {
@@ -219,9 +225,172 @@ class WidgetNativeTest {
         original.remove("days");original.remove("schema");original.remove("config");original.remove("date")
         val raw=original.toString()
         val parsed=DeenWidgetData.parse(preferencesOf(WidgetRepository.SNAPSHOT to raw),now)
-        assertFalse(parsed.expired);assertEquals(3,parsed.today.size);assertEquals("1:2",parsed.ayah!!.ref)
+        assertFalse(parsed.expired);assertEquals(6,parsed.today.size);assertEquals("1:2",parsed.ayah!!.ref)
         assertEquals("Dhuhr",DeenWidgetData.resolveNow(parsed,now).next!!.key)
         assertEquals(raw,original.toString())
+    }
+    @Test fun t_additiveAppearanceDefaultsSafelyAndPreservesV1Brightness() {
+        val original=snapshot()
+        fun parse()=DeenWidgetData.parse(preferencesOf(WidgetRepository.SNAPSHOT to original.toString()))
+        assertEquals("islamic",parse().themeFamily);assertFalse(parse().dark)
+        original.getJSONObject("config").put("themeFamily","palestine");original.put("theme","dark")
+        assertEquals("palestine",parse().themeFamily);assertTrue(parse().dark)
+        original.getJSONObject("config").put("themeFamily","unknown")
+        assertEquals("islamic",parse().themeFamily);assertTrue(parse().dark)
+    }
+    @Test fun u_aStaleBackgroundRefillCannotUndoAThemeChangeOrCounterHistory()=runBlocking {
+        WidgetRepository.command(context,command("restore").put("state",state(19)).put("label","Subhan Allah").toString())
+        val first=snapshot();first.getJSONObject("config").put("themeFamily","islamic").put("dark",false)
+        WidgetRepository.publish(context,first.toString());val expected=first.getJSONObject("config").toString()
+        val changed=snapshot().put("theme","dark");changed.getJSONObject("config").put("themeFamily","palestine").put("dark",true)
+        assertTrue(WidgetRepository.publish(context,changed.toString()))
+        assertFalse(WidgetRepository.publish(context,first.put("expectedConfig",expected).toString()))
+        val parsed=DeenWidgetData.parse(WidgetRepository.read(context));assertEquals("palestine",parsed.themeFamily);assertTrue(parsed.dark)
+        assertEquals(19,parsed.tasbih!!.count)
+        assertEquals("saved-session",JSONObject(WidgetRepository.read(context)[WidgetRepository.TASBIH]!!).getJSONArray("sessions").getJSONObject(0).getString("id"))
+        val refill=snapshot().put("theme","dark").put("expectedConfig",changed.getJSONObject("config").toString()).put("config",changed.getJSONObject("config"))
+        assertTrue(WidgetRepository.publish(context,refill.toString()));assertEquals("palestine",DeenWidgetData.parse(WidgetRepository.read(context)).themeFamily)
+    }
+    @OptIn(ExperimentalGlanceApi::class)
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    @Test fun v_allFourPalettesRenderActualDataColorsAndUnclippedControlsAcrossSizes()=runBlocking(Dispatchers.Default) {
+        WidgetRepository.command(context,command("restore").put("state",state(7)).put("label","Subhan Allah").toString())
+        val sizes=listOf(DpSize(128.dp,128.dp),DpSize(150.dp,150.dp),DpSize(300.dp,170.dp),DpSize(220.dp,280.dp),DpSize(300.dp,360.dp))
+        for(family in listOf("islamic","palestine")) for(dark in listOf(false,true)) {
+            val json=snapshot().put("theme",if(dark) "dark" else "light");json.getJSONObject("config").put("themeFamily",family).put("dark",dark)
+            WidgetRepository.publish(context,json.toString());val palette=widgetPalette(family,dark)
+            for(widget in DEEN_WIDGETS) for(size in sizes) {
+                val views=withTimeout(20_000) { widget.compose(context,size=size) }
+                val view=views.apply(context,FrameLayout(context));measure(view,size)
+                val expected=when(widget) { is PrayerWidget->"Dhuhr";is AyahWidget->"الْحَمْدُ لِلَّهِ رَبِّ الْعَالَمِينَ";is TasbihWidget->"7";else->"20 Jumādá al-ūlá 1448" }
+                val main=descendants(view).filterIsInstance<TextView>().firstOrNull { it.text.toString()==expected }
+                assertNotNull("$family/$dark ${widget.javaClass.simpleName} $size real content",main)
+                assertEquals("$family/$dark ${widget.javaClass.simpleName} ink",context.getColor(palette.ink),main!!.currentTextColor)
+                if(widget is PrayerWidget) { assertVisibleText(view,"Dhuhr");assertVisibleText(view,"05:30") }
+                if(widget is HijriWidget) assertVisibleText(view,"20 Jumādá al-ūlá 1448")
+                if(widget is TasbihWidget) {
+                    for(text in listOf("7","/ 33","+1",context.getString(R.string.widget_reset)))assertVisibleText(view,text)
+                    val bar=descendants(view).filterIsInstance<ProgressBar>().single()
+                    assertFalse(bar.isIndeterminate);assertEquals(7f/33f,bar.progress.toFloat()/bar.max,0.015f)
+                    assertEquals(context.getColor(palette.accent),bar.progressTintList!!.defaultColor)
+                }
+                if(widget is PrayerWidget && size.height.value>=145) {
+                    assertEquals(context.getColor(palette.muted),view.findViewById<TextView>(R.id.widget_clock).currentTextColor)
+                    assertEquals(context.getColor(palette.muted),view.findViewById<TextView>(R.id.widget_clock_label).currentTextColor)
+                }
+                // Optional internal raster of actual test-composed RemoteViews.
+                // Not a home-screen/device screenshot or a running-app gallery.
+                System.getProperty("islamic.widgets.captureDir")?.let { folder ->
+                    val file=File(folder,"${family}_${if(dark) "dark" else "light"}_${widget.javaClass.simpleName}_${size.width.value.toInt()}x${size.height.value.toInt()}.png")
+                    file.parentFile?.mkdirs();val bitmap=Bitmap.createBitmap(view.width,view.height,Bitmap.Config.ARGB_8888)
+                    val canvas=Canvas(bitmap);canvas.drawColor(0xFF71817A.toInt());view.draw(canvas)
+                    file.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG,100,it) };bitmap.recycle()
+                    File(folder,file.nameWithoutExtension+".txt").writeText(describe(view))
+                }
+            }
+        }
+    }
+    @OptIn(ExperimentalGlanceApi::class)
+    @Config(qualifiers="night")
+    @Test fun w_explicitLightAppPaletteDoesNotInheritTheLaunchersDarkMode()=runBlocking(Dispatchers.Default) {
+        val json=snapshot();json.getJSONObject("config").put("themeFamily","palestine")
+        WidgetRepository.publish(context,json.toString())
+        val views=withTimeout(20_000) { HijriWidget().compose(context,size=DpSize(300.dp,170.dp)) }
+        val actual=descendants(views.apply(context,FrameLayout(context))).filterIsInstance<TextView>().first { it.text.toString()=="20 Jumādá al-ūlá 1448" }
+        assertEquals(context.getColor(R.color.widget_palestine_light_ink),actual.currentTextColor)
+    }
+    @Test fun x_progressIsClampedAndNeverChangesTheGoalRolloverContract() {
+        assertEquals(0f,tasbihProgress(0,33));assertEquals(7f/33f,tasbihProgress(7,33));assertEquals(1f,tasbihProgress(40,33))
+        assertEquals(0f,tasbihProgress(-1,33));assertEquals(1f,tasbihProgress(1,0))
+        val completed=TasbihStore.reduce(state(32).toString(),command("tap"))
+        assertEquals(0,completed.getInt("count"));assertEquals(3,completed.getInt("rounds"));assertEquals(0f,tasbihProgress(completed.getInt("count"),33))
+    }
+    @OptIn(ExperimentalGlanceApi::class)
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    @Test fun y_longGoalsAndAllTwentyTwoResetLabelsFitTheCompactCounter()=runBlocking(Dispatchers.Default) {
+        val languages=listOf("en","ar","ur","fa","ps","fr","tr","ru","uz","kk","zh","vi","az","bs","bg","si","bn","hi","id","ms","ta","ml")
+        for(language in languages) {
+            WidgetRepository.command(context,command("restore").put("state",state(999_999,1_000_000)).put("label","Subhan Allah").toString())
+            val json=snapshot().put("language",language);json.getJSONObject("config").put("themeFamily","palestine")
+            WidgetRepository.publish(context,json.toString());val size=DpSize(128.dp,128.dp)
+            val views=withTimeout(20_000) { TasbihWidget().compose(context,size=size) }
+            val view=views.apply(context,FrameLayout(context));measure(view,size)
+            for(text in listOf("999999","/ 1000000","+1",localizedContext(context,language).getString(R.string.widget_reset)))assertVisibleText(view,text)
+        }
+    }
+    @OptIn(ExperimentalGlanceApi::class)
+    @Config(sdk=[24])
+    @Test fun z_minimumAndroidStillInflatesAllFourGlassWidgetsWithoutBlurOrNewPermissions()=runBlocking(Dispatchers.Default) {
+        WidgetRepository.command(context,command("restore").put("state",state(7)).put("label","Subhan Allah").toString())
+        val json=snapshot().put("theme","dark");json.getJSONObject("config").put("themeFamily","palestine")
+        WidgetRepository.publish(context,json.toString())
+        for(widget in DEEN_WIDGETS) {
+            val views=withTimeout(20_000) { widget.compose(context,size=DpSize(150.dp,150.dp)) }
+            val actual=texts(views.apply(context,FrameLayout(context)))
+            assertFalse(actual.any { it.contains("Unable to show") || it.contains("Can't show content") });assertTrue(actual.any { it.isNotBlank() })
+        }
+    }
+    @OptIn(ExperimentalGlanceApi::class)
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    @Test fun za_largeSystemTypeDoesNotClipCompactPrayerOrCounterControls()=runBlocking(Dispatchers.Default) {
+        org.robolectric.RuntimeEnvironment.setFontScale(1.3f)
+        try {
+            WidgetRepository.command(context,command("restore").put("state",state(7)).put("label","Subhan Allah").toString())
+            WidgetRepository.publish(context,snapshot().toString())
+            for(size in listOf(DpSize(128.dp,128.dp),DpSize(150.dp,150.dp),DpSize(300.dp,170.dp),DpSize(300.dp,360.dp))) for(widget in listOf(PrayerWidget(),TasbihWidget())) {
+                val views=withTimeout(20_000) { widget.compose(context,size=size) };val view=views.apply(context,FrameLayout(context));measure(view,size)
+                if(widget is PrayerWidget) { assertVisibleText(view,"Dhuhr");assertVisibleText(view,"05:30") }
+                else for(text in listOf("7","/ 33","+1",context.getString(R.string.widget_reset)))assertVisibleText(view,text)
+            }
+        } finally { org.robolectric.RuntimeEnvironment.setFontScale(1f) }
+    }
+    @OptIn(ExperimentalGlanceApi::class)
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    @Test fun zb_resizeBreakpointsKeepTheHeadlineCounterAndActionsVisible()=runBlocking(Dispatchers.Default) {
+        WidgetRepository.command(context,command("restore").put("state",state(7)).put("label","Subhan Allah").toString())
+        WidgetRepository.publish(context,snapshot().put("theme","dark").toString())
+        val sizes=listOf(DpSize(128.dp,190.dp),DpSize(150.dp,190.dp),DpSize(300.dp,190.dp),DpSize(300.dp,230.dp),DpSize(300.dp,250.dp),DpSize(300.dp,310.dp),DpSize(180.dp,360.dp),DpSize(480.dp,128.dp))
+        for(size in sizes) for(widget in DEEN_WIDGETS) {
+            val views=withTimeout(20_000) { widget.compose(context,size=size) };val view=views.apply(context,FrameLayout(context));measure(view,size)
+            when(widget) {
+                is PrayerWidget->{assertVisibleText(view,"Dhuhr");assertVisibleText(view,"05:30")}
+                is TasbihWidget->for(text in listOf("7","/ 33","+1",context.getString(R.string.widget_reset)))assertVisibleText(view,text)
+                is HijriWidget->assertVisibleText(view,"20 Jumādá al-ūlá 1448")
+                else->assertVisibleText(view,"الْحَمْدُ لِلَّهِ رَبِّ الْعَالَمِينَ",allowEllipsis=true)
+            }
+        }
+    }
+    @OptIn(ExperimentalGlanceApi::class)
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    @Test fun zc_longVerseAndMeaningEllipsizeAtWholeLinesInsteadOfClipping()=runBlocking(Dispatchers.Default) {
+        val json=snapshot();val ayah=json.getJSONArray("days").getJSONObject(0).getJSONObject("ayah")
+        // Stress-only repetitions, never published as real daily content.
+        val arabic=List(20){ayah.getString("ar")}.joinToString(" ")
+        val meaning=List(12){ayah.getString("text")}.joinToString(" ")
+        ayah.put("ar",arabic).put("text",meaning);WidgetRepository.publish(context,json.toString())
+        for(size in listOf(DpSize(128.dp,128.dp),DpSize(150.dp,150.dp),DpSize(300.dp,230.dp),DpSize(300.dp,300.dp),DpSize(300.dp,360.dp))) {
+            val views=withTimeout(20_000) { AyahWidget().compose(context,size=size) };val view=views.apply(context,FrameLayout(context));measure(view,size)
+            assertVisibleText(view,arabic,allowEllipsis=true)
+            if(size.height.value>=230)assertVisibleText(view,meaning,allowEllipsis=true)
+        }
+    }
+    private fun describe(view: View,depth: Int=0): String = "  ".repeat(depth)+"${view.javaClass.simpleName} ${view.width}x${view.height} at ${view.x},${view.y} lp=${view.layoutParams.width}x${view.layoutParams.height} weight=${(view.layoutParams as? android.widget.LinearLayout.LayoutParams)?.weight} ${(view as? TextView)?.text}\n"+if(view is ViewGroup)(0 until view.childCount).joinToString("") { describe(view.getChildAt(it),depth+1) } else ""
+    private fun measure(view: View,size: DpSize) {
+        val density=context.resources.displayMetrics.density
+        val width=(size.width.value*density).toInt();val height=(size.height.value*density).toInt()
+        view.measure(View.MeasureSpec.makeMeasureSpec(width,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(height,View.MeasureSpec.EXACTLY));view.layout(0,0,width,height)
+    }
+    private fun descendants(view: View): List<View> = listOf(view)+if(view is ViewGroup)(0 until view.childCount).flatMap { descendants(view.getChildAt(it)) } else emptyList()
+    private fun assertVisibleText(root: View,text: String,allowEllipsis: Boolean=false) {
+        val view=descendants(root).filterIsInstance<TextView>().firstOrNull { it.text.toString()==text }
+        assertNotNull("Missing $text",view);view!!
+        assertTrue("$text has no measured area",view.width>0 && view.height>0)
+        val bounds=Rect(0,0,view.width,view.height);(root as ViewGroup).offsetDescendantRectToMyCoords(view,bounds)
+        assertTrue("$text is outside ${root.width}x${root.height}: $bounds",bounds.left>=0 && bounds.top>=0 && bounds.right<=root.width && bounds.bottom<=root.height)
+        val layout=view.layout
+        assertNotNull("$text has no text layout",layout)
+        assertTrue("$text is vertically clipped (${layout.height} > ${view.height})",layout.height<=view.height-view.paddingTop-view.paddingBottom)
+        if(!allowEllipsis)for(line in 0 until layout.lineCount) assertEquals("$text is ellipsized",0,layout.getEllipsisCount(line))
     }
     private fun texts(view: View): List<String> = when(view) {
         is TextView -> listOf(view.text.toString())

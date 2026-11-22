@@ -19,7 +19,8 @@ test('all four existing receiver identities are owned by the autolinked library,
 test('every provider has visible initial, per-family XML and pre-Android-12 image fallbacks without phantom configuration',()=>{
  for(const family of families){const info=read(path.join(res,`xml/${family}_widget_info.xml`));assert.ok(info.includes('initialLayout="@layout/widget_loading"'));assert.ok(info.includes(`previewLayout="@layout/widget_preview_${family}"`));assert.ok(info.includes(`previewImage="@drawable/widget_${family}_icon"`));assert.ok(info.includes('updatePeriodMillis="1800000"'));assert.ok(!info.includes('reconfigurable'));assert.ok(!info.includes('android:configure='));}
  for(const filename of ['widget_loading','widget_error',...families.map(name=>`widget_preview_${name}`)]){const xml=read(path.join(res,`layout/${filename}.xml`));assert.ok(!xml.includes('@android:color/transparent'));assert.ok(xml.includes('android:background="@drawable/widget_card"'));assert.ok(xml.includes('<TextView'));assert.ok(xml.includes('android:text='));}
- assert.ok(read(path.join(res,'drawable/widget_card.xml')).includes('#2D187D'));
+ assert.ok(read(path.join(res,'drawable/widget_card.xml')).includes('@drawable/widget_glass_islamic_light'));
+ assert.ok(read(path.join(res,'drawable-night/widget_card.xml')).includes('@drawable/widget_glass_islamic_dark'));
 });
 test('preview assets are exact copies of shipped artwork, never new artwork or screenshots passed off as device evidence',()=>{
  for(const[family,icon]of Object.entries({prayer:'prayer-fajr',ayah:'offline-quran',tasbih:'tasbih',hijri:'hijri'}))assert.ok(fs.readFileSync(path.join(res,`drawable-nodpi/widget_${family}_icon.webp`)).equals(fs.readFileSync(path.join(root,`assets/tool-icons/${icon}.webp`))));
