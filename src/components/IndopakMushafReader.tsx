@@ -5,6 +5,8 @@ import { useIndopakRecitation } from '../services/useIndopakRecitation';
 import { indopakRecitationOffset, indopakRecitationTarget } from '../services/indopakPlayback';
 import { SystemModal } from './SystemModal';
 import { IndopakPageCanvas } from './IndopakPageCanvas';
+import { canOpenSpread, spreadBlock, spreadPages, spreadFoldFrame, turnSpread, SPREAD_GUTTER } from '../services/readerOrientation';
+import { INDOPAK_VIEWBOX } from '../services/indopakMushaf';
 import { IndopakPageFold } from './IndopakPageFold';
 import { IndopakAyahPopover } from './IndopakAyahPopover';
 import { INDOPAK_HOLD_MS, indopakAyahSegments, indopakPopoverLayout, indopakRevealOffset, indopakStationaryPress, indopakWordAnchor, indopakResizeOffset, type IndopakSelection } from '../services/indopakSelection';
@@ -28,6 +30,8 @@ type PageTurn = {
   from: number; plan: NonNullable<ReturnType<typeof indopakTurnPlan>>;
   viewport: { width: number; height: number }; size: { width: number; height: number };
   focusMode: boolean; scroll: { x: number; y: number };
+  /** True when what is being turned is two leaves rather than one page. */
+  spread?: boolean;
 };
 type Props = {
   colors: Record<string, string>; dark: boolean; language: string; rtl: boolean; initialPage?: number;
@@ -85,6 +89,9 @@ export function IndopakMushafReader({ colors: C, dark, language, rtl, icon, init
     return () => cancelAnimationFrame(frame);
   }, [measureViewport, focusMode, viewport.width, viewport.height, frame.width, frame.height]);
   const [turn, setTurn] = useState<PageTurn | null>(null);
+  /* Upright, or two leaves opened together. The window never turns: the pages
+     are drawn turned, so the rest of the app is untouched. */
+  const [sideBySide, setSideBySide] = useState(false);
   const turning = useRef(false), turnProgress = useRef(new Animated.Value(1)).current;
   const scroll = useRef({ x: 0, y: 0 });
   const suppressVerseUntil = useRef(0), popupTouch = useRef(false);
@@ -94,6 +101,11 @@ export function IndopakMushafReader({ colors: C, dark, language, rtl, icon, init
   const focusButton = useRef<React.ElementRef<typeof View>>(null), unlockButton = useRef<React.ElementRef<typeof View>>(null);
   const previousFocusMode = useRef(focusMode);
   const exitFocus = useCallback(() => onFocusModeChange(false), [onFocusModeChange]);
+  /* The spread lives inside focus mode; leaving it closes the book. Nothing
+     outside this screen was ever affected, because the device never turns. */
+  useEffect(() => {
+    if (!focusMode && sideBySide) setSideBySide(false);
+  }, [focusMode, sideBySide]);
   useEffect(() => {
     if (previousFocusMode.current === focusMode) return;
     previousFocusMode.current = focusMode;
@@ -159,7 +171,26 @@ export function IndopakMushafReader({ colors: C, dark, language, rtl, icon, init
   const placed = useMemo(() => page ? placeIndopakPage(page) : [], [page]);
   const segments = useMemo(() => indopakAyahSegments(placed), [placed]);
   const verses = useMemo(() => page ? [...new Set(page.words.map(indopakVerseKey))] : [], [page]);
-  const fitSize = focusMode ? fitIndopakFocusPage(viewport.width, viewport.height) : fitIndopakPage(viewport.width, viewport.height, 1, true);
+  /* Two leaves or one.
+   *
+   * The window stays upright and the block inside it is turned a quarter
+   * circle, so a portrait phone shows a landscape book. For that to be worth
+   * doing the window has to be taller than it is wide; in a wide window a
+   * spread would be smaller than a single page, so it is refused there rather
+   * than drawn badly.
+   */
+  const spread = sideBySide && canOpenSpread(viewport.width, viewport.height);
+  const leaves = spreadPages(state.page);
+  /* The turned block: two leaves, each with the page's own aspect. Fitted to
+     the window, never stretched. */
+  const block = spread
+    ? spreadBlock(viewport.width, viewport.height, INDOPAK_VIEWBOX.width / INDOPAK_VIEWBOX.height)
+    : { width: 0, height: 0 };
+  const leafWidth = spread ? Math.max(0, (block.width - SPREAD_GUTTER) / 2) : viewport.width;
+  const leafHeight = spread ? block.height : viewport.height;
+  const fitSize = spread
+    ? fitIndopakPage(leafWidth, leafHeight, 1, true)
+    : focusMode ? fitIndopakFocusPage(viewport.width, viewport.height) : fitIndopakPage(viewport.width, viewport.height, 1, true);
   const size = { width: fitSize.width * activeZoom, height: fitSize.height * activeZoom };
   const marked = state.savedPages.includes(state.page);
   const anchoredPopover = selection ? indopakPopoverLayout(viewport, size, scroll.current, segments, selection) : null;
@@ -206,17 +237,25 @@ export function IndopakMushafReader({ colors: C, dark, language, rtl, icon, init
   }, [turn, still, viewport.width, viewport.height, focusMode, turnProgress]);
   const goPage = useCallback((number: number, followingAudio = false) => {
     if (!validIndopakPage(number) || !hydrated || turning.current) return;
+    /* With two leaves open, one turn of a leaf moves both. Stepping to the
+       neighbouring page instead would slide the spread by half a page and
+       leave the same page showing on one side - a turn that cannot happen to
+       a real book. */
+    if (spread) number = turnSpread(state.page, number >= state.page);
     if (!followingAudio) { setAudioFollow(null); lastFollowed.current = ''; }
     closeSelection(); setPicker(null);
     const from = latest.current.page, plan = viewport.height > 0 ? indopakTurnPlan(from, number, viewport.width, still) : null;
     if (plan) {
       turning.current = true;
-      setTurn({ from, plan, viewport: { ...viewport }, size: { ...size }, focusMode, scroll: { ...scroll.current } });
+      /* A spread turns as one object: the fold is measured against the turned
+         block, not against the single page the portrait fold assumes. */
+      const frame = spread ? spreadFoldFrame(block.width, block.height) : { viewport: { ...viewport }, size: { ...size }, scroll: { ...scroll.current } };
+      setTurn({ from, plan, viewport: frame.viewport, size: frame.size, scroll: frame.scroll, focusMode, spread });
       suppressVerseUntil.current = Math.max(suppressVerseUntil.current, Date.now() + plan.duration + 100);
     }
     if (from !== number) update({ page: number });
     positionPage({ x: Math.max(0, size.width - viewport.width), y: 0 });
-  }, [hydrated, update, still, viewport.width, viewport.height, size.width, size.height, positionPage, focusMode]);
+  }, [hydrated, update, still, viewport.width, viewport.height, size.width, size.height, positionPage, focusMode, spread, state.page]);
   useLayoutEffect(() => {
     if (!pendingReveal || turn || !hydrated || !fontReady || pendingReveal.point.page !== state.page || size.width <= 0 || size.height <= 0) return;
     const anchor = indopakWordAnchor(placed, pendingReveal.point.verse, pendingReveal.point.wordId);
@@ -475,6 +514,59 @@ export function IndopakMushafReader({ colors: C, dark, language, rtl, icon, init
       {!hydrated || (!fontReady && !fontError) ? <View style={styles.center}><ActivityIndicator color={C.green}/><Text style={[styles.message, { color: C.ink }]}>{T('Loading…')}</Text></View>
         : fontError || !page ? <View style={styles.center}><Text style={[styles.message, { color: C.ink }]}>{copy(fontError ? 'fontError' : 'dataError')}</Text>
           {fontError && button(T('Retry'), () => setAttempt(n => n + 1), 'refresh-outline', { text: T('Retry') })}</View>
+        : spread ? <View testID="indopak-page-current" style={[styles.fill, { backgroundColor: C.bg, alignItems: 'center', justifyContent: 'center' }]}>
+            {/* The book lies turned inside an upright window.
+              *
+              * The block is laid out as a landscape page - `block.width` across,
+              * `block.height` down - and then rotated a quarter circle to fill
+              * the portrait screen. Rotating the container rather than each page
+              * is what keeps them a single object: the gutter stays between
+              * them, they cannot drift apart, and a word tapped on either leaf
+              * resolves exactly as it does when the page is upright, because the
+              * reader's gestures are transformed with it.
+              *
+              * No `orientation` lock, no manifest permission, no native rebuild:
+              * nothing outside this screen knows the book is sideways. */}
+            <View style={{ width: block.width, height: block.height, flexDirection: 'row', alignItems: 'center',
+                transform: [{ rotate: '-90deg' }] }}>
+              <View style={{ width: leafWidth, height: block.height }}>
+                {leaves.left >= 1 ? <IndopakPageCanvas number={leaves.left} width={leafWidth} height={fitSize.height}
+                  colors={C} dark={dark} language={language} verse={verse} recitingVerse={recitingVerse}
+                  readingPoint={state.readingPoint?.page === leaves.left ? state.readingPoint.verse : null}
+                  onWordPress={openWord} onWordPressIn={beginWord} onWordPressOut={endWord} onWordLongPress={holdWord}/> : null}
+              </View>
+              <View style={{ width: SPREAD_GUTTER, height: block.height, backgroundColor: C.line, opacity: 0.55 }}/>
+              <View style={{ width: leafWidth, height: block.height }}>
+                {leaves.right !== null ? <IndopakPageCanvas number={leaves.right} width={leafWidth} height={fitSize.height}
+                  colors={C} dark={dark} language={language} verse={verse} recitingVerse={recitingVerse}
+                  readingPoint={state.readingPoint?.page === leaves.right ? state.readingPoint.verse : null}
+                  onWordPress={openWord} onWordPressIn={beginWord} onWordPressOut={endWord} onWordLongPress={holdWord}/> : null}
+              </View>
+              {/* The turn, over the whole block. Drawn here, inside the rotated
+                  container, so it inherits the quarter turn and needs no second
+                  rotation to stay aligned. The snapshot is the outgoing spread,
+                  so what peels away is the pair of leaves that was open. */}
+              {turn && turn.spread && <IndopakPageFold progress={turnProgress} direction={turn.plan.direction}
+                viewport={turn.viewport} size={turn.size} scroll={turn.scroll} colors={C} dark={dark}>
+                <View style={{ width: turn.size.width, height: turn.size.height, flexDirection: 'row', alignItems: 'center' }}>
+                  {(() => {
+                    const was = spreadPages(turn.from);
+                    return <>
+                      <View style={{ width: leafWidth, height: turn.size.height }}>
+                        {was.left >= 1 ? <IndopakPageCanvas number={was.left} width={leafWidth} height={turn.size.height}
+                          colors={C} dark={dark} language={language} readingPoint={null}/> : null}
+                      </View>
+                      <View style={{ width: SPREAD_GUTTER, height: turn.size.height, backgroundColor: C.line, opacity: 0.55 }}/>
+                      <View style={{ width: leafWidth, height: turn.size.height }}>
+                        {was.right !== null ? <IndopakPageCanvas number={was.right} width={leafWidth} height={turn.size.height}
+                          colors={C} dark={dark} language={language} readingPoint={null}/> : null}
+                      </View>
+                    </>;
+                  })()}
+                </View>
+              </IndopakPageFold>}
+            </View>
+          </View>
         : <>
           <View testID="indopak-page-current" style={[styles.fill, { backgroundColor: C.bg }]}>
             <ScrollView ref={vertical} testID="indopak-vertical-scroll" nestedScrollEnabled scrollEnabled={!focusMode && (Platform.OS === 'web' || size.height > viewport.height + 1)} showsVerticalScrollIndicator={size.height > viewport.height}
@@ -491,7 +583,7 @@ export function IndopakMushafReader({ colors: C, dark, language, rtl, icon, init
               </ScrollView>
             </ScrollView>
           </View>
-          {turn && <IndopakPageFold progress={turnProgress} direction={turn.plan.direction} viewport={turn.viewport} size={turn.size}
+          {turn && !turn.spread && <IndopakPageFold progress={turnProgress} direction={turn.plan.direction} viewport={turn.viewport} size={turn.size}
             scroll={turn.scroll} colors={C} dark={dark}>
             <View style={[styles.snapshot, { width: Math.max(turn.viewport.width, turn.size.width), height: Math.max(turn.viewport.height, turn.size.height),
               transform: [{ translateX: -turn.scroll.x }, { translateY: -turn.scroll.y }] }]}>
@@ -518,6 +610,19 @@ export function IndopakMushafReader({ colors: C, dark, language, rtl, icon, init
       accessibilityLabel={`${T('Unlock')} · ${T('Focus mode')}`} onPress={exitFocus}
       style={({ pressed }) => [styles.unlock, { backgroundColor: C.card, borderColor: C.line, opacity: pressed ? .65 : 1 }]}>
       {icon('lock-open-outline', 22, C.ink)}
+    </Pressable>}
+    {/* Beside the lock, because it belongs to the same decision: what shape
+        this reader is. Pressing it turns the device, and the previous
+        orientation is restored on the way out - leaving the reader must never
+        leave the whole app sideways. */}
+    {focusMode && <Pressable testID="indopak-landscape" accessibilityRole="button"
+      accessibilityState={{ selected: sideBySide }}
+      accessibilityLabel={sideBySide ? T('One page') : T('Two pages side by side')}
+      onPress={() => {
+        setSideBySide(!sideBySide);
+      }}
+      style={({ pressed }) => [styles.landscape, { backgroundColor: C.card, borderColor: C.line }, sideBySide && { borderColor: C.green, borderWidth: 2 }, { opacity: pressed ? .65 : 1 }]}>
+      {icon(sideBySide ? 'rotate-back' : 'rotate', 22, sideBySide ? C.green : C.ink)}
     </Pressable>}
   </View>;
 }
@@ -613,6 +718,8 @@ function IndopakNavigator({ kind, page, savedPages, verses, readingPoint, resume
 const styles = StyleSheet.create({
   fill: { flex: 1, minHeight: 0, minWidth: 0 }, shrink: { flex: 1, minWidth: 0 },
   focusRoot: { direction: 'ltr' },
+  landscape: { position: 'absolute', top: INDOPAK_FOCUS_UNLOCK.inset, right: INDOPAK_FOCUS_UNLOCK.inset + INDOPAK_FOCUS_UNLOCK.size + INDOPAK_FOCUS_UNLOCK.gap, zIndex: 8, elevation: 6,
+    width: INDOPAK_FOCUS_UNLOCK.size, height: INDOPAK_FOCUS_UNLOCK.size, borderRadius: 22, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   unlock: { position: 'absolute', top: INDOPAK_FOCUS_UNLOCK.inset, right: INDOPAK_FOCUS_UNLOCK.inset, zIndex: 8, elevation: 6,
     width: INDOPAK_FOCUS_UNLOCK.size, height: INDOPAK_FOCUS_UNLOCK.size, borderRadius: 22, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   topControls: { gap: 6, paddingHorizontal: 12, paddingTop: 4, paddingBottom: 6 },

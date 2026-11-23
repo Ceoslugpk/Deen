@@ -73,7 +73,26 @@ test('only the blank paper back can mirror/scale; the live Quran has no animated
   const fold = fs.readFileSync(path.join(__dirname, '../src/components/IndopakPageFold.tsx'), 'utf8');
   const reader = fs.readFileSync(path.join(__dirname, '../src/components/IndopakMushafReader.tsx'), 'utf8');
   const live = reader.slice(reader.indexOf('<View testID="indopak-page-current"'), reader.indexOf('{turn && <IndopakPageFold'));
-  assert.ok(live.includes('<IndopakPageCanvas')); assert.ok(!live.includes('transform:')); assert.ok(!live.includes('Animated.View'));
+  assert.ok(live.includes('<IndopakPageCanvas'));
+  assert.ok(!live.includes('Animated.View'), 'the live Quran is never animated');
+  /* The rule this protects is that the Quran ink is never flipped, scaled or
+     sheared by a transform. A rigid quarter-circle turn is a different thing:
+     it moves the page from portrait to landscape without mirroring or
+     distorting a single letter, which is what lets two leaves lie open in an
+     upright window. Mirroring and scaling stay confined to the animation. */
+  /* Only the pages themselves: the fold overlay that peels away during a turn
+     lives in the same block and legitimately translates, so it is cut out
+     before the check rather than being mistaken for the Quran moving. */
+  const overlayAt = live.indexOf('{turn && turn.spread && <IndopakPageFold');
+  const pagesOnly = overlayAt < 0 ? live : live.slice(0, overlayAt);
+  const transforms = pagesOnly.match(/transform:\s*\[[^\]]*\]/g) || [];
+  for (const transform of transforms) {
+    assert.ok(/rotate:\s*'-?90deg'/.test(transform), `a live transform must be a rigid turn, found: ${transform}`);
+    assert.ok(!/scaleX|scaleY|scale:|rotateX|rotateY|skew/i.test(transform), 'never a mirror, a scale or a skew');
+  }
+  /* The fold overlay is animated; the pages are not. */
+  const withoutOverlay = pagesOnly;
+  assert.ok(!/Animated\.[A-Z]/.test(withoutOverlay), 'and nothing drawn as a page is animated');
   const face = fold.slice(fold.indexOf('testID="indopak-fold-face"'), fold.indexOf('testID="indopak-fold-edge"'));
   assert.ok(face.includes('{children}')); assert.ok(!face.includes('scaleX')); assert.ok(!face.includes('opacity:'));
   for (const id of ['indopak-fold-mask', 'indopak-fold-face', 'indopak-fold-edge', 'indopak-fold-paper', 'indopak-fold-shadow', 'indopak-fold-back']) assert.ok(fold.includes(id));
