@@ -342,6 +342,29 @@ export async function listCachedKeys(namespace:CacheNamespace){
   return (await ensureIndex()).filter(x=>x.namespace===namespace).map(x=>x.key);
 }
 
+/**
+ * Forget one stored value, by name.
+ *
+ * This is the scalpel that `clearCacheNamespace` is not. A single damaged
+ * entry - one surah saved short by a failed request, one composition saved
+ * empty - can be dropped on its own, and every other surah, every good
+ * offline download, every bookmark's neighbouring page and the whole index
+ * are left exactly where they are. Repairing a cache should never cost the
+ * person the rest of their library.
+ */
+export async function removeCachedJson(namespace:CacheNamespace,key:string){
+  return serial(async()=>{
+    const index=await ensureIndex();
+    const entry=index.find(x=>x.namespace===namespace&&x.key===key);
+    if(!entry)return;
+    await payloadDelete(storageKey(namespace,key));
+    indexCache=index.filter(x=>x!==entry);
+    nsTotals[namespace]-=entry.bytes;
+    totalBytes-=entry.bytes;
+    markDirty();
+  });
+}
+
 export async function clearCacheNamespace(namespace:CacheNamespace){
   return serial(async()=>{
     const index=await ensureIndex();

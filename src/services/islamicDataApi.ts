@@ -25,9 +25,17 @@
  *      payload, and a bad response never overwrites good cached content.
  *   2. Validate before writing. The cache is only ever handed a payload that
  *      has already been checked, so the stored copy is always readable.
+ *
+ * There is a third rule, and it was learned the hard way: a validator is only
+ * useful while the body it describes is still here. An ETag says "the copy you
+ * already have is still right", so it may only be sent for a payload that is
+ * still readable on this device. Sending it for one that was evicted, or that
+ * was never written because validation refused it, invites a 304 with nothing
+ * to answer with - and every retry says the same thing.
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getCachedJson, setCachedJson } from './contentCache';
+import { getCachedJson, removeCachedJson, setCachedJson } from './contentCache';
+import { verseCountInSurah as versesInSurah } from './quranPayloads';
 
 /* ==================== Configuration ==================== */
 
@@ -154,6 +162,15 @@ export type CachedSurah = {
   fetchedAt: number;
   edition: IslamicEdition;
   rows: TranslationRow[];
+  /**
+   * False when the edition is known to stop short of the end of this surah.
+   *
+   * Some editions genuinely do, and their verses are the real text and are
+   * shown. The flag travels with the payload so every caller can tell "the
+   * book ends here in this edition" from "the request did not finish", which
+   * look identical on screen and want opposite answers.
+   */
+  complete?: boolean;
 };
 
 /* ---------------- Hadith ---------------- */
@@ -259,7 +276,15 @@ export class IslamicDataError extends Error {
 
 /* ==================== HTTP ==================== */
 
-type FetchResult = { status: number; body: string | null; etag?: string; dataVersion?: string; notModified: boolean };
+type FetchResult = {
+  status: number;
+  body: string | null;
+  etag?: string;
+  dataVersion?: string;
+  notModified: boolean;
+  /** The URL the request went to, so a 304 can name the validator to forget. */
+  url: string;
+};
 
 /** ETags live with the cached payloads; one small map keeps them addressable. */
 let etagCache: Record<string, string> | null = null;
@@ -280,6 +305,27 @@ async function rememberEtag(url: string, etag: string) {
     await AsyncStorage.setItem(ETAGS_KEY, JSON.stringify(store));
   } catch {
     /* A lost ETag only costs one re-download. Never worth failing a request. */
+  }
+}
+
+/**
+ * Throw away the ETag for one URL.
+ *
+ * For the case the validator was meant to prevent but cannot: the server says
+ * the copy we hold is current while the copy on this device has gone - evicted
+ * to make room, or never written because a shut-down mid-request left the
+ * index without it. The validator is then the reason a request cannot succeed,
+ * so it is dropped and the next request asks for the body unconditionally.
+ */
+async function forgetEtag(url: string) {
+  const store = await etagStore();
+  if (!(url in store)) return;
+  delete store[url];
+  try {
+    await AsyncStorage.setItem(ETAGS_KEY, JSON.stringify(store));
+  } catch {
+    /* The in-memory map is still corrected, so this session recovers even if
+       the disk write is refused. */
   }
 }
 
@@ -307,7 +353,7 @@ async function get(path: string, options: { timeoutMs?: number; conditional?: bo
       const etag = response.headers.get('etag') || undefined;
       const dataVersion = response.headers.get('x-data-version') || undefined;
 
-      if (response.status === 304) return { status: 304, body: null, notModified: true };
+      if (response.status === 304) return { status: 304, body: null, notModified: true, url };
       /* 206 is how the catalog routes answer an unconditional GET. */
       if (response.status !== 200 && response.status !== 206) {
         const text = await response.text().catch(() => '');
@@ -326,7 +372,7 @@ async function get(path: string, options: { timeoutMs?: number; conditional?: bo
       const body = await response.text();
       if (!body) throw new IslamicDataError('invalid', 'Empty response body', response.status);
       if (etag) await rememberEtag(url, etag);
-      return { status: response.status, body, etag, dataVersion, notModified: false };
+      return { status: response.status, body, etag, dataVersion, notModified: false, url };
     } catch (error) {
       if (error instanceof IslamicDataError) throw error;
       if (error instanceof Error && error.name === 'AbortError') {
@@ -361,7 +407,31 @@ async function getJson<T>(
   path: string,
   options: { conditional?: boolean; fallback?: T } = {},
 ): Promise<{ data: T; dataVersion?: string; notModified: boolean }> {
-  const result = await get(path, { conditional: options.conditional });
+  let result = await get(path, { conditional: options.conditional });
+
+  /* A 304 with nothing to stand on.
+   *
+   * The validator lives in its own store and outlives the payload it
+   * describes, so this is reachable: the body was evicted while the ETag
+   * stayed, and every later request is answered "unchanged" about a copy that
+   * is no longer here. `getSurah` was written to handle exactly this - drop
+   * the validator and ask once more, unconditionally - but this path threw
+   * instead, and the throw was what callers saw.
+   *
+   * What made it worth finding: `getEditions` catches its own failure and
+   * falls back to the copy it holds, and when it holds none the answer is an
+   * empty catalogue. An edition missing from the catalogue is then resolved as
+   * a translation, asked for on the wrong route, and refused - so a tafsir
+   * worked for the first verse read and failed for every one after it, with
+   * no error anywhere the reader could see.
+   *
+   * Once more, without the validator. Not recursive: a second 304 with no
+   * cached copy is a real disagreement with the server and is reported.
+   */
+  if (result.notModified && options.fallback === undefined) {
+    result = await get(path, { conditional: false });
+  }
+
   if (result.notModified) {
     if (options.fallback === undefined) {
       throw new IslamicDataError('http', 'Server said 304 but no cached copy was kept', 304);
@@ -445,6 +515,14 @@ function fail(why: string) {
  * requiring it meant rejecting every surah the Worker served. What still holds
  * across the published snapshot is that rows are sequential from one and every
  * row carries text - and that is enough to catch a truncated or shuffled file.
+ *
+ * What it was not enough to catch is a file that stops early and stays
+ * sequential while it does so: verses 1 to 6 of a chapter of 7 pass every
+ * check the loop makes. So the response is also held against the number of
+ * verses the chapter actually has, from the bundled table rather than from
+ * the payload. A short answer is returned as unservable rather than as a
+ * chapter - the caller falls back to what is on the device, or says so - and
+ * a long one is refused outright, because a chapter can never grow.
  */
 function validateSurah(raw: any, category: IslamicCategory, editionId: string, surahNumber: number): IslamicSurahResponse {
   if (!raw || typeof raw !== 'object') throw fail('Response was not an object');
@@ -454,6 +532,10 @@ function validateSurah(raw: any, category: IslamicCategory, editionId: string, s
   if (raw.surah?.number !== surahNumber) throw fail(`Surah mismatch: asked for ${surahNumber}, got ${raw.surah?.number}`);
   const ayahs = raw.surah?.ayahs;
   if (!Array.isArray(ayahs) || ayahs.length === 0) throw fail('No ayahs in response');
+  const expected = versesInSurah(surahNumber);
+  if (expected > 0 && ayahs.length > expected) {
+    throw fail(`Surah ${surahNumber} has ${expected} verses, but ${ayahs.length} arrived`);
+  }
   for (let i = 0; i < ayahs.length; i += 1) {
     const ayah = ayahs[i];
     if (ayah?.numberInSurah !== i + 1) {
@@ -532,6 +614,20 @@ export function servableEditions(editions: IslamicEdition[], category: IslamicCa
  * the old one, and the old entry stays readable until it is evicted. That is
  * the "retain old cached data until the new response validates" rule: the new
  * payload is validated *before* anything is written.
+ *
+ * Three things here were wrong in a way that could leave a reader with no text
+ * at all, and each is now handled where it happens rather than by a retry loop:
+ *
+ *   - a stored copy is checked before it is believed. A row that is short, or
+ *     that has no Arabic, is a damaged copy, not an answer; it is dropped and
+ *     fetched again. Devices that already hold one heal on the next read.
+ *   - a 304 is only meaningful when the body it describes is here. If it is
+ *     not, the validator is forgotten and the request is repeated once,
+ *     unconditionally, rather than asking the same question forever.
+ *   - a body that arrives under a newer snapshot than the key was built from
+ *     is stored under *that* version's key, so the next read at the new
+ *     version finds it. Storing it under the old key is what produced a
+ *     cached response no reader could reach and an endless run of 304s.
  */
 export async function getSurah(
   category: IslamicCategory,
@@ -543,45 +639,84 @@ export async function getSurah(
     throw new IslamicDataError('invalid', `Surah must be 1-114, got ${surahNumber}`);
   }
   const dataVersion = await currentDataVersion().catch(() => 'unknown');
-  const key = `surah:${category}:${editionId}:${surahNumber}:${dataVersion}`;
+  const key = surahCacheKeyFor(category, editionId, surahNumber, dataVersion);
   const cached = await getCachedJson<CachedSurah>('quran', key).catch(() => null);
 
-  if (cached?.rows?.length && !options.force) return cached;
+  /* A stored copy is only an answer if it is whole. One that is not is
+     removed so it cannot be served again, and the fetch below replaces it. */
+  let usable = isStoredSurahUsable(cached, surahNumber);
+  if (cached && !usable) await removeCachedJson('quran', key).catch(() => undefined);
+  if (usable && !options.force) return cached as CachedSurah;
 
   let result: FetchResult;
   try {
     result = await get(`/${category}/editions/${encodeURIComponent(editionId)}/surahs/${surahNumber}`);
   } catch (error) {
-    if (cached?.rows?.length) return cached;
+    if (usable) return cached as CachedSurah;
     throw error;
   }
 
   /* 304 means the cached copy is byte-for-byte what the Worker holds. */
   if (result.notModified) {
-    if (cached?.rows?.length) return cached;
-    /* We kept an ETag but lost the body - drop it and ask again, once. */
-    return getSurah(category, editionId, surahNumber, { force: true });
+    if (usable) return cached as CachedSurah;
+    /* A validator was kept for a body that is not on this device - evicted,
+       or lost between the response and the write. Drop it and ask once more
+       for the body itself. Deliberately not recursive: a second 304 with no
+       body means the storage is not holding what the server thinks it is,
+       and repeating the question cannot change that answer. */
+    await forgetEtag(result.url).catch(() => undefined);
+    result = await get(`/${category}/editions/${encodeURIComponent(editionId)}/surahs/${surahNumber}`, {
+      conditional: false,
+    });
+    if (result.notModified || !result.body) {
+      throw new IslamicDataError('http', 'Server answered 304, but the surah is not stored on this device', 304);
+    }
   }
 
-  let validated: IslamicSurahResponse;
-  try {
-    validated = validateSurah(JSON.parse(result.body as string), category, editionId, surahNumber);
-  } catch (error) {
-    /* A malformed payload must never displace good cached content. */
-    if (cached?.rows?.length) return cached;
-    throw error;
-  }
-
+  const validated = validateSurah(JSON.parse(result.body as string), category, editionId, surahNumber);
+  const rows = toRows(validated);
+  const complete = rows.length >= versesInSurah(surahNumber);
   const next: CachedSurah = {
     dataVersion: result.dataVersion || dataVersion,
     fetchedAt: Date.now(),
     edition: validated.edition,
-    rows: toRows(validated),
+    rows,
+    complete,
   };
   /* The response header tells us the snapshot for free - no /health needed. */
   void noteDataVersion(result.dataVersion);
-  await setCachedJson('quran', key, next).catch(() => {});
+  /* Stored under the version the body actually belongs to, which is not
+     always the one the key was built from: a snapshot can roll over between
+     reading the version and sending the request. */
+  await setCachedJson('quran', surahCacheKeyFor(category, editionId, surahNumber, next.dataVersion || dataVersion), next)
+    .catch(() => {});
   return next;
+}
+
+/** The one place a Worker surah is keyed, so writing and reading cannot drift. */
+function surahCacheKeyFor(category: IslamicCategory, editionId: string, surahNumber: number, dataVersion: string): string {
+  return `surah:${category}:${editionId}:${surahNumber}:${dataVersion}`;
+}
+
+/**
+ * Whether a stored surah may be served.
+ *
+ * Checked on the way out as well as on the way in, because the store on a
+ * device may predate these checks. What is asked is that the payload is a
+ * list of rows in order, each with Arabic, and that a copy claimed to be
+ * complete really is. An edition that is known to stop short is allowed to be
+ * short and is not allowed to call itself complete.
+ */
+function isStoredSurahUsable(cached: CachedSurah | null, surahNumber: number): boolean {
+  if (!cached?.rows?.length || !Array.isArray(cached.rows)) return false;
+  for (let i = 0; i < cached.rows.length; i += 1) {
+    const row = cached.rows[i];
+    if (!row || row.numberInSurah !== i + 1) return false;
+    if (typeof row.text !== 'string' || !row.text.trim()) return false;
+    if (row.verseKey !== `${surahNumber}:${row.numberInSurah}`) return false;
+  }
+  if (cached.complete === false) return true;
+  return cached.rows.length >= versesInSurah(surahNumber);
 }
 
 /** Turn a validated response into rows keyed the way the rest of the app keys verses. */

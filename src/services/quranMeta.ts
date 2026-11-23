@@ -100,6 +100,60 @@ export function versesInSurah(surah: number): number {
   return PAGE_TABLE.verseCounts[String(surah)] ?? 0;
 }
 
+/** The per-surah counts, for callers that have to judge a whole payload. */
+export const VERSE_COUNTS: Readonly<Record<string, number>> = PAGE_TABLE.verseCounts;
+
+/**
+ * How many verses a reader screen has to receive before it is whole.
+ *
+ * A surah is its own count. A juz and a hizb are sums of the runs the bundled
+ * table gives, and a Mushaf page is the sum of its segments. These are the
+ * same lists the compositions are built from, so a screen that receives fewer
+ * than this has lost something on the way rather than reached the end of a
+ * shorter book.
+ */
+export function expectedVerseCount(section: string, ids: { chapterId?: number; juz?: number; hizb?: number; page?: number | null }): number {
+  if (section === 'surah') return versesInSurah(ids.chapterId || 0);
+  if (section === 'juz') return juzVerseKeys(ids.juz || 0).length;
+  if (section === 'hizb') {
+    return Array.from({ length: 4 }, (_, i) => rubVerseKeys((ids.hizb || 1) - 1 + i + 1))
+      .reduce((total, keys) => total + keys.length, 0);
+  }
+  if (section === 'page') {
+    return pageSegments(ids.page || 0).reduce((total, segment) => total + (segment.end - segment.start + 1), 0);
+  }
+  return 0;
+}
+
+/**
+ * True when an edition covers only part of a surah.
+ *
+ * A few of the Worker's editions stop part-way through some surahs. That is a
+ * property of the book on our server, not a fault in a request: those verses
+ * will never have a meaning in that edition, however many times it is asked.
+ * It has to be told apart from a fetch that failed, because the two look the
+ * same on screen - an empty line under the Arabic - and only one of them is
+ * worth telling the reader about.
+ *
+ * The count comes from the bundled table rather than from the payload, so a
+ * truncated response cannot mark itself complete. A surah we do not know
+ * answers `false`: there is nothing to say about a chapter that is not there.
+ */
+export function hasMoreTranslationsToLoad(surah: number, have: number): boolean {
+  const expected = versesInSurah(surah);
+  return expected > 0 && have < expected;
+}
+
+/**
+ * True when `id` is one of the app's own script names - `quran-uthmani`,
+ * `quran-indopak` and the rest of the reader's list - rather than a Worker
+ * edition id. The two live in different catalogues on the server, so telling
+ * them apart is what decides which route a request belongs on.
+ */
+export function isScriptName(id?: string): boolean {
+  return !!id && Object.prototype.hasOwnProperty.call(SCRIPT_TO_WORKER, id);
+}
+
 /* ==================== Where a verse sits ==================== */
 
 /**

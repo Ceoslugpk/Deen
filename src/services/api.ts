@@ -1,12 +1,18 @@
 import { getCachedJson, setCachedJson } from './contentCache';
 import { cached, singleFlight } from './requestCache';
 import { daysOfHijriMonth, gregorianForHijri, hijriForDate } from './hijri';
-import { getChapters as getWorkerChapters, getDailyHadith as getWorkerDailyHadith, getEditions, getSurah, IslamicChapter, IslamicDataError, IslamicEdition } from './islamicDataApi';
+import { getChapters as getWorkerChapters, getDailyHadith as getWorkerDailyHadith, getEditions, getSurah, IslamicCategory, IslamicChapter, IslamicDataError, IslamicEdition } from './islamicDataApi';
 import {
-  ayahNumberToKey, convertTajweedMarkup, globalAyahNumber, isTajweedScript,
+  ayahNumberToKey, convertTajweedMarkup, globalAyahNumber, isScriptName, isTajweedScript,
   juzOfVerse, juzVerseKeys, MUSHAF_PAGE_COUNT, pageOfVerse, pageSegments,
   QURAN_AYAH_COUNT, rubOfVerse, rubVerseKeys, scriptEditionId, versesInSurah,
 } from './quranMeta';
+import { quranPayloadProblem } from './quranPayloads';
+import { DEFAULT_TRANSLITERATION_EDITION, attachTransliteration, getSurahTransliteration } from './transliteration';
+import { getSurahWordByWord, pairWords, wordsForAyah } from './wordByWord';
+import { wordMorphology } from './morphology';
+import { repetitionOf, type Repetition } from './duaRepetition';
+import { isRtlCode } from './languages';
 import { surahName, SURAH_NAMES_AR } from '../content/surahNames';
 import { DEFAULT_TRANSLATION_EDITION } from './quranState';
 import { fetchHadithOne, getHadithLanguage } from './hadithService';
@@ -21,10 +27,45 @@ export type Prayer = { name: string; time: string; raw: string };
 export type PrayerSnapshot = { prayers: Prayer[]; hijri: string; hijriAr?: string; hijriYear: number; hijriMonth: number; readable: string; timezone: string; method: string };
 export type CalendarDay = { gregorian: string; weekday: string; weekdayAr?: string; hijriDay: number; hijriMonth: string; hijriMonthAr?: string; hijriMonthNumber: number; hijriYear: number; prayers: Prayer[] };
 export type Chapter = { id: number; name_simple: string; name_arabic: string; verses_count: number; revelation_place?: string; translated_name?: { name: string } };
-export type Verse = { id: number; verse_key: string; text_uthmani: string; translation?: string; audio?: string; page?: number; juz?: number; hizbQuarter?: number; surah_name?: string };
+export type Verse = {
+  id: number;
+  verse_key: string;
+  text_uthmani: string;
+  translation?: string;
+  /**
+   * The Arabic sounded out in Latin letters, when the reader asked for it and
+   * the edition carries this surah. Absent rather than empty on every other
+   * path, so a screen that does not want it never has to know about it.
+   */
+  transliteration?: string;
+  /** The verse split into words, each with its meaning. Paired, never guessed. */
+  wordByWord?: Array<{ word: string; meaning: string | null; root?: string; rootLatin?: string; lemma?: string }>;
+  audio?: string;
+  page?: number;
+  juz?: number;
+  hizbQuarter?: number;
+  surah_name?: string;
+};
 export type DailyHadith = { collection: string; number: string; text: string; arabic?: string };
 export type DivineName = { number: number; name: string; transliteration: string; meaning: string; meanings: Record<string, string> };
-export type DailyAyah = { reference: string; arabicReference?: string; arabic: string; translation: string };
+export type DailyAyah = {
+  reference: string;
+  arabicReference?: string;
+  arabic: string;
+  translation: string;
+  /**
+   * The edition the meaning actually came from.
+   *
+   * When the chosen edition has no verse for that day the card falls back to
+   * English - the app has always done that rather than leave the card bare -
+   * and the label beside the verse has to say so. Attributing an English
+   * meaning to an Urdu edition is not a styling problem; it misnames the
+   * source of the text.
+   */
+  translationEdition?: string;
+  /** Set when the meaning shown is not the one chosen in Settings. */
+  fellBackFrom?: string;
+};
 export type QuranEdition = { identifier: string; language: string; englishName: string; name: string; type: string; direction?: string };
 export type QuranSearchResult = { verseKey: string; surahId: number; surahName: string; ayah: number; text: string; edition: string };
 /**
@@ -180,29 +221,49 @@ function surahCacheSet(key: string, value: Map<string, string> | null): void {
   }
 }
 
-async function workerTexts(editionId: string, surahs: Iterable<string>): Promise<Map<string, string> | null> {
+async function workerTexts(
+  editionId: string,
+  surahs: Iterable<string>,
+  options: { strict?: boolean; category?: 'quran' | 'tafsir' } = {},
+): Promise<Map<string, string> | null> {
   if (!editionId) return null;
+  const category = options.category || 'quran';
   const out = new Map<string, string>();
   for (const surah of new Set(surahs)) {
-    const cacheKey = `${editionId}:${surah}`;
+    /* Scoped to the catalogue it was asked from. The same string can name an
+       edition on one side of the Worker and something else on another, and a
+       reader asking for a translation must never be handed a tafsir. */
+    const cacheKey = `${category}:${editionId}:${surah}`;
     let rows = surahCacheGet(cacheKey);
     if (rows === undefined) {
       try {
-        const response = await getSurah('quran', editionId, Number(surah));
+        const response = await getSurah(category, editionId, Number(surah));
         rows = new Map(response.rows.map((row) => [row.verseKey, row.text]));
-      } catch (error) {
-        /* A 404 means this is not one of ours, and the caller should ask the
-           other provider. Anything else - offline, timeout - is not an answer
-           either way, so it is not cached as one. */
-        if (error instanceof IslamicDataError && error.status === 404) {
-          surahCacheSet(cacheKey, null);
+        /* Every verse with no meaning in this edition is a hole in the page,
+           so it matters why: the edition really ends there, or the request
+           gave up early. Only the first may be remembered as an answer. */
+        if (response.complete === false && options.strict) {
           return null;
         }
-        return null;
+      } catch (error) {
+        /* A 404 means this is not one of ours, and the caller should ask the
+           other provider - that is a fact about the edition and is worth
+           keeping. Anything else - offline, timeout - is not an answer either
+           way, so it is not cached as one; the next caller asks again. */
+        if (error instanceof IslamicDataError && error.status === 404) {
+          surahCacheSet(cacheKey, null);
+          if (options.strict) return null;
+          continue;
+        }
+        if (options.strict) return null;
+        continue;
       }
       surahCacheSet(cacheKey, rows);
     }
-    if (rows === null) return null;
+    if (rows === null) {
+      if (options.strict) return null;
+      continue;
+    }
     for (const [key, value] of rows) out.set(key, value);
   }
   return out;
@@ -232,12 +293,10 @@ async function scriptTexts(script: string, surah: number): Promise<Map<string, s
     surahCacheSet(cacheKey, rows);
     return rows;
   } catch (error) {
-    /* A missing script is not a reason to blank the reader: fall back to
-       Uthmani, which every surah has. */
-    if (error instanceof IslamicDataError && error.status === 404) {
-      surahCacheSet(cacheKey, null);
-      return null;
-    }
+    /* A missing script is not a reason to blank the reader: the caller falls
+       back to Uthmani, which every surah has. The absence is not remembered,
+       though - one 404 can be a snapshot still publishing that file, and a
+       remembered one would keep the reader on the fallback long after. */
     return null;
   }
 }
@@ -532,7 +591,7 @@ export async function getChapters(): Promise<Chapter[]> {
   }
 }
 
-export async function getVerses(chapterId: number, options: { script?: string; translation?: string } = {}): Promise<Verse[]> {
+export async function getVerses(chapterId: number, options: { script?: string; translation?: string; transliteration?: string; wordByWord?: string } = {}): Promise<Verse[]> {
   /* The Arabic and the meaning underneath are already saved to disk by
      `getSurah`, and the reader keeps its own copy of the finished list. What
      nothing held is the list once it has been built, so opening a surah,
@@ -541,11 +600,104 @@ export async function getVerses(chapterId: number, options: { script?: string; t
      third copy of the same text on the device. */
   const script = options.script || 'quran-uthmani';
   const translation = options.translation || DEFAULT_TRANSLATION_EDITION;
-  return cached('quran', `composed:verses:${chapterId}:${script}:${translation}`,
-    () => composeVerses(chapterId, options), { memoryOnly: true, ttlMs: 30 * 60 * 1000 });
+  return cached('quran', `composed:verses:${chapterId}:${script}:${translation}:${options.transliteration || ''}:${options.wordByWord || ''}`,
+    async () => requireWholeSurah(await composeVerses(chapterId, options), chapterId),
+    { memoryOnly: true, ttlMs: 30 * 60 * 1000 });
 }
 
-async function composeVerses(chapterId: number, options: { script?: string; translation?: string } = {}): Promise<Verse[]> {
+/**
+ * Attach the transliteration to verses that already have their Arabic.
+ *
+ * Opt-in, because it costs one more request per surah and most readers never
+ * ask for it. The request runs beside the composition rather than after it,
+ * and a failure is not an error: the verses come back exactly as they were,
+ * without the extra line. `surahOf` says which surah each verse belongs to,
+ * because a page or a juz spans several.
+ */
+async function withTransliteration(
+  verses: Verse[],
+  options: { transliteration?: string },
+  surahOf: (verse: Verse) => number,
+): Promise<Verse[]> {
+  const editionId = options.transliteration;
+  if (!editionId || !verses.length) return verses;
+  const surahs = [...new Set(verses.map(surahOf))].filter((n) => Number.isInteger(n) && n > 0);
+  const maps = new Map<number, Map<number, string>>();
+  await Promise.all(
+    surahs.map(async (surah) => {
+      maps.set(surah, await getSurahTransliteration(surah, editionId));
+    }),
+  );
+  return attachTransliteration(verses, surahOf, maps);
+}
+
+/**
+ * Attach the word by word to verses that already have their Arabic.
+ *
+ * Opt-in, like the transliteration, and for the same reason: it costs a
+ * download most readers never ask for. The words come from the verse's own
+ * text, so this adds meanings to what is already on the page rather than
+ * replacing any part of it. Anything that does not pair cleanly is left
+ * without meanings instead of being guessed at - see wordByWord.ts.
+ */
+async function withWordByWord(
+  verses: Verse[],
+  options: { wordByWord?: string },
+  surahOf: (verse: Verse) => number,
+): Promise<Verse[]> {
+  const editionId = options.wordByWord;
+  if (!editionId || !verses.length) return verses;
+  const surahs = [...new Set(verses.map(surahOf))].filter((n) => Number.isInteger(n) && n > 0);
+  const maps = new Map<number, Map<number, string[]>>();
+  await Promise.all(
+    surahs.map(async (surah) => {
+      maps.set(surah, await getSurahWordByWord(surah, editionId));
+    }),
+  );
+  return verses.map((verse) => {
+    const surah = surahOf(verse);
+    const meanings = maps.get(surah)?.get(Number(verse.verse_key.split(':')[1]));
+    if (!meanings) return verse;
+    const paired = pairWords(wordsForAyah(verse.text_uthmani || ''), meanings);
+    if (!paired) return verse;
+    /* The root hangs on the word at the same position the meaning took, using
+       the key this app already uses for words. A word with no root - a
+       particle, or a verse the morphology catalogue does not cover - gets
+       none, rather than an empty label. */
+    const withRoots = paired.map((entry, index) => {
+      const found = wordMorphology(`${verse.verse_key}:${index + 1}`);
+      if (!found.root && !found.lemma) return entry;
+      return {
+        ...entry,
+        ...(found.root ? { root: found.root, rootLatin: found.rootLatin } : {}),
+        ...(found.lemma ? { lemma: found.lemma } : {}),
+      };
+    });
+    return { ...verse, wordByWord: withRoots };
+  });
+}
+
+/**
+ * A session-held composition, refused unless it is whole.
+ *
+ * The check sits *inside* the fetch rather than after it, so a short list is
+ * never the thing the session remembers. These compositions live only in
+ * memory for a reading session, so nothing needs clearing when one is
+ * rejected: the next read builds it again from the surahs already on disk.
+ * Without this a surah that failed part-way through stayed the surah for
+ * thirty minutes, and every screen reading it showed the gap.
+ */
+function requireWholeList(verses: Verse[], expected: number): Verse[] {
+  const problem = quranPayloadProblem(verses, expected);
+  if (problem) throw new Error(`The Quran text for this passage could not be loaded in full (${problem}).`);
+  return verses;
+}
+
+function requireWholeSurah(verses: Verse[], chapterId: number): Verse[] {
+  return requireWholeList(verses, versesInSurah(chapterId));
+}
+
+async function composeVerses(chapterId: number, options: { script?: string; translation?: string; transliteration?: string; wordByWord?: string } = {}): Promise<Verse[]> {
   const script = options.script || 'quran-uthmani';
   const translation = options.translation || DEFAULT_TRANSLATION_EDITION;
 
@@ -556,8 +708,17 @@ async function composeVerses(chapterId: number, options: { script?: string; tran
      stay right offline. */
   const [arabic, worker] = await Promise.all([
     scriptTexts(script, chapterId),
-    workerTexts(translation, [String(chapterId)]),
+    workerTexts(translation, [String(chapterId)], { strict: true }),
   ]);
+
+  /* No Arabic at all means the fetch failed, not that the surah is empty.
+     Handing back an empty list would let the caller cache it as a chapter -
+     which is exactly how a surah came to be stored with no verses and then
+     shown, offline, as though it had none. Fail instead, so the reader keeps
+     whatever it already has and says the connection could not be reached. */
+  if (!arabic?.size) {
+    throw new Error('The Quran text for this surah could not be reached. It will load when the connection returns.');
+  }
 
   const count = versesInSurah(chapterId) || arabic?.size || 0;
   const verses: Verse[] = [];
@@ -575,7 +736,7 @@ async function composeVerses(chapterId: number, options: { script?: string; tran
       hizbQuarter: rubOfVerse(chapterId, verse),
     });
   }
-  return verses;
+  return withWordByWord(await withTransliteration(verses, options, () => chapterId), options, () => chapterId);
 }
 
 /**
@@ -586,7 +747,7 @@ async function composeVerses(chapterId: number, options: { script?: string; tran
  * all once those surahs are held. No provider is asked which verses belong
  * together - the book has not changed since it was written down.
  */
-export async function getPageVerses(page: number, options: { script?: string; translation?: string } = {}): Promise<Verse[]> {
+export async function getPageVerses(page: number, options: { script?: string; translation?: string; transliteration?: string; wordByWord?: string } = {}): Promise<Verse[]> {
   const script = options.script || 'quran-uthmani';
   const translation = options.translation || DEFAULT_TRANSLATION_EDITION;
   if (page < 1 || page > MUSHAF_PAGE_COUNT) return [];
@@ -603,10 +764,16 @@ export async function getPageVerses(page: number, options: { script?: string; tr
 
   const [arabic, worker] = await Promise.all([
     scriptTextsFor(script, keys),
-    workerTexts(translation, keys.map((k) => k.split(':')[0])),
+    workerTexts(translation, keys.map((k) => k.split(':')[0]), { strict: true }),
   ]);
 
-  return keys.map((key) => {
+  /* Nothing at all came back - the request failed rather than the page being
+     empty. An empty list is never cached as a success: see `composeVerses`. */
+  if (!arabic.size) {
+    throw new Error('The Quran text for this passage could not be reached. It will load when the connection returns.');
+  }
+
+  const rows = keys.map((key) => {
     const [surahText, verseText] = key.split(':');
     const surah = Number(surahText);
     const verse = Number(verseText);
@@ -621,6 +788,8 @@ export async function getPageVerses(page: number, options: { script?: string; tr
       surah_name: surahName(surah),
     };
   }).filter((verse) => verse.text_uthmani);
+  /* A page crosses surah boundaries, so each verse says which surah it is in. */
+  return withWordByWord(await withTransliteration(rows, options, (verse) => Number(verse.verse_key.split(':')[0])), options, (verse) => Number(verse.verse_key.split(':')[0]));
 }
 
 export async function getAyahOfDay(edition = DEFAULT_TRANSLATION_EDITION): Promise<DailyAyah> {
@@ -642,7 +811,17 @@ export async function getAyahForDate(date: Date, edition = DEFAULT_TRANSLATION_E
      month so that tomorrow's is still there after a restart. */
   const day = Math.floor((new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime() - new Date(date.getFullYear(), 0, 0).getTime()) / 86400000);
   return cached('daily', `ayah:${date.getFullYear()}:${day}:${edition}`,
-    () => composeAyahForDate(date, edition), { ttlMs: 30 * 24 * 60 * 60 * 1000, staleMs: 90 * 24 * 60 * 60 * 1000 });
+    async () => {
+      const ayah = await composeAyahForDate(date, edition);
+      /* A day without its Arabic was a failed read, not a quiet day. Storing
+         it would keep the card empty for a month on every open, and the
+         preload for the week ahead would copy it forward. */
+      if (!ayah.arabic?.trim()) {
+        throw new Error('The verse for today could not be reached. It will load when the connection returns.');
+      }
+      return ayah;
+    },
+    { ttlMs: 30 * 24 * 60 * 60 * 1000, staleMs: 90 * 24 * 60 * 60 * 1000 });
 }
 
 async function composeAyahForDate(date: Date, edition: string): Promise<DailyAyah> {
@@ -661,20 +840,30 @@ async function composeAyahForDate(date: Date, edition: string): Promise<DailyAya
      last caller still addressing that index by a legacy id. Where the chosen
      edition is not served here, the day is shown in Arabic alone rather than
      in a language that was never chosen. */
+  let shownEdition = edition;
+  let fellBackFrom: string | undefined;
   let translation = (await workerTexts(edition, [String(surah)]))?.get(verseKey);
   if (!translation && edition !== DEFAULT_TRANSLATION_EDITION) {
     translation = (await workerTexts(DEFAULT_TRANSLATION_EDITION, [String(surah)]))?.get(verseKey);
+    if (translation) {
+      /* English was shown under a different edition's name until now. The
+         card can only be honest about the fallback if it is told about it. */
+      shownEdition = DEFAULT_TRANSLATION_EDITION;
+      fellBackFrom = edition;
+    }
   }
   return {
     reference: `${surahName(surah)} ${surah}:${verse}`,
     arabicReference: `${SURAH_NAMES_AR[surah] || ''} ${surah}:${verse}`.trim(),
     arabic: arabicText,
     translation: translation || '',
+    translationEdition: shownEdition,
+    ...(fellBackFrom ? { fellBackFrom } : {}),
   };
 }
 
-export async function getJuzVerses(juz: number, options: { script?: string; translation?: string } = {}): Promise<Verse[]> {
-  return cached('quran', `composed:juz:${juz}:${options.script || 'quran-uthmani'}:${options.translation || DEFAULT_TRANSLATION_EDITION}`,
+export async function getJuzVerses(juz: number, options: { script?: string; translation?: string; transliteration?: string; wordByWord?: string } = {}): Promise<Verse[]> {
+  return cached('quran', `composed:juz:${juz}:${options.script || 'quran-uthmani'}:${options.translation || DEFAULT_TRANSLATION_EDITION}:${options.transliteration || ''}:${options.wordByWord || ''}`,
     () => versesForDivision(juzVerseKeys(juz), juz, options, (surah, verse) => juz),
     { memoryOnly: true, ttlMs: 30 * 60 * 1000 });
 }
@@ -689,7 +878,7 @@ export async function getJuzVerses(juz: number, options: { script?: string; tran
 async function versesForDivision(
   keys: string[],
   fallbackJuz: number,
-  options: { script?: string; translation?: string },
+  options: { script?: string; translation?: string; transliteration?: string; wordByWord?: string },
   juzFor: (surah: number, verse: number) => number,
 ): Promise<Verse[]> {
   if (!keys.length) return [];
@@ -698,10 +887,16 @@ async function versesForDivision(
 
   const [arabic, worker] = await Promise.all([
     scriptTextsFor(script, keys),
-    workerTexts(translation, keys.map((k) => k.split(':')[0])),
+    workerTexts(translation, keys.map((k) => k.split(':')[0]), { strict: true }),
   ]);
 
-  return keys.map((key) => {
+  /* Nothing at all came back - the request failed rather than the page being
+     empty. An empty list is never cached as a success: see `composeVerses`. */
+  if (!arabic.size) {
+    throw new Error('The Quran text for this passage could not be reached. It will load when the connection returns.');
+  }
+
+  const rows = keys.map((key) => {
     const [surahText, verseText] = key.split(':');
     const surah = Number(surahText);
     const verse = Number(verseText);
@@ -716,6 +911,8 @@ async function versesForDivision(
       surah_name: surahName(surah),
     } as Verse & { surah_name: string };
   }).filter((verse) => verse.text_uthmani);
+  const composed = await withWordByWord(await withTransliteration(rows, options, (verse) => Number(verse.verse_key.split(':')[0])), options, (verse) => Number(verse.verse_key.split(':')[0]));
+  return composed as Array<Verse & { surah_name: string }>;
 }
 
 /**
@@ -725,11 +922,16 @@ async function versesForDivision(
  * are the four runs taken together rather than four separate fetches that
  * then need de-duplicating.
  */
-export async function getHizbVerses(hizb: number, options: { script?: string; translation?: string } = {}): Promise<Verse[]> {
+export async function getHizbVerses(hizb: number, options: { script?: string; translation?: string; transliteration?: string; wordByWord?: string } = {}): Promise<Verse[]> {
   const script = options.script || 'quran-uthmani';
   const translation = options.translation || DEFAULT_TRANSLATION_EDITION;
-  return cached('quran', `composed:hizb:${hizb}:${script}:${translation}`,
-    () => composeHizbVerses(hizb, options), { memoryOnly: true, ttlMs: 30 * 60 * 1000 });
+  /* Four quarters, each counted from the bundled table - the same key list
+     `composeHizbVerses` builds, so the two cannot disagree about the target. */
+  const expected = Array.from({ length: 4 }, (_, i) => (hizb - 1) * 4 + i + 1)
+    .reduce((total, quarter) => total + rubVerseKeys(quarter).length, 0);
+  return cached('quran', `composed:hizb:${hizb}:${script}:${translation}:${options.transliteration || ''}:${options.wordByWord || ''}`,
+    async () => requireWholeList(await composeHizbVerses(hizb, options), expected),
+    { memoryOnly: true, ttlMs: 30 * 60 * 1000 });
 }
 
 async function composeHizbVerses(hizb: number, options: { script?: string; translation?: string } = {}): Promise<Verse[]> {
@@ -756,7 +958,9 @@ export async function getQuranEditions(type = 'translation'): Promise<QuranEditi
     englishName: e.displayName || e.id,
     name: e.author || e.displayName || e.id,
     type: e.variant || type,
-    direction: e.language === 'ar' ? 'rtl' : 'ltr',
+    /* Urdu, Persian and Pashto are right-to-left too. Telling the comparison
+       screen they are left-to-right lays their columns out mirrored. */
+    direction: isRtlCode(e.language) ? 'rtl' : 'ltr',
   }));
 }
 
@@ -774,7 +978,10 @@ export async function getQuranEditions(type = 'translation'): Promise<QuranEditi
  * A 404 means the edition is not one of ours, and the caller should ask the
  * other provider instead.
  */
-async function wholeEdition(editionId: string): Promise<Array<{ surah: number; rows: Array<{ verseKey: string; numberInSurah: number; text: string }> }> | null> {
+async function wholeEdition(
+  editionId: string,
+  category: IslamicCategory = 'quran',
+): Promise<Array<{ surah: number; rows: Array<{ verseKey: string; numberInSurah: number; text: string }> }> | null> {
   const out: Array<{ surah: number; rows: Array<{ verseKey: string; numberInSurah: number; text: string }> }> = [];
   const queue = Array.from({ length: 114 }, (_, i) => i + 1);
   const WORKERS = 16;
@@ -783,7 +990,7 @@ async function wholeEdition(editionId: string): Promise<Array<{ surah: number; r
     while (index < queue.length) {
       const surah = queue[index];
       index += 1;
-      const rows = (await getSurah('quran', editionId, surah)).rows || [];
+      const rows = (await getSurah(category, editionId, surah)).rows || [];
       out.push({ surah, rows });
     }
   };
@@ -807,12 +1014,52 @@ export async function searchQuran(query: string, edition = DEFAULT_TRANSLATION_E
   return singleFlight(`search:${edition}:${query}`, () => runSearch(query, edition));
 }
 
-async function runSearch(query: string, edition = DEFAULT_TRANSLATION_EDITION): Promise<QuranSearchResult[]> {
-  const needle = query.trim().toLowerCase();
-  if (needle.length < 2) return [];
+/**
+ * The form Arabic is *matched* in, never the form it is shown in.
+ *
+ * Typed Arabic is bare - الصبر - while the Uthmani text is fully vocalised and
+ * uses a joined alef and tatweel: ٱلرَّحْمَـٰن. Compared literally, a person
+ * typing the word they can see on the page finds nothing at all, which is why
+ * an Arabic search used to come back empty however it was spelled.
+ *
+ * Folding both sides to the same plain letters is a matching decision and only
+ * that: the verse drawn on screen is the source text, character for character.
+ * Alef variants, alef maqsura, the marks and the tatweel are the differences
+ * that are orthographic rather than lexical, so those are what it folds.
+ */
+function foldArabicForSearch(text: string): string {
+  return String(text || '')
+    .normalize('NFC')
+    .replace(/[\u0671\u0622\u0623\u0625\u0672\u0673]/g, '\u0627')
+    .replace(/\u0649/g, '\u064A')
+    .replace(/[\u064B-\u065F\u0670\u06D6-\u06ED\u0640\u0653-\u0655]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+}
 
-  /* Our own server first: it is the one that understands our edition ids. */
-  const book = await wholeEdition(edition).catch(() => null);
+async function runSearch(query: string, edition = DEFAULT_TRANSLATION_EDITION): Promise<QuranSearchResult[]> {
+  const needle = foldArabicForSearch(query);
+  if (needle.length < 2) return [];
+  const rawQuery = query.trim().toLowerCase();
+
+  /* A search for Arabic is a search of a script, and scripts live under their
+     own route with their own ids. The reader passes the app's script name, so
+     it is translated here rather than sent to the translation route, where it
+     would 404 and the search would quietly answer with nothing. */
+  const scriptSearch = isScriptName(edition);
+  const category: IslamicCategory = scriptSearch ? 'scripts' : 'quran';
+  const editionId = scriptSearch ? scriptEditionId(edition) : edition;
+
+  /* Our own server first: it is the one that understands our edition ids.
+     A 404 is an answer - this edition does not exist here - and the fallback
+     below handles it. An outage, a timeout or a run of failures is not an
+     answer at all: it is passed on so the screen can say the connection could
+     not be reached, instead of showing a confident "no verses found". */
+  const book = await wholeEdition(editionId, category).catch((error) => {
+    if (error instanceof IslamicDataError && error.status === 404) return null;
+    throw error;
+  });
   if (book) {
     /* Surah names come from the same server as the text. Reaching for the
        chapter list on the other provider here would mean a search could fail
@@ -820,13 +1067,15 @@ async function runSearch(query: string, edition = DEFAULT_TRANSLATION_EDITION): 
     const matches: QuranSearchResult[] = [];
     for (const { surah, rows } of book) {
       for (const row of rows || []) {
-        if ((row.text || '').toLowerCase().includes(needle)) {
+        const text = scriptSearch && isTajweedScript(editionId) ? convertTajweedMarkup(row.text) : row.text;
+        /* Both sides folded, so a bare query and a vocalised verse meet. */
+        if (foldArabicForSearch(text).includes(needle) || (text || '').toLowerCase().includes(rawQuery)) {
           matches.push({
             verseKey: row.verseKey,
             surahId: surah,
             surahName: surahName(surah),
             ayah: row.numberInSurah,
-            text: row.text,
+            text: text || '',
             edition,
           });
         }
@@ -840,26 +1089,31 @@ async function runSearch(query: string, edition = DEFAULT_TRANSLATION_EDITION): 
      everyone starts in rather than coming back empty. The reader shows which
      edition the matches came from, so nothing is being passed off as a
      choice the person made. */
-  if (edition !== DEFAULT_TRANSLATION_EDITION) {
+  if (scriptSearch && edition !== 'quran-uthmani') {
+    return searchQuran(query, 'quran-uthmani');
+  }
+  if (!scriptSearch && edition !== DEFAULT_TRANSLATION_EDITION) {
     return searchQuran(query, DEFAULT_TRANSLATION_EDITION);
   }
   return [];
 }
 
 /**
- * Any list of editions for one verse, split across the two providers.
+ * Any list of editions for one verse, split across the Worker's catalogues.
  *
  * The split has to happen before the asking, not after. Handed an id it does
- * not know, the third-party index does not 404 - it answers 200 with a
- * stand-in, an Arabic script where a translation was wanted. The row arrives,
- * carries a plausible edition object, and passes every check on the way in, so
- * the screen shows the wrong book with no error anywhere to see. Since the
- * reader moved to the app's own edition ids, every translation asked for here
- * was silently answered in Arabic.
+ * not know, a server that guesses does not fail - it answers with a stand-in,
+ * an Arabic script where a translation was wanted. The row arrives, carries a
+ * plausible edition object, and passes every check on the way in, so the
+ * screen shows the wrong book with no error anywhere to see.
  *
- * The two sets do not overlap: our catalog is 484 entries and every one is a
- * translation, while the script ids and the old index ids are absent from it.
- * So membership of the catalog is the whole test - no guesswork about shape.
+ * Which catalogue an id belongs to is therefore decided by the catalogues, and
+ * never by elimination. Every id that is not a translation used to be treated
+ * as a script, which sent tafsir ids - and the old dotted ids from the
+ * previous provider - to the script route, where they 404 and the column came
+ * back empty. `ar.jalalayn` is a tafsir and `en.sahih` is a translation; the
+ * catalogues say so, and the ids below are what those entries are called on
+ * our own server. Everything else is asked for as what it is: a translation.
  */
 export async function getAyahEditions(verseKey: string, editions: string[]): Promise<{edition:string;name:string;language:string;text:string}[]> {
   /* Commentary on a verse is the one thing in the app that can never change:
@@ -874,36 +1128,117 @@ export async function getAyahEditions(verseKey: string, editions: string[]): Pro
   });
 }
 
+/**
+ * The old provider's names for editions we now serve, and the route each one
+ * belongs on.
+ *
+ * Only ids that were actually shipped - the app stored `en.sahih`,
+ * `en.pickthall`, `ar.jalalayn` and the rest of the reader's list - and only
+ * ones whose Worker entry is named by the same publisher. A dotted id that is
+ * not here is not translated into a guess: it is asked for as it was given,
+ * and if the server does not know it the row is left out rather than filled
+ * with something else.
+ */
+const LEGACY_EDITION_ROUTES: Record<string, { category: 'quran' | 'tafsir' | 'scripts'; id: string }> = {
+  'en.sahih': { category: 'quran', id: 'tr_en_saheeh_international' },
+  'en.pickthall': { category: 'quran', id: 'tr_en_mohammed_marmaduke_william_pickt' },
+  'en.maududi': { category: 'quran', id: 'tr_en_abul_ala_maududi' },
+  'ur.jalandhry': { category: 'quran', id: 'tr_ur_fateh_muhammad_jalandhry' },
+  'ar.jalalayn': { category: 'tafsir', id: 'tafsir_ar_jalal_ad_din_al_mahalli_and_jala' },
+  'ar.muyassar': { category: 'tafsir', id: 'tafsir_ar_king_fahad_quran_complex' },
+  'ar-tafsir-muyassar': { category: 'tafsir', id: 'tafsir_ar_arabic_ar-tafsir-muyassar' },
+};
+
+/** The Worker route an id belongs on, decided by which catalogue holds it. */
+type EditionRoute =
+  | { kind: 'translation'; id: string; meta: IslamicEdition }
+  | { kind: 'tafsir'; id: string; meta: IslamicEdition }
+  | { kind: 'script'; id: string };
+
+type EditionCatalogues = { translations: IslamicEdition[]; tafsirs: IslamicEdition[] };
+
+/** Both catalogues, once per comparison rather than once per edition. */
+async function loadEditionCatalogues(): Promise<EditionCatalogues> {
+  const [translations, tafsirs] = await Promise.all([
+    getEditions('quran').catch(() => [] as IslamicEdition[]),
+    getEditions('tafsir').catch(() => [] as IslamicEdition[]),
+  ]);
+  return { translations, tafsirs };
+}
+
+function resolveEditionRoute(id: string, catalogues: EditionCatalogues): EditionRoute {
+  const legacy = LEGACY_EDITION_ROUTES[id];
+  if (legacy?.category === 'tafsir') {
+    const meta = catalogues.tafsirs.find((entry) => entry.id === legacy.id);
+    /* A legacy tafsir id whose replacement is not in this snapshot is asked
+       for as a translation like anything else - never as a script. */
+    return meta
+      ? { kind: 'tafsir', id: legacy.id, meta }
+      : { kind: 'translation', id: legacy.id, meta: undefined as unknown as IslamicEdition };
+  }
+  const translationId = legacy?.category === 'quran' ? legacy.id : id;
+  const meta = catalogues.translations.find((entry) => entry.id === translationId);
+  if (meta) return { kind: 'translation', id: translationId, meta };
+
+  /* Not a translation. A script, if it is named like one of ours; otherwise
+     it may still be a tafsir id we have never been told about. */
+  if (isScriptName(id) || isScriptName(translationId)) {
+    return { kind: 'script', id: translationId };
+  }
+  const tafsir = catalogues.tafsirs.find((entry) => entry.id === translationId);
+  if (tafsir) return { kind: 'tafsir', id: translationId, meta: tafsir };
+
+  /* Asked for as a translation and left to the server to refuse. The row is
+     dropped below rather than filled with a stand-in. */
+  return { kind: 'translation', id: translationId, meta: undefined as unknown as IslamicEdition };
+}
+
 async function composeAyahEditions(verseKey: string, editions: string[]): Promise<{edition:string;name:string;language:string;text:string}[]> {
   const surah = String(verseKey).split(':')[0];
   const wanted = (editions || []).filter(Boolean);
 
-  const catalogue = await getEditions('quran').catch(() => [] as IslamicEdition[]);
-  const ours = new Map(catalogue.map((edition) => [edition.id, edition]));
-
   const rows: {edition:string;name:string;language:string;text:string}[] = [];
+  const catalogues = await loadEditionCatalogues();
 
   await Promise.all(
     wanted.map(async (id) => {
-      /* The Arabic row is a script rather than a translation, and scripts are
-         addressed on a different part of our server under different ids. */
-      const meta = ours.get(id);
-      if (!meta) {
-        const arabic = await scriptTexts(id, Number(surah));
-        if (arabic?.get(verseKey)) {
-          rows.push({ edition: id, name: SCRIPT_NAMES[id] || 'Arabic', language: 'ar', text: arabic.get(verseKey) || '' });
+      const route = resolveEditionRoute(id, catalogues);
+      if (route.kind === 'script') {
+        const arabic = await scriptTexts(route.id, Number(surah));
+        const text = arabic?.get(verseKey);
+        if (text) {
+          rows.push({
+            edition: id,
+            name: SCRIPT_NAMES[route.id] || SCRIPT_NAMES[id] || 'Arabic',
+            language: 'ar',
+            text,
+          });
         }
         return;
       }
-      const texts = await workerTexts(id, [surah]);
+      /* `kind` says which book it is; the route segment it maps to is the
+         catalogue's own name, and a tafsir is not served from `quran`. */
+      const texts = await workerTexts(route.id, [surah], { category: route.kind === 'tafsir' ? 'tafsir' : 'quran' });
+      const text = texts?.get(verseKey) || '';
+      /* A blank column is worse than a missing one: it looks like a verse
+         that says nothing. If the edition has no text for this verse it is
+         left out, and the screen shows the editions it does have. */
+      if (!text) return;
       rows.push({
         edition: id,
-        name: meta.displayName,
-        language: meta.language || '',
-        text: texts?.get(verseKey) || '',
+        name: route.meta?.displayName || (LEGACY_EDITION_ROUTES[id] ? id : route.id),
+        language: route.meta?.language || '',
+        text,
       });
     }),
   );
+
+  /* Nothing at all could be read: that is a failure, not a verse that every
+     edition is silent about. Thrown rather than returned so the caller cannot
+     store it - this list is kept for a year once it is written. */
+  if (!rows.length) {
+    throw new Error('This verse could not be loaded from the selected editions. Check the connection and try again.');
+  }
 
   /* Back in the order they were asked for, so a caller reading by position -
      or by "the one that is not Arabic" - still finds what it expected. */
@@ -1094,6 +1429,15 @@ export type Dua = {
   transliteration: string;
   translation: string;
   reference: string;
+  /**
+   * How many times the remembrance is said, when its own wording states it.
+   *
+   * Read out of the text rather than added to it, so the number the counter
+   * shows is the number the sentence above it gives. Absent on the majority of
+   * rows - a narration, a compound, or a dua that states no count has no
+   * business showing a number this app invented. See `duaRepetition.ts`.
+   */
+  repetition?: Repetition;
 };
 
 /** The Islamic.app dhikr payload keeps transliteration, translation and reference inside
@@ -1140,15 +1484,23 @@ export async function getDuasByCategory(key: string): Promise<Dua[]> {
   const rows = data.duas || data.items || [];
   return rows.map((row: any) => {
     const body = row.en?.body || '';
+    const transliteration = spanText(body, 'transliteration');
+    const translation = spanText(body, 'translation') || plain(row.en?.text || '');
+    const arabic = plain(row.ar?.text || row.ar?.body || '');
+    /* What is counted is the wording the reader reads - never the citation
+       line, where "Muslim 4/2083" is a reference rather than a number of
+       repetitions. */
+    const repetition = repetitionOf(`${transliteration} ${translation}`.trim(), arabic) || undefined;
     return {
       id: `${key}:${row.number}`,
       number: String(row.number ?? ''),
       categoryKey: key,
       category: row.category?.en || data.label || '',
-      arabic: plain(row.ar?.text || row.ar?.body || ''),
-      transliteration: spanText(body, 'transliteration'),
-      translation: spanText(body, 'translation') || plain(row.en?.text || ''),
+      arabic,
+      transliteration,
+      translation,
       reference: spanText(body, 'hisn_english_reference') || spanText(body, 'hisn_arabic_reference'),
+      ...(repetition ? { repetition } : {}),
     };
   }).filter((dua: Dua) => dua.arabic || dua.translation);
 }
@@ -1161,6 +1513,7 @@ export async function getDuas(category = 'morning'): Promise<any[]> {
     transliteration: dua.transliteration,
     translation: dua.translation,
     reference: dua.reference,
+    ...(dua.repetition ? { repetition: dua.repetition } : {}),
     category: dua.category,
   }));
 }

@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { clearCacheNamespace, getCachedJson, listCachedKeys, setCachedJson } from './contentCache';
 import { readJson as readStoredJson, writeJson as writeStoredJson } from './storage';
+import { quranPayloadProblem } from './quranPayloads';
 
 export type QuranPreferences = {
   translationEdition: string;
@@ -18,6 +19,9 @@ export type QuranPreferences = {
   transliterationEdition: string;
   transliterationName: string;
   showTransliteration: boolean;
+  /** Each word of the verse with its own meaning, under the Arabic. */
+  showWordByWord: boolean;
+  wordByWordEdition: string;
   scriptEdition: string;
   scriptName: string;
   arabicFont: 'hafs' | 'scheherazade' | 'amiri-quran' | 'naskh' | 'kufi';
@@ -144,6 +148,8 @@ export const DEFAULTS: QuranPreferences = {
   transliterationEdition: DEFAULT_TRANSLITERATION.edition,
   transliterationName: DEFAULT_TRANSLITERATION.name,
   showTransliteration: false,
+  showWordByWord: false,
+  wordByWordEdition: 'wbw_en',
   scriptEdition: 'quran-uthmani', scriptName: 'Uthmani', arabicFont: 'hafs', fontSize: 30, lineHeight: 1.9, showTranslation: true, readingMode: 'cards' };
 async function read<T>(key:string,fallback:T):Promise<T>{try{const v=await AsyncStorage.getItem(key);return v?JSON.parse(v):fallback}catch{return fallback}}
 const write=(key:string,value:unknown)=>AsyncStorage.setItem(key,JSON.stringify(value));
@@ -233,12 +239,43 @@ export function readerCacheKey(options: {
   return `${options.section}:${options.chapterId}:${options.juz ?? 1}:${options.hizb ?? 1}:${options.page ?? null}:${options.script}:${options.translation}`;
 }
 
+/**
+ * The translation part of a reader key, with the transliteration folded in.
+ *
+ * A page with the transliteration is not the same page as one without it, and
+ * a copy saved under the wrong choice is worse than no copy: it shows a line
+ * that is not there, or leaves out one that is. Because the preload fills the
+ * same entries the reader looks up, both sides build this here - the note on
+ * `readerCacheKey` is the reason.
+ */
+export function readerTranslationKey(translation: string, transliteration?: string, wordByWord?: string): string {
+  const base = transliteration ? `${translation}|tl:${transliteration}` : translation;
+  return wordByWord ? `${base}|wbw:${wordByWord}` : base;
+}
+
 /** The key for one surah read on its own — what an offline download fills. */
 export function surahCacheKey(chapterId: number, script: string, translation: string): string {
   return readerCacheKey({ section: 'surah', chapterId, script, translation });
 }
 
-export async function loadSurahCache(key:string){await migrateLegacySurahCache();return getCachedJson<unknown>('quran',key)}
+/**
+ * A surah read back from the disk.
+ *
+ * `expected` is how many verses the chapter has, from the bundled table. When
+ * it is given, a stored list that does not match is reported as absent rather
+ * than returned: a copy saved short by a request that gave up part-way through
+ * is not an offline copy, and showing it as one is how a reader came to open a
+ * surah offline and find most of it missing. Nothing is deleted here - the
+ * next good read replaces the entry - so a rejected copy can never take a good
+ * neighbour down with it.
+ */
+export async function loadSurahCache(key:string,expected=0){
+  await migrateLegacySurahCache();
+  const value=await getCachedJson<unknown>('quran',key);
+  if(!value)return null;
+  if(quranPayloadProblem(value,expected))return null;
+  return value;
+}
 export async function saveSurahCache(key:string,value:unknown){await migrateLegacySurahCache();return setCachedJson('quran',key,value)}
 export async function loadSurahCacheIndex(){await migrateLegacySurahCache();return listCachedKeys('quran')}
 export async function clearSurahCache(){

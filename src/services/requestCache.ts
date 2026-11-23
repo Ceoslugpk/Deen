@@ -163,7 +163,14 @@ export async function cached<T>(
            the refresh land behind it. */
         if (stored.value != null && age < staleMs) {
           remember(k, stored.value);
-          void refresh();
+          /* The refresh runs behind the screen, so this call has already
+             returned by the time it settles. An unhandled refusal here was a
+             rejected promise with nobody listening - which React Native
+             reports as an uncaught error minutes after the screen that
+             caused it was closed. The stored copy is still on the device and
+             the caller already has it, so a failure costs nothing; it is
+             simply not an answer to keep. */
+          void refresh().catch(() => undefined);
           return stored.value;
         }
       }
