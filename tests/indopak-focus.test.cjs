@@ -108,8 +108,13 @@ test('focus hides only this reader chrome/player reserve, keeps an accessible un
   assert.ok(reader.includes('!focusMode && <View testID="indopak-top-controls"'));
   assert.ok(reader.includes("testID: 'indopak-focus'")); assert.ok(reader.includes('focusMode && <Pressable ref={unlockButton} testID="indopak-unlock"'));
   assert.ok(!reader.includes('indopak-zoom')); assert.ok(!reader.includes('state.zoom')); assert.ok(!reader.includes('latest.current.zoom'));
+  /* Focus sizing is still an aspect fit of the whole window, which is the rule
+     this assertion was written to protect. When the book is open as two
+     leaves each leaf is fitted to its own half instead - a separate branch,
+     asserted in quran-indopak-spread.test.cjs. */
   assert.ok(reader.includes('fitIndopakFocusPage(viewport.width, viewport.height)'));
   assert.ok(reader.includes('fitIndopakPage(viewport.width, viewport.height, 1, true)'));
+  assert.ok(reader.includes('fitIndopakPage(leafWidth, leafHeight, 1, true)'), 'and a leaf is fitted to its own space');
   assert.ok(reader.includes('captureIndopakSwipe(activeZoom, gesture)')); assert.ok(reader.includes('indopakSwipePage(session.page, activeZoom,'));
   assert.ok(reader.includes('focusMode && focused && magnification.context === zoomContext ? magnification.zoom : 1'));
   assert.ok(reader.includes('right: INDOPAK_FOCUS_UNLOCK.inset')); assert.ok(reader.includes("focusRoot: { direction: 'ltr' }"));

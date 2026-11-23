@@ -87,5 +87,9 @@ test('normalises duplicate portrait declarations to one optional feature', async
 
 test('is registered in the app without changing the portrait preference', () => {
   assert.ok(expo.plugins.includes('./plugins/withOptionalPortrait.js'));
+  /* This plugin exists so Play does not infer *required* portrait hardware
+     from the manifest, and portrait has to stay declared for that to keep
+     meaning anything. The 16-line reader rotates its content, not the device,
+     so the binary still refuses landscape - which is the stronger guarantee. */
   assert.equal(expo.orientation, 'portrait');
 });

@@ -124,6 +124,20 @@ export default function CustomIcon({ name, size = 22, color, accent }: { name: s
     case'eye-off':art=<><Path {...common} d="M9.9 5.9A9.6 9.6 0 0 1 12 5.6c6 0 9.5 6.4 9.5 6.4a17.4 17.4 0 0 1-2.5 3.5M6.4 7.3A16.8 16.8 0 0 0 2.5 12S6 18.4 12 18.4c1.5 0 2.9-.4 4.1-1"/><Path {...common} d="M10.2 10.2a3 3 0 0 0 4.2 4.2"/><Line {...common} x1="3.2" y1="20.8" x2="20.8" y2="3.2"/></>;break;
     case'trending-down':art=<><Polyline {...common} points="4,7 9.6,12.6 13.6,8.6 20,15"/><Polyline {...common} points="15,15 20,15 20,10"/></>;break;
     case'arrow-down-circle':art=<><Circle {...common} cx="12" cy="12" r="9"/><Line {...common} x1="12" y1="7.4" x2="12" y2="16"/><Polyline {...common} points="8.6,12.6 12,16 15.4,12.6"/></>;break;
+    case'rotate':art=<>
+      {/* A page being turned a quarter circle: the square is the leaf, the arrow
+          the direction it turns. Both buttons use this one glyph, because both
+          do the same thing - rotate the reading surface - and the arrow shows
+          which way it will go next. */}
+      <Rect {...common} x="4.5" y="4.5" width="11" height="11" rx="1.6"/>
+      <Path {...common} d="M18.2 9.4a5.4 5.4 0 1 1-2.6-4.6"/>
+      <Path {...common} d="M15.9 3.4v3.6h3.6"/>
+    </>;break;
+    case'rotate-back':art=<>
+      <Rect {...common} x="8.5" y="8.5" width="11" height="11" rx="1.6"/>
+      <Path {...common} d="M5.8 14.6a5.4 5.4 0 1 0 2.6-4.6"/>
+      <Path {...common} d="M8.1 8.6V5h-3.6"/>
+    </>;break;
     case'fullscreen':art=<><Path {...common} d="M4 9.2V5.6A1.6 1.6 0 0 1 5.6 4h3.6"/><Path {...common} d="M14.8 4h3.6A1.6 1.6 0 0 1 20 5.6v3.6"/><Path {...common} d="M20 14.8v3.6a1.6 1.6 0 0 1-1.6 1.6h-3.6"/><Path {...common} d="M9.2 20H5.6A1.6 1.6 0 0 1 4 18.4v-3.6"/></>;break;
     case'lock-open':art=<><Rect {...common} x="5" y="10.5" width="14" height="11" rx="2.8"/><Path {...common} d="M8.5 10.5V7a3.5 3.5 0 0 1 6.8-1.2"/><Circle cx="12" cy="15.4" r="1.1" fill={stroke}/><Line {...common} x1="12" y1="16.5" x2="12" y2="18"/></>;break;
     case'backspace':art=<><Path {...common} d="M20.6 5.6H10L3.6 12 10 18.4h10.6a1.4 1.4 0 0 0 1.4-1.4V7a1.4 1.4 0 0 0-1.4-1.4z"/><Path {...common} d="m11.4 9.6 4.8 4.8M16.2 9.6l-4.8 4.8"/></>;break;
