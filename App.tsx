@@ -102,12 +102,17 @@ import { markerBetween, MARKER_KINDS, MARKER_LABELS, MARKER_NOTE, type MushafMar
 import { localizeGuide, WORSHIP_GUIDES, WorshipGuide } from './src/content/worshipGuides';
 import { GUIDE_HADITH, GUIDE_VERSES } from './src/content/guideSources';
 import { QURAN_TOPICS, QURAN_VOCABULARY, TAJWEED_RULES, topicTitle, topicDescription, topicCategory, tajweedName, tajweedDetail } from './src/content/quranStudy';
-import {addSearchHistory, clearSearchHistory, clearSurahCache, deleteNote, HifzStatus, loadBookmarks, loadHifz, loadNotes, loadPlan, loadReadingPosition, loadRecentSurahs, loadSearchHistory, loadSurahCache, readerCacheKey, loadSurahCacheIndex, DEFAULTS, loadVocabularyProgress, QuranBookmark, QuranNote, QuranPreferences, removeSearchHistory, saveHifz, saveNote, savePlan, saveReadingPosition, saveSurahCache, saveVocabularyProgress, toggleBookmark, ReadingPosition, VocabularyProgress} from './src/services/quranState';
+import {addSearchHistory, clearSearchHistory, clearSurahCache, deleteNote, HifzStatus, loadBookmarks, loadHifz, loadNotes, loadPlan, loadReadingPosition, loadRecentSurahs, loadSearchHistory, loadSurahCache, readerCacheKey, readerTranslationKey, loadSurahCacheIndex, DEFAULTS, loadVocabularyProgress, QuranBookmark, QuranNote, QuranPreferences, removeSearchHistory, saveHifz, saveNote, savePlan, saveReadingPosition, saveSurahCache, saveVocabularyProgress, toggleBookmark, ReadingPosition, VocabularyProgress, DEFAULT_TRANSLATION_EDITION} from './src/services/quranState';
 import { createQuranPreferenceStore } from './src/services/quranPreferenceStore';
 import { translationAudioForLanguage, translationLanguageCode } from './src/services/translationPreferences';
 import { audioPlayerLanguage, audioPlayerText } from './src/services/audioPlayerCopy';
 import { addSearchHistory as addRecentSearch, clearSearchHistory as clearRecentSearch, loadSearchHistory as loadSearchHistoryFor, removeSearchHistory as removeRecentSearch } from './src/services/searchHistory';
 import { syncWidgets, syncWidgetAyah } from './src/services/widgetSync';
+import { expectedVerseCount } from './src/services/quranMeta';
+import { DEFAULT_TRANSLITERATION_EDITION } from './src/services/transliteration';
+import { WORD_BY_WORD_EDITIONS, DEFAULT_WORD_BY_WORD_EDITION, wordByWordEdition } from './src/services/wordByWord';
+import { wordsWithRootInSurah, rootIdAt } from './src/services/morphology';
+import { isRtlCode } from './src/services/languages';
 import { widgetText } from './src/services/widgetCopy';
 import { widgetDestinationRoute } from './src/services/widgetNavigation';
 import { consumeWidgetDestination, refreshWidgets, subscribeWidgetDestination, widgetsAvailable } from './src/services/widgetBridge';
@@ -244,6 +249,7 @@ import { CARD, CARD_GAP, RADIUS, SPACE } from './src/design/tokens';
 import { BRAND, C_DARK, C_LIGHT, C_PALESTINE, C_PALESTINE_DARK, DEPTH, FLAG, GLASS, GLASS_INTENSITY, brandHex, mix, snapToBrand } from './src/design/brand';
 import { useCalmMotion } from './src/design/useCalmMotion';
 import { Tactile } from './src/components/Tactile';
+import { TafsirPanel } from './src/components/TafsirPanel';
 import { useSubtleTransitions } from './src/design/transitions';
 import { MOTION, easeOut, useEntrance, usePressDepth } from './src/design/motion';
 import { completeJourney, clearJourney, journeyMeta, JOURNEY_META, JOURNEY_STEPS, localizeJourneyStep, JourneyKind, JourneyStep, journeyProgress, setStepCount, setStepNote, startJourney, toggleStep, useJourneys, loadJourneys, setJourneyDateLocale } from './src/services/journeyService';
@@ -2337,6 +2343,20 @@ type DailyContentCache={ayah:DailyAyah;hadith:DailyHadith;name:DivineName;dua:an
  */
 const REFLECTION_AHEAD_DAYS = 7;
 
+/**
+ * The name to put under the home verse.
+ *
+ * Usually the translation chosen in Settings. When the chosen edition has no
+ * verse for that day the card has always fallen back to English rather than
+ * go blank - that is unchanged - but the label kept naming the chosen edition,
+ * so an English meaning appeared to be, say, Urdu. It now names the language
+ * that is actually on the card.
+ */
+function dailyTranslationLabel(ayah: DailyAyah | null, preferences: QuranPreferences, rtl: boolean): string {
+  if (ayah?.fellBackFrom && ayah.translationEdition === DEFAULT_TRANSLATION_EDITION) return 'English';
+  return rtl ? preferences.translationLanguage : preferences.translationName;
+}
+
 const dayKeyOf = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 
 /** Fills the days after today, one at a time so a slow network is not hammered. */
@@ -2442,10 +2462,18 @@ function useHomeData() {
     setError('');
     try{
       const prayerTask=managedPrayerSnapshot(location,settings).then(p=>{setSnapshot(p.snapshot);setCached(p.cached);return p});
-      const[p,a,h,n,duas]=await Promise.all([prayerTask,getAyahOfDay(),getDailyHadith().catch(()=>null),loadNameOfDay().catch(()=>null),getDuas('morning').catch(()=>[])]);
-      const daily={ayah:a,hadith:h as any,name:n as any,dua:duas?.[0]};
-      setSnapshot(p.snapshot);setCached(p.cached);applyDaily(daily);
-      await saveDailyContent(dateKey,daily);
+      /* The verse of the day is the one part of this that can fail without
+         the rest being wrong, so it is caught on its own. Until now a failed
+         verse - offline, or a snapshot being republished - rejected the whole
+         group, and the prayer card and hadith were thrown away with it. */
+      const[p,a,h,n,duas]=await Promise.all([prayerTask,getAyahOfDay().catch(()=>null),getDailyHadith().catch(()=>null),loadNameOfDay().catch(()=>null),getDuas('morning').catch(()=>[])]);
+      /* A day without its verse is not stored: keeping it would put an empty
+         card on the device for every open until tomorrow, and the preload
+         would copy the emptiness into the days ahead. */
+      const daily={ayah:(a||saved?.ayah||null) as any,hadith:(h||saved?.hadith||null) as any,name:(n||saved?.name||null) as any,dua:duas?.[0]||saved?.dua};
+      setSnapshot(p.snapshot);setCached(p.cached);
+      if(daily.ayah||daily.hadith||daily.name||daily.dua)applyDaily(daily);
+      if(a)await saveDailyContent(dateKey,daily);
       /* 3. and, once today is safe, the days after it */
       void preloadReflectionsAhead();
     }catch(e:any){
@@ -2751,7 +2779,7 @@ const onRefresh=async()=>{setRefreshing(true);await Promise.all([data.load(),hyd
     : null, () => setReportHadith(null));
   useOverlaySheet('home-reflection', !!openReflection, () => openReflection
     ? <ReflectionDetail kind={openReflection} data={data} rtl={rtl} T={T}
-        translationName={T(rtl?preferences.translationLanguage:preferences.translationName)}
+        translationName={T(dailyTranslationLabel(data.ayah,preferences,rtl))}
         onClose={()=>setOpenReflection(null)}
         onOpenVerse={(verseKey:string,surahId:number,surahName:string)=>nav.navigate('Quran',{screen:'Reader',params:{chapter:{id:surahId,name_simple:surahName,name_arabic:'',verses_count:0},focusVerse:verseKey},initial:false})}/>
     : null, () => setOpenReflection(null));
@@ -2797,7 +2825,7 @@ const onRefresh=async()=>{setRefreshing(true);await Promise.all([data.load(),hyd
     <View style={s.greeting}><View><Text style={s.salam}>السَّلَامُ عَلَيْكُمْ</Text><Text style={s.greetingTitle}>{greeting}</Text></View></View>
     {!data.location?<LocationPrompt/>:data.error && !data.snapshot ? <ErrorState message={data.error} retry={data.load} /> : <>
       <View style={[s.hero,{height:heroH}]}><Animated.View style={[StyleSheet.absoluteFill,{transform:[{translateY:heroShift},{scale:heroZoom}]}]}><Image source={pickScene(SCENE_HOME, resolved)} resizeMode="cover" style={s.heroBg}/></Animated.View>
-        <LinearGradient colors={isPal(resolved)?SCRIM.palestine:SCRIM.islamic} start={{x:0,y:.5}} end={{x:1,y:.5}} style={StyleSheet.absoluteFill} /> <HeroAura still={still} palestine={isPal(resolved)} /> <Animated.View pointerEvents="none" style={[s.heroSheen,{transform:[{translateX:Animated.multiply(sheenShift,width)},{skewX:'-16deg'}]}]}><LinearGradient colors={['rgba(255,255,255,0)','rgba(255,255,255,.16)','rgba(255,255,255,0)']} start={{x:0,y:0}} end={{x:1,y:0}} style={StyleSheet.absoluteFill}/></Animated.View> 
+        <LinearGradient colors={isPal(resolved)?SCRIM.palestine:SCRIM.islamic} start={{x:0,y:.5}} end={{x:1,y:.5}} style={StyleSheet.absoluteFill} /><HeroAura still={still} palestine={isPal(resolved)} /><Animated.View pointerEvents="none" style={[s.heroSheen,{transform:[{translateX:Animated.multiply(sheenShift,width)},{skewX:'-16deg'}]}]}><LinearGradient colors={['rgba(255,255,255,0)','rgba(255,255,255,.16)','rgba(255,255,255,0)']} start={{x:0,y:0}} end={{x:1,y:0}} style={StyleSheet.absoluteFill}/></Animated.View> 
         <Pressable onPress={locationState.clear} style={s.locationPill}>{ico('location',13,C.onHero)}<Text numberOfLines={1} style={s.locationText}>{T(data.location?.label || '')}</Text></Pressable>
         <Text style={s.hijri}>{(language === 'ar' ? data.snapshot?.hijriAr || data.snapshot?.hijri : data.snapshot?.hijri) || T('Loading Hijri date…')} · {new Date().toLocaleDateString(language === 'ar' ? 'ar-u-nu-latn' : undefined, { day: 'numeric', month: 'short', year: 'numeric' })}{data.cached ? (tx(language, ' · CACHED')) : ''}</Text>
         <Text style={s.nextLabel}>{tx(language, 'NEXT · ')}{next ? prayerName(language, next.name) : '—'}</Text><Text style={s.heroTime}>{clockTime(language, next?.time || '—')}</Text>
@@ -3865,6 +3893,7 @@ function ReaderScreen({route,navigation}:any){
   const ar = language === 'ar';
   const T=(text:string)=>tx(language,text);
   const[target,setTarget]=useState<string|null>(focusVerse||null);
+  const audio=useAudio();
   /* Which ayah is at the top of the screen, as the list itself reports it.
 
      This used to be worked out by measuring every verse on the page: for the
@@ -3883,10 +3912,14 @@ function ReaderScreen({route,navigation}:any){
      the reader behaves. */
   const focusOn=!!preferences.focusMode;
   const[chromeShown,setChromeShown]=useState(true);
+  /* In focus mode a verse shows its text and nothing else. The tools are still
+     there - one tap on the verse brings them back for that verse alone - so
+     nothing has been taken away, only put down. */
+  const[quietOpen,setQuietOpen]=useState<string|null>(null);
   const chromeY=useRef(new Animated.Value(0)).current;
   const revealChrome=()=>{if(focusOn)setChromeShown(true)};
   useEffect(()=>{
-    if(!focusOn){setChromeShown(true);return}
+    if(!focusOn){setChromeShown(true);setQuietOpen(null);return}
     Animated.timing(chromeY,{toValue:chromeShown?0:-140,duration:200,useNativeDriver:true}).start();
     setChromeHidden(!chromeShown);
   },[chromeShown,focusOn,chromeY]);
@@ -3910,18 +3943,75 @@ function ReaderScreen({route,navigation}:any){
   useEffect(()=>{let live=true;loadReadingPosition().then(p=>{if(live)setSavedPosition(p)});return()=>{live=false}},[savedPosition?.verseKey]);
   const[chapters,setChapters]=useState<Chapter[]>([]);
   const chapterId=chapter?.id||Number(focusVerse?.split(':')[0]||1);
+  /* The verse the reciter is on, but only when it belongs to the surah on this
+     page - otherwise a reader on al-Baqarah who started al-Kahf in the player
+     would be dragged across the book. */
+  const audioVerseKey=(audio.track&&section==='surah'&&audio.track.chapterId===chapterId)
+    ?`${audio.track.chapterId}:${audio.track.ayahNumber}`:null;
+  const audioPlaying=!!audio.track&&audio.playing;
+  /* Following is a position change, not a state change: it moves the page to
+     the verse now sounding, through the same scroller used by every other jump
+     in this screen. It is not a setting - if the recitation is on this page,
+     this page shows where the recitation is. A track belonging to another
+     surah produces no key at all, so no other page can be pulled across the
+     book. */
+  useEffect(()=>{
+    if(!audioVerseKey||!verses.length)return;
+    if(!verses.some(v=>v.verse_key===audioVerseKey))return;
+    setTarget(audioVerseKey);
+  },[audioVerseKey,verses]);
   const full:Chapter=chapters.find(c=>c.id===chapterId)??(chapter||{id:chapterId,name_simple:'',name_arabic:'',verses_count:0} as Chapter);
   /* IndoPak and the Mushaf page both fall back to the Uthmani text, which is
      then rendered by the appropriate font. */
   const scriptFor=(id:string)=>(id==='quran-indopak'||id==='quran-mushaf')?'quran-uthmani':id;
   const hizbOf=(v:Verse)=>v.hizbQuarter?Math.ceil(v.hizbQuarter/4):0;
-  const opts=()=>({script:scriptFor(preferences.scriptEdition),translation:preferences.translationEdition});
-  const cacheKey=readerCacheKey({section,chapterId,juz,hizb,page,script:preferences.scriptEdition,translation:preferences.translationEdition});
-  const load=async()=>{setError('');setVerses([]);restoredFor.current=null;progressY.setValue(0);const o=opts();const local=await loadSurahCache(cacheKey) as Verse[]|null;if(local){setVerses(local);setCached(true)}try{const fresh=(isMushaf&&page!==null)?await getPageVerses(page,o):section==='juz'?await getJuzVerses(juz,o):section==='hizb'?await getHizbVerses(hizb,o):section==='page'?await getPageVerses(Number(route.params?.page||1),o):await getVerses(chapterId,o);setVerses(fresh);setCached(false);await saveSurahCache(cacheKey,fresh)}catch(e:any){if(!local)setError(T(e.message))}};
-  useEffect(()=>{load();loadBookmarks().then(setBookmarks);if(section==='surah'&&!isMushaf)void logSurahOpen(chapterId);if(isMushaf&&page!==null)void logMushafPage(page)},[section,chapterId,juz,hizb,page,isMushaf,preferences.scriptEdition,preferences.translationEdition]);
+  /* The transliteration is asked for only while it is switched on, so a reader
+     who does not want it pays nothing for it - not a request, not a cache
+     entry, not a line of text. */
+  const transliterationEdition=preferences.showTransliteration
+    ?(preferences.transliterationEdition||DEFAULT_TRANSLITERATION_EDITION):undefined;
+  /* The word by word is asked for only while it is on, and never in Mushaf
+     page mode: that mode draws a page, not a verse, so there is no verse
+     line to put words under. */
+  const wbwEdition=(preferences.showWordByWord&&!isMushaf)
+    ?(preferences.wordByWordEdition||DEFAULT_WORD_BY_WORD_EDITION):undefined;
+  const opts=()=>({script:scriptFor(preferences.scriptEdition),translation:preferences.translationEdition,
+    ...(transliterationEdition?{transliteration:transliterationEdition}:{}),
+    ...(wbwEdition?{wordByWord:wbwEdition}:{})});
+  const cacheKey=readerCacheKey({section,chapterId,juz,hizb,page,script:preferences.scriptEdition,
+    translation:readerTranslationKey(preferences.translationEdition,transliterationEdition,wbwEdition)});
+  /* The saved copy has to belong to the same choice the screen is showing.
+     With the switch on, the transliteration is part of the page: an entry
+     saved without it (or with a different edition) must not be painted, and
+     one saved with it must not be shown after the switch goes off. */
+  const cacheUsesTransliteration=cacheKey.includes('|tl:');
+  const cacheUsesWordByWord=cacheKey.includes('|wbw:');
+  const load=async()=>{setError('');setVerses([]);restoredFor.current=null;progressY.setValue(0);const o=opts();
+    /* How many verses this screen is meant to show, from the bundled table.
+       It decides both whether a stored copy may be painted and whether a
+       fresh one may be saved: a failed fetch used to be saved as though it
+       were a chapter, and was then opened offline as though it were one. */
+    const pageForCount=section==='page'?Number(route.params?.page||1):page;
+    const expected=expectedVerseCount(isMushaf&&page!==null?'page':section,{chapterId,juz,hizb,page:pageForCount});
+    const stored=await loadSurahCache(cacheKey,expected) as Verse[]|null;
+    const local=stored&&stored.some(v=>!!v.transliteration)===cacheUsesTransliteration
+      &&stored.some(v=>!!v.wordByWord)===cacheUsesWordByWord?stored:null;
+    if(local){setVerses(local);setCached(true)}
+    try{const fresh=(isMushaf&&page!==null)?await getPageVerses(page,o):section==='juz'?await getJuzVerses(juz,o):section==='hizb'?await getHizbVerses(hizb,o):section==='page'?await getPageVerses(Number(route.params?.page||1),o):await getVerses(chapterId,o);
+      if(!fresh.length)throw new Error('The Quran text for this passage could not be reached. It will load when the connection returns.');
+      setVerses(fresh);setCached(false);
+      /* Only a whole passage is kept for offline reading. A short one is what
+         an interrupted request leaves behind, and saving it is how a device
+         came to "have" a surah it could not actually show. */
+      if(!expected||fresh.length>=expected)await saveSurahCache(cacheKey,fresh);
+    }catch(e:any){if(!local)setError(T(e.message))}};
+  /* Turning the transliteration on, or choosing another one, has to reload the
+     page it is written on. It was not in this list, so the switch appeared to do
+     nothing until the reader left the screen and came back. */
+  useEffect(()=>{load();loadBookmarks().then(setBookmarks);if(section==='surah'&&!isMushaf)void logSurahOpen(chapterId);if(isMushaf&&page!==null)void logMushafPage(page)},[section,chapterId,juz,hizb,page,isMushaf,preferences.scriptEdition,preferences.translationEdition,preferences.showTransliteration,preferences.transliterationEdition,preferences.showWordByWord,preferences.wordByWordEdition]);
   /* Entering the Mushaf script from a Surah, Juz or Hizb opens it on the page
      where that section begins. */
-  useEffect(()=>{if(!isMushaf||page!==null||section==='page')return;let live=true;const o=opts();const p=section==='juz'?getJuzVerses(juz,o):section==='hizb'?getHizbVerses(hizb,o):getVerses(chapterId,o);p.then(v=>{if(live&&v.length)setPage(v[0].page||1)}).catch(()=>undefined);return()=>{live=false}},[isMushaf,page,section,chapterId,juz,hizb,preferences.scriptEdition,preferences.translationEdition]);
+  useEffect(()=>{if(!isMushaf||page!==null||section==='page')return;let live=true;const o=opts();const p=section==='juz'?getJuzVerses(juz,o):section==='hizb'?getHizbVerses(hizb,o):getVerses(chapterId,o);p.then(v=>{if(live&&v.length)setPage(v[0].page||1)}).catch(()=>undefined);return()=>{live=false}},[isMushaf,page,section,chapterId,juz,hizb,preferences.scriptEdition,preferences.translationEdition,preferences.showTransliteration,preferences.transliterationEdition]);
   useEffect(()=>{getChapters().then(setChapters)},[]);
   useEffect(()=>{if(focusVerse){setTarget(focusVerse);return}let live=true;loadReadingPosition().then(pos=>{if(live&&pos&&pos.surahId===chapterId)setTarget(pos.verseKey)});return()=>{live=false}},[chapterId,focusVerse]);
   useEffect(()=>{if(page!==null)setInput(String(page))},[page]);
@@ -3997,25 +4087,54 @@ function ReaderScreen({route,navigation}:any){
   const renderVerse=useCallback(({item:v,index:i}:{item:any;index:number})=>{
     const saved=bookmarks.some(x=>x.verseKey===v.verse_key);
     const prev=i>0?verses[i-1]:null;
+    /* Focus mode strips a verse to its text. `quiet` is per verse: the one
+       the reader tapped is open, the rest are at rest. */
+    const quiet=focusOn&&quietOpen!==v.verse_key;
     const newJuz=!!v.juz&&(!prev||prev.juz!==v.juz);
     const newHizb=!!hizbOf(v)&&(!prev||hizbOf(prev)!==hizbOf(v));
     return <View key={v.id||v.verse_key} testID={`reader-verse-${v.verse_key}`}>
   {newJuz&&<View style={s.sectionMarker}><View style={s.sectionRule}/><Text style={s.sectionMarkerText}>{tf(language,'JUZ {n}',{n:v.juz ?? ''})}</Text><View style={s.sectionRule}/></View>}
   {newHizb&&<View style={s.sectionMarker}><View style={s.sectionRule}/><Text style={s.sectionMarkerText}>{tf(language,'HIZB {n}',{n:hizbOf(v)})}</Text><View style={s.sectionRule}/></View>}
-  <Pressable delayLongPress={500} onLongPress={()=>setNoteVerse(v)} onPress={()=>revealChrome()} style={[s.ayah,preferences.readingMode==='continuous'&&s.ayahContinuous,focusVerse===v.verse_key&&s.ayahSelected]}>
-  <View style={s.ayahTop}><Text style={s.ayahNo}>{v.verse_key}</Text><View style={s.ayahActions}>
+  <Pressable delayLongPress={500} onLongPress={()=>setNoteVerse(v)} onPress={()=>{revealChrome();if(focusOn)setQuietOpen(prev=>prev===v.verse_key?null:v.verse_key)}} style={[s.ayah,preferences.readingMode==='continuous'&&s.ayahContinuous,focusVerse===v.verse_key&&s.ayahSelected,audioVerseKey===v.verse_key&&s.ayahSounding]}>
+  {quiet?<Text style={s.ayahQuietNo}>{toArabicDigits(String(v.verse_key).split(':')[1]||'')}</Text>:<><View style={s.ayahTop}><Text style={s.ayahNo}>{v.verse_key}</Text><View style={s.ayahActions}>
     <VerseActionButton label={`${T('Play verse')} ${v.verse_key}`} name="play-circle" size={22} onPress={()=>{void playFromReader(full,v,rtl)}}/>
     <VerseActionButton label={`${T('Mark position at')} ${v.verse_key}`} name={isMarked(v)?'locate':'locate-outline'} size={19} active={isMarked(v)} onPress={()=>mark(v)} haptic="success"/>
     <VerseActionButton label={`${saved?T('Remove bookmark from'):T('Bookmark')} ${T('verse')} ${v.verse_key}`} name={saved?'bookmark':'bookmark-outline'} size={19} active={saved} onPress={()=>bookmark(v)}/>
     <VerseActionButton label={`${T('Share')} ${T('verse')} ${v.verse_key}`} name="share-outline" size={19} onPress={()=>setShareVerse(v)}/>
     <VerseActionButton label={`${T('More actions for verse')} ${v.verse_key}`} name="ellipsis-horizontal-circle-outline" size={20} onPress={()=>setActionsVerse(v)}/>
-  </View></View>
-  {preferences.scriptEdition==='quran-tajweed'?<TajweedText text={v.text_uthmani} style={[s.ayahAr,...arStyle]}/>:<Text style={[s.ayahAr,...arStyle]}>{v.text_uthmani}</Text>}
+  </View></View></>}
+  {/* Word by word replaces the plain line only when every word of the verse
+      was paired with a meaning. Otherwise the verse is shown exactly as it
+      was: a partly-labelled verse would read as though the missing meanings
+      had been given. */}
+  {preferences.showWordByWord&&v.wordByWord?.length
+    ?<View style={s.wbwWrap}>{v.wordByWord.map((entry:{word:string;meaning:string|null;root?:string;rootLatin?:string;lemma?:string},index:number)=>(
+        <Pressable key={`${v.verse_key}-${index}`} style={s.wbwCell}
+          accessibilityLabel={entry.root?`${entry.word}, ${entry.meaning||''}, ${T('root')} ${entry.root}`:undefined}
+          onPress={()=>{const id=rootIdAt(`${v.verse_key}:${index+1}`);if(!id)return;
+            const places=wordsWithRootInSurah(Number(v.verse_key.split(':')[0]),id);
+            const here=`${v.verse_key}:${index+1}`, at=places.indexOf(here);
+            const next=places[at+1]??places[0];
+            if(next)setTarget(next)}}>
+          <Text style={[s.wbwArabic,...arStyle]}>{entry.word}</Text>
+          {!!entry.meaning&&<Text style={[s.wbwMeaning,rtl&&s.wbwMeaningRtl]}>{entry.meaning}</Text>}
+          {!!entry.root&&<Text style={s.wbwRoot}>{entry.root}</Text>}
+        </Pressable>))}</View>
+    :preferences.scriptEdition==='quran-tajweed'?<TajweedText text={v.text_uthmani} style={[s.ayahAr,...arStyle]}/>:<Text style={[s.ayahAr,...arStyle]}>{v.text_uthmani}</Text>}
+  {/* Between the script and the meaning, because that is the order they are
+      read in: the letters, how they sound, what they mean. */}
+  {transliterationEdition&&v.transliteration?<Text style={s.ayahTransliteration}>{v.transliteration}</Text>:null}
   {preferences.showTranslation&&v.translation?<Text style={s.ayahTranslation}>{v.translation}</Text>:null}
   {section!=='surah'&&<Text style={s.dataMeta}>{v.surah_name}</Text>}
-  <View style={s.ayahFooter}><Text style={s.ayahMeta}>{tf(language,'Juz {j} · Page {p}',{j:v.juz ?? '',p:v.page ?? ''})}{section==='hizb'?(tf(language,' · Quarter {n}',{n:v.hizbQuarter ?? ''})):''} · {T(rtl?preferences.translationLanguage:preferences.translationName)}</Text></View></Pressable></View>
+  {quiet?null:<View style={s.ayahFooter}><Text style={s.ayahMeta}>{tf(language,'Juz {j} · Page {p}',{j:v.juz ?? '',p:v.page ?? ''})}{section==='hizb'?(tf(language,' · Quarter {n}',{n:v.hizbQuarter ?? ''})):''} · {T(rtl?preferences.translationLanguage:preferences.translationName)}</Text></View>}</Pressable>
+  {/* Commentary sits outside the verse's own Pressable, not inside it: a
+      control nested in a row that already handles long-press and tap is a
+      gesture fight on a phone and a swallowed click on the web. Outside, the
+      panel is still under its verse and its text can be selected normally. */}
+  {quiet?null:<TafsirPanel verseKey={v.verse_key} language={preferences.translationLanguage} C={C} rtl={rtl} T={T} stripMarkup={stripTafsirMarkup} compact={audioVerseKey===v.verse_key}/>}
+  </View>
     ;
-  },[bookmarks,verses,language,rtl,T,section,preferences,full,savedPosition,focusVerse,arStyle]);
+  },[bookmarks,verses,language,rtl,T,section,preferences,full,savedPosition,focusVerse,arStyle,audioVerseKey,quietOpen,focusOn]);
 
   /* Which verse counts as "where you are": the one nearest the top of the
      screen. Reported by the list as it scrolls, so nothing is measured. */
@@ -5281,7 +5400,7 @@ function RecentSearches({items,onPick,onRemove,onClear,visible=true}:{
   </View>;
 }
 
-function QuranSearchScreen({route,navigation}:any){const{preferences}=useQuranPreferences();const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);const[query,setQuery]=useState(route.params?.initialQuery||'');const[results,setResults]=useState<QuranSearchResult[]>([]);const recents=useRecentSearches('quran');const[error,setError]=useState('');const[loading,setLoading]=useState(false);useEffect(()=>{if(route.params?.initialQuery)run(route.params.initialQuery)},[]);const run=async(value=query)=>{const q=value.trim();if(q.length<2)return;setLoading(true);setError('');try{const edition=/[\u0600-\u06ff]/.test(q)?preferences.scriptEdition:preferences.translationEdition;setResults((await searchQuran(q,edition)).slice(0,100));await recents.add(q)}catch(e:any){setError(T(e.message))}finally{setLoading(false)}};const open=(r:QuranSearchResult)=>navigation.navigate('Reader',{chapter:{id:r.surahId,name_simple:r.surahName,name_arabic:'',verses_count:0},focusVerse:r.verseKey});return <Page><ToolBar title={T('Quran search')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage} keyboardShouldPersistTaps="handled"><ToolGraphic tool="Quran Search" size={81}/><Text style={s.dataTitle}>{T('Search Arabic or translation')}</Text><View style={s.search}>{ico('search-outline',19,C.muted)}<TextInput autoFocus value={query} onChangeText={setQuery} onSubmitEditing={()=>run()} returnKeyType="search" style={s.searchInput} placeholder={T('Mercy, الصبر, or 2:255')}/><Pressable onPress={()=>run()}>{ico('arrow-forward-circle',22,C.green)}</Pressable></View><RecentSearches items={recents.items} onPick={term=>{setQuery(term);run(term)}} onRemove={recents.remove} onClear={recents.clear} visible={!query.trim()}/>{error?<ErrorState message={error} retry={()=>run()}/>:loading?<SkeletonList rows={6} />:<View>{results.map(r=><Pressable key={`${r.verseKey}-${r.edition}`} onPress={()=>open(r)} style={s.searchResult}><Text style={s.dataMeta}>{r.surahName} · {r.verseKey}</Text><Text numberOfLines={4} style={/[\u0600-\u06ff]/.test(r.text)?s.dataArabic:s.dataBody}>{r.text}</Text><Text style={s.meta}>{r.edition}</Text></Pressable>)}</View>}</ScrollView></Page>}
+function QuranSearchScreen({route,navigation}:any){const{preferences}=useQuranPreferences();const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);const[query,setQuery]=useState(route.params?.initialQuery||'');const[results,setResults]=useState<QuranSearchResult[]>([]);const recents=useRecentSearches('quran');const[error,setError]=useState('');const[loading,setLoading]=useState(false);useEffect(()=>{if(route.params?.initialQuery)run(route.params.initialQuery)},[]);const run=async(value=query)=>{const q=value.trim();if(q.length<2)return;setLoading(true);setError('');try{const edition=/[\u0600-\u06ff]/.test(q)?preferences.scriptEdition:preferences.translationEdition;setResults((await searchQuran(q,edition)).slice(0,100));await recents.add(q)}catch(e:any){setError(T(e.message))}finally{setLoading(false)}};const open=(r:QuranSearchResult)=>navigation.navigate('Reader',{chapter:{id:r.surahId,name_simple:r.surahName,name_arabic:'',verses_count:0},focusVerse:r.verseKey});return <Page><ToolBar title={T('Quran search')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage} keyboardShouldPersistTaps="handled"><ToolGraphic tool="Quran Search" size={81}/><Text style={s.dataTitle}>{T('Search Arabic or translation')}</Text><View style={s.search}>{ico('search-outline',19,C.muted)}<TextInput autoFocus value={query} onChangeText={setQuery} onSubmitEditing={()=>run()} returnKeyType="search" style={s.searchInput} placeholder={T('Mercy, الصبر, or 2:255')}/><Pressable onPress={()=>run()}>{ico('arrow-forward-circle',22,C.green)}</Pressable></View><RecentSearches items={recents.items} onPick={term=>{setQuery(term);run(term)}} onRemove={recents.remove} onClear={recents.clear} visible={!query.trim()}/>{error?<ErrorState message={error} retry={()=>run()}/>:loading?<SkeletonList rows={6} />:<View>{!results.length?<Text style={s.intro}>{T('No verses matched. Try a shorter phrase, or the Arabic word on its own.')}</Text>:null}{results.map(r=><Pressable key={`${r.verseKey}-${r.edition}`} onPress={()=>open(r)} style={s.searchResult}><Text style={s.dataMeta}>{r.surahName} · {r.verseKey}</Text><Text numberOfLines={4} style={/[\u0600-\u06ff]/.test(r.text)?s.dataArabic:s.dataBody}>{r.text}</Text><Text style={s.meta}>{r.edition}</Text></Pressable>)}</View>}</ScrollView></Page>}
 
 function BookmarkScreen({navigation}:any){const[items,setItems]=useState<QuranBookmark[]>([]);const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);useEffect(()=>{const unsub=navigation.addListener('focus',()=>loadBookmarks().then(setItems));loadBookmarks().then(setItems);return unsub},[navigation]);const[chapters,setChapters]=useState<Chapter[]>([]);useEffect(()=>{getChapters().then(setChapters)},[]);const openBookmark=(item:QuranBookmark)=>{const full=chapters.find(c=>c.id===item.surahId);navigation.navigate('Reader',{chapter:full||{id:item.surahId,name_simple:item.surahName,name_arabic:'',verses_count:0},focusVerse:item.verseKey})};return <Page><ToolBar tool="Bookmarks" title={T('Bookmarks')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><ToolGraphic tool="Bookmarks" size={81}/><Text style={s.dataTitle}>{tf(language,'{n} saved verses',{n:items.length})}</Text>{!items.length?<View style={s.empty}><Text style={s.errorTitle}>{T('No bookmarks yet')}</Text><Text style={s.errorText}>{T('Use the bookmark action beside any verse.')}</Text></View>:items.map(item=><View key={item.verseKey} style={s.dataCard}><Pressable onPress={()=>openBookmark(item)} style={s.bookmarkMain}><Text style={s.dataMeta}>{item.surahName} · {item.verseKey}</Text><Text numberOfLines={3} style={s.dataArabic}>{item.arabic}</Text><Text numberOfLines={3} style={s.dataBody}>{item.translation}</Text></Pressable><Pressable accessibilityLabel={`${T('Remove bookmark')} ${item.verseKey}`} onPress={async()=>setItems(await toggleBookmark(item))} style={s.bookmarkRemove}>{ico('trash-outline',18,C.muted)}</Pressable></View>)}</ScrollView></Page>}
 function NotesScreen({navigation}:any){const[items,setItems]=useState<QuranNote[]>([]);const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);useEffect(()=>{const unsub=navigation.addListener('focus',()=>loadNotes().then(setItems));loadNotes().then(setItems);return unsub},[navigation]);return <Page><ToolBar title={T('Quran notes')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><ToolGraphic tool="Notes" size={81}/><Text style={s.dataTitle}>{tf(language,'{n} private notes',{n:items.length})}</Text><Text style={s.intro}>{T('Notes remain on this device and are never added to diagnostics.')}</Text>{!items.length?<View style={s.empty}><Text style={s.errorTitle}>{T('No notes yet')}</Text><Text style={s.errorText}>{T('Open verse actions to add a reflection.')}</Text></View>:items.map(item=><Tactile key={item.verseKey} onPress={()=>navigation.navigate('Note Editor',{verse:item,chapter:{id:item.surahId,name_simple:item.surahName}})} style={s.dataCard}><Text style={s.dataMeta}>{item.surahName} · {item.verseKey}</Text><Text style={s.noteText}>{item.note}</Text><Text style={s.meta}>{new Date(item.updatedAt).toLocaleDateString()}</Text></Tactile>)}</ScrollView></Page>}
@@ -5345,6 +5464,28 @@ function ReaderSettingsScreen({navigation}:any){
   const{preferences,update}=useQuranPreferences();
   const rise=useRef(new Animated.Value(0)).current;
   const[picking,setPicking]=useState<null|'translation'>(null);
+  /* Only the transliterations that cover the whole book are offered: of the
+     fourteen in the catalogue, eleven are word-level, glyph or partial files
+     with no surah route, and choosing one would render nothing. */
+  const[transliterations,setTransliterations]=useState<IslamicEdition[]>([]);
+  const[transliterationError,setTransliterationError]=useState('');
+  const[transliterationAttempt,setTransliterationAttempt]=useState(0);
+  useEffect(()=>{
+    let live=true;
+    setTransliterationError('');
+    getEditions('transliteration').then((all)=>{
+      if(!live)return;
+      const pool=servableEditions(all,'transliteration');
+      setTransliterations(pool);
+      /* A saved edition that is no longer servable would show nothing; fall
+         back to the English one so the switch is never on and empty. */
+      if(pool.length&&!pool.some(e=>e.id===preferences.transliterationEdition)){
+        const fallback=pool.find(e=>e.language==='en')||pool[0];
+        void update({transliterationEdition:fallback.id,transliterationName:editionDisplayName(fallback)});
+      }
+    }).catch((e:any)=>{if(live)setTransliterationError(T(e?.message||'Could not load the transliterations'))});
+    return()=>{live=false};
+  },[transliterationAttempt]);
   const[editions,setEditions]=useState<IslamicEdition[]>([]);
   const[catalogError,setCatalogError]=useState('');
   const[catalogAttempt,setCatalogAttempt]=useState(0);
@@ -5471,6 +5612,56 @@ function ReaderSettingsScreen({navigation}:any){
               <Text style={s.preferenceLabel}>{T('TRANSLATION SIZE')}</Text>
               <View style={s.stepper}><Tactile accessibilityLabel={T('Smaller translation')} onPress={()=>update({translationFontSize:Math.max(11,preferences.translationFontSize-1)})} style={s.stepButton}>{ico('remove',20,C.green)}</Tactile><Text style={[s.settingName,{fontSize:Math.min(preferences.translationFontSize,22)}]}>{T('The meaning beside the Arabic')}</Text><Tactile accessibilityLabel={T('Larger translation')} onPress={()=>update({translationFontSize:Math.min(26,preferences.translationFontSize+1)})} style={s.stepButton}>{ico('add',20,C.green)}</Tactile></View>
               <Text style={s.meta}>{T('The script and the meaning are set apart, because they are not read at the same speed or from the same distance.')}</Text>
+            </>}
+          </View>
+
+          {/* A third voice beside the script and the meaning: the letters, how
+              they sound, what they mean. It is not a translation and does not
+              replace one, so it lives in its own group rather than in the
+              translation list. */}
+          <View style={s.rsGroup}>
+            <Text style={s.rsGroupTitle}>{T('THE SOUND')}</Text>
+            <View style={s.settings}>
+              <Switch on={preferences.showTransliteration} glyph="text"
+                label={'Show the transliteration'}
+                detail={'The Arabic in Latin letters, under each verse, above the meaning. For reading along while you learn to recite.'}
+                onPress={()=>update({showTransliteration:!preferences.showTransliteration})}/>
+            </View>
+            {!!preferences.showTransliteration && <>
+              {!transliterations.length
+                ? (transliterationError
+                    ? <ErrorState message={transliterationError} retry={()=>setTransliterationAttempt(a=>a+1)}/>
+                    : <SkeletonList rows={3} />)
+                : <EditionPicker C={C} editions={transliterations} category="transliteration"
+                    selectedId={preferences.transliterationEdition} hideLanguageRow
+                    searchPlaceholder={T('Search transliteration')}
+                    onPick={(e)=>{void update({transliterationEdition:e.id,transliterationName:editionDisplayName(e)})}}/>}
+              <Text style={s.meta}>{T('Three transliterations cover the whole Quran. The rest of the catalogue is partial or word-level and is not offered.')}</Text>
+            </>}
+          </View>
+
+          {/* Word by word is its own group for the same reason: it changes how
+              the verse itself is laid out, not what is written under it. */}
+          <View style={s.rsGroup}>
+            <Text style={s.rsGroupTitle}>{T('WORD BY WORD')}</Text>
+            <View style={s.settings}>
+              <Switch on={preferences.showWordByWord} glyph="text"
+                label={'Word by word'}
+                detail={'Each word of the verse with its own meaning underneath. A word that has no meaning in this language is left unlabelled rather than filled in.'}
+                onPress={()=>update({showWordByWord:!preferences.showWordByWord})}/>
+            </View>
+            {!!preferences.showWordByWord && <>
+              <View style={s.settings}>
+                {WORD_BY_WORD_EDITIONS.map((edition)=>(
+                  <Pressable key={edition.id} accessibilityRole="button"
+                    accessibilityState={{selected:preferences.wordByWordEdition===edition.id}}
+                    onPress={()=>update({wordByWordEdition:edition.id})}
+                    style={[s.editionChip,preferences.wordByWordEdition===edition.id&&s.editionChipActive]}>
+                    <Text style={s.settingName}>{edition.name}</Text>
+                  </Pressable>))}
+              </View>
+              <Text style={s.meta}>{T('Seven languages pair with the Arabic word for word. Ottoman Turkish, Hindi, Tamil and Ingush are word-for-word renderings of whole phrases, so their entries cannot be placed under the right word and are not offered.')}</Text>
+
             </>}
           </View>
 
@@ -5654,7 +5845,19 @@ function stripTafsirMarkup(input:string):string{
 }
 
 function TafsirScreen({navigation}:any){const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);const[editions,setEditions]=useState<IslamicEdition[]>([]);const[chapters,setChapters]=useState<IslamicChapter[]>([]);const[picked,setPicked]=useState<IslamicEdition|null>(null);const[surah,setSurah]=useState(1);const[result,setResult]=useState<CachedSurah|null>(null);const[busy,setBusy]=useState(false);const[error,setError]=useState('');const load=()=>{  getEditions('tafsir').then(setEditions).catch(e=>setError(T(e.message)));  getWorkerChapters().then(setChapters).catch(()=>undefined);};useEffect(()=>{load()},[]);useEffect(()=>{  if(!picked)return;  let live=true;  setBusy(true);setError('');  getSurah('tafsir',picked.id,surah)    .then(r=>{if(live)setResult(r)})    .catch(e=>{if(live)setError(T(e.message))})    .finally(()=>{if(live)setBusy(false)});  return()=>{live=false};},[picked,surah]);const chapter=chapters.find(c=>c.number===surah);const title=chapter?(rtl?chapter.nameArabic:chapter.nameSimple):(tf(language,'Surah {n}',{n:surah}));if(!picked)return <Page><ToolBar tool="Tafsir" title={T('Tafsir')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage} keyboardShouldPersistTaps="handled"><ToolGraphic tool="Tafsir" size={85}/><Text style={s.dataTitle}>{T('Choose a Tafsir')}</Text><Text style={s.intro}>{T('Commentary on the Quran, in the language you read it in. Tafsir is one scholar’s reading, not the text itself.')}</Text>{error&&!editions.length?<ErrorState message={error} retry={load}/>:!editions.length?<SkeletonList rows={6} />:<EditionPicker C={C} editions={editions} category="tafsir" searchPlaceholder={T('Search commentary')}  onPick={e=>setPicked(e)}/>}</ScrollView></Page>;return <Page><ToolBar tool="Tafsir" title={T('Tafsir')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><Pressable onPress={()=>setPicked(null)} style={s.editionChip}><Text style={{fontSize:20}}>{languageFlag(picked.language||'ar')}</Text><View style={{flex:1}}><Text style={s.settingName}>{editionDisplayName(picked)}</Text><Text style={s.meta}>{editionSubtitle(picked)}</Text></View><Text style={s.sectionAction}>{T('Change')}</Text></Pressable><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap:8,marginTop:12}}>{chapters.map(c=><ChoicePill key={c.number} label={rtl?c.nameArabic:c.nameSimple} selected={c.number===surah} onPress={()=>setSurah(c.number)}/>)}</ScrollView>{busy&&!result?<Spinner/>:error?<ErrorState message={error}/>:result&&<View style={{marginTop:12}}>{result.rows.map(row=><View key={row.verseKey} style={s.dataCard}><Text style={s.dataMeta}>{title} · {T('AYAH')} {row.numberInSurah}</Text><Text style={s.dataBody}>{stripTafsirMarkup(row.text)}</Text></View>)}</View>}</ScrollView></Page>}
-function TafsirCompareScreen({route,navigation}:any){const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);const verse:Verse=route.params?.verse||{verse_key:'2:255',text_uthmani:''};const[reference,setReference]=useState(verse.verse_key);const{preferences}=useQuranPreferences();const{width}=useWindowDimensions();const[mode,setMode]=useState<'translation'|'tafsir'>('translation');const[editions,setEditions]=useState<QuranEdition[]>([]);const[selected,setSelected]=useState<string[]>([preferences.translationEdition,'en.pickthall'].filter((x,i,a)=>a.indexOf(x)===i));const[rows,setRows]=useState<any[]>([]);const[query,setQuery]=useState('');const[error,setError]=useState('');const loadEditions=()=>getQuranEditions(mode).then(setEditions).catch(e=>setError(T(e.message)));const load=async()=>{setError('');const ids=[preferences.scriptEdition==='quran-indopak'?'quran-uthmani':preferences.scriptEdition,...selected];const cacheKey=`${reference}:${ids.join(',')}`;const cached=mode==='tafsir'?await getCachedJson<any[]>('tafsir',cacheKey):null;if(cached)setRows(cached);try{const fresh=await getAyahEditions(reference,ids);setRows(fresh);if(mode==='tafsir')await setCachedJson('tafsir',cacheKey,fresh)}catch(e:any){if(!cached)setError(T(e.message))}};useEffect(()=>{loadEditions()},[mode]);useEffect(()=>{load()},[reference,selected.join('|'),preferences.scriptEdition]);useEffect(()=>{if(mode==='tafsir')setSelected(['ar.jalalayn']);else setSelected([preferences.translationEdition,'en.pickthall'].filter((x,i,a)=>a.indexOf(x)===i))},[mode]);const toggle=(id:string)=>setSelected(current=>current.includes(id)?current.length>1?current.filter(x=>x!==id):current:current.length<(mode==='translation'?3:1)?[...current,id]:current);const results=query.trim().length<2?[]:editions.filter(e=>`${e.englishName} ${e.name} ${e.language}`.toLowerCase().includes(query.toLowerCase())).slice(0,30);const arabic=rows[0];const compared=rows.slice(1);const wide=width>=760;const columnWidth=wide?Math.max(260,(Math.min(width-40,900)-12*(compared.length-1))/Math.max(1,compared.length)):0;return <Page><ToolBar title={T('Tafsir & comparison')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}>
+function TafsirCompareScreen({route,navigation}:any){const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);const verse:Verse=route.params?.verse||{verse_key:'2:255',text_uthmani:''};const[reference,setReference]=useState(verse.verse_key);const{preferences}=useQuranPreferences();const{width}=useWindowDimensions();const[mode,setMode]=useState<'translation'|'tafsir'>('translation');const[editions,setEditions]=useState<QuranEdition[]>([]);const[selected,setSelected]=useState<string[]>([preferences.translationEdition,'en.pickthall'].filter((x,i,a)=>a.indexOf(x)===i));const[rows,setRows]=useState<any[]>([]);const[query,setQuery]=useState('');const[error,setError]=useState('');const loadEditions=()=>getQuranEditions(mode).then(setEditions).catch(e=>setError(T(e.message)));const load=async()=>{setError('');const ids=[preferences.scriptEdition==='quran-indopak'?'quran-uthmani':preferences.scriptEdition,...selected];const cacheKey=`${reference}:${ids.join(',')}`;const cached=mode==='tafsir'?await getCachedJson<any[]>('tafsir',cacheKey):null;
+    /* A stored comparison is only usable if it still answers every edition it
+       was saved for. Anything less - an empty list from a request that died,
+       or one that lost a column - is treated as no copy at all, so the screen
+       asks again rather than showing a hole for a year. */
+    const usable=cached&&cached.length===ids.length?cached:null;if(usable)setRows(usable);
+    try{const fresh=await getAyahEditions(reference,ids);
+      if(!fresh.length)throw new Error('This verse could not be loaded from the selected editions. Check the connection and try again.');
+      setRows(fresh);
+      /* Only a full answer is kept. A partial one would look like an edition
+         that has nothing to say, which is not what happened. */
+      if(mode==='tafsir'&&fresh.length===ids.length)await setCachedJson('tafsir',cacheKey,fresh);
+    }catch(e:any){if(!usable)setError(T(e.message))}};useEffect(()=>{loadEditions()},[mode]);useEffect(()=>{load()},[reference,selected.join('|'),preferences.scriptEdition]);useEffect(()=>{if(mode==='tafsir')setSelected(['ar.jalalayn']);else setSelected([preferences.translationEdition,'en.pickthall'].filter((x,i,a)=>a.indexOf(x)===i))},[mode]);const toggle=(id:string)=>setSelected(current=>current.includes(id)?current.length>1?current.filter(x=>x!==id):current:current.length<(mode==='translation'?3:1)?[...current,id]:current);const results=query.trim().length<2?[]:editions.filter(e=>`${e.englishName} ${e.name} ${e.language}`.toLowerCase().includes(query.toLowerCase())).slice(0,30);const arabic=rows[0];const compared=rows.slice(1);const wide=width>=760;const columnWidth=wide?Math.max(260,(Math.min(width-40,900)-12*(compared.length-1))/Math.max(1,compared.length)):0;return <Page><ToolBar title={T('Tafsir & comparison')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}>
       {/* Where you are. The stepper moves one verse; the field takes a typed one. */}
       <View style={s.tcRefBar}>
         <Tactile accessibilityLabel={T('Previous verse')} onPress={()=>{const[a,v]=reference.split(':').map(Number);setReference(`${a}:${Math.max(1,v-1)}`)}} style={s.stepButton}>{ico(rtl ? 'arrow-forward' : 'arrow-back',19,C.green)}</Tactile>
@@ -5677,7 +5880,10 @@ function TafsirCompareScreen({route,navigation}:any){const {rtl,language}=useLan
         {/* Stacked on a phone, side by side when the screen is wide enough for it. */}
         {compared.map(row=><View key={row.edition} style={[s.tcCard,wide&&{width:columnWidth}]}>
           <View style={s.tcCardHead}><Flag code={row.language} size={16} /><Text numberOfLines={1} style={s.tcCardName}>{row.name}</Text><Text style={s.tcCardLang}>{row.language.toUpperCase()}</Text></View>
-          <Text style={row.language==='ar'?s.dataArabic:s.comparisonText}>{row.text}</Text>
+          {/* Urdu, Persian and Pashto are right to left as well as Arabic.
+              The column keeps its own direction rather than inheriting the
+              interface's, which mirrored them. */}
+          <Text style={[row.language==='ar'?s.dataArabic:s.comparisonText,isRtlCode(row.language)&&{textAlign:'right'}]}>{row.text}</Text>
         </View>)}
       </View>}
     </ScrollView></Page>}
@@ -5686,7 +5892,17 @@ function QuranTopicsScreen({navigation}:any){const[category,setCategory]=useStat
 <RecentSearches items={recents.items} onPick={setQuery} onRemove={recents.remove} onClear={recents.clear} visible={!query.trim()}/><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap: 8,marginVertical: 12}}>{['All','Faith','Life','Spirituality'].map(item=><ChoicePill key={item} label={T(item)} selected={category===item} onPress={()=>setCategory(item)}/>)}</ScrollView><View style={s.topicGrid}>{shown.map((topic,i)=><MotionPress key={topic.id} index={i} onPress={()=>navigation.navigate('Topic Detail',{topic})} style={s.topicWrap}><View style={s.topicCard}><Text style={s.libraryKicker}>{topicCategory(topic,language)}</Text><Text style={s.exploreTitle}>{topicTitle(topic,language)}</Text><Text style={s.exploreBody}>{topicDescription(topic,language)}</Text><Text style={s.dataMeta}>{tf(language,'{n} VERSES',{n:topic.references.length})}</Text></View></MotionPress>)}</View></ScrollView></Page>}
 
 
-function TopicDetailScreen({route,navigation}:any){const topic=route.params.topic;const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);const{preferences}=useQuranPreferences();const[rows,setRows]=useState<any[]>([]);const[error,setError]=useState('');const load=()=>{setError('');return Promise.all(topic.references.map((ref:string)=>getAyahEditions(ref,[preferences.scriptEdition==='quran-indopak'?'quran-uthmani':preferences.scriptEdition,preferences.translationEdition]))).then(groups=>setRows(groups.map((items,i)=>({reference:topic.references[i],arabic:items[0],translation:items[1]})))).catch(e=>setError(T(e.message)))};useEffect(()=>{load()},[topic.id,preferences.scriptEdition,preferences.translationEdition]);return <Page><ToolBar title={topicTitle(topic,language)} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><Text style={s.libraryKicker}>{topicCategory(topic,language)}</Text><Text style={s.dataTitle}>{topicTitle(topic,language)}</Text><Text style={s.intro}>{topicDescription(topic,language)}</Text>{error?<ErrorState message={error} retry={load}/>:!rows.length?<SkeletonList rows={6} />:rows.map(row=><Tactile key={row.reference} onPress={()=>{const[surah]=row.reference.split(':').map(Number);navigation.navigate('Reader',{chapter:{id:surah,name_simple:row.arabic?.name||`Surah ${surah}`,name_arabic:'',verses_count:0},focusVerse:row.reference})}} style={s.dataCard}><Text style={s.dataMeta}>{T('QURAN')} {row.reference}</Text>{preferences.scriptEdition==='quran-tajweed'?<TajweedText text={row.arabic.text} style={s.dataArabic}/>:<Text style={s.dataArabic}>{row.arabic.text}</Text>}<Text style={s.dataBody}>{row.translation.text}</Text><Text style={s.meta}>{row.translation.name}</Text></Tactile>)}</ScrollView></Page>}
+function TopicDetailScreen({route,navigation}:any){const topic=route.params.topic;const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);const{preferences}=useQuranPreferences();const[rows,setRows]=useState<any[]>([]);const[error,setError]=useState('');const scriptId=preferences.scriptEdition==='quran-indopak'?'quran-uthmani':preferences.scriptEdition;
+  /* Rows are matched to the row that *is* the Arabic and the one that *is* the
+     translation, by id. They used to be taken by position - `items[0]` and
+     `items[1]` - which was true only while nothing was ever dropped; the
+     moment a row was missing, the translation was read as the Arabic and the
+     screen tried to draw the text of a row that did not exist. */
+  const rowFor=(items:any[])=>({
+    arabic:items.find(x=>x.edition===scriptId)||items.find(x=>x.language==='ar'),
+    translation:items.find(x=>x.edition===preferences.translationEdition)||items.find(x=>x.edition!==scriptId&&x.language!=='ar'),
+  });
+  const load=()=>{setError('');return Promise.all(topic.references.map((ref:string)=>getAyahEditions(ref,[scriptId,preferences.translationEdition]))).then(groups=>setRows(groups.map((items,i)=>({...rowFor(items),reference:topic.references[i]})))).catch(e=>setError(T(e.message)))};useEffect(()=>{load()},[topic.id,preferences.scriptEdition,preferences.translationEdition]);return <Page><ToolBar title={topicTitle(topic,language)} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><Text style={s.libraryKicker}>{topicCategory(topic,language)}</Text><Text style={s.dataTitle}>{topicTitle(topic,language)}</Text><Text style={s.intro}>{topicDescription(topic,language)}</Text>{error?<ErrorState message={error} retry={load}/>:!rows.length?<SkeletonList rows={6} />:rows.map(row=><Tactile key={row.reference} onPress={()=>{const[surah]=row.reference.split(':').map(Number);navigation.navigate('Reader',{chapter:{id:surah,name_simple:row.arabic?.name||`Surah ${surah}`,name_arabic:'',verses_count:0},focusVerse:row.reference})}} style={s.dataCard}><Text style={s.dataMeta}>{T('QURAN')} {row.reference}</Text>{row.arabic?(preferences.scriptEdition==='quran-tajweed'?<TajweedText text={row.arabic.text} style={s.dataArabic}/>:<Text style={s.dataArabic}>{row.arabic.text}</Text>):<Text style={s.meta}>{T('The Arabic for this verse could not be loaded. Open it in the reader, or try again.')}</Text>}{row.translation?<><Text style={s.dataBody}>{row.translation.text}</Text><Text style={s.meta}>{row.translation.name}</Text></>:<Text style={s.meta}>{T('No selected translation could be loaded for this verse.')}</Text>}</Tactile>)}</ScrollView></Page>}
 
 /** The four ways into the word list. */
 type VocabGroup = 'all' | 'saved' | 'known' | 'review';
@@ -5749,7 +5965,7 @@ function TajweedStudyScreen({navigation}:any){const[reference,setReference]=useS
 
 function JuzDirectoryScreen({navigation}:any){const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);return <Page><ToolBar tool="30 Juz" title={T('30 Juz')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><ToolGraphic tool="30 Juz" size={81}/><Text style={s.dataTitle}>{T('Read by Juz')}</Text><View style={s.juzGrid}>{Array.from({length:30},(_,i)=>i+1).map(juz=><Tactile key={juz} onPress={()=>navigation.navigate('Reader',{section:'juz',juz})} style={s.juzCard}><Text style={s.juzNo}>{juz}</Text><Text style={s.meta}>{T('JUZ')}</Text></Tactile>)}</View></ScrollView></Page>}
 function HizbDirectoryScreen({navigation}:any){const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);return <Page><ToolBar tool="60 Hizb" title={T('60 Hizb')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><ToolGraphic tool="60 Hizb" size={81}/><Text style={s.dataTitle}>{T('Read by Hizb')}</Text><Text style={s.intro}>{T('Each Hizb contains four quarter-Hizb sections.')}</Text><View style={s.juzGrid}>{Array.from({length:60},(_,i)=>i+1).map(hizb=><Tactile key={hizb} onPress={()=>navigation.navigate('Reader',{section:'hizb',hizb})} style={s.juzCard}><Text style={s.juzNo}>{hizb}</Text><Text style={s.meta}>{T('HIZB')}</Text></Tactile>)}</View></ScrollView></Page>}
-function QuranPreloadScreen({navigation}:any){const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);const{preferences}=useQuranPreferences();const[state,setState]=useState(getPreloadState());useEffect(()=>{const unsubscribe=subscribePreload(setState);refreshPreload({script:preferences.scriptEdition,translation:preferences.translationEdition});return unsubscribe},[preferences.scriptEdition,preferences.translationEdition]);const start=()=>startQuranPreload({script:preferences.scriptEdition,translation:preferences.translationEdition});return <Page><ToolBar tool="Offline Quran" title={T('Offline Quran')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><ToolGraphic tool="Offline Quran" size={85}/><Text style={s.dataTitle}>{T('Prepare for offline reading')}</Text><Text style={s.intro}>{T('Downloads the Arabic script and translation you have selected, one Surah at a time. Preparation continues while you use other screens and prioritizes your current reading Surah.')}</Text><View style={s.preloadScore}><Text style={s.planDays}>{state.cached}</Text><Text style={s.settingName}>{T('of 114 Surahs cached')}</Text><View style={s.preloadTrack}><View style={[s.preloadFill,{width:`${state.cached/114*100}%`} as any]}/></View><Text style={s.meta}>{T(preferences.scriptName)} · {T(rtl ? preferences.translationLanguage : preferences.translationName)}{state.current?(tf(language,' · Preparing Surah {n}',{n:state.current})):''}</Text>{state.usage&&<Text style={s.cacheUsage}>{tf(language,'Quran cache {u} MB · limit {l} MB · total limit {t} MB',{u:(state.usage.byNamespace.quran/1048576).toFixed(1),l:(state.usage.limits.quran/1000000).toFixed(0),t:(state.usage.limits.total/1000000).toFixed(0)})}</Text>}</View>{state.error&&<ErrorState message={state.error} retry={start}/>}<View style={s.actionRow}>{!state.running?<Tactile onPress={start} style={s.primary}><Text style={s.primaryText}>{T(state.cached ? 'Resume preparation' : 'Preload all')}</Text></Tactile>:<Tactile onPress={pauseQuranPreload} style={s.secondary}><Text style={s.secondaryText}>{T('Pause')}</Text></Tactile>}<Tactile onPress={clearPreparedQuran} style={s.dangerButton}><Text style={s.dangerText}>{T('Clear Quran cache')}</Text></Tactile></View><View style={s.sourceCard}>{ico('shield-checkmark-outline',21,C.green)}<View style={{flex:1}}><Text style={s.sourceTitle}>{T('Managed low-priority preparation')}</Text><Text style={s.sourceBody}>{T('Cached Surahs open first, already-saved content is skipped, and bounded LRU storage prevents unlimited growth.')}</Text></View></View></ScrollView></Page>}
+function QuranPreloadScreen({navigation}:any){const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);const{preferences}=useQuranPreferences();const[state,setState]=useState(getPreloadState());useEffect(()=>{const unsubscribe=subscribePreload(setState);refreshPreload({script:preferences.scriptEdition,translation:preferences.translationEdition});return unsubscribe},[preferences.scriptEdition,preferences.translationEdition]);const start=()=>startQuranPreload({script:preferences.scriptEdition,translation:preferences.translationEdition,...(preferences.showTransliteration?{transliteration:preferences.transliterationEdition||DEFAULT_TRANSLITERATION_EDITION}:{})});return <Page><ToolBar tool="Offline Quran" title={T('Offline Quran')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><ToolGraphic tool="Offline Quran" size={85}/><Text style={s.dataTitle}>{T('Prepare for offline reading')}</Text><Text style={s.intro}>{T('Downloads the Arabic script and translation you have selected, one Surah at a time. Preparation continues while you use other screens and prioritizes your current reading Surah.')}</Text><View style={s.preloadScore}><Text style={s.planDays}>{state.cached}</Text><Text style={s.settingName}>{T('of 114 Surahs cached')}</Text><View style={s.preloadTrack}><View style={[s.preloadFill,{width:`${state.cached/114*100}%`} as any]}/></View><Text style={s.meta}>{T(preferences.scriptName)} · {T(rtl ? preferences.translationLanguage : preferences.translationName)}{state.current?(tf(language,' · Preparing Surah {n}',{n:state.current})):''}</Text>{state.usage&&<Text style={s.cacheUsage}>{tf(language,'Quran cache {u} MB · limit {l} MB · total limit {t} MB',{u:(state.usage.byNamespace.quran/1048576).toFixed(1),l:(state.usage.limits.quran/1000000).toFixed(0),t:(state.usage.limits.total/1000000).toFixed(0)})}</Text>}</View>{state.error&&<ErrorState message={state.error} retry={start}/>}<View style={s.actionRow}>{!state.running?<Tactile onPress={start} style={s.primary}><Text style={s.primaryText}>{T(state.cached ? 'Resume preparation' : 'Preload all')}</Text></Tactile>:<Tactile onPress={pauseQuranPreload} style={s.secondary}><Text style={s.secondaryText}>{T('Pause')}</Text></Tactile>}<Tactile onPress={clearPreparedQuran} style={s.dangerButton}><Text style={s.dangerText}>{T('Clear Quran cache')}</Text></Tactile></View><View style={s.sourceCard}>{ico('shield-checkmark-outline',21,C.green)}<View style={{flex:1}}><Text style={s.sourceTitle}>{T('Managed low-priority preparation')}</Text><Text style={s.sourceBody}>{T('Cached Surahs open first, already-saved content is skipped, and bounded LRU storage prevents unlimited growth.')}</Text></View></View></ScrollView></Page>}
 function ReadingPlansScreen({navigation}:any){const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);const[plan,setPlan]=useState<any>(null);useEffect(()=>{loadPlan().then(setPlan)},[]);const start=async(days:number)=>{const next={days,startedAt:Date.now(),completed:[]};await savePlan(next);setPlan(next)};const today=plan?Math.min(plan.days,Math.floor((Date.now()-plan.startedAt)/86400000)+1):0;const toggle=async()=>{const completed=plan.completed.includes(today)?plan.completed.filter((x:number)=>x!==today):[...plan.completed,today];const next={...plan,completed};await savePlan(next);setPlan(next)};return <Page><ToolBar title={T('Reading plans')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><ToolGraphic tool="Reading Plans" size={81}/><Text style={s.dataTitle}>{T('Complete the Quran')}</Text>{!plan?<><Text style={s.intro}>{T('Choose a private local plan. Progress stays on this device.')}</Text><View style={s.planGrid}>{[30,60,90,120].map(days=><Pressable key={days} onPress={()=>start(days)} style={s.planCard}><Text style={s.planDays}>{days}</Text><Text style={s.settingName}>{T('day plan')}</Text><Text style={s.meta}>{tf(language,'{n} pages daily',{n:(604/days).toFixed(1)})}</Text></Pressable>)}</View></>:<><View style={s.summaryScore}><View><Text style={s.nextCardLabel}>{T('CURRENT DAY')}</Text><Text style={s.zakatNo}>{today} / {plan.days}</Text></View><View><Text style={s.nextCardLabel}>{T('COMPLETED')}</Text><Text style={s.zakatNo}>{plan.completed.length}</Text></View></View><Pressable onPress={toggle} style={s.planToday}><Text style={s.settingName}>{tf(language,'Day {d} reading',{d:today})}</Text>{ico(plan.completed.includes(today)?'checkmark-circle':'ellipse-outline',28,C.green)}</Pressable><Tactile onPress={async()=>{await savePlan(null);setPlan(null)}} style={s.dangerButton}><Text style={s.dangerText}>{T('End current plan')}</Text></Tactile></>}</ScrollView></Page>}
 function HifzScreen({navigation}:any){const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);const[chapters,setChapters]=useState<Chapter[]>([]);const[status,setStatus]=useState<Record<number,HifzStatus>>({});const[filter,setFilter]=useState<'all'|HifzStatus>('all');useEffect(()=>{getChapters().then(setChapters);loadHifz().then(setStatus)},[]);const cycle=async(id:number)=>{const current=status[id]||'not-started';const next:HifzStatus=current==='not-started'?'revising':current==='revising'?'memorized':'not-started';const value={...status,[id]:next};setStatus(value);await saveHifz(value)};const shown=chapters.filter(c=>filter==='all'||(status[c.id]||'not-started')===filter);const memorized=Object.values(status).filter(x=>x==='memorized').length;return <Page><ToolBar title={T('Hifz tracker')} navigation={navigation}/><ScrollView {...SCROLL} contentContainerStyle={s.dataPage}><ToolGraphic tool="Hifz" size={81}/><Text style={s.dataTitle}>{tf(language,'{n} of 114 memorized',{n:memorized})}</Text><Tactile onPress={()=>navigation.navigate('Memorize')} style={s.practiceLaunch}><View><Text style={s.settingName}>{T('Hide-and-peek recall')}</Text><Text style={s.meta}>{T('Test a verse from your revising or memorized Surahs')}</Text></View>{ico('play-circle',28,C.green)}</Tactile><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap: 8}}>{(['all','not-started','revising','memorized'] as const).map(value=><ChoicePill key={value} label={T(value.replace('-',' '))} selected={filter===value} onPress={()=>setFilter(value)}/>)}</ScrollView><View style={{height:13}}/><View style={s.settings}>{shown.map(c=><Pressable key={c.id} onPress={()=>cycle(c.id)} style={s.translationRow}><View style={s.surahNum}><Text style={s.surahNumText}>{c.id}</Text></View><View style={{flex:1}}><View style={s.surahNameRow}>{rtl && <Text style={s.surahArInline}>{c.name_arabic}</Text>}<Text style={[s.settingName,{flexShrink:1}]} numberOfLines={1}>{c.name_simple}</Text>{!rtl && <Text style={s.surahArInline}>{c.name_arabic}</Text>}</View><Text style={s.meta}>{tf(language,'{n} verses',{n:c.verses_count})}</Text></View><Text style={s.hifzStatus}>{T((status[c.id]||'not-started').replace('-',' '))}</Text></Pressable>)}</View></ScrollView></Page>}
 
@@ -7007,8 +7223,48 @@ const DUA_SHORTCUT_LABELS: Record<string, string> = {
   hajj: 'Hajj and Umrah'
 };
 
+/**
+ * How far through a repeated remembrance the reader is, for today.
+ *
+ * Stored per dua rather than in the screen, because a card that forgets on
+ * scroll is worse than no counter at all. Gone at midnight, like the rest of
+ * the daily record: this is a companion through one day's wird, not a score
+ * kept forever.
+ */
+const ADHKAR_PROGRESS_KEY = '@deen/adhkar/counts/v1';
+function adhkarDayKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function useAdhkarCount(id: string, target: number) {
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    let live = true;
+    AsyncStorage.getItem(ADHKAR_PROGRESS_KEY).then((raw) => {
+      if (!live || !raw) return;
+      const all = JSON.parse(raw);
+      if (all?.day === adhkarDayKey() && typeof all.counts?.[id] === 'number') setCount(all.counts[id]);
+    }).catch(() => undefined);
+    return () => { live = false };
+  }, [id]);
+  const save = (next: number) => {
+    setCount(next);
+    /* A dropped write costs one morning's tally, never a crash. */
+    AsyncStorage.getItem(ADHKAR_PROGRESS_KEY).then((raw) => {
+      const all = raw ? JSON.parse(raw) : {};
+      const counts = all?.day === adhkarDayKey() ? { ...(all.counts || {}) } : {};
+      counts[id] = next;
+      return AsyncStorage.setItem(ADHKAR_PROGRESS_KEY, JSON.stringify({ day: adhkarDayKey(), counts }));
+    }).catch(() => undefined);
+  };
+  return { count, target, tap: () => save(Math.min(count + 1, target)), reset: () => save(0) };
+}
+
 function DuaCard({ dua, read, onRead }: { dua: Dua; read?: boolean; onRead?: () => void }) {const {rtl,language}=useLanguage();const T=(text:string)=>tx(language,text);
   const { preferences } = useQuranPreferences();
+  /* Only rows whose own wording gives a count get a counter. */
+  const repetition = useAdhkarCount(dua.id, dua.repetition?.count || 0);
+  const finished = !!dua.repetition && repetition.count >= repetition.target;
   const [openSource, setOpenSource] = useState(false);
   const [copied, setCopied] = useState(false);
   const [reporting, setReporting] = useState(false);
@@ -7047,11 +7303,24 @@ function DuaCard({ dua, read, onRead }: { dua: Dua; read?: boolean; onRead?: () 
       <Tactile accessibilityLabel={T('Copy this dua')} onPress={copy} style={s.secondary}>{ico('copy-outline', 16, C.green)}<Text style={s.secondaryText}>{copied ? T('Copied') : T('Copy')}</Text></Tactile>
       <Tactile accessibilityLabel={T('Share this dua')} onPress={share} style={s.secondary}>{ico('share-outline', 16, C.green)}<Text style={s.secondaryText}>{T('Share')}</Text></Tactile>
       <Tactile accessibilityLabel={T('Report a correction')} onPress={() => setReporting(true)} style={s.secondary}>{ico('flag-outline', 16, C.green)}<Text style={s.secondaryText}>{T('Report')}</Text></Tactile>
-      {!!onRead && <Tactile accessibilityRole="checkbox" accessibilityState={{ checked: !!read }}
-        accessibilityLabel={T('Mark this remembrance as read')} onPress={onRead} style={s.secondary}>
-        {ico(read ? 'checkmark-circle' : 'ellipse-outline', 16, read ? C.gold : C.green)}
-        <Text style={s.secondaryText}>{read ? T('Read') : T('Mark read')}</Text>
-      </Tactile>}
+      {/* A remembrance the book says to repeat gets a counter in place of the
+          tick: the tick cannot tell three from thirty-three, and saying it
+          three times is the practice, not a note that you were there. */}
+      {dua.repetition
+        ? <Tactile accessibilityRole="button"
+            accessibilityLabel={tf(language, 'Count this remembrance, {n} of {t}', { n: repetition.count, t: repetition.target })}
+            accessibilityValue={{ text: `${repetition.count} / ${repetition.target}` }}
+            onPress={() => { repetition.tap(); if (finished && onRead) onRead(); }}
+            onLongPress={repetition.reset}
+            style={s.secondary}>
+            {ico(finished ? 'checkmark-circle' : 'ellipse-outline', 16, finished ? C.gold : C.green)}
+            <Text style={s.secondaryText}>{finished ? T('Done') : `${repetition.count} / ${repetition.target}`}</Text>
+          </Tactile>
+        : !!onRead && <Tactile accessibilityRole="checkbox" accessibilityState={{ checked: !!read }}
+            accessibilityLabel={T('Mark this remembrance as read')} onPress={onRead} style={s.secondary}>
+            {ico(read ? 'checkmark-circle' : 'ellipse-outline', 16, read ? C.gold : C.green)}
+            <Text style={s.secondaryText}>{read ? T('Read') : T('Mark read')}</Text>
+          </Tactile>}
     </View>
     <Modal visible={reporting} transparent animationType="slide" onRequestClose={() => setReporting(false)}>
       <CorrectionSheet
@@ -12649,7 +12918,12 @@ function MiniPlayer() {
       <View style={s.miniArt}>{audio.buffering ? <ActivityIndicator color={C.green} /> : <ToolGraphic tool="Recitations" size={38} />}</View>
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text numberOfLines={1} style={s.miniTitle}>{audio.track.title}</Text>
-        <Text numberOfLines={1} style={s.miniMeta}>{audio.track.performer}{audio.buffering ? ' · buffering' : audio.playing ? ' · playing' : ''}</Text>
+        {/* The verse, not just the surah: a reader following along needs the
+            position, and the track already carries it. */}
+        <Text numberOfLines={1} style={s.miniMeta}>
+          {`${audio.track.chapterName} ${audio.track.chapterId}:${audio.track.ayahNumber}`}{' · '}{audio.track.performer}
+          {audio.buffering ? ' · buffering' : audio.playing ? ' · playing' : ''}
+        </Text>
       </View>
     </Pressable>
     <Pressable accessibilityRole="button" accessibilityLabel={audio.playing ? 'Pause recitation' : 'Play recitation'} onPress={() => { void togglePlayback(); }} style={s.miniBtn}>{ico(audio.playing ? 'pause' : 'play', 19, C.white)}</Pressable>
@@ -14761,6 +15035,7 @@ function useContentLanguageSync() {
 }
 
 function AppShell() {
+
   const { ready, rtl: rtlNow , language }=useLanguage();  /* rtlNow is a flag here, not a function */
   const { location } = useAppLocation();
   const { settings } = useWorshipSettings();
@@ -15331,7 +15606,27 @@ toolBar:{gap:12},surahStep:{width:32,height:32,alignItems:'center',justifyConten
      read back as nothing at all - the picture comes out empty. Being off the
      top of the screen is what hides it, so the opacity has to stay at 1 and
      the position is what keeps it unseen. */
-  offscreenCard:{position:'absolute',top:-100000,left:0,opacity:1},readerName:{flex:1,minWidth:0,flexShrink:1,color:C.ink,fontSize:16,fontFamily:'DMSans_700Bold'},readerProgress:{height:4,backgroundColor:C.mint,overflow:'hidden'},readerScroll:{width:'100%',maxWidth:860,alignSelf:'center',padding:16,paddingBottom:BOTTOM_RESERVE},surahHead:{borderRadius:24,padding:24,alignItems:'center',...shadow},surahHeadAr:{color:C.onAccent,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:38,marginTop:16,writingDirection:'rtl'},surahHeadEn:{color:C.onAccent,fontSize:10,marginTop:4},bismillah:{color:C.onAccent,fontFamily:'KFGQPCUthmanicHafs',fontSize:22,marginTop:24,writingDirection:'rtl'},ayahContinuous:{marginTop:4,borderRadius:4,borderBottomWidth:1,shadowOpacity:0,elevation:0},ayahSelected:{borderColor:C.gold,borderWidth:2,backgroundColor:C.card},ayahActions:{flexDirection:'row',alignItems:'center',gap:6,marginLeft:-4},ayahFooter:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginTop:12},ayah:{backgroundColor:C.white,borderRadius:24,padding:20,marginTop:12,borderWidth:1,borderColor:C.line,...soft},ayahTop:{flexDirection:'row',alignItems:'center',justifyContent:'space-between'},ayahNo:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold',backgroundColor:C.mint,paddingHorizontal:8,paddingVertical:8,borderRadius:12},ayahAr:{color:C.ink,textAlign:'right',fontFamily:'KFGQPCUthmanicHafs',fontSize:30,lineHeight:58,marginTop:16,writingDirection:'rtl'},ayahTranslation:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:14,lineHeight:20,marginTop:16,paddingTop:16,borderTopWidth:1,borderColor:C.line},ayahMeta:{color:C.muted,fontSize:10,marginTop:12},
+  offscreenCard:{position:'absolute',top:-100000,left:0,opacity:1},readerName:{flex:1,minWidth:0,flexShrink:1,color:C.ink,fontSize:16,fontFamily:'DMSans_700Bold'},readerProgress:{height:4,backgroundColor:C.mint,overflow:'hidden'},readerScroll:{width:'100%',maxWidth:860,alignSelf:'center',padding:16,paddingBottom:BOTTOM_RESERVE},surahHead:{borderRadius:24,padding:24,alignItems:'center',...shadow},surahHeadAr:{color:C.onAccent,fontFamily:'IBMPlexSansArabic_600SemiBold',fontSize:38,marginTop:16,writingDirection:'rtl'},surahHeadEn:{color:C.onAccent,fontSize:10,marginTop:4},bismillah:{color:C.onAccent,fontFamily:'KFGQPCUthmanicHafs',fontSize:22,marginTop:24,writingDirection:'rtl'},ayahContinuous:{marginTop:4,borderRadius:4,borderBottomWidth:1,shadowOpacity:0,elevation:0},ayahSelected:{borderColor:C.gold,borderWidth:2,backgroundColor:C.card},ayahActions:{flexDirection:'row',alignItems:'center',gap:6,marginLeft:-4},ayahFooter:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginTop:12},ayah:{backgroundColor:C.white,borderRadius:24,padding:20,marginTop:12,borderWidth:1,borderColor:C.line,...soft},ayahTop:{flexDirection:'row',alignItems:'center',justifyContent:'space-between'},ayahNo:{color:C.green,fontSize:10,fontFamily:'DMSans_700Bold',backgroundColor:C.mint,paddingHorizontal:8,paddingVertical:8,borderRadius:12},ayahAr:{color:C.ink,textAlign:'right',fontFamily:'KFGQPCUthmanicHafs',fontSize:30,lineHeight:58,marginTop:16,writingDirection:'rtl'},ayahTransliteration:{color:C.green,fontFamily:'Newsreader_600SemiBold',fontSize:14.5,lineHeight:22,marginTop:12,opacity:.9},
+  /* Word by word: the words run right to left in reading order, each with
+     the meaning beneath it. The Arabic keeps the reader's own font and size
+     so the verse still looks like the verse. */
+  wbwWrap:{flexDirection:'row-reverse',flexWrap:'wrap',justifyContent:'flex-start',gap:10,marginTop:16},
+  wbwCell:{alignItems:'center',maxWidth:'100%'},
+  wbwArabic:{color:C.ink,fontFamily:'KFGQPCUthmanicHafs',fontSize:26,lineHeight:40,textAlign:'center',writingDirection:'rtl'},
+  wbwMeaning:{color:C.green,fontFamily:'DMSans_400Regular',fontSize:12,lineHeight:16,marginTop:2,textAlign:'center',maxWidth:160},
+  wbwMeaningRtl:{writingDirection:'rtl'},
+  /* The root sits under the meaning, smaller and quieter: it is the beginning
+     of a study of the word, not its translation. */
+  wbwRoot:{color:C.muted,fontFamily:'DMSans_500Medium',fontSize:10,letterSpacing:.5,marginTop:3,textAlign:'center',writingDirection:'rtl'},
+  /* The verse being recited: a quiet gold edge, distinct from the bookmark
+     highlight so "listening here" and "saved this" never look the same. */
+  ayahQuietNo:{color:C.muted,fontSize:10,letterSpacing:0.5,marginBottom:6,opacity:0.7},
+  ayahSounding:{borderColor:C.gold,borderWidth:2,backgroundColor:C.yellow},
+  followChip:{flexDirection:'row',alignItems:'center',gap:5,backgroundColor:C.mint,borderRadius:14,paddingHorizontal:10,paddingVertical:8},
+  followChipOn:{backgroundColor:C.green},
+  followText:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10},
+  followTextOn:{color:C.white},
+ayahTranslation:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:14,lineHeight:20,marginTop:16,paddingTop:16,borderTopWidth:1,borderColor:C.line},ayahMeta:{color:C.muted,fontSize:10,marginTop:12},
  translationRow:{minHeight:67,flexDirection:'row',alignItems:'center',gap:12,paddingHorizontal:12,borderBottomWidth:1,borderColor:C.line},languageBadge:{width:52,height:34,borderRadius:12,backgroundColor:C.mint,alignItems:'center',justifyContent:'center',flexDirection:'row',gap:4},languageFlag:{fontSize:12},languageBadgeText:{color:C.green,fontFamily:'DMSans_700Bold',fontSize:10},historyHead:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginBottom:10},historyWrap:{flexDirection:'row',flexWrap:'wrap',gap:8},historyChip:{backgroundColor:C.mint,borderRadius:16,paddingHorizontal:12,paddingVertical:8,maxWidth:220},historyChipText:{color:C.ink,fontFamily:'DMSans_400Regular',fontSize:13,lineHeight:18},historyBlock:{marginBottom:16},searchResult:{backgroundColor:C.white,borderRadius:20,padding:16,marginBottom:8,borderWidth:1,borderColor:C.line},noteText:{color:C.ink,fontFamily:'Newsreader_600SemiBold',fontSize:17,lineHeight:24,marginVertical:8},noteInput:{minHeight:180,backgroundColor:C.white,borderRadius:20,padding:16,textAlignVertical:'top',fontFamily:'DMSans_400Regular',fontSize:14,color:C.ink,borderWidth:1,borderColor:C.line,outlineStyle:'none'} as any,stepper:{backgroundColor:C.white,borderRadius:20,padding:12,flexDirection:'row',alignItems:'center',justifyContent:'space-between',borderWidth:1,borderColor:C.line},stepButton:{width:44,height:44,borderRadius:16,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},fontPreview:{backgroundColor:C.mint,borderRadius:20,padding:16,marginTop:12,borderWidth:1,borderColor:C.line},fontPreviewText:{color:C.ink,textAlign:'right',lineHeight:52,includeFontPadding:false},previewArabic:{color:C.ink,fontFamily:'KFGQPCUthmanicHafs',writingDirection:'rtl'},referenceNavigator:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:12,marginBottom:12},referenceInput:{width:100,textAlign:'center',backgroundColor:C.white,borderWidth:1,borderColor:C.line,borderRadius:16,padding:12,color:C.ink,fontFamily:'DMSans_700Bold',outlineStyle:'none'} as any,comparisonHelp:{color:C.muted,fontSize:10,lineHeight:15,marginTop:8},editionPicker:{gap:8,marginTop:12},editionChip:{minHeight:58,backgroundColor:C.white,borderRadius:16,paddingHorizontal:12,flexDirection:'row',alignItems:'center',gap:12,borderWidth:1,borderColor:C.line},editionChipActive:{borderColor:C.green,backgroundColor:C.mint},editionFlag:{fontSize:20},arabicReference:{backgroundColor:C.yellow,borderRadius:24,padding:20,marginTop:16,borderWidth:1,borderColor:C.gold},comparisonColumns:{gap:12,paddingVertical:12,paddingRight:20},comparisonText:{color:C.muted,fontFamily:'DMSans_400Regular',fontSize:13,lineHeight:20,marginTop:12},mushafPage:{width:'100%',maxWidth:900,alignSelf:'center',paddingHorizontal:20,paddingTop:22,paddingBottom:BOTTOM_RESERVE},mushafNav:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:12},mushafNavFoot:{marginTop:18},pageJump:{flex:1,minWidth:0,alignItems:'center'},pageInput:{minWidth:74,textAlign:'center',color:C.ink,fontFamily:'Newsreader_600SemiBold',fontSize:28,borderBottomWidth:1,borderColor:C.line,paddingVertical:4,outlineStyle:'none'} as any,pageProgress:{height:5,borderRadius:4,backgroundColor:C.mint,overflow:'hidden',marginVertical:16},mushafSheet:{backgroundColor:C.card,borderRadius:24,padding:20,borderWidth:1,borderColor:C.gold,...soft},
   /* long-press verse menu: sits entirely above the verse it belongs to, so it
      never covers the line you are reading */

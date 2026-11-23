@@ -456,6 +456,19 @@ export function hadithLanguage(code: string): HadithLanguage | undefined {
 
 export const isRtl = (code: LanguageCode) => RTL.includes(code);
 
+/**
+ * Whether a language code is written right to left.
+ *
+ * Same answer as `isRtl`, for codes that did not come from the app's own list
+ * - an edition's language from the server, a saved preference, a three-letter
+ * code the interface never offered. Only Arabic, Urdu, Persian and Pashto are
+ * in the app's right-to-left set, so anything else answers false, which is
+ * what it answered before.
+ */
+export function isRtlCode(code?: string): boolean {
+  return RTL.includes(String(code || '').trim().toLowerCase() as LanguageCode);
+}
+
 export function languageByCode(code: string): Language | undefined {
   return LANGUAGES.find((entry) => entry.code === code);
 }
