@@ -69,13 +69,13 @@
           }
         }
       ],
-  [
-    "expo-audio",
-    {
-      "enableBackgroundPlayback": true,
-      "recordAudioAndroid": false
-    }
-  ],
+      [
+        "expo-audio",
+        {
+          "enableBackgroundPlayback": true,
+          "recordAudioAndroid": false
+        }
+      ],
       [
         "expo-notifications",
         {
@@ -99,7 +99,8 @@
       "./plugins/widgets/withWidgets.js",
       "@bacons/apple-targets",
       "expo-sharing",
-      "expo-video"
+      "expo-video",
+      "expo-background-task"
     ]
   }
 }
